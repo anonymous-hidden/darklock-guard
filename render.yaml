@@ -1,0 +1,81 @@
+# Render deployment configuration for DarkLock
+# This file enables one-click deployment to Render
+services:
+  - type: web
+    name: discord-security-bot
+    env: node
+    plan: free
+    region: oregon  # Choose closest to your users
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true  # Auto-deploy on git push
+    
+    # Environment Variables
+    envVars:
+      - key: NODE_ENV
+        value: production
+      
+      - key: PORT
+        fromService:
+          type: web
+          name: discord-security-bot
+          property: port
+      
+      - key: DASHBOARD_PORT
+        value: 3000
+      
+      - key: ENABLE_WEB_DASHBOARD
+        value: true
+      
+      # Database Configuration
+      - key: DB_PATH
+        value: ./data/
+      
+      - key: DB_NAME
+        value: security_bot.db
+      
+      # Discord Configuration (Add these in Render Dashboard)
+      - key: DISCORD_TOKEN
+        sync: false
+        description: Your Discord bot token from https://discord.com/developers
+      
+      - key: DISCORD_CLIENT_ID
+        sync: false
+        description: Your Discord application client ID
+      
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+        description: Your Discord application client secret
+      
+      - key: DISCORD_REDIRECT_URI
+        sync: false
+        description: OAuth redirect URL (e.g., https://your-app.onrender.com/auth/callback)
+      
+      - key: DASHBOARD_URL
+        sync: false
+        description: Your Render app URL (e.g., https://your-app.onrender.com)
+      
+      # Security
+      - key: JWT_SECRET
+        sync: false
+        generateValue: true
+        description: Secret for JWT tokens (auto-generated)
+      
+      - key: ADMIN_PASSWORD
+        sync: false
+        description: Admin dashboard password (hash with bcrypt)
+      
+      - key: AUDIT_ENCRYPTION_KEY
+        sync: false
+        generateValue: true
+        description: HMAC key for anti-tampering baseline signatures (auto-generated)
+      
+      - key: TAMPER_ALERT_WEBHOOK_URL
+        sync: false
+        description: Discord webhook URL for tamper alerts (optional)
+      
+      # Optional: Guild ID for faster command registration
+      - key: GUILD_ID
+        sync: false
+        description: Your Discord server ID for testing (optional)

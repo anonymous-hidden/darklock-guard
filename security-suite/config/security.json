@@ -1,0 +1,41 @@
+{
+  "monitoring": {
+    "runtime": {
+      "enabled": true,
+      "checkInterval": 60000,
+      "description": "Monitor code integrity in memory"
+    },
+    "environment": {
+      "enabled": true,
+      "checkInterval": 30000,
+      "description": "Monitor environment variables"
+    },
+    "process": {
+      "enabled": true,
+      "checkInterval": 120000,
+      "description": "Monitor process integrity and hijacking"
+    },
+    "network": {
+      "enabled": true,
+      "description": "Monitor network requests for exfiltration"
+    },
+    "authentication": {
+      "enabled": true,
+      "maxFailedAttempts": 5,
+      "lockoutDuration": 900000,
+      "description": "Monitor logins and permission changes"
+    }
+  },
+  "whitelistedDomains": [
+    "discord.com",
+    "discord.gg",
+    "discordapp.com",
+    "stripe.com",
+    "api.stripe.com"
+  ],
+  "blacklistedDomains": [],
+  "production": {
+    "shutdownOnCriticalViolation": true,
+    "alertAdmins": true
+  }
+}

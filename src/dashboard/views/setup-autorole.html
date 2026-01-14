@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Role & Reaction Roles - DarkLock</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="/js/secure-auth.js"></script>
+    <script src="/js/global-theme.js"></script>
+    <style>
+        .setup-page { min-height: 100vh; background: var(--ds-surface-0); }
+        .setup-nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: var(--ds-space-md) var(--ds-space-xl); background: var(--ds-surface-1); border-bottom: 1px solid var(--ds-border); backdrop-filter: blur(12px); }
+        .setup-breadcrumb { display: flex; align-items: center; gap: var(--ds-space-sm); font-size: 14px; color: var(--ds-text-muted); }
+        .setup-breadcrumb a { color: var(--ds-text-muted); text-decoration: none; }
+        .setup-breadcrumb a:hover { color: var(--ds-primary); }
+        .setup-breadcrumb-current { color: var(--ds-text-primary); font-weight: 500; }
+        .setup-container { max-width: 900px; margin: 0 auto; padding: var(--ds-space-xl) var(--ds-space-lg); }
+        .setup-card { background: var(--ds-surface-1); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg); margin-bottom: var(--ds-space-lg); overflow: hidden; }
+        .setup-card-header { padding: var(--ds-space-lg); border-bottom: 1px solid var(--ds-border); }
+        .setup-card-title { display: flex; align-items: center; gap: var(--ds-space-sm); font-size: 16px; font-weight: 600; color: var(--ds-text-primary); }
+        .setup-card-title i { color: var(--ds-primary); }
+        .setup-card-content { padding: var(--ds-space-lg); }
+        .form-group { margin-bottom: var(--ds-space-lg); }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-control { width: 100%; padding: 10px 14px; background: var(--ds-surface-0); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); color: var(--ds-text-primary); font-size: 14px; }
+        .form-control:focus { outline: none; border-color: var(--ds-primary); box-shadow: 0 0 0 3px var(--ds-primary-shadow); }
+        .form-text { font-size: 13px; color: var(--ds-text-muted); margin-top: var(--ds-space-xs); display: block; }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: var(--ds-space-md); background: var(--ds-surface-0); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); margin-bottom: var(--ds-space-md); }
+        .toggle-label { font-weight: 500; color: var(--ds-text-primary); }
+        .toggle-description { font-size: 13px; color: var(--ds-text-muted); margin-top: 4px; }
+        .toggle-switch { position: relative; width: 48px; height: 24px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--ds-surface-3); border-radius: 24px; transition: 0.3s; }
+        .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+        .toggle-switch input:checked + .toggle-slider { background: var(--ds-primary); }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(24px); }
+        .save-section { margin-top: var(--ds-space-xl); padding-top: var(--ds-space-xl); border-top: 1px solid var(--ds-border); }
+        .btn-primary { width: 100%; padding: 14px 24px; background: var(--ds-primary); color: white; border: none; border-radius: var(--ds-radius-md); font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary:hover { background: var(--ds-primary-hover); transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .status-message { text-align: center; padding: var(--ds-space-md); border-radius: var(--ds-radius-md); margin-top: var(--ds-space-md); display: none; }
+        .status-message.success { display: block; background: var(--ds-success-bg); color: var(--ds-success); }
+        .status-message.error { display: block; background: var(--ds-error-bg); color: var(--ds-error); }
+        
+        .tabs {
+            display: flex;
+            gap: var(--ds-space-sm);
+            margin-bottom: var(--ds-space-lg);
+            border-bottom: 2px solid var(--ds-border);
+        }
+
+        .tab {
+            padding: var(--ds-space-md) var(--ds-space-lg);
+            background: transparent;
+            border: none;
+            color: var(--ds-text-secondary);
+            cursor: pointer;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: var(--ds-text-primary);
+        }
+
+        .tab.active {
+            color: var(--ds-primary-500);
+            border-bottom-color: var(--ds-primary-500);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .role-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--ds-space-sm);
+        }
+
+        .role-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--ds-space-md);
+            background: var(--ds-surface-1);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+        }
+
+        .role-item-info {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-md);
+        }
+
+        .role-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid var(--ds-border);
+        }
+
+        .reaction-role-item {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-md);
+            padding: var(--ds-space-md);
+            background: var(--ds-surface-1);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            margin-bottom: var(--ds-space-sm);
+        }
+
+        .emoji-display {
+            font-size: 24px;
+            width: 40px;
+            text-align: center;
+        }
+
+        .btn-remove {
+            background: var(--ds-error-500);
+            color: white;
+            border: none;
+            padding: var(--ds-space-xs) var(--ds-space-md);
+            border-radius: var(--ds-radius-sm);
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-remove:hover {
+            background: var(--ds-error-600);
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--ds-surface-2);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            color: var(--ds-text-primary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all var(--ds-transition-fast);
+        }
+
+        .back-button:hover {
+            background: var(--ds-surface-3);
+            border-color: var(--ds-primary);
+            transform: translateX(-2px);
+        }
+
+        .back-button i {
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body class="setup-page">
+    <nav class="setup-nav">
+        <div style="display: flex; align-items: center; gap: var(--ds-space-lg);">
+            <a href="/dashboard" class="back-button">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+            </a>
+            <div class="setup-breadcrumb">
+                <a href="/dashboard"><i class="fas fa-home"></i> Dashboard</a>
+                <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                <span class="setup-breadcrumb-current">Auto-Role & Reaction Roles</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="setup-container">
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('autorole')">
+                    <i class="fas fa-user-plus"></i> Auto-Role
+                </button>
+                <button class="tab" onclick="switchTab('reaction')">
+                    <i class="fas fa-smile"></i> Reaction Roles
+                </button>
+            </div>
+
+            <!-- Auto-Role Tab -->
+            <div id="autoroleTab" class="tab-content active">
+                <!-- Enable Card -->
+                <div class="setup-card">
+                    <div class="setup-card-header">
+                        <div class="setup-card-title">
+                            <i class="fas fa-toggle-on"></i>
+                            <span>Enable Auto-Role</span>
+                        </div>
+                    </div>
+                    <div class="setup-card-content">
+                        <div class="toggle-row">
+                            <div>
+                                <div class="toggle-label">Auto-Role System</div>
+                                <div class="toggle-description">Automatically assign roles when members join</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="autoroleEnabled">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="toggle-row">
+                            <div>
+                                <div class="toggle-label">Auto-Role for Bots</div>
+                                <div class="toggle-description">Also assign roles to bots when they join</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="botAutorole">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Roles Configuration Card -->
+                <div class="setup-card">
+                    <div class="setup-card-header">
+                        <div class="setup-card-title">
+                            <i class="fas fa-users-cog"></i>
+                            <span>Auto-Assigned Roles</span>
+                        </div>
+                    </div>
+                    <div class="setup-card-content">
+                        <div class="form-group">
+                            <label for="autoroleSelect">Select Role to Add</label>
+                            <div style="display: flex; gap: var(--ds-space-sm);">
+                                <select id="autoroleSelect" class="form-control" style="flex: 1;">
+                                    <option value="">Select a role...</option>
+                                </select>
+                                <button class="btn-primary" onclick="addAutorole()">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="role-list" id="autoroleList">
+                            <!-- Roles will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Options Card -->
+                <div class="setup-card">
+                    <div class="setup-card-header">
+                        <div class="setup-card-title">
+                            <i class="fas fa-clock"></i>
+                            <span>Options</span>
+                        </div>
+                    </div>
+                    <div class="setup-card-content">
+                        <div class="form-group">
+                            <label for="autoroleDelay">Assignment Delay (seconds)</label>
+                            <input type="number" id="autoroleDelay" class="form-control" min="0" placeholder="0">
+                            <small class="form-text">Delay before assigning roles (0 = instant)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reaction Roles Tab -->
+            <div id="reactionTab" class="tab-content">
+                <!-- Enable Card -->
+                <div class="setup-card">
+                    <div class="setup-card-header">
+                        <div class="setup-card-title">
+                            <i class="fas fa-toggle-on"></i>
+                            <span>Enable Reaction Roles</span>
+                        </div>
+                    </div>
+                    <div class="setup-card-content">
+                        <div class="toggle-row">
+                            <div>
+                                <div class="toggle-label">Reaction Roles System</div>
+                                <div class="toggle-description">Allow members to self-assign roles using reactions</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="reactionRolesEnabled">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel Configuration Card -->
+                <div class="setup-card">
+                    <div class="setup-card-header">
+                        <div class="setup-card-title">
+                            <i class="fas fa-palette"></i>
+                            <span>Panel Configuration</span>
+                        </div>
+                    </div>
+                    <div class="setup-card-content">
+                        <div class="form-group">
+                            <label for="reactionChannel">Panel Channel</label>
+                            <select id="reactionChannel" class="form-control">
+                                <option value="">Select a channel...</option>
+                            </select>
+                            <small class="form-text">Channel where the reaction role panel will be posted</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="reactionTitle">Panel Title</label>
+                            <input type="text" id="reactionTitle" class="form-control" placeholder="Self Roles">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="reactionDesc">Panel Description</label>
+                            <textarea id="reactionDesc" class="form-control" rows="3" placeholder="React to get roles!"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reaction Roles List Card -->
+                <div class="setup-card">
+                    <div class="setup-card-header">
+                        <div class="setup-card-title">
+                            <i class="fas fa-list"></i>
+                            <span>Reaction Roles</span>
+                        </div>
+                    </div>
+                    <div class="setup-card-content">
+                        <div class="form-group">
+                            <label>Add Reaction Role</label>
+                            <div style="display: flex; gap: var(--ds-space-sm);">
+                                <input type="text" id="reactionEmoji" class="form-control" placeholder="Emoji" style="width: 80px;">
+                                <select id="reactionRoleSelect" class="form-control" style="flex: 1;">
+                                    <option value="">Select a role...</option>
+                                </select>
+                                <button class="btn-primary" onclick="addReactionRole()">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="reactionRolesList">
+                            <!-- Reaction roles will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="save-section">
+                <button class="btn-primary" id="saveBtn">
+                    <i class="fas fa-save"></i> Save Settings
+                </button>
+                <div id="statusMsg" class="status-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get guild ID from URL or localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        let guildId = urlParams.get('guild');
+        
+        // If no guild in URL, try localStorage with both possible keys
+        if (!guildId) {
+            guildId = localStorage.getItem('selectedGuildId') || localStorage.getItem('selectedGuild');
+        }
+        
+        // Store the guild ID in both keys for consistency
+        if (guildId) {
+            localStorage.setItem('selectedGuildId', guildId);
+            localStorage.setItem('selectedGuild', guildId);
+        }
+        if (!guildId) {
+            window.location.href = '/dashboard';
+        }
+
+        let roles = [];
+        let channels = [];
+        let autoroles = [];
+        let reactionRoles = [];
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.closest('.tab').classList.add('active');
+            document.getElementById(tab + 'Tab').classList.add('active');
+        }
+
+        // Load roles and channels
+        async function loadRolesAndChannels() {
+            try {
+                const [rolesData, channelsData] = await Promise.all([
+                    SecureAuth.fetch(`/api/guild/${guildId}/roles`, { method: 'GET' }),
+                    SecureAuth.fetch(`/api/guild/${guildId}/channels`, { method: 'GET' })
+                ]);
+
+                if (rolesData.success) {
+                    roles = rolesData.roles;
+                    const autoroleSelect = document.getElementById('autoroleSelect');
+                    const reactionRoleSelect = document.getElementById('reactionRoleSelect');
+                    
+                    roles.forEach(role => {
+                        if (role.name !== '@everyone') {
+                            autoroleSelect.add(new Option(role.name, role.id));
+                            reactionRoleSelect.add(new Option(role.name, role.id));
+                        }
+                    });
+                }
+
+                if (channelsData.success) {
+                    channels = channelsData.channels.filter(c => c.type === 'GUILD_TEXT' || c.type === 0);
+                    const channelSelect = document.getElementById('reactionChannel');
+                    
+                    channels.forEach(channel => {
+                        channelSelect.add(new Option('#' + channel.name, channel.id));
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load roles/channels:', error);
+            }
+        }
+
+        // Load settings
+        async function loadSettings() {
+            try {
+                const response = await SecureAuth.fetch(`/api/guild/${guildId}/settings`, {
+                    method: 'GET'
+                });
+
+                if (response.success) {
+                    const data = response.settings;
+
+                    // Auto-role settings
+                    document.getElementById('autoroleEnabled').checked = data.autorole_enabled || false;
+                    document.getElementById('botAutorole').checked = data.bot_autorole || false;
+                    document.getElementById('autoroleDelay').value = data.autorole_delay || 0;
+                    
+                    autoroles = data.autoroles || [];
+                    renderAutoroles();
+
+                    // Reaction roles settings
+                    document.getElementById('reactionRolesEnabled').checked = data.reaction_roles_enabled || false;
+                    document.getElementById('reactionChannel').value = data.reaction_channel || '';
+                    document.getElementById('reactionTitle').value = data.reaction_title || '';
+                    document.getElementById('reactionDesc').value = data.reaction_desc || '';
+                    
+                    reactionRoles = data.reaction_roles || [];
+                    renderReactionRoles();
+                }
+            } catch (error) {
+                console.error('Failed to load settings:', error);
+                showStatus('Failed to load settings', 'error');
+            }
+        }
+
+        function renderAutoroles() {
+            const list = document.getElementById('autoroleList');
+            if (autoroles.length === 0) {
+                list.innerHTML = '<p style="color: var(--ds-text-secondary);">No auto-roles configured</p>';
+                return;
+            }
+
+            list.innerHTML = autoroles.map((roleId, index) => {
+                const role = roles.find(r => r.id === roleId);
+                if (!role) return '';
+                
+                return `
+                    <div class="role-item">
+                        <div class="role-item-info">
+                            <div class="role-color" style="background-color: ${role.color || '#99AAB5'};"></div>
+                            <span>${role.name}</span>
+                        </div>
+                        <button class="btn-remove" onclick="removeAutorole(${index})">
+                            <i class="fas fa-times"></i> Remove
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderReactionRoles() {
+            const list = document.getElementById('reactionRolesList');
+            if (reactionRoles.length === 0) {
+                list.innerHTML = '<p style="color: var(--ds-text-secondary);">No reaction roles configured</p>';
+                return;
+            }
+
+            list.innerHTML = reactionRoles.map((rr, index) => {
+                const role = roles.find(r => r.id === rr.role);
+                if (!role) return '';
+                
+                return `
+                    <div class="reaction-role-item">
+                        <div class="emoji-display">${rr.emoji}</div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500;">${role.name}</div>
+                        </div>
+                        <button class="btn-remove" onclick="removeReactionRole(${index})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function addAutorole() {
+            const select = document.getElementById('autoroleSelect');
+            const roleId = select.value;
+            
+            if (!roleId) {
+                showStatus('Please select a role', 'error');
+                return;
+            }
+
+            if (autoroles.includes(roleId)) {
+                showStatus('Role already added', 'error');
+                return;
+            }
+
+            autoroles.push(roleId);
+            renderAutoroles();
+            select.value = '';
+        }
+
+        function removeAutorole(index) {
+            autoroles.splice(index, 1);
+            renderAutoroles();
+        }
+
+        function addReactionRole() {
+            const emoji = document.getElementById('reactionEmoji').value.trim();
+            const roleId = document.getElementById('reactionRoleSelect').value;
+            
+            if (!emoji || !roleId) {
+                showStatus('Please provide emoji and role', 'error');
+                return;
+            }
+
+            if (reactionRoles.find(rr => rr.emoji === emoji || rr.role === roleId)) {
+                showStatus('Emoji or role already in use', 'error');
+                return;
+            }
+
+            reactionRoles.push({ emoji, role: roleId });
+            renderReactionRoles();
+            
+            document.getElementById('reactionEmoji').value = '';
+            document.getElementById('reactionRoleSelect').value = '';
+        }
+
+        function removeReactionRole(index) {
+            reactionRoles.splice(index, 1);
+            renderReactionRoles();
+        }
+
+        // Save settings
+        document.getElementById('saveBtn').addEventListener('click', async function() {
+            const btn = this;
+            const msg = document.getElementById('statusMsg');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            try {
+                const settings = {
+                    autorole_enabled: document.getElementById('autoroleEnabled').checked,
+                    bot_autorole: document.getElementById('botAutorole').checked,
+                    autorole_delay: parseInt(document.getElementById('autoroleDelay').value) || 0,
+                    autoroles: autoroles,
+                    reaction_roles_enabled: document.getElementById('reactionRolesEnabled').checked,
+                    reaction_channel: document.getElementById('reactionChannel').value,
+                    reaction_title: document.getElementById('reactionTitle').value,
+                    reaction_desc: document.getElementById('reactionDesc').value,
+                    reaction_roles: reactionRoles
+                };
+
+                const response = await SecureAuth.fetch(`/api/guild/${guildId}/settings`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+
+                if (response.success) {
+                    showStatus('Settings saved successfully!', 'success');
+                } else {
+                    showStatus(response.message || 'Failed to save settings', 'error');
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                showStatus('Failed to save settings', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Save Settings';
+            }
+        });
+
+        function showStatus(message, type) {
+            const msg = document.getElementById('statusMsg');
+            msg.textContent = message;
+            msg.className = `status-message ${type}`;
+            setTimeout(() => msg.className = 'status-message', 5000);
+        }
+
+        // Initialize
+        loadRolesAndChannels().then(() => loadSettings());
+    </script>
+</body>
+</html>

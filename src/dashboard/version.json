@@ -1,0 +1,53 @@
+{
+  "version": "2.0.0",
+  "lastUpdated": "2025-11-22T21:45:00.000Z",
+  "updates": [
+    {
+      "version": "2.0.0",
+      "date": "2025-11-22",
+      "title": "Major Update: Rank System & Enhanced Features",
+      "features": [
+        "Added complete XP and Leveling system with visual rank cards",
+        "New /rank command with beautiful Canvas-generated rank cards",
+        "Leaderboard system to track top members by XP",
+        "Automatic XP gain per message with cooldown system",
+        "Level-up notifications with congratulatory messages",
+        "Dashboard update notification system with version tracking",
+        "Added Forensics Manager for immutable audit logging",
+        "Added Risk Engine for advanced threat detection"
+      ],
+      "fixes": [
+        "Fixed environment validation for CI/host deploys",
+        "Improved dashboard stability and WebSocket connections",
+        "Fixed security layer integration issues",
+        "Resolved token validation errors on startup"
+      ],
+      "improvements": [
+        "Enhanced dashboard UI with professional styling",
+        "Improved rank card design matching modern Discord aesthetics",
+        "Better XP formula for balanced progression",
+        "Optimized leaderboard performance for large servers"
+      ]
+    },
+    {
+      "version": "1.9.0",
+      "date": "2025-11-21",
+      "title": "Security Enhancements",
+      "features": [
+        "Advanced link detection with unicode spoofing protection",
+        "Staff 2FA system with TOTP support",
+        "Automated recovery system for post-incident restoration",
+        "Behavior analysis with AI-powered detection",
+        "Comprehensive audit logging with encryption"
+      ],
+      "fixes": [
+        "Fixed dashboard authentication issues",
+        "Resolved security scanner false positives"
+      ],
+      "improvements": [
+        "Improved anti-nuke detection accuracy",
+        "Enhanced phishing detection algorithms"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "security-suite",
+  "version": "1.0.0",
+  "description": "Comprehensive multi-layer security suite for Discord bot",
+  "main": "index.js",
+  "modules": [
+    "runtime-monitor.js",
+    "env-validator.js",
+    "process-monitor.js",
+    "network-monitor.js",
+    "auth-auditor.js"
+  ]
+}

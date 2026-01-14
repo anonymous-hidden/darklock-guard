@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
+    <title>Access Share - DarkLock Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <style>
+        .page { min-height: 100vh; background: var(--ds-surface-0); }
+
+        .page-nav {
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: var(--ds-space-md) var(--ds-space-xl);
+            background: var(--ds-surface-1);
+            border-bottom: 1px solid var(--ds-border);
+            backdrop-filter: blur(12px);
+        }
+
+        .breadcrumb {
+            display: flex; align-items: center; gap: var(--ds-space-sm);
+            font-size: 14px; color: var(--ds-text-muted);
+        }
+        .breadcrumb a { color: var(--ds-text-muted); text-decoration: none; }
+        .breadcrumb a:hover { color: var(--ds-primary); }
+        .breadcrumb-current { color: var(--ds-text-primary); font-weight: 500; }
+
+        .page-container { max-width: 900px; margin: 0 auto; padding: var(--ds-space-xl) var(--ds-space-lg); }
+
+        .page-header { margin-bottom: var(--ds-space-xl); }
+        .page-header-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 56px; height: 56px;
+            background: var(--ds-primary-bg);
+            border: 1px solid var(--ds-primary-border);
+            border-radius: var(--ds-radius-lg);
+            margin-bottom: var(--ds-space-md);
+        }
+        .page-header-icon i { font-size: 24px; color: var(--ds-primary); }
+        .page-header h1 { font-size: 28px; font-weight: 700; color: var(--ds-text-primary); margin: 0 0 var(--ds-space-sm) 0; }
+        .page-header p { color: var(--ds-text-muted); font-size: 15px; margin: 0; }
+
+        /* Tabs */
+        .tabs {
+            display: flex; gap: var(--ds-space-sm); margin-bottom: var(--ds-space-lg);
+            border-bottom: 2px solid var(--ds-border);
+        }
+        .tab {
+            padding: var(--ds-space-md) var(--ds-space-lg);
+            background: transparent; border: none;
+            color: var(--ds-text-secondary);
+            cursor: pointer; font-weight: 500;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px; transition: all 0.2s;
+        }
+        .tab:hover { color: var(--ds-text-primary); }
+        .tab.active { color: var(--ds-primary); border-bottom-color: var(--ds-primary); }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Cards */
+        .card {
+            background: var(--ds-surface-1);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-lg);
+            margin-bottom: var(--ds-space-lg);
+            overflow: hidden;
+        }
+        .card-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: var(--ds-space-lg);
+            border-bottom: 1px solid var(--ds-border);
+        }
+        .card-title {
+            display: flex; align-items: center; gap: var(--ds-space-sm);
+            font-size: 16px; font-weight: 600; color: var(--ds-text-primary);
+        }
+        .card-title i { color: var(--ds-primary); }
+        .card-body { padding: var(--ds-space-lg); }
+
+        /* Form */
+        .form-group { margin-bottom: var(--ds-space-lg); }
+        .form-label { 
+            display: block; margin-bottom: var(--ds-space-sm);
+            font-size: 14px; font-weight: 500; color: var(--ds-text-primary);
+        }
+        .form-desc { 
+            font-size: 13px; color: var(--ds-text-muted); margin-bottom: var(--ds-space-sm);
+        }
+        .form-input, .form-select {
+            width: 100%; padding: var(--ds-space-md);
+            background: var(--ds-surface-2);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            color: var(--ds-text-primary);
+            font-size: 14px; box-sizing: border-box;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--ds-primary);
+        }
+
+        /* Member search dropdown */
+        .member-selector-wrapper { position: relative; }
+        .member-dropdown {
+            display: none; position: absolute; top: 100%; left: 0; right: 0;
+            max-height: 250px; overflow-y: auto;
+            background: var(--ds-surface-2);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            margin-top: 4px; z-index: 100;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .member-option {
+            padding: var(--ds-space-sm) var(--ds-space-md);
+            cursor: pointer; display: flex; align-items: center; gap: var(--ds-space-sm);
+            border-bottom: 1px solid var(--ds-border);
+        }
+        .member-option:hover { background: var(--ds-surface-1); }
+        .member-option img {
+            width: 32px; height: 32px; border-radius: 50%;
+        }
+        .selected-member {
+            display: none; margin-top: var(--ds-space-sm);
+            padding: var(--ds-space-sm) var(--ds-space-md);
+            background: var(--ds-surface-2);
+            border-radius: var(--ds-radius-md);
+            align-items: center; gap: var(--ds-space-sm);
+        }
+        .selected-member img {
+            width: 32px; height: 32px; border-radius: 50%;
+        }
+
+        /* Permission selector */
+        .permission-selector {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--ds-space-sm);
+        }
+        .perm-option {
+            padding: var(--ds-space-md);
+            background: var(--ds-surface-2);
+            border: 2px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            cursor: pointer; text-align: center; transition: all 0.2s;
+        }
+        .perm-option:hover { border-color: var(--ds-primary); }
+        .perm-option.active {
+            border-color: var(--ds-primary);
+            background: var(--ds-primary-bg);
+        }
+        .perm-option i { display: block; font-size: 20px; margin-bottom: var(--ds-space-xs); }
+        .perm-option.viewer i { color: var(--ds-info); }
+        .perm-option.moderator i { color: var(--ds-warning); }
+        .perm-option.admin i { color: var(--ds-error); }
+
+        /* Access list */
+        .access-list { display: flex; flex-direction: column; gap: var(--ds-space-sm); }
+        .access-item {
+            display: flex; align-items: center; gap: var(--ds-space-md);
+            padding: var(--ds-space-md);
+            background: var(--ds-surface-2);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+        }
+        .access-avatar {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--ds-primary), var(--ds-primary-500));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; color: white;
+        }
+        .access-avatar.role { border-radius: var(--ds-radius-md); }
+        .access-info { flex: 1; }
+        .access-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+        .access-meta {
+            font-size: 12px; color: var(--ds-text-muted);
+            display: flex; gap: var(--ds-space-md); align-items: center;
+        }
+        .access-badge {
+            padding: 4px 8px; border-radius: var(--ds-radius-full);
+            font-size: 11px; font-weight: 600;
+        }
+        .badge-viewer { background: var(--ds-info-bg); color: var(--ds-info); }
+        .badge-moderator { background: var(--ds-warning-bg); color: var(--ds-warning); }
+        .badge-admin { background: var(--ds-error-bg); color: var(--ds-error); }
+        .access-actions button {
+            padding: var(--ds-space-xs) var(--ds-space-md);
+            background: var(--ds-error-bg);
+            color: var(--ds-error);
+            border: none;
+            border-radius: var(--ds-radius-sm);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .access-actions button:hover { background: var(--ds-error-hover-bg); }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center; padding: var(--ds-space-xl);
+            color: var(--ds-text-muted);
+        }
+        .empty-state i {
+            font-size: 48px; margin-bottom: var(--ds-space-md);
+            color: var(--ds-text-muted); opacity: 0.5;
+        }
+
+        /* Button */
+        .btn-primary {
+            width: 100%; padding: var(--ds-space-md);
+            background: var(--ds-primary);
+            color: white; border: none;
+            border-radius: var(--ds-radius-md);
+            font-size: 15px; font-weight: 600;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: var(--ds-space-sm);
+        }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Status message */
+        .status-msg {
+            text-align: center; padding: var(--ds-space-md);
+            border-radius: var(--ds-radius-md);
+            margin-top: var(--ds-space-md);
+            display: none;
+        }
+        .status-msg.success {
+            display: block;
+            background: var(--ds-success-bg);
+            color: var(--ds-success);
+        }
+        .status-msg.error {
+            display: block;
+            background: var(--ds-error-bg);
+            color: var(--ds-error);
+        }
+    </style>
+</head>
+<body class="page">
+    <nav class="page-nav">
+        <div class="breadcrumb">
+            <a href="/dashboard"><i class="fas fa-home"></i> Dashboard</a>
+            <i class="fas fa-chevron-right"></i>
+            <span class="breadcrumb-current">Access Share</span>
+        </div>
+    </nav>
+
+    <div class="page-container">
+        <div class="page-header">
+            <div class="page-header-icon">
+                <i class="fas fa-share-alt"></i>
+            </div>
+            <h1>Access Share</h1>
+            <p>Share dashboard access directly with users or roles</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('users')">
+                <i class="fas fa-user"></i> Share with Users
+            </button>
+            <button class="tab" onclick="switchTab('roles')">
+                <i class="fas fa-users"></i> Share with Roles
+            </button>
+        </div>
+
+        <!-- Users Tab -->
+        <div class="tab-content active" id="usersTab">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Grant User Access</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">Select User</label>
+                        <p class="form-desc">Search and select a user from this server to grant access</p>
+                        <div class="member-selector-wrapper">
+                            <input type="text" class="form-input" id="memberSearchInput" placeholder="Search by username or nickname..." autocomplete="off">
+                            <input type="hidden" id="userIdInput">
+                            <div class="member-dropdown" id="memberDropdown"></div>
+                        </div>
+                        <div class="selected-member" id="selectedMember">
+                            <img id="selectedMemberAvatar" src="">
+                            <span id="selectedMemberName"></span>
+                            <button type="button" onclick="clearSelectedMember()" style="margin-left: auto; background: none; border: none; color: var(--ds-text-muted); cursor: pointer;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Permission Level</label>
+                        <div class="permission-selector">
+                            <div class="perm-option viewer active" onclick="selectUserPerm('viewer')">
+                                <i class="fas fa-eye"></i>
+                                <div>Viewer</div>
+                            </div>
+                            <div class="perm-option moderator" onclick="selectUserPerm('moderator')">
+                                <i class="fas fa-user-shield"></i>
+                                <div>Moderator</div>
+                            </div>
+                            <div class="perm-option admin" onclick="selectUserPerm('admin')">
+                                <i class="fas fa-crown"></i>
+                                <div>Admin</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="userPermLevel" value="viewer">
+                    </div>
+
+                    <button class="btn-primary" id="grantUserBtn" onclick="grantUserAccess()">
+                        <i class="fas fa-plus"></i> Grant Access
+                    </button>
+                    <div class="status-msg" id="userStatusMsg"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-users"></i>
+                        <span>Users with Access</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="access-list" id="usersList">
+                        <div class="empty-state">
+                            <i class="fas fa-user-slash"></i>
+                            <h4>No Users</h4>
+                            <p>No users have been granted direct access yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Roles Tab -->
+        <div class="tab-content" id="rolesTab">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-users-cog"></i>
+                        <span>Grant Role Access</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">Select Role</label>
+                        <p class="form-desc">All members with this role will have dashboard access</p>
+                        <select class="form-select" id="roleSelect">
+                            <option value="">Select a role...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Permission Level</label>
+                        <div class="permission-selector">
+                            <div class="perm-option viewer active" onclick="selectRolePerm('viewer')">
+                                <i class="fas fa-eye"></i>
+                                <div>Viewer</div>
+                            </div>
+                            <div class="perm-option moderator" onclick="selectRolePerm('moderator')">
+                                <i class="fas fa-user-shield"></i>
+                                <div>Moderator</div>
+                            </div>
+                            <div class="perm-option admin" onclick="selectRolePerm('admin')">
+                                <i class="fas fa-crown"></i>
+                                <div>Admin</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="rolePermLevel" value="viewer">
+                    </div>
+
+                    <button class="btn-primary" id="grantRoleBtn" onclick="grantRoleAccess()">
+                        <i class="fas fa-plus"></i> Grant Role Access
+                    </button>
+                    <div class="status-msg" id="roleStatusMsg"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Roles with Access</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="access-list" id="rolesList">
+                        <div class="empty-state">
+                            <i class="fas fa-users-slash"></i>
+                            <h4>No Roles</h4>
+                            <p>No roles have been granted dashboard access yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/secure-auth.js"></script>
+    <script>
+        // Get guild ID from URL or localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        let guildId = urlParams.get('guild');
+        
+        // If no guild in URL, try localStorage with both possible keys
+        if (!guildId) {
+            guildId = localStorage.getItem('selectedGuildId') || localStorage.getItem('selectedGuild');
+        }
+        
+        // Store the guild ID in both keys for consistency
+        if (guildId) {
+            localStorage.setItem('selectedGuildId', guildId);
+            localStorage.setItem('selectedGuild', guildId);
+        }
+        
+        let allMembers = [];
+        let searchTimeout = null;
+        
+        if (!guildId) {
+            // Show a better error message and redirect
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'page-container';
+            errorDiv.innerHTML = `
+                <div class="card">
+                    <div class="card-body" style="text-align: center; padding: var(--ds-space-xl);">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: var(--ds-warning); margin-bottom: var(--ds-space-md);"></i>
+                        <h3 style="margin-bottom: var(--ds-space-sm);">No Server Selected</h3>
+                        <p style="color: var(--ds-text-muted); margin-bottom: var(--ds-space-lg);">Please select a server from your dashboard first.</p>
+                        <button onclick="window.location.href='/dashboard'" style="padding: var(--ds-space-md) var(--ds-space-lg); background: var(--ds-primary); color: white; border: none; border-radius: var(--ds-radius-md); cursor: pointer; font-weight: 500;">
+                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.innerHTML = '';
+            document.body.appendChild(errorDiv);
+            setTimeout(() => window.location.href = '/dashboard', 3000);
+        }
+
+        // Tab switching
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tab + 'Tab').classList.add('active');
+        }
+
+        // Member search
+        document.getElementById('memberSearchInput').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            const query = e.target.value.trim();
+            
+            if (query.length < 2) {
+                document.getElementById('memberDropdown').style.display = 'none';
+                return;
+            }
+            
+            searchTimeout = setTimeout(() => searchMembers(query), 300);
+        });
+        
+        document.getElementById('memberSearchInput').addEventListener('focus', (e) => {
+            if (e.target.value.length >= 2) {
+                document.getElementById('memberDropdown').style.display = 'block';
+            }
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.member-selector-wrapper')) {
+                document.getElementById('memberDropdown').style.display = 'none';
+            }
+        });
+        
+        async function searchMembers(query) {
+            const dropdown = document.getElementById('memberDropdown');
+            dropdown.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--ds-text-muted);"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
+            dropdown.style.display = 'block';
+            
+            try {
+                const res = await SecureAuth.fetch(`/api/guild/${guildId}/members/search?q=${encodeURIComponent(query)}&limit=20`, {
+                    method: 'GET'
+                });
+                
+                if (res.success && res.members) {
+                    const members = res.members;
+                    if (members.length === 0) {
+                        dropdown.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--ds-text-muted);">No members found</div>';
+                    } else {
+                        dropdown.innerHTML = members.map(m => `
+                            <div class="member-option" onclick="selectMember('${m.id}', '${escapeAttr(m.displayName || m.username)}', '${m.avatar || ''}')">
+                                <img src="${m.avatar ? `https://cdn.discordapp.com/avatars/${m.id}/${m.avatar}.png?size=32` : 'https://cdn.discordapp.com/embed/avatars/0.png'}" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                                <div>
+                                    <div style="font-weight: 500;">${escapeHtml(m.displayName || m.username)}</div>
+                                    <div style="font-size: 12px; color: var(--ds-text-muted);">@${escapeHtml(m.username)}</div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (e) {
+                dropdown.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--ds-error);">Failed to search members</div>';
+            }
+        }
+        
+        function selectMember(id, name, avatar) {
+            document.getElementById('userIdInput').value = id;
+            document.getElementById('memberSearchInput').value = name;
+            document.getElementById('selectedMemberName').textContent = name;
+            document.getElementById('selectedMemberAvatar').src = avatar ? `https://cdn.discordapp.com/avatars/${id}/${avatar}.png?size=32` : 'https://cdn.discordapp.com/embed/avatars/0.png';
+            document.getElementById('selectedMember').style.display = 'flex';
+            document.getElementById('memberDropdown').style.display = 'none';
+        }
+        
+        function clearSelectedMember() {
+            document.getElementById('userIdInput').value = '';
+            document.getElementById('memberSearchInput').value = '';
+            document.getElementById('selectedMember').style.display = 'none';
+        }
+
+        // Permission selection
+        function selectUserPerm(perm) {
+            document.querySelectorAll('#usersTab .perm-option').forEach(o => o.classList.remove('active'));
+            event.target.closest('.perm-option').classList.add('active');
+            document.getElementById('userPermLevel').value = perm;
+        }
+        
+        function selectRolePerm(perm) {
+            document.querySelectorAll('#rolesTab .perm-option').forEach(o => o.classList.remove('active'));
+            event.target.closest('.perm-option').classList.add('active');
+            document.getElementById('rolePermLevel').value = perm;
+        }
+
+        // Grant access functions
+        async function grantUserAccess() {
+            const userId = document.getElementById('userIdInput').value;
+            const permission = document.getElementById('userPermLevel').value;
+            const btn = document.getElementById('grantUserBtn');
+            const msg = document.getElementById('userStatusMsg');
+            
+            if (!userId) {
+                showMessage(msg, 'Please select a user', 'error');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Granting...';
+            
+            try {
+                const res = await SecureAuth.fetch(`/api/guild/${guildId}/access/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, permission })
+                });
+                
+                if (res.success) {
+                    showMessage(msg, 'Access granted successfully!', 'success');
+                    clearSelectedMember();
+                    loadUsers();
+                } else {
+                    showMessage(msg, res.message || 'Failed to grant access', 'error');
+                }
+            } catch (e) {
+                showMessage(msg, 'Failed to grant access', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-plus"></i> Grant Access';
+            }
+        }
+        
+        async function grantRoleAccess() {
+            const roleId = document.getElementById('roleSelect').value;
+            const permission = document.getElementById('rolePermLevel').value;
+            const btn = document.getElementById('grantRoleBtn');
+            const msg = document.getElementById('roleStatusMsg');
+            
+            if (!roleId) {
+                showMessage(msg, 'Please select a role', 'error');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Granting...';
+            
+            try {
+                const res = await SecureAuth.fetch(`/api/guild/${guildId}/access/roles`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ roleId, permission })
+                });
+                
+                if (res.success) {
+                    showMessage(msg, 'Role access granted successfully!', 'success');
+                    document.getElementById('roleSelect').value = '';
+                    loadRoles();
+                } else {
+                    showMessage(msg, res.message || 'Failed to grant access', 'error');
+                }
+            } catch (e) {
+                showMessage(msg, 'Failed to grant access', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-plus"></i> Grant Role Access';
+            }
+        }
+
+        function showMessage(element, message, type) {
+            element.textContent = message;
+            element.className = `status-msg ${type}`;
+            setTimeout(() => element.className = 'status-msg', 5000);
+        }
+
+        // Escape functions
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function escapeAttr(text) {
+            return text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        }
+
+        // Load users and roles
+        async function loadUsers() {
+            // Implement user list loading
+        }
+        
+        async function loadRoles() {
+            // Implement role list loading
+        }
+        
+        // Load roles for select
+        async function loadRoleOptions() {
+            try {
+                const res = await SecureAuth.fetch(`/api/guild/${guildId}/roles`, { method: 'GET' });
+                if (res.success && res.roles) {
+                    const select = document.getElementById('roleSelect');
+                    res.roles.forEach(role => {
+                        if (role.name !== '@everyone') {
+                            const option = document.createElement('option');
+                            option.value = role.id;
+                            option.textContent = role.name;
+                            select.appendChild(option);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to load roles:', e);
+            }
+        }
+
+        // Initialize
+        loadRoleOptions();
+        loadUsers();
+        loadRoles();
+    </script>
+</body>
+</html>

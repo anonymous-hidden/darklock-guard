@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two-Factor Authentication - DarkLock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/dashboard-modern.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <script src="/js/global-theme.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0a0e27 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #e2e8f0;
+        }
+        
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+            z-index: -1;
+        }
+        
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            animation: float 20s infinite ease-in-out;
+        }
+        
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, #3b82f6, transparent);
+            top: -100px;
+            left: -100px;
+        }
+        
+        .orb-2 {
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, #8b5cf6, transparent);
+            bottom: -50px;
+            right: -50px;
+            animation-delay: -10s;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(30px, 30px); }
+        }
+        
+        .verify-container {
+            width: 100%;
+            max-width: 440px;
+            padding: 1rem;
+        }
+        
+        .verify-card {
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 20px;
+            padding: 2.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(20px);
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #8892b0;
+            text-decoration: none;
+            font-size: 0.875rem;
+            margin-bottom: 1.5rem;
+            transition: color 0.2s;
+        }
+        
+        .back-link:hover {
+            color: #00f0ff;
+        }
+        
+        .verify-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .shield-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2rem;
+        }
+        
+        .verify-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #fff, #a0aec0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .verify-header p {
+            color: #8892b0;
+            font-size: 0.9rem;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 2px solid rgba(59, 130, 246, 0.5);
+        }
+        
+        .user-details {
+            flex: 1;
+        }
+        
+        .user-name {
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .user-tag {
+            font-size: 0.8rem;
+            color: #8892b0;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #a0aec0;
+            margin-bottom: 0.5rem;
+        }
+        
+        .code-input-wrapper {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+        
+        .code-input {
+            width: 48px;
+            height: 56px;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #fff;
+            transition: all 0.2s;
+        }
+        
+        .code-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        
+        .code-input.filled {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+        
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 1rem;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        
+        .verify-button {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .verify-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+        
+        .verify-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .alternative-methods {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+        
+        .alternative-methods p {
+            color: #8892b0;
+            font-size: 0.85rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .backup-link {
+            color: #3b82f6;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        .backup-link:hover {
+            color: #60a5fa;
+            text-decoration: underline;
+        }
+        
+        .backup-form {
+            display: none;
+            margin-top: 1rem;
+        }
+        
+        .backup-form.active {
+            display: block;
+        }
+        
+        .backup-input {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 1rem;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+        
+        .backup-input:focus {
+            outline: none;
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+        }
+        
+        .backup-btn {
+            margin-top: 1rem;
+            width: 100%;
+            padding: 0.875rem 1.5rem;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .backup-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(245, 158, 11, 0.3);
+        }
+        
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+    </div>
+    
+    <div class="verify-container">
+        <div class="verify-card">
+            <a href="/login" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Login
+            </a>
+            
+            <div class="verify-header">
+                <div class="shield-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <h1>Two-Factor Authentication</h1>
+                <p>Enter the 6-digit code from your authenticator app</p>
+            </div>
+            
+            <div class="user-info" id="userInfo" style="display: none;">
+                <img src="" alt="Avatar" class="user-avatar" id="userAvatar">
+                <div class="user-details">
+                    <div class="user-name" id="userName">Loading...</div>
+                    <div class="user-tag" id="userTag">@username</div>
+                </div>
+            </div>
+            
+            <form id="verifyForm">
+                <div id="errorMessage" class="error-message"></div>
+                
+                <div class="form-group">
+                    <label>Authentication Code</label>
+                    <div class="code-input-wrapper">
+                        <input type="text" class="code-input" maxlength="1" data-index="0" inputmode="numeric" pattern="[0-9]">
+                        <input type="text" class="code-input" maxlength="1" data-index="1" inputmode="numeric" pattern="[0-9]">
+                        <input type="text" class="code-input" maxlength="1" data-index="2" inputmode="numeric" pattern="[0-9]">
+                        <input type="text" class="code-input" maxlength="1" data-index="3" inputmode="numeric" pattern="[0-9]">
+                        <input type="text" class="code-input" maxlength="1" data-index="4" inputmode="numeric" pattern="[0-9]">
+                        <input type="text" class="code-input" maxlength="1" data-index="5" inputmode="numeric" pattern="[0-9]">
+                    </div>
+                </div>
+                
+                <button type="submit" class="verify-button" id="verifyButton">
+                    <span id="buttonText">Verify & Continue</span>
+                    <i id="buttonSpinner" class="fas fa-spinner spinner" style="display: none;"></i>
+                </button>
+            </form>
+            
+            <div class="alternative-methods">
+                <p>Can't access your authenticator?</p>
+                <a href="#" class="backup-link" id="showBackupForm">Use a backup code</a>
+                
+                <form class="backup-form" id="backupForm">
+                    <input type="text" class="backup-input" id="backupCode" placeholder="XXXX-XXXX" maxlength="9">
+                    <button type="submit" class="backup-btn">
+                        <i class="fas fa-key"></i> Verify Backup Code
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Get pending session from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const pendingSession = urlParams.get('session');
+        
+        if (!pendingSession) {
+            window.location.href = '/login?error=no_session';
+        }
+        
+        // Load user info from pending session
+        async function loadUserInfo() {
+            try {
+                const response = await fetch(`/api/2fa/pending-info?session=${pendingSession}`);
+                const data = await response.json();
+                
+                if (data.user) {
+                    document.getElementById('userInfo').style.display = 'flex';
+                    document.getElementById('userName').textContent = data.user.globalName || data.user.username;
+                    document.getElementById('userTag').textContent = `@${data.user.username}`;
+                    
+                    if (data.user.avatar) {
+                        document.getElementById('userAvatar').src = 
+                            `https://cdn.discordapp.com/avatars/${data.user.id}/${data.user.avatar}.png?size=96`;
+                    } else {
+                        document.getElementById('userAvatar').src = 
+                            'https://cdn.discordapp.com/embed/avatars/0.png';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load user info:', error);
+            }
+        }
+        
+        loadUserInfo();
+        
+        // Code input handling
+        const codeInputs = document.querySelectorAll('.code-input');
+        
+        codeInputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                const value = e.target.value.replace(/[^0-9]/g, '');
+                e.target.value = value;
+                
+                if (value && index < codeInputs.length - 1) {
+                    codeInputs[index + 1].focus();
+                }
+                
+                e.target.classList.toggle('filled', value !== '');
+                
+                // Auto-submit when all filled
+                const code = getCode();
+                if (code.length === 6) {
+                    document.getElementById('verifyForm').dispatchEvent(new Event('submit'));
+                }
+            });
+            
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                    codeInputs[index - 1].focus();
+                }
+            });
+            
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
+                
+                pastedData.split('').forEach((char, i) => {
+                    if (codeInputs[i]) {
+                        codeInputs[i].value = char;
+                        codeInputs[i].classList.add('filled');
+                    }
+                });
+                
+                if (pastedData.length === 6) {
+                    document.getElementById('verifyForm').dispatchEvent(new Event('submit'));
+                }
+            });
+        });
+        
+        // Focus first input
+        codeInputs[0].focus();
+        
+        function getCode() {
+            return Array.from(codeInputs).map(i => i.value).join('');
+        }
+        
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            
+            // Clear inputs
+            codeInputs.forEach(input => {
+                input.value = '';
+                input.classList.remove('filled');
+            });
+            codeInputs[0].focus();
+        }
+        
+        function setLoading(loading) {
+            const button = document.getElementById('verifyButton');
+            const text = document.getElementById('buttonText');
+            const spinner = document.getElementById('buttonSpinner');
+            
+            button.disabled = loading;
+            text.style.display = loading ? 'none' : 'inline';
+            spinner.style.display = loading ? 'inline' : 'none';
+        }
+        
+        // Form submission
+        document.getElementById('verifyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const code = getCode();
+            if (code.length !== 6) {
+                showError('Please enter all 6 digits');
+                return;
+            }
+            
+            setLoading(true);
+            document.getElementById('errorMessage').style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/2fa/verify-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        session: pendingSession,
+                        token: code
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = data.redirect || '/dashboard';
+                } else {
+                    showError(data.error || 'Invalid code. Please try again.');
+                }
+            } catch (error) {
+                showError('Verification failed. Please try again.');
+            } finally {
+                setLoading(false);
+            }
+        });
+        
+        // Backup code toggle
+        document.getElementById('showBackupForm').addEventListener('click', (e) => {
+            e.preventDefault();
+            const form = document.getElementById('backupForm');
+            form.classList.toggle('active');
+            
+            if (form.classList.contains('active')) {
+                document.getElementById('backupCode').focus();
+            }
+        });
+        
+        // Backup code submission
+        document.getElementById('backupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const code = document.getElementById('backupCode').value.trim();
+            if (!code) {
+                showError('Please enter a backup code');
+                return;
+            }
+            
+            setLoading(true);
+            document.getElementById('errorMessage').style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/2fa/verify-backup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        session: pendingSession,
+                        backupCode: code
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = data.redirect || '/dashboard';
+                } else {
+                    showError(data.error || 'Invalid backup code.');
+                }
+            } catch (error) {
+                showError('Verification failed. Please try again.');
+            } finally {
+                setLoading(false);
+            }
+        });
+    </script>
+</body>
+</html>

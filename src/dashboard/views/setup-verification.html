@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification System - DarkLock</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="/js/secure-auth.js"></script>
+    <script src="/js/global-theme.js"></script>
+    <style>
+        .verification-preview {
+            background: var(--ds-surface-1);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            padding: var(--ds-space-lg);
+            margin-top: var(--ds-space-md);
+        }
+
+        .verification-preview-message {
+            color: var(--ds-text-primary);
+            margin-bottom: var(--ds-space-md);
+        }
+
+        .verify-button-preview {
+            background: var(--ds-primary-500);
+            color: white;
+            padding: var(--ds-space-sm) var(--ds-space-md);
+            border-radius: var(--ds-radius-sm);
+            border: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--ds-space-xs);
+        }
+
+        .variable-hints {
+            background: var(--ds-surface-1);
+            border-left: 3px solid var(--ds-primary-500);
+            padding: var(--ds-space-md);
+            margin-top: var(--ds-space-md);
+            border-radius: var(--ds-radius-sm);
+        }
+
+        .variable-hints strong {
+            color: var(--ds-text-primary);
+        }
+
+        .variable-hints code {
+            background: var(--ds-surface-2);
+            padding: 2px 6px;
+            border-radius: var(--ds-radius-xs);
+            color: var(--ds-primary-400);
+        }
+        .setup-page { min-height: 100vh; background: var(--ds-surface-0); }
+
+        .back-button { 
+            display: inline-flex; align-items: center; gap: 8px; 
+            padding: 8px 16px; 
+            background: var(--ds-surface-2); 
+            border: 1px solid var(--ds-border); 
+            border-radius: var(--ds-radius-md); 
+            color: var(--ds-text-primary); 
+            text-decoration: none; 
+            font-size: 14px; 
+            font-weight: 500; 
+            transition: all var(--ds-transition-fast); 
+        }
+        .back-button:hover { 
+            background: var(--ds-surface-3); 
+            border-color: var(--ds-primary); 
+            transform: translateX(-2px); 
+        }
+        .back-button i { font-size: 12px; }
+
+        .setup-nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: var(--ds-space-md) var(--ds-space-xl); background: var(--ds-surface-1); border-bottom: 1px solid var(--ds-border); backdrop-filter: blur(12px); }
+        .setup-breadcrumb { display: flex; align-items: center; gap: var(--ds-space-sm); font-size: 14px; color: var(--ds-text-muted); }
+        .setup-breadcrumb a { color: var(--ds-text-muted); text-decoration: none; }
+        .setup-breadcrumb a:hover { color: var(--ds-primary); }
+        .setup-breadcrumb-current { color: var(--ds-text-primary); font-weight: 500; }
+        .setup-container { max-width: 900px; margin: 0 auto; padding: var(--ds-space-xl) var(--ds-space-lg); }
+        .setup-card { background: var(--ds-surface-1); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg); margin-bottom: var(--ds-space-lg); overflow: hidden; }
+        .setup-card-header { padding: var(--ds-space-lg); border-bottom: 1px solid var(--ds-border); }
+        .setup-card-title { display: flex; align-items: center; gap: var(--ds-space-sm); font-size: 16px; font-weight: 600; color: var(--ds-text-primary); }
+        .setup-card-title i { color: var(--ds-primary); }
+        .setup-card-content { padding: var(--ds-space-lg); }
+        .form-group { margin-bottom: var(--ds-space-lg); }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-control { width: 100%; padding: 10px 14px; background: var(--ds-surface-0); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); color: var(--ds-text-primary); font-size: 14px; }
+        .form-control:focus { outline: none; border-color: var(--ds-primary); box-shadow: 0 0 0 3px var(--ds-primary-shadow); }
+        .form-text { font-size: 13px; color: var(--ds-text-muted); margin-top: var(--ds-space-xs); display: block; }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: var(--ds-space-md); background: var(--ds-surface-0); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); margin-bottom: var(--ds-space-md); }
+        .toggle-label { font-weight: 500; color: var(--ds-text-primary); }
+        .toggle-description { font-size: 13px; color: var(--ds-text-muted); margin-top: 4px; }
+        .toggle-switch { position: relative; width: 48px; height: 24px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--ds-surface-3); border-radius: 24px; transition: 0.3s; }
+        .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+        .toggle-switch input:checked + .toggle-slider { background: var(--ds-primary); }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(24px); }
+        .save-section { margin-top: var(--ds-space-xl); padding-top: var(--ds-space-xl); border-top: 1px solid var(--ds-border); }
+        .btn-primary { width: 100%; padding: 14px 24px; background: var(--ds-primary); color: white; border: none; border-radius: var(--ds-radius-md); font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .btn-primary:hover { background: var(--ds-primary-hover); transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .status-message { text-align: center; padding: var(--ds-space-md); border-radius: var(--ds-radius-md); margin-top: var(--ds-space-md); display: none; }
+        .status-message.success { display: block; background: var(--ds-success-bg); color: var(--ds-success); }
+        .status-message.error { display: block; background: var(--ds-error-bg); color: var(--ds-error); }
+    </style>
+</head>
+<body class="setup-page">
+    <nav class="setup-nav">
+        <a href="/dashboard" class="back-button">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to Dashboard</span>
+        </a>
+        <div class="setup-breadcrumb">
+            <a href="/dashboard"><i class="fas fa-home"></i> Dashboard</a>
+            <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+            <span class="setup-breadcrumb-current">Verification</span>
+        </div>
+    </nav>
+
+    <div class="setup-container">
+            <!-- Enable Card -->
+            <div class="setup-card">
+                <div class="setup-card-header">
+                    <div class="setup-card-title">
+                        <i class="fas fa-shield-check"></i>
+                        <span>Enable Verification</span>
+                    </div>
+                </div>
+                <div class="setup-card-content">
+                    <div class="toggle-row">
+                        <div>
+                            <div class="toggle-label">Verification System</div>
+                            <div class="toggle-description">Require new members to verify before accessing the server</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="verificationEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verification Type Card -->
+            <div class="setup-card">
+                <div class="setup-card-header">
+                    <div class="setup-card-title">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Verification Method</span>
+                    </div>
+                </div>
+                <div class="setup-card-content">
+                    <div class="form-group">
+                        <label for="verificationType">Verification Type</label>
+                        <select id="verificationType" class="form-control">
+                            <option value="button">Button Verification</option>
+                            <option value="captcha">CAPTCHA (Coming Soon)</option>
+                            <option value="questions">Security Questions (Coming Soon)</option>
+                        </select>
+                        <small class="form-text">Choose how members verify themselves</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Roles Configuration Card -->
+            <div class="setup-card">
+                <div class="setup-card-header">
+                    <div class="setup-card-title">
+                        <i class="fas fa-user-tag"></i>
+                        <span>Role Configuration</span>
+                    </div>
+                </div>
+                <div class="setup-card-content">
+                    <div class="form-group">
+                        <label for="verifiedRole">Verified Role</label>
+                        <select id="verifiedRole" class="form-control">
+                            <option value="">Select a role...</option>
+                        </select>
+                        <small class="form-text">Role given to members after verification</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="unverifiedRole">Unverified Role</label>
+                        <select id="unverifiedRole" class="form-control">
+                            <option value="">Select a role (optional)...</option>
+                        </select>
+                        <small class="form-text">Role given to members before verification (restricts channel access)</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Channel & Options Card -->
+            <div class="setup-card">
+                <div class="setup-card-header">
+                    <div class="setup-card-title">
+                        <i class="fas fa-cog"></i>
+                        <span>Verification Options</span>
+                    </div>
+                </div>
+                <div class="setup-card-content">
+                    <div class="form-group">
+                        <label for="verificationChannel">Verification Channel</label>
+                        <select id="verificationChannel" class="form-control">
+                            <option value="">Select a channel...</option>
+                        </select>
+                        <small class="form-text">Channel where members verify themselves</small>
+                    </div>
+
+                    <div class="toggle-row">
+                        <div>
+                            <div class="toggle-label">DM Verification</div>
+                            <div class="toggle-description">Send verification instructions via DM</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="dmVerification">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="verifyTimeout">Verification Timeout (minutes)</label>
+                        <input type="number" id="verifyTimeout" class="form-control" min="0" placeholder="0 = No timeout">
+                        <small class="form-text">Kick members who don't verify within this time (0 = disabled)</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verification Message Card -->
+            <div class="setup-card">
+                <div class="setup-card-header">
+                    <div class="setup-card-title">
+                        <i class="fas fa-message"></i>
+                        <span>Verification Message</span>
+                    </div>
+                </div>
+                <div class="setup-card-content">
+                    <div class="form-group">
+                        <label for="verifyMessage">Custom Message</label>
+                        <textarea id="verifyMessage" class="form-control" rows="4" placeholder="Click the button below to verify and access the server!"></textarea>
+                        <small class="form-text">Message shown to members before verification</small>
+                    </div>
+
+                    <div class="variable-hints">
+                        <strong>Available Variables:</strong>
+                        <div style="margin-top: 8px;">
+                            <code>{user}</code> - Member's username<br>
+                            <code>{mention}</code> - Mention the member<br>
+                            <code>{server}</code> - Server name<br>
+                            <code>{memberCount}</code> - Total member count
+                        </div>
+                    </div>
+
+                    <div class="verification-preview">
+                        <div class="verification-preview-message" id="previewText">
+                            Click the button below to verify and access the server!
+                        </div>
+                        <button class="verify-button-preview">
+                            <i class="fas fa-shield-check"></i>
+                            Verify
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="save-section">
+                <button class="btn-primary" id="saveBtn">
+                    <i class="fas fa-save"></i> Save Verification Settings
+                </button>
+                <div id="statusMsg" class="status-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get guild ID from URL or localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        let guildId = urlParams.get('guild');
+        
+        // If no guild in URL, try localStorage with both possible keys
+        if (!guildId) {
+            guildId = localStorage.getItem('selectedGuildId') || localStorage.getItem('selectedGuild');
+        }
+        
+        // Store the guild ID in both keys for consistency
+        if (guildId) {
+            localStorage.setItem('selectedGuildId', guildId);
+            localStorage.setItem('selectedGuild', guildId);
+        }
+        if (!guildId) {
+            window.location.href = '/dashboard';
+        }
+
+        let roles = [];
+        let channels = [];
+
+        // Load roles and channels
+        async function loadRolesAndChannels() {
+            try {
+                const [rolesData, channelsData] = await Promise.all([
+                    SecureAuth.fetch(`/api/guild/${guildId}/roles`, { method: 'GET' }),
+                    SecureAuth.fetch(`/api/guild/${guildId}/channels`, { method: 'GET' })
+                ]);
+
+                if (rolesData.success) {
+                    roles = rolesData.roles;
+                    const verifiedSelect = document.getElementById('verifiedRole');
+                    const unverifiedSelect = document.getElementById('unverifiedRole');
+                    
+                    roles.forEach(role => {
+                        if (role.name !== '@everyone') {
+                            verifiedSelect.add(new Option(role.name, role.id));
+                            unverifiedSelect.add(new Option(role.name, role.id));
+                        }
+                    });
+                }
+
+                if (channelsData.success) {
+                    channels = channelsData.channels.filter(c => c.type === 'GUILD_TEXT' || c.type === 0);
+                    const channelSelect = document.getElementById('verificationChannel');
+                    
+                    channels.forEach(channel => {
+                        channelSelect.add(new Option('#' + channel.name, channel.id));
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load roles/channels:', error);
+            }
+        }
+
+        // Load settings
+        async function loadSettings() {
+            try {
+                const response = await SecureAuth.fetch(`/api/guild/${guildId}/settings`, {
+                    method: 'GET'
+                });
+
+                if (response.success) {
+                    const data = response.settings;
+                    const enabled = data.verification_enabled || false;
+
+                    document.getElementById('verificationEnabled').checked = enabled;
+                    document.getElementById('verificationType').value = data.verification_type || 'button';
+                    document.getElementById('verifiedRole').value = data.verified_role_id || '';
+                    document.getElementById('unverifiedRole').value = data.unverified_role_id || '';
+                    document.getElementById('verificationChannel').value = data.verification_channel_id || '';
+                    document.getElementById('verifyTimeout').value = data.verify_timeout || 0;
+                    document.getElementById('dmVerification').checked = data.dm_verification || false;
+                    document.getElementById('verifyMessage').value = data.verify_message || '';
+
+                    if (data.verify_message) {
+                        document.getElementById('previewText').textContent = data.verify_message;
+                    }
+
+                    updateStatus(enabled);
+                }
+            } catch (error) {
+                console.error('Failed to load settings:', error);
+                showStatus('Failed to load settings', 'error');
+            }
+        }
+
+        // Update status indicator
+        function updateStatus(enabled) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            
+            if (enabled) {
+                dot.className = 'status-dot status-enabled';
+                text.textContent = 'Enabled';
+            } else {
+                dot.className = 'status-dot status-disabled';
+                text.textContent = 'Disabled';
+            }
+        }
+
+        // Message preview
+        document.getElementById('verifyMessage').addEventListener('input', function() {
+            document.getElementById('previewText').textContent = this.value || 'Click the button below to verify and access the server!';
+        });
+
+        // Update status on toggle
+        document.getElementById('verificationEnabled').addEventListener('change', function() {
+            updateStatus(this.checked);
+        });
+
+        // Save settings
+        document.getElementById('saveBtn').addEventListener('click', async function() {
+            const btn = this;
+            const msg = document.getElementById('statusMsg');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            try {
+                const settings = {
+                    verification_enabled: document.getElementById('verificationEnabled').checked ? 1 : 0,
+                    verification_type: document.getElementById('verificationType').value,
+                    verified_role_id: document.getElementById('verifiedRole').value || null,
+                    unverified_role_id: document.getElementById('unverifiedRole').value || null,
+                    verification_channel_id: document.getElementById('verificationChannel').value || null,
+                    verify_timeout: parseInt(document.getElementById('verifyTimeout').value) || 0,
+                    dm_verification: document.getElementById('dmVerification').checked ? 1 : 0,
+                    verify_message: document.getElementById('verifyMessage').value || null
+                };
+
+                const response = await SecureAuth.fetch(`/api/guild/${guildId}/settings`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+
+                if (response.success) {
+                    showStatus('Settings saved successfully!', 'success');
+                } else {
+                    showStatus(response.message || 'Failed to save settings', 'error');
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                showStatus('Failed to save settings', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Save Verification Settings';
+            }
+        });
+
+        function showStatus(message, type) {
+            const msg = document.getElementById('statusMsg');
+            msg.textContent = message;
+            msg.className = `status-message ${type}`;
+            setTimeout(() => msg.className = 'status-message', 5000);
+        }
+
+        // Initialize
+        loadRolesAndChannels().then(() => loadSettings());
+    </script>
+</body>
+</html>

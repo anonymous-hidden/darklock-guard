@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bug Report - DarkLock</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="css/themes/christmas.css">
+    <script src="js/global-theme.js"></script>
+    <script src="js/theme-effects.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body x-data="bugReportPage()">
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/site/" class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <span class="brand-text">DarkLock</span>
+            </a>
+            
+            <div class="nav-menu">
+                <a href="/site/" class="nav-link">Home</a>
+                <a href="/site/#features" class="nav-link">Features</a>
+                <a href="/site/#pricing" class="nav-link">Pricing</a>
+                <a href="/site/docs.html" class="nav-link">Docs</a>
+                <a href="/site/status.html" class="nav-link">Status</a>
+            </div>
+            
+            <div class="nav-actions">
+                <a href="/dashboard" class="btn btn-primary">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Bug Report Section -->
+    <div class="container" style="max-width: 800px; margin-top: 120px; margin-bottom: 60px;">
+        <div class="section-header" style="text-align: center; margin-bottom: 40px;">
+            <i class="fas fa-bug" style="font-size: 3rem; color: #00d4ff; margin-bottom: 20px;"></i>
+            <h1>Report a Bug</h1>
+            <p>Help us improve DarkLock by reporting any issues you encounter</p>
+        </div>
+
+        <div x-show="!submitted" class="card" style="background: rgba(15, 20, 35, 0.8); border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 12px; padding: 40px;">
+            <form @submit.prevent="submitBugReport" class="bug-report-form">
+                <div class="form-group">
+                    <label for="title">
+                        <i class="fas fa-heading"></i> Bug Title *
+                    </label>
+                    <input 
+                        type="text" 
+                        id="title" 
+                        x-model="formData.title" 
+                        required 
+                        placeholder="Brief description of the issue"
+                        class="form-input">
+                </div>
+
+                <div class="form-group">
+                    <label for="severity">
+                        <i class="fas fa-exclamation-triangle"></i> Severity *
+                    </label>
+                    <select id="severity" x-model="formData.severity" required class="form-input">
+                        <option value="">Select severity level</option>
+                        <option value="low">Low - Minor inconvenience</option>
+                        <option value="medium">Medium - Affects functionality</option>
+                        <option value="high">High - Major feature broken</option>
+                        <option value="critical">Critical - Bot is unusable</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="category">
+                        <i class="fas fa-tags"></i> Category *
+                    </label>
+                    <select id="category" x-model="formData.category" required class="form-input">
+                        <option value="">Select category</option>
+                        <option value="commands">Commands</option>
+                        <option value="security">Security Features</option>
+                        <option value="dashboard">Web Dashboard</option>
+                        <option value="moderation">Moderation Tools</option>
+                        <option value="tickets">Ticket System</option>
+                        <option value="performance">Performance</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">
+                        <i class="fas fa-align-left"></i> Description *
+                    </label>
+                    <textarea 
+                        id="description" 
+                        x-model="formData.description" 
+                        required 
+                        rows="6"
+                        placeholder="Please provide detailed steps to reproduce the bug..."
+                        class="form-input"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="expected">
+                        <i class="fas fa-check-circle"></i> Expected Behavior
+                    </label>
+                    <textarea 
+                        id="expected" 
+                        x-model="formData.expected" 
+                        rows="3"
+                        placeholder="What should have happened?"
+                        class="form-input"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="actual">
+                        <i class="fas fa-times-circle"></i> Actual Behavior
+                    </label>
+                    <textarea 
+                        id="actual" 
+                        x-model="formData.actual" 
+                        rows="3"
+                        placeholder="What actually happened?"
+                        class="form-input"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="discord_server">
+                        <i class="fab fa-discord"></i> Discord Server ID (Optional)
+                    </label>
+                    <input 
+                        type="text" 
+                        id="discord_server" 
+                        x-model="formData.discord_server" 
+                        placeholder="Your server ID where the bug occurred"
+                        class="form-input">
+                </div>
+
+                <div class="form-group">
+                    <label for="contact">
+                        <i class="fas fa-envelope"></i> Contact (Optional)
+                    </label>
+                    <input 
+                        type="text" 
+                        id="contact" 
+                        x-model="formData.contact" 
+                        placeholder="Discord username or email for follow-up"
+                        class="form-input">
+                </div>
+
+                <div x-show="error" class="alert alert-error" style="margin-bottom: 20px;" x-text="error"></div>
+
+                <button type="submit" class="btn btn-primary btn-full" :disabled="loading">
+                    <i class="fas" :class="loading ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i>
+                    <span x-text="loading ? 'Submitting...' : 'Submit Bug Report'"></span>
+                </button>
+            </form>
+        </div>
+
+        <div x-show="submitted" class="card" style="background: rgba(15, 20, 35, 0.8); border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 12px; padding: 60px; text-align: center;">
+            <i class="fas fa-check-circle" style="font-size: 4rem; color: #00d4ff; margin-bottom: 20px;"></i>
+            <h2 style="margin-bottom: 15px;">Bug Report Submitted!</h2>
+            <p style="color: #b4bcd4; margin-bottom: 30px;">Thank you for helping us improve DarkLock. We'll investigate this issue and work on a fix.</p>
+            <button @click="resetForm" class="btn btn-outline">
+                <i class="fas fa-plus"></i>
+                Report Another Bug
+            </button>
+        </div>
+    </div>
+
+    <style>
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #00d4ff;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .form-group label i {
+            margin-right: 8px;
+            opacity: 0.8;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(10, 14, 26, 0.6);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+            color: #e8ecf4;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: #6b7280;
+        }
+
+        textarea.form-input {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .btn-full {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.05rem;
+        }
+
+        .card {
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+
+    <script>
+        function bugReportPage() {
+            return {
+                formData: {
+                    title: '',
+                    severity: '',
+                    category: '',
+                    description: '',
+                    expected: '',
+                    actual: '',
+                    discord_server: '',
+                    contact: ''
+                },
+                loading: false,
+                error: null,
+                submitted: false,
+                async submitBugReport() {
+                    this.loading = true;
+                    this.error = null;
+
+                    try {
+                        const response = await fetch('/api/bug-report', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(this.formData)
+                        });
+
+                        if (response.ok) {
+                            this.submitted = true;
+                        } else {
+                            const data = await response.json();
+                            this.error = data.error || 'Failed to submit bug report. Please try again.';
+                        }
+                    } catch (error) {
+                        console.error('Bug report submission error:', error);
+                        this.error = 'Network error. Please check your connection and try again.';
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                resetForm() {
+                    this.formData = {
+                        title: '',
+                        severity: '',
+                        category: '',
+                        description: '',
+                        expected: '',
+                        actual: '',
+                        discord_server: '',
+                        contact: ''
+                    };
+                    this.submitted = false;
+                    this.error = null;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

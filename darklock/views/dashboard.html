@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Darklock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/platform/static/css/main.css">
+    <link rel="stylesheet" href="/platform/static/css/dashboard.css">
+    <link rel="icon" type="image/svg+xml" href="/platform/static/icons/favicon.svg">
+</head>
+<body class="dashboard-page">
+    <div class="dashboard-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/platform" class="sidebar-brand">
+                    <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="M9 12l2 2 4-4"/>
+                    </svg>
+                    <span>Darklock</span>
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <span class="nav-section-title">Main</span>
+                    <a href="#" class="nav-item active" data-page="dashboard">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"/>
+                            <rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="profile">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        <span>Profile</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="apps">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21"/>
+                            <line x1="12" y1="17" x2="12" y2="21"/>
+                        </svg>
+                        <span>Applications</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <span class="nav-section-title">Account</span>
+                    <a href="#" class="nav-item" data-page="security">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                        <span>Security</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="account">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        <span>Account</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="settings">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+                        </svg>
+                        <span>Settings</span>
+                    </a>
+                    <a href="#" class="nav-item logout-btn" id="logoutBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info" id="userInfo">
+                    <div class="user-avatar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                    </div>
+                    <div class="user-details">
+                        <span class="user-name" id="userName">Loading...</span>
+                        <span class="user-role" id="userRole">User</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="topbar">
+                <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <div class="topbar-title" id="pageTitle">Dashboard</div>
+                <div class="topbar-actions">
+                    <button class="topbar-btn" aria-label="Notifications">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                            <path d="M13.73 21a2 2 0 01-3.46 0"/>
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Page Content Container -->
+            <div class="page-container" id="pageContainer">
+                <!-- Dashboard Page -->
+                <div class="page active" id="page-dashboard">
+                    <div class="page-header">
+                        <h1>Welcome back, <span id="welcomeName">User</span></h1>
+                        <p>Here's an overview of your Darklock platform</p>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon blue">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                    <line x1="8" y1="21" x2="16" y2="21"/>
+                                    <line x1="12" y1="17" x2="12" y2="21"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="statApps">1</span>
+                                <span class="stat-label">Active Applications</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                    <path d="M9 12l2 2 4-4"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat2FA">-</span>
+                                <span class="stat-label">2FA Status</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon purple">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 010 7.75"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="statSessions">-</span>
+                                <span class="stat-label">Active Sessions</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon orange">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="statLastLogin">-</span>
+                                <span class="stat-label">Last Login</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="card quick-actions">
+                            <div class="card-header">
+                                <h3>Quick Actions</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="action-buttons">
+                                    <button class="action-btn" onclick="navigateTo('apps')">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                            <line x1="8" y1="21" x2="16" y2="21"/>
+                                            <line x1="12" y1="17" x2="12" y2="21"/>
+                                        </svg>
+                                        <span>View Apps</span>
+                                    </button>
+                                    <button class="action-btn" onclick="navigateTo('security')">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                        </svg>
+                                        <span>Security Settings</span>
+                                    </button>
+                                    <button class="action-btn" onclick="navigateTo('profile')">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                                            <circle cx="12" cy="7" r="4"/>
+                                        </svg>
+                                        <span>Edit Profile</span>
+                                    </button>
+                                    <a href="/dashboard" class="action-btn external">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                            <path d="M9 12l2 2 4-4"/>
+                                        </svg>
+                                        <span>Discord Bot Dashboard</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card security-status">
+                            <div class="card-header">
+                                <h3>Security Status</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="security-checklist" id="securityChecklist">
+                                    <div class="security-item" id="check2FA">
+                                        <div class="security-icon pending">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <circle cx="12" cy="12" r="10"/>
+                                            </svg>
+                                        </div>
+                                        <div class="security-info">
+                                            <span class="security-title">Two-Factor Authentication</span>
+                                            <span class="security-desc">Checking status...</span>
+                                        </div>
+                                    </div>
+                                    <div class="security-item complete" id="checkPassword">
+                                        <div class="security-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                                                <polyline points="22 4 12 14.01 9 11.01"/>
+                                            </svg>
+                                        </div>
+                                        <div class="security-info">
+                                            <span class="security-title">Strong Password</span>
+                                            <span class="security-desc">Your password meets security requirements</span>
+                                        </div>
+                                    </div>
+                                    <div class="security-item complete" id="checkEmail">
+                                        <div class="security-icon">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                                                <polyline points="22 4 12 14.01 9 11.01"/>
+                                            </svg>
+                                        </div>
+                                        <div class="security-info">
+                                            <span class="security-title">Email Verified</span>
+                                            <span class="security-desc">Account email is set</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Page -->
+                <div class="page" id="page-profile">
+                    <div class="page-header">
+                        <h1>Profile</h1>
+                        <p>Who you are - your identity and preferences</p>
+                    </div>
+
+                    <div class="profile-grid">
+                        <!-- Overview Card -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Overview</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="profile-overview">
+                                    <div class="profile-avatar-section">
+                                        <div class="profile-avatar-large" id="profileAvatarPreview">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                                                <circle cx="12" cy="7" r="4"/>
+                                            </svg>
+                                        </div>
+                                        <input type="file" id="avatarUploadInput" accept="image/png,image/jpeg,image/jpg,image/webp" style="display:none;">
+                                        <button class="btn btn-ghost btn-sm" id="changeAvatarBtn">Change Avatar</button>
+                                    </div>
+                                    <div class="profile-identity">
+                                        <div class="identity-field">
+                                            <span class="identity-label">Username</span>
+                                            <span class="identity-value" id="profileUsernameDisplay">Loading...</span>
+                                        </div>
+                                        <div class="identity-field">
+                                            <span class="identity-label">Display Name</span>
+                                            <span class="identity-value" id="profileDisplayName">-</span>
+                                        </div>
+                                        <div class="identity-field">
+                                            <span class="identity-label">Role</span>
+                                            <span class="identity-badge" id="profileRoleBadge">User</span>
+                                        </div>
+                                        <div class="identity-field">
+                                            <span class="identity-label">Account Created</span>
+                                            <span class="identity-value" id="profileCreatedDisplay">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Personal Info Card -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Personal Info</h3>
+                            </div>
+                            <div class="card-body">
+                                <form id="personalInfoForm" class="settings-form">
+                                    <div class="form-group">
+                                        <label class="form-label">Display Name</label>
+                                        <input type="text" id="displayNameInput" class="form-input" placeholder="Your display name" maxlength="50">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Email</label>
+                                        <div class="input-with-hint">
+                                            <input type="email" id="profileEmailReadonly" class="form-input" disabled>
+                                            <p class="form-hint">To change your email, go to <a href="#" onclick="navigateTo('account'); return false;">Account settings</a></p>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label class="form-label">Timezone</label>
+                                            <select id="timezoneSelect" class="form-input">
+                                                <option value="UTC">UTC</option>
+                                                <option value="America/New_York">Eastern Time (ET)</option>
+                                                <option value="America/Chicago">Central Time (CT)</option>
+                                                <option value="America/Denver">Mountain Time (MT)</option>
+                                                <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                                                <option value="Europe/London">London</option>
+                                                <option value="Europe/Paris">Paris</option>
+                                                <option value="Asia/Tokyo">Tokyo</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Language</label>
+                                            <select id="languageSelect" class="form-input">
+                                                <option value="en">English</option>
+                                                <option value="es">Español</option>
+                                                <option value="fr">Français</option>
+                                                <option value="de">Deutsch</option>
+                                                <option value="ja">日本語</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="submit" class="btn btn-primary" id="savePersonalInfoBtn">Save Changes</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Preferences Card -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Preferences</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Theme</span>
+                                        <span class="setting-desc">Choose your preferred color scheme</span>
+                                    </div>
+                                    <select id="themeSelect" class="form-input" style="max-width: 150px;">
+                                        <option value="dark">Dark</option>
+                                        <option value="light">Light</option>
+                                        <option value="system">System</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Reduced Motion</span>
+                                        <span class="setting-desc">Minimize animations and transitions</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="reducedMotionToggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Compact Layout</span>
+                                        <span class="setting-desc">Show more content with tighter spacing</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="compactLayoutToggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notifications Card -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Notifications</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Security Alerts</span>
+                                        <span class="setting-desc">Get notified about suspicious activity</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="securityAlertsToggle" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Product Updates</span>
+                                        <span class="setting-desc">New features and improvements</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="productUpdatesToggle" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Email Notifications</span>
+                                        <span class="setting-desc">Receive notifications via email</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="emailNotificationsToggle" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Apps Page -->
+                <div class="page" id="page-apps">
+                    <div class="page-header">
+                        <h1>Applications</h1>
+                        <p>Access and manage your Darklock applications</p>
+                    </div>
+
+                    <div class="apps-list" id="appsList">
+                        <!-- Apps loaded dynamically -->
+                        <div class="loading-state">
+                            <div class="spinner"></div>
+                            <span>Loading applications...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Page -->
+                <div class="page" id="page-security">
+                    <div class="page-header">
+                        <h1>Security</h1>
+                        <p>Everything sensitive - how your account is protected</p>
+                    </div>
+
+                    <!-- Security Overview -->
+                    <div class="card" style="margin-bottom: 1.5rem;">
+                        <div class="card-header">
+                            <h3>Overview</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="security-stats-grid">
+                                <div class="security-stat">
+                                    <svg class="security-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                        <path d="M7 11V7a5 5 0 0110 0v4"/>
+                                    </svg>
+                                    <div class="security-stat-info">
+                                        <span class="security-stat-label">2FA Status</span>
+                                        <span class="security-stat-value" id="security2FAStatus">Loading...</span>
+                                    </div>
+                                </div>
+                                <div class="security-stat">
+                                    <svg class="security-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                        <path d="M7 11V7a5 5 0 0110 0v4"/>
+                                    </svg>
+                                    <div class="security-stat-info">
+                                        <span class="security-stat-label">Password Strength</span>
+                                        <span class="security-stat-value">Strong</span>
+                                    </div>
+                                </div>
+                                <div class="security-stat">
+                                    <svg class="security-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                        <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                                        <path d="M16 3.13a4 4 0 010 7.75"/>
+                                    </svg>
+                                    <div class="security-stat-info">
+                                        <span class="security-stat-label">Active Sessions</span>
+                                        <span class="security-stat-value" id="securitySessionsCount">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="security-sections-grid">
+                        <!-- Authentication Section -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Authentication</h3>
+                            </div>
+                            <div class="card-body">
+                                <!-- Change Password -->
+                                <div class="security-section">
+                                    <div class="security-section-header">
+                                        <h4>Change Password</h4>
+                                        <p>Update your password to keep your account secure</p>
+                                    </div>
+                                    <form id="passwordForm" class="settings-form">
+                                        <div class="form-group">
+                                            <label class="form-label">Current Password</label>
+                                            <input type="password" id="currentPassword" class="form-input" placeholder="Enter current password" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">New Password</label>
+                                            <input type="password" id="newPassword" class="form-input" placeholder="Enter new password" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Confirm New Password</label>
+                                            <input type="password" id="confirmNewPassword" class="form-input" placeholder="Confirm new password" required>
+                                        </div>
+                                        <div class="form-actions">
+                                            <button type="submit" class="btn btn-primary">Update Password</button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <div class="section-divider"></div>
+
+                                <!-- 2FA Management -->
+                                <div class="security-section">
+                                    <div class="security-section-header">
+                                        <h4>Two-Factor Authentication</h4>
+                                        <p>Add an extra layer of security to your account</p>
+                                    </div>
+                                    <div id="twoFactorContent">
+                                        <div class="loading-state">
+                                            <div class="spinner"></div>
+                                            <span>Loading 2FA status...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sessions Section -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Sessions</h3>
+                                <p class="card-desc">Manage devices currently logged into your account</p>
+                            </div>
+                            <div class="card-body">
+                                <div class="sessions-list" id="sessionsList">
+                                    <div class="loading-state">
+                                        <div class="spinner"></div>
+                                        <span>Loading sessions...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Security Activity Section -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Security Activity</h3>
+                                <p class="card-desc">Recent security events and login history</p>
+                            </div>
+                            <div class="card-body">
+                                <div id="lastLoginInfo">
+                                    <div class="loading-state">
+                                        <div class="spinner"></div>
+                                        <span>Loading activity...</span>
+                                    </div>
+                                </div>
+                                <div class="section-divider"></div>
+                                <div class="events-list" id="securityEvents">
+                                    <div class="empty-state">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                            <path d="M9 12l2 2 4-4"/>
+                                        </svg>
+                                        <span>No recent security events</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Account Page -->
+                <div class="page" id="page-account">
+                    <div class="page-header">
+                        <h1>Account</h1>
+                        <p>Ownership and lifecycle management</p>
+                    </div>
+
+                    <!-- Account Details -->
+                    <div class="card" style="margin-bottom: 1.5rem;">
+                        <div class="card-header">
+                            <h3>Account Details</h3>
+                        </div>
+                        <div class="card-body">
+                            <!-- Email Change -->
+                            <div class="account-section">
+                                <div class="account-section-header">
+                                    <h4>Email Address</h4>
+                                    <p>Your primary contact email - requires password + 2FA to change</p>
+                                </div>
+                                <form id="emailChangeForm" class="settings-form">
+                                    <div class="form-group">
+                                        <label class="form-label">Current Email</label>
+                                        <input type="email" id="currentEmailDisplay" class="form-input" disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">New Email</label>
+                                        <input type="email" id="newEmail" class="form-input" placeholder="Enter new email">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Confirm Password</label>
+                                        <input type="password" id="emailChangePassword" class="form-input" placeholder="Enter your password" required>
+                                    </div>
+                                    <div class="form-group" id="emailChange2FAGroup" style="display: none;">
+                                        <label class="form-label">2FA Code</label>
+                                        <input type="text" id="emailChange2FACode" class="form-input" placeholder="000000" maxlength="6">
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="submit" class="btn btn-primary">Change Email</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="section-divider"></div>
+
+                            <!-- Username Change -->
+                            <div class="account-section">
+                                <div class="account-section-header">
+                                    <h4>Username</h4>
+                                    <p>Your unique identifier on the platform</p>
+                                </div>
+                                <form id="usernameChangeForm" class="settings-form">
+                                    <div class="form-group">
+                                        <label class="form-label">Current Username</label>
+                                        <input type="text" id="currentUsernameDisplay" class="form-input" disabled>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">New Username</label>
+                                        <input type="text" id="newUsername" class="form-input" placeholder="Enter new username" pattern="^[a-zA-Z0-9_-]+$">
+                                        <p class="form-hint">3-20 characters, letters, numbers, underscores, and hyphens only</p>
+                                    </div>
+                                    <div class="form-actions">
+                                        <button type="submit" class="btn btn-primary">Change Username</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Management -->
+                    <div class="card" style="margin-bottom: 1.5rem;">
+                        <div class="card-header">
+                            <h3>Data</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <span class="setting-title">Export Account Data</span>
+                                    <span class="setting-desc">Download all your account data in JSON format</span>
+                                </div>
+                                <button class="btn btn-ghost btn-sm" id="exportDataBtn">Export Data</button>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <span class="setting-title">Clear All Sessions</span>
+                                    <span class="setting-desc">Log out from all devices except this one</span>
+                                </div>
+                                <button class="btn btn-ghost btn-sm" id="clearSessionsBtn">Clear Sessions</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Danger Zone -->
+                    <div class="card danger-zone">
+                        <div class="card-header">
+                            <h3>Danger Zone</h3>
+                            <p class="card-desc">Irreversible actions - proceed with caution</p>
+                        </div>
+                        <div class="card-body">
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <span class="setting-title">Disable Account</span>
+                                    <span class="setting-desc">Temporarily disable your account - can be reactivated</span>
+                                </div>
+                                <button class="btn btn-ghost btn-sm" id="disableAccountBtn">Disable Account</button>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <span class="setting-title">Delete Account</span>
+                                    <span class="setting-desc">Permanently delete your account and all associated data</span>
+                                </div>
+                                <button class="btn btn-danger btn-sm" id="deleteAccountBtn">Delete Account</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Page -->
+                <div class="page" id="page-settings">
+                    <div class="page-header">
+                        <h1>Settings</h1>
+                        <p>Platform-level configuration and preferences</p>
+                    </div>
+
+                    <div class="settings-sections-grid">
+                        <!-- Platform Settings -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Platform</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Default Landing Page</span>
+                                        <span class="setting-desc">Choose where you land after login</span>
+                                    </div>
+                                    <select id="defaultLandingPage" class="form-input" style="max-width: 200px;">
+                                        <option value="dashboard">Dashboard</option>
+                                        <option value="apps">Applications</option>
+                                        <option value="profile">Profile</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Remember Last App</span>
+                                        <span class="setting-desc">Return to the last application you used</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="rememberLastAppToggle" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Accessibility Settings -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Accessibility</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Font Scaling</span>
+                                        <span class="setting-desc">Adjust the size of text across the platform</span>
+                                    </div>
+                                    <select id="fontScaling" class="form-input" style="max-width: 150px;">
+                                        <option value="small">Small</option>
+                                        <option value="medium" selected>Medium</option>
+                                        <option value="large">Large</option>
+                                        <option value="xlarge">Extra Large</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">High Contrast Mode</span>
+                                        <span class="setting-desc">Increase contrast for better visibility</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="highContrastToggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Experimental Features -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Experimental</h3>
+                                <p class="card-desc">Try new features before they're released</p>
+                            </div>
+                            <div class="card-body">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Beta Features</span>
+                                        <span class="setting-desc">Enable experimental features and improvements</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="betaFeaturesToggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="experimental-notice">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <line x1="12" y1="16" x2="12" y2="12"/>
+                                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                                    </svg>
+                                    <span>Beta features may be unstable and are subject to change</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Container -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Modal</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Dynamic content -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="/platform/static/js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Command Permissions</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+  <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Command Permissions</h1>
+    <p>Choose which roles can use which commands. Server owners can grant per-command or per-group access.</p>
+
+    <div id="permissions-area">
+      <div id="loading">Loading…</div>
+    </div>
+
+    <div style="margin-top:1.5rem;">
+      <button id="saveBtn" class="btn btn-primary">Save Permissions</button>
+    </div>
+  </div>
+
+    <script src="/js/secure-auth.js"></script>
+<script src="/js/command-permissions.js" defer></script>
+</body>
+</html>

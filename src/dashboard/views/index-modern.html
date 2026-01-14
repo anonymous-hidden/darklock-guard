@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - DarkLock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/dashboard-modern.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="/js/chart-manager.js"></script>
+</head>
+
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="dashboard-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/site/" class="sidebar-brand">
+                    <div class="sidebar-logo">🛡️</div>
+                    <span class="sidebar-title">DarkLock</span>
+                </a>
+            </div>
+
+            <!-- Server Selector -->
+            <div class="server-selector">
+                <div class="server-current" id="serverSelector" onclick="toggleServerDropdown(event)">
+                    <img src="" alt="Server" class="server-icon" id="currentServerIcon"
+                        onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                    <div class="server-info">
+                        <div class="server-name" id="currentServerName">Loading...</div>
+                        <div class="server-members" id="currentServerMembers">-- members</div>
+                    </div>
+                    <i class="fas fa-chevron-down server-dropdown-icon" id="serverDropdownIcon"></i>
+                </div>
+                <div class="server-dropdown" id="serverDropdown">
+                    <div class="server-dropdown-header">Select Server</div>
+                    <div class="server-dropdown-list" id="serverList">
+                        <div class="server-dropdown-loading">Loading servers...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <a href="/dashboard" class="nav-item active">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Management</div>
+                    <a href="/tickets" class="nav-item" data-requires-moderator>
+                        <i class="fas fa-ticket-alt"></i>
+                        <span>Tickets</span>
+                        <span class="nav-badge" id="openTicketsCount" style="display: none;">0</span>
+                    </a>
+                    <a href="/analytics" class="nav-item">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Analytics</span>
+                    </a>
+                    <a href="/dashboard/logs" class="nav-item">
+                        <i class="fas fa-scroll"></i>
+                        <span>Logs & Audit</span>
+                    </a>
+                </div>
+
+                <div class="nav-section" data-requires-admin>
+                    <div class="nav-section-title">Security</div>
+                    <a href="/setup/anti-raid" class="nav-item">
+                        <i class="fas fa-users-slash"></i>
+                        <span>Anti-Raid</span>
+                    </a>
+                    <a href="/setup/anti-spam" class="nav-item">
+                        <i class="fas fa-comment-slash"></i>
+                        <span>Anti-Spam</span>
+                    </a>
+                    <a href="/setup/antinuke" class="nav-item">
+                        <i class="fas fa-radiation"></i>
+                        <span>Anti-Nuke</span>
+                    </a>
+                    <a href="/setup/anti-phishing" class="nav-item">
+                        <i class="fas fa-fish"></i>
+                        <span>Anti-Phishing</span>
+                    </a>
+                    <a href="/setup/moderation" class="nav-item">
+                        <i class="fas fa-gavel"></i>
+                        <span>Moderation</span>
+                    </a>
+                </div>
+
+                <div class="nav-section" data-requires-admin>
+                    <div class="nav-section-title">Configuration</div>
+                    <a href="/setup/tickets" class="nav-item">
+                        <i class="fas fa-cog"></i>
+                        <span>Ticket Settings</span>
+                    </a>
+                    <a href="/setup/welcome" class="nav-item">
+                        <i class="fas fa-door-open"></i>
+                        <span>Welcome & Goodbye Messages</span>
+                    </a>
+                    <a href="/setup/verification" class="nav-item">
+                        <i class="fas fa-user-check"></i>
+                        <span>Verification Settings</span>
+                    </a>
+                    <a href="/setup/autorole" class="nav-item">
+                        <i class="fas fa-user-tag"></i>
+                        <span>Auto Role & Reaction Roles</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Tools</div>
+                    <a href="/help" class="nav-item">
+                        <i class="fas fa-book"></i>
+                        <span>Help & Commands</span>
+                    </a>
+                    <a href="/dashboard/console" class="nav-item" data-requires-admin>
+                        <i class="fas fa-terminal"></i>
+                        <span>Bot Console</span>
+                    </a>
+                    <a href="/access-generator" class="nav-item" data-requires-admin>
+                        <i class="fas fa-key"></i>
+                        <span>Access Generator</span>
+                    </a>
+                    <a href="/access-share" class="nav-item" data-requires-admin>
+                        <i class="fas fa-share-alt"></i>
+                        <span>Access Share</span>
+                    </a>
+                    <a href="/admin/users" class="nav-item" data-requires-super-admin>
+                        <i class="fas fa-users-cog"></i>
+                        <span>User Management</span>
+                    </a>
+                </div>
+            </nav>
+
+            <!-- User Block -->
+            <div class="sidebar-user">
+                <div class="user-block">
+                    <img src="" alt="User" class="user-avatar" id="userAvatar">
+                    <div class="user-info">
+                        <div class="user-name" id="userName">Loading...</div>
+                        <div class="user-role" id="userRole">User</div>
+                    </div>
+                    <div class="user-actions">
+                        <button class="user-action-btn" onclick="logout()" title="Logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="dashboard-header">
+                <div class="header-title">
+                    <button class="btn btn-ghost" id="menuToggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1>Security Dashboard</h1>
+                </div>
+                <div class="dashboard-clock">
+                    <div class="clock-time" id="clock-time">--:--:--</div>
+                    <div class="clock-date" id="clock-date">Loading...</div>
+                    <div class="clock-timezone" id="clock-timezone"></div>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt"></i>
+                        Refresh
+                    </button>
+                    <a href="/site/" class="btn btn-ghost">
+                        <i class="fas fa-home"></i>
+                        Home
+                    </a>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div class="page-content" id="dashboardContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>Loading dashboard...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/secure-auth.js"></script>
+    <script>
+        // State
+        let dashboardData = null;
+        let currentGuildId = null;
+        let userGuilds = [];
+        let charts = {};
+        let serverDropdownOpen = false;
+        let currentUserRole = 'viewer'; // Default role
+
+        // Role-based access control helpers
+        function canModifySettings() {
+            return currentUserRole === 'admin' || currentUserRole === 'super_admin' || currentUserRole === 'owner';
+        }
+
+        function canModerate() {
+            return ['moderator', 'admin', 'super_admin', 'owner'].includes(currentUserRole);
+        }
+
+        function canManageUsers() {
+            return currentUserRole === 'super_admin' || currentUserRole === 'owner';
+        }
+
+        // Apply role-based visibility to UI elements
+        function applyRoleBasedVisibility() {
+            // Hide/show settings links based on role
+            const settingsLinks = document.querySelectorAll('[data-requires-admin]');
+            settingsLinks.forEach(el => {
+                el.style.display = canModifySettings() ? '' : 'none';
+            });
+
+            // Hide/show moderation elements
+            const moderatorElements = document.querySelectorAll('[data-requires-moderator]');
+            moderatorElements.forEach(el => {
+                el.style.display = canModerate() ? '' : 'none';
+            });
+
+            // Hide/show super admin elements (User Management)
+            const superAdminElements = document.querySelectorAll('[data-requires-super-admin]');
+            superAdminElements.forEach(el => {
+                el.style.display = canManageUsers() ? '' : 'none';
+            });
+
+            // Show viewer-only notice if needed
+            if (currentUserRole === 'viewer') {
+                console.log('Dashboard loaded in read-only mode (viewer role)');
+            }
+        }
+
+        // Chart.js defaults
+        Chart.defaults.color = 'rgba(255, 255, 255, 0.7)';
+        Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUserData();
+            await loadDashboard();
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.server-selector')) {
+                    closeServerDropdown();
+                }
+            });
+        });
+
+        // API Helper
+        async function apiFetch(path, opts = {}) {
+            // Use currentGuildId variable for immediate updates, fallback to localStorage
+            const guildId = currentGuildId || localStorage.getItem('selectedGuildId');
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(opts.headers || {})
+            };
+            if (guildId) headers['X-Guild-Id'] = guildId;
+
+            const response = await fetch(path, {
+                ...opts,
+                headers,
+                credentials: 'include'
+            });
+
+            if (response.status === 401 || response.status === 403) {
+                window.location.href = '/login';
+                throw new Error('Authentication required');
+            }
+
+            return response;
+        }
+
+        // Load user data
+        async function loadUserData() {
+            try {
+                const response = await apiFetch('/api/me');
+                const data = await response.json();
+
+                if (data.user) {
+                    document.getElementById('userName').textContent = data.user.globalName || data.user.username || 'User';
+                    document.getElementById('userRole').textContent = data.user.role || 'User';
+
+                    // Store role globally for RBAC
+                    currentUserRole = data.user.role || 'viewer';
+
+                    // Apply role-based visibility
+                    applyRoleBasedVisibility();
+
+                    if (data.user.avatar) {
+                        document.getElementById('userAvatar').src = `https://cdn.discordapp.com/avatars/${data.user.userId || data.user.id}/${data.user.avatar}.png?size=64`;
+                    } else {
+                        document.getElementById('userAvatar').src = 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    }
+                }
+
+                // Fetch user's servers
+                await loadUserServers();
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+
+        // Load user's servers from API
+        async function loadUserServers() {
+            try {
+                console.log('[Dashboard] Fetching server list...');
+                const response = await apiFetch('/api/servers/list');
+                const data = await response.json();
+                console.log('[Dashboard] Server list response:', data);
+
+                if (data.servers) {
+                    userGuilds = data.servers;
+                    console.log('[Dashboard] userGuilds populated with', userGuilds.length, 'servers:', userGuilds);
+
+                    // Set current guild
+                    const storedGuildId = localStorage.getItem('selectedGuildId');
+                    if (storedGuildId && userGuilds.find(g => g.id === storedGuildId)) {
+                        currentGuildId = storedGuildId;
+                    } else if (userGuilds.length > 0) {
+                        currentGuildId = userGuilds[0].id;
+                        localStorage.setItem('selectedGuildId', currentGuildId);
+                    }
+                    console.log('[Dashboard] currentGuildId set to:', currentGuildId);
+
+                    // Update current server display
+                    updateCurrentServerDisplay();
+
+                    // Render server dropdown
+                    console.log('[Dashboard] Calling renderServerDropdown()...');
+                    renderServerDropdown();
+                } else {
+                    console.warn('[Dashboard] No servers in response data');
+                }
+            } catch (error) {
+                console.error('Error loading user servers:', error);
+            }
+        }
+
+        // Update the current server display
+        function updateCurrentServerDisplay() {
+            if (!currentGuildId || userGuilds.length === 0) {
+                document.getElementById('currentServerName').textContent = 'No Server';
+                document.getElementById('currentServerMembers').textContent = '-- members';
+                document.getElementById('currentServerIcon').src = 'https://cdn.discordapp.com/embed/avatars/0.png';
+                return;
+            }
+
+            const currentGuild = userGuilds.find(g => g.id === currentGuildId);
+            if (currentGuild) {
+                document.getElementById('currentServerName').textContent = currentGuild.name;
+                document.getElementById('currentServerMembers').textContent = formatNumber(currentGuild.memberCount || 0) + ' members';
+
+                const iconUrl = currentGuild.icon || 'https://cdn.discordapp.com/embed/avatars/0.png';
+                document.getElementById('currentServerIcon').src = iconUrl;
+            }
+        }
+
+        // Render server dropdown
+        function renderServerDropdown() {
+            console.log('[Dashboard] renderServerDropdown() called with', userGuilds.length, 'guilds');
+            const list = document.getElementById('serverList');
+            
+            if (!list) {
+                console.error('[Dashboard] serverList element not found!');
+                return;
+            }
+
+            if (userGuilds.length === 0) {
+                console.log('[Dashboard] No servers, showing empty message');
+                list.innerHTML = '<div class="server-dropdown-empty">No servers available</div>';
+                return;
+            }
+
+            console.log('[Dashboard] Rendering', userGuilds.length, 'servers to dropdown');
+            list.innerHTML = userGuilds.map(guild => {
+                // Use icon URL from API if available, otherwise construct it
+                const iconUrl = guild.icon 
+                    ? (guild.icon.startsWith('http') ? guild.icon : `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`)
+                    : 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const isActive = guild.id === currentGuildId;
+
+                return `
+                    <div class="server-dropdown-item ${isActive ? 'active' : ''}" onclick="event.stopPropagation(); selectServer('${guild.id}')">
+                        <img src="${iconUrl}" alt="${guild.name}" class="server-dropdown-icon" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                        <div class="server-dropdown-info">
+                            <div class="server-dropdown-name">${guild.name}</div>
+                            <div class="server-dropdown-members">${formatNumber(guild.memberCount || 0)} members</div>
+                        </div>
+                        ${isActive ? '<i class="fas fa-check server-dropdown-check"></i>' : ''}
+                    </div>
+                `;
+            }).join('');
+            console.log('[Dashboard] Dropdown rendered successfully');
+        }
+
+        // Toggle server dropdown
+        function toggleServerDropdown(event) {
+            console.log('[ServerSelector] toggleServerDropdown called, current state:', serverDropdownOpen);
+            // Stop event from bubbling to document click listener
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            
+            serverDropdownOpen = !serverDropdownOpen;
+            const dropdown = document.getElementById('serverDropdown');
+            const list = document.getElementById('serverList');
+            const icon = document.getElementById('serverDropdownIcon');
+
+            console.log('[ServerSelector] Dropdown element:', dropdown);
+            console.log('[ServerSelector] List element:', list);
+            console.log('[ServerSelector] List HTML length:', list?.innerHTML?.length);
+            console.log('[ServerSelector] List children count:', list?.children?.length);
+
+            if (serverDropdownOpen) {
+                dropdown.classList.add('open');
+                icon.classList.add('rotated');
+                console.log('[ServerSelector] Dropdown opened - classes:', dropdown.className);
+                console.log('[ServerSelector] Dropdown computed display:', window.getComputedStyle(dropdown).display);
+                console.log('[ServerSelector] Dropdown computed visibility:', window.getComputedStyle(dropdown).visibility);
+                console.log('[ServerSelector] Dropdown computed opacity:', window.getComputedStyle(dropdown).opacity);
+            } else {
+                dropdown.classList.remove('open');
+                icon.classList.remove('rotated');
+                console.log('[ServerSelector] Dropdown closed');
+            }
+        }
+
+        // Close server dropdown
+        function closeServerDropdown() {
+            serverDropdownOpen = false;
+            document.getElementById('serverDropdown').classList.remove('open');
+            document.getElementById('serverDropdownIcon').classList.remove('rotated');
+        }
+
+        // Select a server
+        async function selectServer(guildId) {
+            console.log('[Dashboard] Selecting server:', guildId);
+            
+            if (guildId === currentGuildId) {
+                console.log('[Dashboard] Already selected, closing dropdown');
+                closeServerDropdown();
+                return;
+            }
+
+            currentGuildId = guildId;
+            localStorage.setItem('selectedGuildId', guildId);
+            console.log('[Dashboard] Updated currentGuildId to:', currentGuildId);
+            closeServerDropdown();
+
+            // Update current server display
+            updateCurrentServerDisplay();
+
+            // Re-render the dropdown to show the new selection
+            renderServerDropdown();
+
+            // Reload the dashboard with the new server
+            console.log('[Dashboard] Calling refreshDashboard()');
+            refreshDashboard();
+        }
+
+        // Load dashboard
+        async function loadDashboard() {
+            try {
+                // Use the in-memory currentGuildId for immediate updates
+                const guildId = currentGuildId || localStorage.getItem('selectedGuildId');
+                const params = guildId ? `?guildId=${guildId}` : '';
+                
+                console.log('[Dashboard] Loading with guildId:', guildId);
+
+                // Load multiple endpoints
+                const [overviewRes, serverRes] = await Promise.all([
+                    apiFetch(`/api/analytics/overview${params}`).catch(() => null),
+                    apiFetch(`/api/server-info${params}`).catch(() => null)
+                ]);
+
+                const overview = overviewRes ? await overviewRes.json().catch(() => ({})) : {};
+                const serverInfo = serverRes ? await serverRes.json().catch(() => ({})) : {};
+
+                // Update server info
+                if (serverInfo.name) {
+                    document.getElementById('currentServerName').textContent = serverInfo.name;
+                    document.getElementById('currentServerMembers').textContent = `${formatNumber(serverInfo.memberCount || 0)} members`;
+                    if (serverInfo.icon) {
+                        document.getElementById('currentServerIcon').src = serverInfo.icon;
+                    }
+                }
+
+                renderDashboard(overview, serverInfo);
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                document.getElementById('dashboardContent').innerHTML = `
+                    <div class="error-state">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                        <div style="font-size: 1.25rem; margin-bottom: 0.5rem;">Failed to load dashboard</div>
+                        <div style="color: var(--text-muted); margin-bottom: 1.5rem;">${error.message}</div>
+                        <button onclick="refreshDashboard()" class="btn btn-primary">Try Again</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Render dashboard
+        function renderDashboard(overview, serverInfo) {
+            const content = document.getElementById('dashboardContent');
+
+            // Destroy existing charts
+            Object.values(charts).forEach(chart => {
+                if (chart && typeof chart.destroy === 'function') chart.destroy();
+            });
+            charts = {};
+
+            const stats = overview || {};
+
+            content.innerHTML = `
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-value">${formatNumber(stats.totalMembers || serverInfo.memberCount || 0)}</div>
+                        <div class="stat-label">Total Members</div>
+                        <div class="stat-change ${(stats.joinsToday || 0) >= 0 ? 'positive' : 'negative'}">
+                            <i class="fas fa-arrow-${(stats.joinsToday || 0) >= 0 ? 'up' : 'down'}"></i>
+                            ${Math.abs(stats.joinsToday || 0)} today
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">💬</div>
+                        <div class="stat-value">${formatNumber(stats.totalMessages || 0)}</div>
+                        <div class="stat-label">Messages</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            ${formatNumber(stats.messagesToday || 0)} today
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">⚡</div>
+                        <div class="stat-value">${formatNumber(stats.totalCommands || 0)}</div>
+                        <div class="stat-label">Commands Used</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            ${formatNumber(stats.commandsToday || 0)} today
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">🛡️</div>
+                        <div class="stat-value">${formatNumber(stats.totalModActions || 0)}</div>
+                        <div class="stat-label">Mod Actions</div>
+                        <div class="stat-change neutral">
+                            <i class="fas fa-minus"></i>
+                            ${stats.modActionsToday || 0} today
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div class="chart-title">
+                                <i class="fas fa-chart-line"></i>
+                                Activity Overview
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="activityChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div class="chart-title">
+                                <i class="fas fa-shield-alt"></i>
+                                Security Events
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="securityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-bolt"></i>
+                            Quick Actions
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <a href="/tickets" class="btn btn-primary">
+                                <i class="fas fa-ticket-alt"></i>
+                                View Tickets
+                            </a>
+                            <a href="/analytics" class="btn btn-secondary">
+                                <i class="fas fa-chart-bar"></i>
+                                Full Analytics
+                            </a>
+                            <a href="/setup/security" class="btn btn-secondary">
+                                <i class="fas fa-cog"></i>
+                                Security Settings
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Initialize charts
+            initCharts();
+        }
+
+        // Initialize charts
+        function initCharts() {
+            // Activity Chart
+            const activityCtx = document.getElementById('activityChart');
+            if (activityCtx) {
+                charts.activity = new Chart(activityCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        datasets: [{
+                            label: 'Messages',
+                            data: [120, 190, 300, 250, 220, 180, 310],
+                            borderColor: '#00f0ff',
+                            backgroundColor: 'rgba(0, 240, 255, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#00f0ff',
+                            pointBorderColor: '#00f0ff',
+                            pointRadius: 4
+                        }, {
+                            label: 'Commands',
+                            data: [30, 45, 60, 55, 40, 35, 70],
+                            borderColor: '#7c3aed',
+                            backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#7c3aed',
+                            pointBorderColor: '#7c3aed',
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 20,
+                                    usePointStyle: true
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.05)'
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Security Chart
+            const securityCtx = document.getElementById('securityChart');
+            if (securityCtx) {
+                charts.security = new Chart(securityCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Blocked Links', 'Spam Detected', 'Raid Attempts', 'Phishing'],
+                        datasets: [{
+                            data: [45, 30, 15, 10],
+                            backgroundColor: [
+                                '#00f0ff',
+                                '#7c3aed',
+                                '#ec4899',
+                                '#f59e0b'
+                            ],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '70%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 20,
+                                    usePointStyle: true
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Utility functions
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        function refreshDashboard() {
+            document.getElementById('dashboardContent').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>Refreshing dashboard...</div>
+                </div>
+            `;
+            loadDashboard();
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        function logout() {
+            document.cookie = 'dashboardToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            localStorage.removeItem('dashboardToken');
+            localStorage.removeItem('selectedGuildId');
+            window.location.href = '/login';
+        }
+    </script>
+
+    <style>
+        /* Server Dropdown Styles */
+        .server-selector {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        /* Ensure sidebar allows dropdown overflow */
+        .sidebar {
+            overflow: visible !important;
+        }
+        
+        .sidebar-header {
+            overflow: visible !important;
+        }
+
+        .server-dropdown {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background: rgba(20, 20, 40, 0.95) !important;
+            border: 1px solid rgba(0, 150, 255, 0.3) !important;
+            border-radius: 12px;
+            margin-top: 8px;
+            padding: 8px;
+            z-index: 10000;
+            display: block !important; /* Override external CSS */
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+            max-height: 400px;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+            backdrop-filter: blur(10px);
+        }
+
+        .server-dropdown.open {
+            opacity: 1 !important;
+            visibility: visible !important;
+            transform: translateY(0);
+        }
+
+        .server-dropdown-header {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #8892b0;
+            padding: 8px 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .server-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .server-dropdown-item:hover {
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .server-dropdown-item.active {
+            background: rgba(0, 212, 255, 0.15);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .server-dropdown-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .server-dropdown-info {
+            flex: 1;
+        }
+
+        .server-dropdown-name {
+            font-weight: 500;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .server-dropdown-members {
+            font-size: 11px;
+            color: #8892b0;
+        }
+
+        .server-dropdown-check {
+            color: #06ffa5;
+            font-size: 14px;
+        }
+
+        .server-dropdown-empty,
+        .server-dropdown-loading {
+            padding: 20px;
+            text-align: center;
+            color: #8892b0;
+            font-size: 13px;
+        }
+
+        .server-dropdown-icon.rotated,
+        #serverDropdownIcon.rotated {
+            transform: rotate(180deg);
+        }
+
+        #serverDropdownIcon {
+            transition: transform 0.2s ease;
+        }
+
+        .server-current {
+            cursor: pointer;
+        }
+
+        .server-current:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        /* Dashboard Clock */
+        .dashboard-clock {
+            background: var(--clock-bg, linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(6, 255, 165, 0.15)));
+            padding: 0.6rem 1rem;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid var(--clock-border, rgba(0, 212, 255, 0.3));
+            backdrop-filter: blur(5px);
+            box-shadow: var(--clock-shadow, 0 0 15px rgba(0, 212, 255, 0.1));
+        }
+
+        .clock-time {
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--clock-time-color, var(--accent-primary, #00d4ff));
+            font-family: 'Courier New', monospace;
+            text-shadow: var(--clock-glow, 0 0 10px rgba(0, 212, 255, 0.3));
+        }
+
+        .clock-date {
+            font-size: 0.75rem;
+            color: var(--clock-date-color, var(--text-secondary, #8892b0));
+            margin-top: 0.15rem;
+        }
+
+        .clock-timezone {
+            font-size: 0.65rem;
+            color: var(--clock-tz-color, var(--text-muted, #5a6a8a));
+            margin-top: 0.1rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-clock {
+                padding: 0.4rem 0.75rem;
+                order: 3;
+                width: 100%;
+            }
+
+            .clock-time {
+                font-size: 1rem;
+            }
+        }
+    </style>
+    <script>
+        // Clock functionality
+        function updateClock() {
+            const now = new Date();
+            const timeEl = document.getElementById('clock-time');
+            const dateEl = document.getElementById('clock-date');
+            const tzEl = document.getElementById('clock-timezone');
+
+            if (timeEl) {
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                timeEl.textContent = `${hours}:${minutes}:${seconds}`;
+            }
+
+            if (dateEl) {
+                const options = { weekday: 'short', month: 'short', day: 'numeric' };
+                dateEl.textContent = now.toLocaleDateString(undefined, options);
+            }
+
+            if (tzEl) {
+                const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                tzEl.textContent = tz;
+            }
+        }
+
+        // Initialize clock
+        updateClock();
+        setInterval(updateClock, 1000);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,15 @@
+{
+  "sessions": [
+    {
+      "id": "b212ceb3-867a-434c-8ab2-2a201bb11456",
+      "jti": "47e0cead-8acd-4878-bdda-a8bcc37c70a1",
+      "userId": "test-user-001",
+      "createdAt": "2026-01-12T05:32:32.561Z",
+      "lastActive": "2026-01-12T05:49:37.280Z",
+      "ip": "127.0.0.1",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+      "device": "Windows • Chrome",
+      "revokedAt": null
+    }
+  ]
+}

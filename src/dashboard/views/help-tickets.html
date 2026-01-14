@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help Tickets - Admin Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0f1419;
+            --bg-secondary: #1a1f2e;
+            --bg-tertiary: #242b3d;
+            --text-primary: #e4e6eb;
+            --text-secondary: #b0b3b8;
+            --accent-green: #10b981;
+            --accent-blue: #3b82f6;
+            --border-color: #2d3548;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, #2563eb 100%);
+            color: white;
+            padding: 30px;
+            border-bottom: 3px solid var(--accent-blue);
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 20px 30px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .filter-group label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .filter-group select {
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .tickets-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .tickets-table thead {
+            background: var(--bg-tertiary);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .tickets-table th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+
+        .tickets-table td {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tickets-table tbody tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .ticket-id {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: var(--accent-blue);
+            cursor: pointer;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .status-open {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+
+        .status-in_progress {
+            background: rgba(251, 146, 60, 0.2);
+            color: #fed7aa;
+        }
+
+        .status-resolved {
+            background: rgba(34, 197, 94, 0.2);
+            color: #86efac;
+        }
+
+        .status-closed {
+            background: rgba(107, 114, 128, 0.2);
+            color: #d1d5db;
+        }
+
+        .priority-high {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .priority-normal {
+            color: var(--text-primary);
+        }
+
+        .priority-low {
+            color: #6b7280;
+        }
+
+        .category-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 8px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: var(--accent-green);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-header h2 {
+            font-size: 1.5em;
+        }
+
+        .close-btn {
+            float: right;
+            cursor: pointer;
+            font-size: 28px;
+            color: var(--text-secondary);
+        }
+
+        .close-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .ticket-messages {
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .message {
+            margin-bottom: 12px;
+            padding: 10px;
+            background: var(--bg-secondary);
+            border-left: 3px solid var(--accent-green);
+            border-radius: 4px;
+        }
+
+        .message.admin {
+            border-left-color: var(--accent-blue);
+        }
+
+        .message-author {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: var(--accent-blue);
+            margin-bottom: 5px;
+        }
+
+        .message-time {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            padding: 30px;
+            background: var(--bg-tertiary);
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            margin-top: 8px;
+            font-size: 0.9em;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--accent-blue);
+        }
+
+        @media (max-width: 768px) {
+            .tickets-table {
+                font-size: 0.9em;
+            }
+
+            .tickets-table th,
+            .tickets-table td {
+                padding: 10px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎫 Help Tickets</h1>
+            <p>Manage and respond to user support tickets</p>
+            <!-- Navigation tabs -->
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
+                <a href="/admin" style="padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.2); color: white; border-radius: 6px; text-decoration: none; font-weight: 500; transition: all 0.3s; cursor: pointer;">
+                    ← Back to Dashboard
+                </a>
+                <a href="/dashboard/code-generator" style="padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.2); color: white; border-radius: 6px; text-decoration: none; font-weight: 500; transition: all 0.3s; cursor: pointer;">
+                    🎠 Pro Code Generator
+                </a>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="filter-group">
+                <label>Status:</label>
+                <select id="statusFilter">
+                    <option value="">All</option>
+                    <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="closed">Closed</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Category:</label>
+                <select id="categoryFilter">
+                    <option value="">All</option>
+                    <option value="bug_report">🐛 Bug Report</option>
+                    <option value="feature_request">✨ Feature Request</option>
+                    <option value="account_issue">👤 Account Issue</option>
+                    <option value="moderation_help">🔨 Moderation Help</option>
+                    <option value="security_help">🛡️ Security Help</option>
+                    <option value="general_question">❓ General Question</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="stats" id="stats">
+            <div class="loading">Loading statistics...</div>
+        </div>
+
+        <div style="padding: 20px 30px;">
+            <table class="tickets-table" id="ticketsTable">
+                <thead>
+                    <tr>
+                        <th>Ticket ID</th>
+                        <th>User</th>
+                        <th>Category</th>
+                        <th>Subject</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="ticketsList">
+                    <tr><td colspan="8" class="loading">Loading tickets...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Ticket Details Modal -->
+    <div class="modal" id="ticketModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close-btn" onclick="closeTicketModal()">&times;</span>
+                <h2 id="modalTitle">Ticket Details</h2>
+            </div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script src="/js/secure-auth.js"></script>
+<script>
+        const API_BASE = '/api/help-tickets';
+
+        async function loadTickets() {
+            try {
+                const statusFilter = document.getElementById('statusFilter').value;
+                const categoryFilter = document.getElementById('categoryFilter').value;
+
+                let url = API_BASE;
+                if (statusFilter) url += `?status=${statusFilter}`;
+                if (categoryFilter) url += (statusFilter ? '&' : '?') + `category=${categoryFilter}`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.success) {
+                    displayTickets(data.tickets || []);
+                    loadStats();
+                } else {
+                    document.getElementById('ticketsList').innerHTML = `<tr><td colspan="8" class="no-data">Failed to load tickets</td></tr>`;
+                }
+            } catch (error) {
+                console.error('Error loading tickets:', error);
+                document.getElementById('ticketsList').innerHTML = `<tr><td colspan="8" class="no-data">Error loading tickets</td></tr>`;
+            }
+        }
+
+        function displayTickets(tickets) {
+            const tbody = document.getElementById('ticketsList');
+            if (tickets.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="no-data">No tickets found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = tickets.map(ticket => `
+                <tr>
+                    <td><span class="ticket-id" onclick="viewTicketDetails('${ticket.ticket_id}')">${ticket.ticket_id}</span></td>
+                    <td>${ticket.user_id}</td>
+                    <td><span class="category-badge">${getCategoryEmoji(ticket.category)} ${getCategoryLabel(ticket.category)}</span></td>
+                    <td>${ticket.subject.substring(0, 40)}...</td>
+                    <td><span class="status-badge status-${ticket.status}">${ticket.status.replace('_', ' ').toUpperCase()}</span></td>
+                    <td><span class="priority-${ticket.priority}">${ticket.priority.toUpperCase()}</span></td>
+                    <td>${new Date(ticket.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-small btn-primary" onclick="viewTicketDetails('${ticket.ticket_id}')">View</button>
+                            ${ticket.status === 'open' ? `<button class="btn-small btn-success" onclick="updateTicketStatus('${ticket.ticket_id}', 'in_progress')">Start</button>` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch(API_BASE + '/stats');
+                const data = await response.json();
+
+                if (data.success && data.stats) {
+                    const stats = data.stats;
+                    document.getElementById('stats').innerHTML = `
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.total || 0}</div>
+                            <div class="stat-label">Total Tickets</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.open_count || 0}</div>
+                            <div class="stat-label">Open</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.in_progress_count || 0}</div>
+                            <div class="stat-label">In Progress</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.resolved_count || 0}</div>
+                            <div class="stat-label">Resolved</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function viewTicketDetails(ticketId) {
+            try {
+                const response = await fetch(`${API_BASE}/${ticketId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const ticket = data.ticket;
+                    const messages = ticket.messages || [];
+
+                    let messagesHtml = '';
+                    messages.forEach(msg => {
+                        messagesHtml += `
+                            <div class="message ${msg.is_admin ? 'admin' : ''}">
+                                <div class="message-author">${msg.is_admin ? '🛡️ Admin' : '👤 User'}</div>
+                                <div>${msg.content}</div>
+                                <div class="message-time">${new Date(msg.created_at).toLocaleString()}</div>
+                            </div>
+                        `;
+                    });
+
+                    document.getElementById('modalBody').innerHTML = `
+                        <div class="form-group">
+                            <label>Ticket ID</label>
+                            <input type="text" value="${ticket.ticket_id}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Subject</label>
+                            <input type="text" value="${ticket.subject}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea readonly>${ticket.description}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select onchange="updateTicketStatus('${ticket.ticket_id}', this.value)">
+                                <option value="open" ${ticket.status === 'open' ? 'selected' : ''}>Open</option>
+                                <option value="in_progress" ${ticket.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                                <option value="resolved" ${ticket.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+                                <option value="closed" ${ticket.status === 'closed' ? 'selected' : ''}>Closed</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Messages</label>
+                            <div class="ticket-messages">${messagesHtml || '<div class="no-data">No messages yet</div>'}</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Reply</label>
+                            <textarea id="replyText" placeholder="Type your response..."></textarea>
+                        </div>
+                        <button class="btn-small btn-primary" onclick="sendReply('${ticket.ticket_id}')">Send Reply</button>
+                    `;
+                    document.getElementById('ticketModal').classList.add('active');
+                }
+            } catch (error) {
+                console.error('Error viewing ticket:', error);
+                alert('Failed to load ticket details');
+            }
+        }
+
+        async function sendReply(ticketId) {
+            const message = document.getElementById('replyText').value;
+            if (!message) {
+                alert('Please enter a message');
+                return;
+            }
+
+            try {
+                const response = await SecureAuth.fetch(`${API_BASE}/${ticketId}/reply`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('replyText').value = '';
+                    viewTicketDetails(ticketId);
+                    alert('Reply sent successfully');
+                } else {
+                    alert('Failed to send reply: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error sending reply:', error);
+                alert('Failed to send reply');
+            }
+        }
+
+        async function updateTicketStatus(ticketId, status) {
+            try {
+                const response = await SecureAuth.fetch(`${API_BASE}/${ticketId}/status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({ status })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    loadTickets();
+                    if (document.getElementById('ticketModal').classList.contains('active')) {
+                        viewTicketDetails(ticketId);
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating ticket:', error);
+            }
+        }
+
+        function closeTicketModal() {
+            document.getElementById('ticketModal').classList.remove('active');
+        }
+
+        function getCategoryEmoji(category) {
+            const emojis = {
+                'bug_report': '🐛',
+                'feature_request': '✨',
+                'account_issue': '👤',
+                'moderation_help': '🔨',
+                'security_help': '🛡️',
+                'general_question': '❓'
+            };
+            return emojis[category] || '🎫';
+        }
+
+        function getCategoryLabel(category) {
+            const labels = {
+                'bug_report': 'Bug Report',
+                'feature_request': 'Feature Request',
+                'account_issue': 'Account Issue',
+                'moderation_help': 'Moderation Help',
+                'security_help': 'Security Help',
+                'general_question': 'General Question'
+            };
+            return labels[category] || 'Support';
+        }
+
+        // Load tickets on page load and set up filters
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTickets();
+            document.getElementById('statusFilter').addEventListener('change', loadTickets);
+            document.getElementById('categoryFilter').addEventListener('change', loadTickets);
+        });
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('ticketModal');
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>

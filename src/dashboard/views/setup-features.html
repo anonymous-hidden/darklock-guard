@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Features Setup - DarkLock</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/cyber-theme.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .setup-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .setup-header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding: 40px 20px;
+            background: rgba(0, 212, 255, 0.05);
+            border-radius: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .setup-header h1 {
+            font-size: 3em;
+            margin: 0;
+            background: linear-gradient(135deg, #00d4ff 0%, #06ffa5 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .setup-header p {
+            font-size: 1.2em;
+            color: var(--text-secondary);
+            margin: 10px 0 0 0;
+        }
+
+        .settings-section {
+            background: rgba(18, 23, 39, 0.9);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .settings-section:hover {
+            border-color: rgba(0, 212, 255, 0.5);
+            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.15);
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .section-title i {
+            font-size: 2em;
+            color: #00d4ff;
+        }
+
+        .section-title h2 {
+            margin: 0;
+            font-size: 1.8em;
+            color: var(--text);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .form-description {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .form-input, .form-textarea {
+            width: 100%;
+            padding: 15px;
+            background: rgba(10, 14, 39, 0.8);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 1em;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-input:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        select.form-input {
+            cursor: pointer;
+        }
+
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            background: rgba(10, 14, 39, 0.5);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .toggle-info h4 {
+            margin: 0 0 5px 0;
+            font-size: 1.1em;
+            color: var(--text);
+        }
+
+        .toggle-info p {
+            margin: 0;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+
+        .save-button {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #00d4ff 0%, #06ffa5 100%);
+            border: none;
+            border-radius: 12px;
+            color: #0a0e27;
+            font-size: 1.2em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 30px;
+        }
+
+        .save-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.4);
+        }
+
+        .success-message {
+            background: rgba(6, 255, 165, 0.1);
+            border: 1px solid #06ffa5;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #06ffa5;
+            font-weight: 600;
+        }
+
+        .error-message {
+            background: rgba(255, 0, 110, 0.1);
+            border: 1px solid #ff006e;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ff006e;
+            font-weight: 600;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 25px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 10px;
+            color: #00d4ff;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .back-button:hover {
+            background: rgba(0, 212, 255, 0.2);
+            border-color: #00d4ff;
+        }
+
+        .info-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 15px;
+            color: #00d4ff;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container" x-data="featuresSetup()">
+        <a href="/dashboard" class="back-button">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to Dashboard</span>
+        </a>
+
+        <div class="setup-header">
+            <h1><i class="fas fa-star"></i> Features Setup</h1>
+            <p>Configure additional server features and automation</p>
+        </div>
+
+        <!-- Auto-Role -->
+        <div class="settings-section">
+            <div class="section-title">
+                <i class="fas fa-user-plus"></i>
+                <h2>Auto-Role</h2>
+            </div>
+
+            <div class="form-group">
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <h4>Enable Auto-Role</h4>
+                        <p>Automatically assign roles to new members</p>
+                    </div>
+                    <div class="toggle-switch-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" x-model="settings.autoRole.enabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-status" x-text="settings.autoRole.enabled ? 'ON' : 'OFF'">OFF</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-badge">
+                <i class="fas fa-info-circle"></i> Use the <code>/autorole</code> command in Discord to manage which roles are assigned
+            </div>
+        </div>
+
+        <!-- Reaction Roles -->
+        <div class="settings-section">
+            <div class="section-title">
+                <i class="fas fa-smile"></i>
+                <h2>Reaction Roles</h2>
+            </div>
+
+            <div class="form-group">
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <h4>Enable Reaction Roles</h4>
+                        <p>Let users self-assign roles by reacting to messages</p>
+                    </div>
+                    <div class="toggle-switch-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" x-model="settings.reactionRoles.enabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-status" x-text="settings.reactionRoles.enabled ? 'ON' : 'OFF'">OFF</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-badge">
+                <i class="fas fa-info-circle"></i> Use the <code>/reactionrole</code> command in Discord to create reaction role panels
+            </div>
+        </div>
+
+        <!-- Welcome Messages -->
+        <div class="settings-section" id="section-welcome">
+            <div class="section-title">
+                <i class="fas fa-hand-wave"></i>
+                <h2>Welcome Messages</h2>
+            </div>
+
+            <div class="form-group">
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <h4>Enable Welcome Messages</h4>
+                        <p>Send a message when new members join</p>
+                    </div>
+                    <div class="toggle-switch-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" x-model="settings.welcomeMessages.enabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-status" x-text="settings.welcomeMessages.enabled ? 'ON' : 'OFF'">OFF</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group" x-show="settings.welcomeMessages.enabled">
+                <label class="form-label">Welcome Channel</label>
+                <span class="form-description">Channel where welcome messages will be sent</span>
+                <select class="form-input" x-model="settings.welcomeMessages.channel">
+                    <option value="">Select a channel...</option>
+                    <template x-for="channel in channels" :key="channel.id">
+                        <option :value="channel.id" x-text="'#' + channel.name"></option>
+                    </template>
+                </select>
+            </div>
+
+            <div class="form-group" x-show="settings.welcomeMessages.enabled">
+                <label class="form-label">Welcome Message</label>
+                <span class="form-description">Use <code>{user}</code> for user mention, <code>{server}</code> for server name</span>
+                <textarea class="form-textarea" x-model="settings.welcomeMessages.message" placeholder="Welcome {user} to {server}! 🎉"></textarea>
+            </div>
+        </div>
+
+        <!-- User Verification -->
+        <div class="settings-section">
+            <div class="section-title">
+                <i class="fas fa-user-check"></i>
+                <h2>User Verification</h2>
+            </div>
+
+            <div class="form-group">
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <h4>Enable Verification System</h4>
+                        <p>Require new members to verify before accessing server</p>
+                    </div>
+                    <div class="toggle-switch-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" x-model="settings.verification.enabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-status" x-text="settings.verification.enabled ? 'ON' : 'OFF'">OFF</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group" x-show="settings.verification.enabled">
+                <label class="form-label">Verified Role</label>
+                <span class="form-description">Role given to users after verification</span>
+                <select class="form-input" x-model="settings.verification.role">
+                    <option value="">Select a role...</option>
+                    <template x-for="role in roles" :key="role.id">
+                        <option :value="role.id" x-text="role.name"></option>
+                    </template>
+                </select>
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <button class="save-button" @click="saveSettings()" :disabled="saving">
+            <i class="fas fa-save"></i>
+            <span x-text="saving ? 'Saving...' : 'Save All Settings'"></span>
+        </button>
+
+        <!-- Success/Error Messages -->
+        <div class="success-message" x-show="showSuccess" x-transition>
+            <i class="fas fa-check-circle"></i>
+            <span>Settings saved successfully!</span>
+        </div>
+
+        <div class="error-message" x-show="showError" x-transition>
+            <i class="fas fa-exclamation-circle"></i>
+            <span x-text="errorMessage"></span>
+        </div>
+    </div>
+
+    <script src="/js/secure-auth.js"></script>
+<script>
+        function featuresSetup() {
+            return {
+                settings: {
+                    autoRole: {
+                        enabled: false
+                    },
+                    reactionRoles: {
+                        enabled: false
+                    },
+                    welcomeMessages: {
+                        enabled: false,
+                        channel: '',
+                        message: 'Welcome {user} to {server}! 🎉'
+                    },
+                    verification: {
+                        enabled: false,
+                        role: ''
+                    }
+                },
+                channels: [],
+                roles: [],
+                saving: false,
+                showSuccess: false,
+                showError: false,
+                errorMessage: '',
+                guildId: localStorage.getItem('selectedGuildId'),
+
+                async init() {
+                    if (!this.guildId) {
+                        alert('Please select a server first');
+                        window.location.href = '/dashboard';
+                        return;
+                    }
+                    await this.loadSettings();
+                    await this.loadChannels();
+                    await this.loadRoles();
+                },
+
+                async loadSettings() {
+                    try {
+                        const response = await fetch(`/api/settings/features?guildId=${this.guildId}`, { credentials: 'include' });
+                        if (response.ok) {
+                            const result = await response.json();
+                            // Handle standardized response format {success, data, error}
+                            const data = result.data || result;
+                            if (data.settings) {
+                                this.settings = { ...this.settings, ...data.settings };
+                            } else if (data) {
+                                this.settings = { ...this.settings, ...data };
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Failed to load settings:', error);
+                    }
+                },
+
+                async loadChannels() {
+                    try {
+                        const response = await fetch(`/api/guild/${this.guildId}/channels`, { credentials: 'include' });
+                        if (response.ok) {
+                            const result = await response.json();
+                            // Handle standardized response format {success, data, error}
+                            const data = result.data || result;
+                            this.channels = data.channels || (Array.isArray(data) ? data : []);
+                        }
+                    } catch (error) {
+                        console.error('Failed to load channels:', error);
+                    }
+                },
+
+                async loadRoles() {
+                    try {
+                        const response = await fetch(`/api/guild/${this.guildId}/roles`, { credentials: 'include' });
+                        if (response.ok) {
+                            const result = await response.json();
+                            // Handle standardized response format {success, data, error}
+                            const data = result.data || result;
+                            this.roles = data.roles || (Array.isArray(data) ? data : []);
+                        }
+                    } catch (error) {
+                        console.error('Failed to load roles:', error);
+                    }
+                },
+
+                async saveSettings() {
+                    this.saving = true;
+                    this.showSuccess = false;
+                    this.showError = false;
+
+                    try {
+                        const response = await SecureAuth.fetch(`/api/settings/features?guildId=${this.guildId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify(this.settings)
+                        });
+
+                        const result = await response.json();
+                        if (response.ok && (result.success !== false)) {
+                            this.showSuccess = true;
+                            setTimeout(() => {
+                                this.showSuccess = false;
+                            }, 5000);
+                        } else {
+                            throw new Error(result.error || 'Failed to save settings');
+                        }
+                    } catch (error) {
+                        this.showError = true;
+                        this.errorMessage = error.message || 'Failed to save settings';
+                        setTimeout(() => {
+                            this.showError = false;
+                        }, 5000);
+                    } finally {
+                        this.saving = false;
+                    }
+                }
+            };
+        }
+    </script>
+</body>
+</html>

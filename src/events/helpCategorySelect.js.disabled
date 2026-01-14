@@ -1,0 +1,56 @@
+module.exports = {
+    name: 'interactionCreate',
+    async execute(interaction) {
+        if (!interaction.isStringSelectMenu()) return;
+        if (!interaction.customId.startsWith('help-category-select')) return;
+
+        const category = interaction.values[0];
+        const bot = interaction.client;
+
+        if (!bot || !bot.helpTicketSystem) {
+            return await interaction.reply({ content: '❌ Help ticket system not available', ephemeral: true });
+        }
+
+        // Show modal for the selected category
+        const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+
+        const modal = new ModalBuilder()
+            .setCustomId(`help-ticket-modal-${category}`)
+            .setTitle(`🆘 ${bot.helpTicketSystem.getCategoryLabel(category)}`);
+
+        const subjectInput = new TextInputBuilder()
+            .setCustomId('help-subject')
+            .setLabel('Subject/Title')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('Brief description of your issue')
+            .setMinLength(5)
+            .setMaxLength(100)
+            .setRequired(true);
+
+        const reasonInput = new TextInputBuilder()
+            .setCustomId('help-reason')
+            .setLabel('Reason')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('Why do you need help with this?')
+            .setMinLength(5)
+            .setMaxLength(200)
+            .setRequired(true);
+
+        const descriptionInput = new TextInputBuilder()
+            .setCustomId('help-description')
+            .setLabel('Detailed Description')
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder('Please provide as much detail as possible...')
+            .setMinLength(10)
+            .setMaxLength(2000)
+            .setRequired(true);
+
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(subjectInput),
+            new ActionRowBuilder().addComponents(reasonInput),
+            new ActionRowBuilder().addComponents(descriptionInput)
+        );
+
+        await interaction.showModal(modal);
+    }
+};

@@ -1,0 +1,90 @@
+<!-- ========================================
+     UPDATE MODAL - FIXED VERSION
+     - Removes "show" class from default state
+     - Modal hidden by default
+     - Controlled by JavaScript
+     ======================================== -->
+
+<div id="updateModal" class="update-modal-overlay">
+    <div class="update-modal">
+        <div class="update-modal-header">
+            <div class="update-icon">🎉</div>
+            <h2>Dashboard Updated!</h2>
+            <div class="version-badge">v2.0.0</div>
+        </div>
+        
+        <div class="update-modal-body">
+            <div class="update-title">Major Update: Rank System &amp; Enhanced Features</div>
+            <div class="update-date">Released: November 21, 2025</div>
+
+            <div class="update-section">
+                <h3>✨ New Features</h3>
+                <ul class="update-list">
+                    <li>Added complete XP and Leveling system with visual rank cards</li>
+                    <li>New /rank command with beautiful Canvas-generated rank cards</li>
+                    <li>Leaderboard system to track top members by XP</li>
+                    <li>Automatic XP gain per message with cooldown system</li>
+                    <li>Level-up notifications with congratulatory messages</li>
+                    <li>Dashboard update notification system with version tracking</li>
+                    <li>Added Forensics Manager for immutable audit logging</li>
+                    <li>Added Risk Engine for advanced threat detection</li>
+                </ul>
+            </div>
+
+            <div class="update-section">
+                <h3>🐛 Fixes</h3>
+                <ul class="update-list">
+                    <li>Fixed environment validation for CI/host deploys</li>
+                    <li>Improved dashboard stability and WebSocket connections</li>
+                    <li>Fixed security layer integration issues</li>
+                    <li>Resolved token validation errors on startup</li>
+                </ul>
+            </div>
+
+            <div class="update-section">
+                <h3>🚀 Improvements</h3>
+                <ul class="update-list">
+                    <li>Enhanced dashboard UI with professional styling</li>
+                    <li>Improved rank card design matching modern Discord aesthetics</li>
+                    <li>Better XP formula for balanced progression</li>
+                    <li>Optimized leaderboard performance for large servers</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="update-modal-footer">
+            <button id="updateModalOK" class="update-modal-btn">
+                OK, Got It!
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================
+     USAGE IN YOUR DASHBOARD
+     ======================================== -->
+<!--
+1. Include the CSS:
+   <link rel="stylesheet" href="/css/update-modal-fixed.css">
+
+2. Include the JavaScript:
+   <script src="/js/update-modal-system.js"></script>
+
+3. In your dashboard init() function, add:
+   
+   async function init() {
+       // ... your existing initialization code ...
+       
+       // Initialize update modal
+       await initUpdateModal();
+       
+       // ... rest of your code ...
+   }
+
+4. OPTIONAL - Backend API endpoint for version:
+   
+   GET /api/version
+   Response: { "version": "2.0.0" }
+   
+   The system will fallback to hardcoded version if API fails.
+-->

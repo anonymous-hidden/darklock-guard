@@ -1,0 +1,158 @@
+/* 🇺🇸 4th of July Theme */
+/* Red, White, Blue with fireworks and stars */
+
+:root {
+    --theme-name: '4th of July';
+    --theme-emoji: '🇺🇸';
+    
+    /* ============================================== */
+    /* UNIVERSAL VARIABLES (works with all stylesheets) */
+    /* ============================================== */
+    
+    /* Primary/Accent Colors - ALL naming conventions */
+    --color-primary: #b22234 !important;
+    --color-primary-light: #ff4d6d !important;
+    --color-primary-dark: #8b0000 !important;
+    --color-secondary: #3c3b6e !important;
+    --color-accent: #ffffff !important;
+    --accent-primary: #b22234 !important;
+    --accent-secondary: #3c3b6e !important;
+    --accent-tertiary: #ffffff !important;
+    --accent-gradient: linear-gradient(135deg, #b22234 0%, #ffffff 50%, #3c3b6e 100%) !important;
+    
+    /* Background Colors - ALL naming conventions */
+    --bg-body: #0a0a1a !important;
+    --bg-primary: #0a0a1a !important;
+    --bg-secondary: #0f1530 !important;
+    --bg-tertiary: #152045 !important;
+    --bg-surface: #0f1530 !important;
+    --bg-surface-hover: #152045 !important;
+    --bg-surface-elevated: #152045 !important;
+    --bg-card: rgba(15, 21, 48, 0.8) !important;
+    --bg-card-solid: #0f1530 !important;
+    --bg-card-hover: rgba(21, 32, 69, 0.9) !important;
+    --bg-gradient: radial-gradient(ellipse at top, #0f1530 0%, #0a0a1a 100%) !important;
+    --bg-sidebar: linear-gradient(180deg, #0a0a1a 0%, #0f1530 100%) !important;
+    
+    /* Text Colors - ALL naming conventions */
+    --color-text: #ffffff !important;
+    --color-text-secondary: #c0c8e0 !important;
+    --color-muted: #7080a0 !important;
+    --text-primary: #ffffff !important;
+    --text-secondary: #c0c8e0 !important;
+    --text-muted: #7080a0 !important;
+    
+    /* Status Colors */
+    --color-success: #57F287 !important;
+    --color-warning: #ffd700 !important;
+    --color-danger: #b22234 !important;
+    --color-info: #3c3b6e !important;
+    --success: #57F287 !important;
+    --warning: #ffd700 !important;
+    --danger: #b22234 !important;
+    --error: #b22234 !important;
+    --info: #3c3b6e !important;
+    
+    /* Border & Shadow - ALL naming conventions */
+    --color-border: rgba(178, 34, 52, 0.3) !important;
+    --color-border-light: rgba(60, 59, 110, 0.4) !important;
+    --border-color: rgba(178, 34, 52, 0.3) !important;
+    --border-color-light: rgba(60, 59, 110, 0.4) !important;
+    --border-glow: rgba(178, 34, 52, 0.4) !important;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3) !important;
+    --shadow-md: 0 4px 15px rgba(178, 34, 52, 0.2) !important;
+    --shadow-lg: 0 10px 25px rgba(60, 59, 110, 0.25) !important;
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+    --shadow-glow: 0 0 30px rgba(178, 34, 52, 0.25) !important;
+    --shadow-glow-primary: 0 0 20px rgba(178, 34, 52, 0.4) !important;
+    --shadow-glow-accent: 0 0 20px rgba(60, 59, 110, 0.4) !important;
+    
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-pill: 9999px;
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.3s ease;
+    --transition: 0.25s ease;
+    --transition-base: 0.25s ease;
+}
+
+.theme-july4th .admin-header,
+.theme-july4th .dashboard-header {
+    background: linear-gradient(135deg, #b22234 0%, #ffffff 50%, #3c3b6e 100%) !important;
+    color: #1a1a1a;
+}
+
+.theme-july4th .stat-card,
+.theme-july4th .card {
+    border: 1px solid rgba(178, 34, 52, 0.4);
+    box-shadow: 0 4px 15px rgba(60, 59, 110, 0.3);
+}
+
+.theme-july4th .tab-btn.active {
+    color: #b22234 !important;
+    border-bottom-color: #b22234 !important;
+}
+
+/* Stars and Fireworks */
+.theme-july4th .theme-effects-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.theme-july4th .theme-particle {
+    position: absolute;
+    font-size: 1.5em;
+    animation: firework-burst ease-out infinite;
+    opacity: 0;
+}
+
+@keyframes firework-burst {
+    0% {
+        transform: scale(0) translateY(50vh);
+        opacity: 0;
+    }
+    20% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1.5) translateY(-20vh);
+        opacity: 0;
+    }
+}
+
+.theme-july4th .theme-particle:nth-child(1) { left: 10%; animation-duration: 3s; animation-delay: 0s; }
+.theme-july4th .theme-particle:nth-child(2) { left: 25%; animation-duration: 3.5s; animation-delay: 1s; }
+.theme-july4th .theme-particle:nth-child(3) { left: 40%; animation-duration: 2.8s; animation-delay: 2s; }
+.theme-july4th .theme-particle:nth-child(4) { left: 55%; animation-duration: 3.2s; animation-delay: 0.5s; }
+.theme-july4th .theme-particle:nth-child(5) { left: 70%; animation-duration: 3s; animation-delay: 1.5s; }
+.theme-july4th .theme-particle:nth-child(6) { left: 85%; animation-duration: 3.3s; animation-delay: 2.5s; }
+.theme-july4th .theme-particle:nth-child(7) { left: 15%; animation-duration: 2.9s; animation-delay: 0.8s; }
+.theme-july4th .theme-particle:nth-child(8) { left: 45%; animation-duration: 3.1s; animation-delay: 1.8s; }
+.theme-july4th .theme-particle:nth-child(9) { left: 65%; animation-duration: 3.4s; animation-delay: 0.3s; }
+.theme-july4th .theme-particle:nth-child(10) { left: 80%; animation-duration: 2.7s; animation-delay: 2.2s; }
+
+/* Star decorations */
+.theme-july4th .stat-card::after {
+    content: '⭐';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 1.3rem;
+    opacity: 0.9;
+}
+
+.theme-july4th .stat-card:nth-child(2)::after { content: '🎆'; }
+.theme-july4th .stat-card:nth-child(3)::after { content: '🗽'; }
+.theme-july4th .stat-card:nth-child(4)::after { content: '🦅'; }

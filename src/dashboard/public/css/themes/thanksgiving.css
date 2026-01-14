@@ -1,0 +1,110 @@
+/* ================================================
+   THANKSGIVING THEME - Warm Orange, Brown, Gold
+   ================================================ */
+
+:root {
+    /* Primary Colors */
+    --color-primary: #d2691e;
+    --color-primary-light: #e8a050;
+    --color-primary-dark: #8b4513;
+    --color-secondary: #daa520;
+    --color-accent: #cd853f;
+    
+    /* Background Colors */
+    --bg-body: #1a1408;
+    --bg-gradient: radial-gradient(ellipse at top, #2d2010 0%, #1a1408 50%, #0f0a04 100%);
+    --bg-surface: rgba(45, 32, 16, 0.9);
+    --bg-surface-elevated: rgba(60, 45, 25, 0.95);
+    --bg-card: linear-gradient(145deg, rgba(45, 32, 16, 0.9) 0%, rgba(35, 25, 12, 0.95) 100%);
+    
+    /* Text Colors */
+    --color-text: #fff8dc;
+    --color-text-secondary: #daa520;
+    --color-muted: #b8860b;
+    
+    /* Border & UI */
+    --color-border: rgba(210, 105, 30, 0.3);
+    --color-border-hover: rgba(210, 105, 30, 0.6);
+    
+    /* Status Colors */
+    --color-success: #228b22;
+    --color-warning: #ff8c00;
+    --color-error: #cd5c5c;
+    --color-info: #daa520;
+    
+    /* Effects */
+    --glow-primary: 0 0 20px rgba(210, 105, 30, 0.3);
+}
+
+/* Body Background */
+body {
+    background: var(--bg-body);
+    background-image: var(--bg-gradient);
+}
+
+/* Warm Glowing Borders */
+.card, .stat-card, .chart-container, .updates-widget {
+    border: 1px solid var(--color-border);
+    box-shadow: var(--glow-primary);
+}
+
+.card:hover, .stat-card:hover {
+    border-color: var(--color-border-hover);
+    box-shadow: 0 0 25px rgba(210, 105, 30, 0.4);
+}
+
+/* Sidebar Styling */
+.sidebar {
+    background: linear-gradient(180deg, rgba(45, 32, 16, 0.98) 0%, rgba(30, 20, 10, 0.98) 100%);
+    border-right: 1px solid var(--color-border);
+}
+
+/* Navigation Items */
+.nav-item:hover {
+    background: rgba(210, 105, 30, 0.15);
+    border-left: 3px solid var(--color-primary);
+}
+
+.nav-item.active {
+    background: linear-gradient(90deg, rgba(210, 105, 30, 0.25) 0%, transparent 100%);
+    border-left: 3px solid var(--color-primary);
+}
+
+/* Buttons */
+.btn-primary, .button-primary {
+    background: linear-gradient(135deg, #d2691e 0%, #8b4513 100%);
+    color: #fff;
+    border: none;
+}
+
+.btn-primary:hover, .button-primary:hover {
+    background: linear-gradient(135deg, #e8a050 0%, #d2691e 100%);
+    box-shadow: 0 0 20px rgba(210, 105, 30, 0.5);
+}
+
+/* Stats */
+.stat-value {
+    background: linear-gradient(135deg, #daa520 0%, #d2691e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Headers */
+h1, h2, h3 {
+    color: #fff8dc;
+    text-shadow: 0 0 10px rgba(218, 165, 32, 0.3);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #d2691e 0%, #8b4513 100%);
+    border-radius: 4px;
+}
+
+/* Badge */
+.badge, .tag {
+    background: rgba(210, 105, 30, 0.2);
+    border: 1px solid rgba(210, 105, 30, 0.4);
+    color: #daa520;
+}

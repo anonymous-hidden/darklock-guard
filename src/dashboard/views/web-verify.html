@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification - DarkLock</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: rgba(255, 255, 255, 0.03);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --accent: #00d4ff;
+            --accent-glow: rgba(0, 212, 255, 0.3);
+            --success: #00ff88;
+            --error: #ff4444;
+            --warning: #ffaa00;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        /* Animated background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 30%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 70%, rgba(138, 43, 226, 0.1) 0%, transparent 50%);
+            animation: bgRotate 30s linear infinite;
+        }
+
+        @keyframes bgRotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .verify-container {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 48px;
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .verify-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), #8a2be2, var(--accent));
+            background-size: 200% 100%;
+            animation: gradient 3s ease infinite;
+        }
+
+        @keyframes gradient {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            background: linear-gradient(135deg, var(--accent), #8a2be2);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            box-shadow: 0 10px 40px var(--accent-glow);
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--text-primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .server-name {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        .status-message {
+            padding: 16px 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .status-message.loading {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .status-message.success {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            color: var(--success);
+        }
+
+        .status-message.error {
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid rgba(255, 68, 68, 0.3);
+            color: var(--error);
+        }
+
+        .captcha-section {
+            margin: 32px 0;
+        }
+
+        .captcha-image {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            letter-spacing: 8px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: var(--accent);
+            text-shadow: 0 0 10px var(--accent-glow);
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .captcha-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                rgba(255, 255, 255, 0.03) 10px,
+                rgba(255, 255, 255, 0.03) 20px
+            );
+        }
+
+        .captcha-image .noise {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='0' y1='20' x2='200' y2='60' stroke='rgba(255,255,255,0.1)' stroke-width='2'/%3E%3Cline x1='0' y1='60' x2='200' y2='20' stroke='rgba(255,255,255,0.1)' stroke-width='2'/%3E%3Ccircle cx='50' cy='40' r='3' fill='rgba(255,255,255,0.1)'/%3E%3Ccircle cx='150' cy='40' r='3' fill='rgba(255,255,255,0.1)'/%3E%3C/svg%3E");
+        }
+
+        .captcha-code {
+            position: relative;
+            z-index: 1;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 16px 20px;
+            background: var(--bg-secondary);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 18px;
+            text-align: center;
+            letter-spacing: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .input-group input::placeholder {
+            letter-spacing: normal;
+            color: var(--text-secondary);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #0099cc);
+            color: white;
+            box-shadow: 0 4px 20px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px var(--accent-glow);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-secondary);
+            margin-top: 12px;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .info-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 24px;
+            line-height: 1.6;
+        }
+
+        .attempts-left {
+            font-size: 13px;
+            color: var(--warning);
+            margin-top: 12px;
+        }
+
+        .success-icon {
+            font-size: 64px;
+            color: var(--success);
+            margin-bottom: 24px;
+            animation: successPop 0.5s ease;
+        }
+
+        @keyframes successPop {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .error-icon {
+            font-size: 64px;
+            color: var(--error);
+            margin-bottom: 24px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Mobile */
+        @media (max-width: 520px) {
+            .verify-container {
+                padding: 32px 24px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .captcha-image {
+                font-size: 24px;
+                letter-spacing: 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    
+    <div class="verify-container">
+        <!-- Loading State -->
+        <div id="loadingState">
+            <div class="logo">
+                <i class="fas fa-shield-halved"></i>
+            </div>
+            <h1>Verification</h1>
+            <p class="server-name" id="serverName">Loading...</p>
+            <div class="status-message loading">
+                <div class="spinner"></div>
+                <span>Loading verification challenge...</span>
+            </div>
+        </div>
+
+        <!-- Captcha State -->
+        <div id="captchaState" class="hidden">
+            <div class="logo">
+                <i class="fas fa-shield-halved"></i>
+            </div>
+            <h1>Verify You're Human</h1>
+            <p class="server-name" id="serverNameCaptcha"></p>
+            
+            <div class="captcha-section">
+                <div class="captcha-image">
+                    <div class="noise"></div>
+                    <span class="captcha-code" id="captchaDisplay">------</span>
+                </div>
+                
+                <div class="input-group">
+                    <input type="text" id="captchaInput" placeholder="Enter the code above" maxlength="10" autocomplete="off">
+                </div>
+                
+                <button class="btn btn-primary" id="verifyBtn" onclick="submitVerification()">
+                    <i class="fas fa-check"></i>
+                    Verify
+                </button>
+                
+                <button class="btn btn-secondary" onclick="refreshCaptcha()">
+                    <i class="fas fa-refresh"></i>
+                    Get New Code
+                </button>
+                
+                <p class="attempts-left" id="attemptsLeft"></p>
+            </div>
+            
+            <p class="info-text">
+                <i class="fas fa-info-circle"></i>
+                Enter the code shown above to verify your identity and gain access to the server.
+            </p>
+        </div>
+
+        <!-- Success State -->
+        <div id="successState" class="hidden">
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h1>Verification Complete!</h1>
+            <p class="server-name" id="serverNameSuccess"></p>
+            <div class="status-message success">
+                <i class="fas fa-check"></i>
+                <span>You now have access to the server. You can close this page.</span>
+            </div>
+            <p class="info-text">
+                Your verified role has been assigned. Return to Discord to access the server channels.
+            </p>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden">
+            <div class="error-icon">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <h1>Verification Failed</h1>
+            <p class="server-name" id="serverNameError"></p>
+            <div class="status-message error" id="errorMessage">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>An error occurred</span>
+            </div>
+            <button class="btn btn-primary" onclick="location.reload()">
+                <i class="fas fa-redo"></i>
+                Try Again
+            </button>
+            <p class="info-text">
+                If this problem persists, please contact a server administrator.
+            </p>
+        </div>
+
+        <!-- Expired State -->
+        <div id="expiredState" class="hidden">
+            <div class="error-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <h1>Link Expired</h1>
+            <p class="server-name" id="serverNameExpired"></p>
+            <div class="status-message error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>This verification link has expired.</span>
+            </div>
+            <p class="info-text">
+                Please return to Discord and request a new verification link from the server.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Parse URL to get verification info
+        const pathParts = window.location.pathname.split('/').filter(p => p);
+        let token = null;
+        let guildId = null;
+        let userId = null;
+        let maxAttempts = 3;
+        let currentAttempts = 0;
+
+        // Check URL format: /verify/:token or /verify/:guildId/:userId
+        if (pathParts.length === 2 && pathParts[0] === 'verify') {
+            token = pathParts[1];
+        } else if (pathParts.length === 3 && pathParts[0] === 'verify') {
+            guildId = pathParts[1];
+            userId = pathParts[2];
+        }
+
+        // DOM Elements
+        const loadingState = document.getElementById('loadingState');
+        const captchaState = document.getElementById('captchaState');
+        const successState = document.getElementById('successState');
+        const errorState = document.getElementById('errorState');
+        const expiredState = document.getElementById('expiredState');
+
+        function showState(state) {
+            loadingState.classList.add('hidden');
+            captchaState.classList.add('hidden');
+            successState.classList.add('hidden');
+            errorState.classList.add('hidden');
+            expiredState.classList.add('hidden');
+            state.classList.remove('hidden');
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>${message}</span>
+            `;
+            showState(errorState);
+        }
+
+        async function initVerification() {
+            try {
+                const response = await fetch('/api/web-verify/init', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, guildId, userId })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    if (data.expired) {
+                        document.getElementById('serverNameExpired').textContent = data.serverName || 'Unknown Server';
+                        showState(expiredState);
+                    } else {
+                        showError(data.error || 'Failed to load verification');
+                    }
+                    return;
+                }
+
+                // Set server name
+                const serverName = data.serverName || 'Unknown Server';
+                document.getElementById('serverName').textContent = serverName;
+                document.getElementById('serverNameCaptcha').textContent = serverName;
+                document.getElementById('serverNameSuccess').textContent = serverName;
+                document.getElementById('serverNameError').textContent = serverName;
+
+                // Store IDs from response
+                if (data.guildId) guildId = data.guildId;
+                if (data.userId) userId = data.userId;
+                maxAttempts = data.maxAttempts || 3;
+                currentAttempts = data.attempts || 0;
+
+                // If already verified
+                if (data.alreadyVerified) {
+                    showState(successState);
+                    return;
+                }
+
+                // Show captcha
+                if (data.captchaCode) {
+                    document.getElementById('captchaDisplay').textContent = data.captchaCode;
+                }
+                updateAttemptsDisplay();
+                showState(captchaState);
+
+                // Focus input
+                document.getElementById('captchaInput').focus();
+
+            } catch (err) {
+                console.error('Init error:', err);
+                showError('Failed to connect to server. Please try again.');
+            }
+        }
+
+        function updateAttemptsDisplay() {
+            const remaining = maxAttempts - currentAttempts;
+            const el = document.getElementById('attemptsLeft');
+            if (remaining <= 2) {
+                el.textContent = `${remaining} attempt${remaining !== 1 ? 's' : ''} remaining`;
+                el.style.display = 'block';
+            } else {
+                el.style.display = 'none';
+            }
+        }
+
+        async function submitVerification() {
+            const code = document.getElementById('captchaInput').value.trim();
+            if (!code) {
+                return;
+            }
+
+            const btn = document.getElementById('verifyBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div> Verifying...';
+
+            try {
+                const response = await fetch('/api/web-verify/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, guildId, userId, code })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showState(successState);
+                } else if (data.expired) {
+                    showState(expiredState);
+                } else if (data.locked) {
+                    showError('Too many failed attempts. Please contact a server administrator.');
+                } else {
+                    currentAttempts++;
+                    updateAttemptsDisplay();
+                    
+                    // Shake animation
+                    const input = document.getElementById('captchaInput');
+                    input.style.borderColor = 'var(--error)';
+                    input.value = '';
+                    input.placeholder = data.error || 'Incorrect code, try again';
+                    
+                    setTimeout(() => {
+                        input.style.borderColor = '';
+                        input.placeholder = 'Enter the code above';
+                    }, 2000);
+                    
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check"></i> Verify';
+                }
+            } catch (err) {
+                console.error('Submit error:', err);
+                showError('Failed to verify. Please try again.');
+            }
+        }
+
+        async function refreshCaptcha() {
+            try {
+                const response = await fetch('/api/web-verify/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, guildId, userId })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.captchaCode) {
+                    document.getElementById('captchaDisplay').textContent = data.captchaCode;
+                    document.getElementById('captchaInput').value = '';
+                    document.getElementById('captchaInput').focus();
+                } else if (data.expired) {
+                    showState(expiredState);
+                } else {
+                    showError(data.error || 'Failed to refresh captcha');
+                }
+            } catch (err) {
+                console.error('Refresh error:', err);
+            }
+        }
+
+        // Handle Enter key
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !captchaState.classList.contains('hidden')) {
+                submitVerification();
+            }
+        });
+
+        // Initialize on load
+        if (token || (guildId && userId)) {
+            initVerification();
+        } else {
+            showError('Invalid verification link. Please use the link from Discord.');
+        }
+    </script>
+</body>
+</html>

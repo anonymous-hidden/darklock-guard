@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
+    <title>Bot Console - DarkLock Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <style>
+        .console-page {
+            min-height: 100vh;
+            background: var(--ds-surface-0);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .console-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--ds-space-md) var(--ds-space-lg);
+            background: var(--ds-surface-1);
+            border-bottom: 1px solid var(--ds-border);
+        }
+
+        .console-header-left {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-lg);
+        }
+
+        .console-title {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--ds-text-primary);
+        }
+
+        .console-title i {
+            color: var(--ds-primary);
+        }
+
+        .console-status {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+            padding: 6px 12px;
+            background: var(--ds-success-bg);
+            border: 1px solid var(--ds-success-border);
+            border-radius: var(--ds-radius-full);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--ds-success);
+        }
+
+        .console-status.paused {
+            background: var(--ds-warning-bg);
+            border-color: var(--ds-warning-border);
+            color: var(--ds-warning);
+        }
+
+        .console-status.disconnected {
+            background: var(--ds-danger-bg);
+            border-color: var(--ds-danger-border);
+            color: var(--ds-danger);
+        }
+
+        .console-status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse-dot 2s infinite;
+        }
+
+        .console-status.paused .console-status-dot,
+        .console-status.disconnected .console-status-dot {
+            animation: none;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .console-controls {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+        }
+
+        .console-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: var(--ds-space-lg);
+            gap: var(--ds-space-lg);
+            overflow: hidden;
+        }
+
+        .console-panels {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: var(--ds-space-lg);
+            flex: 1;
+            min-height: 0;
+        }
+
+        @media (max-width: 1024px) {
+            .console-panels {
+                grid-template-columns: 1fr;
+            }
+            .console-sidebar {
+                display: none;
+            }
+        }
+
+        /* Main Console Window */
+        .console-window {
+            display: flex;
+            flex-direction: column;
+            background: #0d1117;
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-lg);
+            overflow: hidden;
+        }
+
+        .console-window-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--ds-space-sm) var(--ds-space-md);
+            background: var(--ds-surface-2);
+            border-bottom: 1px solid var(--ds-border);
+        }
+
+        .console-window-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .console-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .console-dot-red { background: #ff5f57; }
+        .console-dot-yellow { background: #febc2e; }
+        .console-dot-green { background: #28c840; }
+
+        .console-window-title {
+            font-family: var(--ds-font-mono);
+            font-size: 12px;
+            color: var(--ds-text-muted);
+        }
+
+        .console-window-actions {
+            display: flex;
+            gap: var(--ds-space-xs);
+        }
+
+        .console-output {
+            flex: 1;
+            padding: var(--ds-space-md);
+            font-family: var(--ds-font-mono);
+            font-size: 13px;
+            line-height: 1.7;
+            overflow-y: auto;
+            min-height: 400px;
+        }
+
+        .console-output::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .console-output::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .console-output::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .console-output::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .console-line {
+            display: flex;
+            gap: var(--ds-space-sm);
+            padding: 2px 0;
+        }
+
+        .console-time {
+            color: var(--ds-text-muted);
+            font-size: 11px;
+            min-width: 80px;
+            opacity: 0.7;
+        }
+
+        .console-level {
+            min-width: 50px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .console-level.info { color: var(--ds-info); }
+        .console-level.warn { color: var(--ds-warning); }
+        .console-level.error { color: var(--ds-danger); }
+        .console-level.debug { color: var(--ds-text-muted); }
+        .console-level.success { color: var(--ds-success); }
+
+        .console-message {
+            color: #e6edf3;
+            flex: 1;
+            word-break: break-word;
+        }
+
+        .console-message.error { color: var(--ds-danger); }
+        .console-message.warn { color: var(--ds-warning); }
+        .console-message.success { color: var(--ds-success); }
+
+        /* Console Input */
+        .console-input-wrapper {
+            display: flex;
+            align-items: center;
+            padding: var(--ds-space-sm) var(--ds-space-md);
+            background: rgba(255, 255, 255, 0.03);
+            border-top: 1px solid var(--ds-border);
+        }
+
+        .console-prompt {
+            color: var(--ds-success);
+            font-family: var(--ds-font-mono);
+            font-size: 13px;
+            margin-right: var(--ds-space-sm);
+        }
+
+        .console-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--ds-text-primary);
+            font-family: var(--ds-font-mono);
+            font-size: 13px;
+            outline: none;
+        }
+
+        .console-input::placeholder {
+            color: var(--ds-text-muted);
+        }
+
+        /* Sidebar */
+        .console-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: var(--ds-space-md);
+        }
+
+        .sidebar-card {
+            background: var(--ds-surface-1);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-lg);
+            padding: var(--ds-space-md);
+        }
+
+        .sidebar-card-title {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ds-text-primary);
+            margin-bottom: var(--ds-space-md);
+        }
+
+        .sidebar-card-title i {
+            color: var(--ds-primary);
+            font-size: 12px;
+        }
+
+        /* Quick Stats */
+        .quick-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--ds-space-sm);
+        }
+
+        .quick-stat {
+            background: var(--ds-surface-2);
+            border-radius: var(--ds-radius-md);
+            padding: var(--ds-space-sm) var(--ds-space-md);
+            text-align: center;
+        }
+
+        .quick-stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--ds-primary);
+        }
+
+        .quick-stat-label {
+            font-size: 10px;
+            color: var(--ds-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Quick Commands */
+        .quick-commands {
+            display: flex;
+            flex-direction: column;
+            gap: var(--ds-space-xs);
+        }
+
+        .quick-command {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+            padding: var(--ds-space-sm) var(--ds-space-md);
+            background: var(--ds-surface-2);
+            border: none;
+            border-radius: var(--ds-radius-md);
+            color: var(--ds-text-secondary);
+            font-size: 12px;
+            font-family: var(--ds-font-mono);
+            cursor: pointer;
+            transition: all var(--ds-transition-fast);
+            text-align: left;
+        }
+
+        .quick-command:hover {
+            background: var(--ds-primary-bg);
+            color: var(--ds-primary);
+        }
+
+        .quick-command i {
+            width: 16px;
+            text-align: center;
+            font-size: 11px;
+        }
+
+        /* Filter Tags */
+        .filter-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--ds-space-xs);
+        }
+
+        .filter-tag {
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 500;
+            border-radius: var(--ds-radius-full);
+            cursor: pointer;
+            transition: all var(--ds-transition-fast);
+            border: 1px solid transparent;
+        }
+
+        .filter-tag.all {
+            background: var(--ds-surface-2);
+            color: var(--ds-text-secondary);
+        }
+
+        .filter-tag.info {
+            background: var(--ds-info-bg);
+            color: var(--ds-info);
+            border-color: var(--ds-info-border);
+        }
+
+        .filter-tag.warn {
+            background: var(--ds-warning-bg);
+            color: var(--ds-warning);
+            border-color: var(--ds-warning-border);
+        }
+
+        .filter-tag.error {
+            background: var(--ds-danger-bg);
+            color: var(--ds-danger);
+            border-color: var(--ds-danger-border);
+        }
+
+        .filter-tag.active {
+            box-shadow: 0 0 0 2px currentColor;
+        }
+    </style>
+</head>
+<body class="console-page">
+    <!-- Header -->
+    <header class="console-header">
+        <div class="console-header-left">
+            <a href="/dashboard" class="ds-btn ds-btn-ghost ds-btn-sm">
+                <i class="fas fa-arrow-left"></i> Dashboard
+            </a>
+            <div class="console-title">
+                <i class="fas fa-terminal"></i>
+                Bot Console
+            </div>
+            <div class="console-status" id="consoleStatus">
+                <span class="console-status-dot"></span>
+                <span id="statusText">Live</span>
+            </div>
+        </div>
+        <div class="console-controls">
+            <button class="ds-btn ds-btn-secondary ds-btn-sm" id="pauseBtn" onclick="togglePause()">
+                <i class="fas fa-pause" id="pauseIcon"></i>
+                <span id="pauseText">Pause</span>
+            </button>
+            <button class="ds-btn ds-btn-secondary ds-btn-sm" onclick="clearConsole()">
+                <i class="fas fa-trash"></i> Clear
+            </button>
+            <button class="ds-btn ds-btn-secondary ds-btn-sm" onclick="downloadLog()">
+                <i class="fas fa-download"></i> Export
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="console-main">
+        <div class="console-panels">
+            <!-- Main Console Window -->
+            <div class="console-window">
+                <div class="console-window-header">
+                    <div class="console-window-dots">
+                        <span class="console-dot console-dot-red"></span>
+                        <span class="console-dot console-dot-yellow"></span>
+                        <span class="console-dot console-dot-green"></span>
+                    </div>
+                    <span class="console-window-title">DarkLock@server ~ live</span>
+                    <div class="console-window-actions">
+                        <button class="ds-btn ds-btn-ghost ds-btn-sm" onclick="scrollToBottom()" title="Scroll to bottom">
+                            <i class="fas fa-arrow-down"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="console-output" id="consoleOutput">
+                    <div class="console-line">
+                        <span class="console-time">--:--:--</span>
+                        <span class="console-level info">INFO</span>
+                        <span class="console-message">Connecting to bot console...</span>
+                    </div>
+                </div>
+                <div class="console-input-wrapper">
+                    <span class="console-prompt">$</span>
+                    <input type="text" class="console-input" id="consoleInput" 
+                           placeholder="Type a command (help for available commands)"
+                           onkeypress="handleInput(event)">
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <aside class="console-sidebar">
+                <!-- Quick Stats -->
+                <div class="sidebar-card">
+                    <div class="sidebar-card-title">
+                        <i class="fas fa-chart-bar"></i>
+                        Session Stats
+                    </div>
+                    <div class="quick-stats">
+                        <div class="quick-stat">
+                            <div class="quick-stat-value" id="statLines">0</div>
+                            <div class="quick-stat-label">Lines</div>
+                        </div>
+                        <div class="quick-stat">
+                            <div class="quick-stat-value" id="statErrors">0</div>
+                            <div class="quick-stat-label">Errors</div>
+                        </div>
+                        <div class="quick-stat">
+                            <div class="quick-stat-value" id="statWarnings">0</div>
+                            <div class="quick-stat-label">Warnings</div>
+                        </div>
+                        <div class="quick-stat">
+                            <div class="quick-stat-value" id="statUptime">--</div>
+                            <div class="quick-stat-label">Uptime</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Log Level Filter -->
+                <div class="sidebar-card">
+                    <div class="sidebar-card-title">
+                        <i class="fas fa-filter"></i>
+                        Filter by Level
+                    </div>
+                    <div class="filter-tags">
+                        <span class="filter-tag all active" onclick="setFilter('all')">All</span>
+                        <span class="filter-tag info" onclick="setFilter('info')">Info</span>
+                        <span class="filter-tag warn" onclick="setFilter('warn')">Warn</span>
+                        <span class="filter-tag error" onclick="setFilter('error')">Error</span>
+                    </div>
+                </div>
+
+                <!-- Quick Commands -->
+                <div class="sidebar-card">
+                    <div class="sidebar-card-title">
+                        <i class="fas fa-bolt"></i>
+                        Quick Commands
+                    </div>
+                    <div class="quick-commands">
+                        <button class="quick-command" onclick="runCommand('status')">
+                            <i class="fas fa-heartbeat"></i> status
+                        </button>
+                        <button class="quick-command" onclick="runCommand('stats')">
+                            <i class="fas fa-chart-line"></i> stats
+                        </button>
+                        <button class="quick-command" onclick="runCommand('guilds')">
+                            <i class="fas fa-server"></i> guilds
+                        </button>
+                        <button class="quick-command" onclick="runCommand('memory')">
+                            <i class="fas fa-memory"></i> memory
+                        </button>
+                        <button class="quick-command" onclick="runCommand('help')">
+                            <i class="fas fa-question-circle"></i> help
+                        </button>
+                    </div>
+                </div>
+
+                <!-- System Info -->
+                <div class="sidebar-card">
+                    <div class="sidebar-card-title">
+                        <i class="fas fa-info-circle"></i>
+                        System
+                    </div>
+                    <div style="font-size: 12px; color: var(--ds-text-muted);">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span>Node.js</span>
+                            <span id="sysNode">--</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span>Memory</span>
+                            <span id="sysMemory">--</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>CPU</span>
+                            <span id="sysCpu">--</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <script src="/js/secure-auth.js"></script>
+    <script>
+        let isPaused = false;
+        let currentFilter = 'all';
+        let lineCount = 0;
+        let errorCount = 0;
+        let warningCount = 0;
+        let consoleLines = [];
+        let ws = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            connectWebSocket();
+            updateUptime();
+            setInterval(updateUptime, 1000);
+        });
+
+        function connectWebSocket() {
+            updateStatus('connecting');
+            
+            // Try WebSocket connection
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/console`;
+            
+            try {
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = () => {
+                    updateStatus('live');
+                    addLine('info', 'Connected to bot console');
+                };
+                
+                ws.onmessage = (event) => {
+                    if (isPaused) return;
+                    try {
+                        const data = JSON.parse(event.data);
+                        addLine(data.level || 'info', data.message || event.data);
+                    } catch {
+                        addLine('info', event.data);
+                    }
+                };
+                
+                ws.onclose = () => {
+                    updateStatus('disconnected');
+                    addLine('warn', 'Connection closed. Attempting to reconnect...');
+                    setTimeout(connectWebSocket, 5000);
+                };
+                
+                ws.onerror = () => {
+                    updateStatus('disconnected');
+                    addLine('error', 'WebSocket connection failed. Using polling mode.');
+                    startPolling();
+                };
+            } catch (e) {
+                updateStatus('disconnected');
+                addLine('error', 'Failed to connect: ' + e.message);
+                startPolling();
+            }
+        }
+
+        function startPolling() {
+            // Fallback to polling if WebSocket fails
+            setInterval(async () => {
+                if (isPaused) return;
+                try {
+                    const res = await fetch('/api/console/logs?limit=10', { credentials: 'include' });
+                    if (res.ok) {
+                        const data = await res.json();
+                        // Handle polled logs
+                    }
+                } catch (e) {
+                    // Silent fail for polling
+                }
+            }, 5000);
+        }
+
+        function updateStatus(status) {
+            const statusEl = document.getElementById('consoleStatus');
+            const statusText = document.getElementById('statusText');
+            
+            statusEl.className = 'console-status';
+            
+            switch(status) {
+                case 'live':
+                    statusText.textContent = 'Live';
+                    break;
+                case 'paused':
+                    statusEl.classList.add('paused');
+                    statusText.textContent = 'Paused';
+                    break;
+                case 'connecting':
+                    statusEl.classList.add('disconnected');
+                    statusText.textContent = 'Connecting...';
+                    break;
+                case 'disconnected':
+                    statusEl.classList.add('disconnected');
+                    statusText.textContent = 'Disconnected';
+                    break;
+            }
+        }
+
+        function addLine(level, message) {
+            const output = document.getElementById('consoleOutput');
+            const now = new Date();
+            const time = now.toTimeString().split(' ')[0];
+            
+            lineCount++;
+            if (level === 'error') errorCount++;
+            if (level === 'warn') warningCount++;
+            
+            const line = { time, level, message };
+            consoleLines.push(line);
+            
+            // Keep only last 1000 lines
+            if (consoleLines.length > 1000) {
+                consoleLines.shift();
+            }
+            
+            const lineEl = document.createElement('div');
+            lineEl.className = 'console-line';
+            lineEl.dataset.level = level;
+            lineEl.innerHTML = `
+                <span class="console-time">${time}</span>
+                <span class="console-level ${level}">${level.toUpperCase()}</span>
+                <span class="console-message ${level}">${escapeHtml(message)}</span>
+            `;
+            
+            // Apply filter
+            if (currentFilter !== 'all' && level !== currentFilter) {
+                lineEl.style.display = 'none';
+            }
+            
+            output.appendChild(lineEl);
+            
+            // Auto-scroll if near bottom
+            if (output.scrollHeight - output.scrollTop - output.clientHeight < 100) {
+                output.scrollTop = output.scrollHeight;
+            }
+            
+            updateStats();
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;');
+        }
+
+        function updateStats() {
+            document.getElementById('statLines').textContent = lineCount;
+            document.getElementById('statErrors').textContent = errorCount;
+            document.getElementById('statWarnings').textContent = warningCount;
+        }
+
+        let startTime = Date.now();
+        function updateUptime() {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const hours = Math.floor(elapsed / 3600);
+            const mins = Math.floor((elapsed % 3600) / 60);
+            const secs = elapsed % 60;
+            
+            let uptime = '';
+            if (hours > 0) uptime += hours + 'h ';
+            if (mins > 0 || hours > 0) uptime += mins + 'm ';
+            uptime += secs + 's';
+            
+            document.getElementById('statUptime').textContent = uptime;
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            const icon = document.getElementById('pauseIcon');
+            const text = document.getElementById('pauseText');
+            
+            if (isPaused) {
+                icon.className = 'fas fa-play';
+                text.textContent = 'Resume';
+                updateStatus('paused');
+            } else {
+                icon.className = 'fas fa-pause';
+                text.textContent = 'Pause';
+                updateStatus('live');
+            }
+        }
+
+        function clearConsole() {
+            document.getElementById('consoleOutput').innerHTML = '';
+            consoleLines = [];
+            lineCount = 0;
+            errorCount = 0;
+            warningCount = 0;
+            updateStats();
+            addLine('info', 'Console cleared');
+        }
+
+        function downloadLog() {
+            const content = consoleLines.map(l => 
+                `[${l.time}] [${l.level.toUpperCase()}] ${l.message}`
+            ).join('\n');
+            
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `console-${new Date().toISOString().slice(0,10)}.log`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function scrollToBottom() {
+            const output = document.getElementById('consoleOutput');
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            
+            // Update UI
+            document.querySelectorAll('.filter-tag').forEach(tag => {
+                tag.classList.toggle('active', tag.classList.contains(filter) || (filter === 'all' && tag.classList.contains('all')));
+            });
+            
+            // Apply filter to existing lines
+            document.querySelectorAll('.console-line').forEach(line => {
+                if (filter === 'all') {
+                    line.style.display = 'flex';
+                } else {
+                    line.style.display = line.dataset.level === filter ? 'flex' : 'none';
+                }
+            });
+        }
+
+        function handleInput(event) {
+            if (event.key === 'Enter') {
+                const input = document.getElementById('consoleInput');
+                const command = input.value.trim();
+                
+                if (command) {
+                    runCommand(command);
+                    input.value = '';
+                }
+            }
+        }
+
+        function runCommand(command) {
+            addLine('info', `$ ${command}`);
+            
+            // Handle local commands
+            switch(command.toLowerCase()) {
+                case 'help':
+                    addLine('info', 'Available commands: status, stats, guilds, memory, clear, help');
+                    break;
+                case 'clear':
+                    clearConsole();
+                    break;
+                default:
+                    // Send to server
+                    fetch('/api/console/command', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ command })
+                    }).then(res => res.json())
+                      .then(data => {
+                          if (data.output) {
+                              data.output.split('\n').forEach(line => {
+                                  addLine('info', line);
+                              });
+                          }
+                      })
+                      .catch(err => {
+                          addLine('error', 'Command failed: ' + err.message);
+                      });
+            }
+        }
+
+        // Demo data for visual preview
+        setTimeout(() => {
+            addLine('success', 'DarkLock v2.5.0 initialized');
+            addLine('info', 'Loaded 47 commands across 8 categories');
+            addLine('info', 'Connected to 5 guilds, serving 2,847 members');
+            addLine('debug', 'WebSocket heartbeat: 45ms latency');
+        }, 500);
+
+        setTimeout(() => {
+            addLine('info', '[Command] /help executed by user#1234 in General');
+            addLine('warn', '[AntiSpam] Rate limit warning for user#5678');
+        }, 2000);
+    </script>
+</body>
+</html>

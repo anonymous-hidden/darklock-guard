@@ -1,0 +1,214 @@
+/**
+ * Easter Theme
+ * Active: Apr 1 - Apr 10
+ */
+
+:root[data-theme="easter"] {
+    /* Pastel Easter colors */
+    --cyber-primary: #1a1625;
+    --cyber-secondary: #2d2640;
+    --cyber-tertiary: #3d3555;
+    --cyber-accent: #c084fc;
+    --cyber-accent-hover: #d8b4fe;
+    --cyber-accent-rgb: 192, 132, 252;
+    
+    /* Easter themed colors */
+    --easter-purple: #c084fc;
+    --easter-pink: #f472b6;
+    --easter-blue: #60a5fa;
+    --easter-yellow: #fde047;
+    --easter-green: #86efac;
+    --easter-white: #faf5ff;
+    
+    --text-primary: var(--easter-white);
+    --text-secondary: #e9d5ff;
+    
+    /* Pastel gradient */
+    --pastel-gradient: linear-gradient(135deg, var(--easter-purple), var(--easter-pink), var(--easter-blue));
+}
+
+/* Soft pastel glow */
+[data-theme="easter"] .sidebar,
+[data-theme="easter"] .stat-card,
+[data-theme="easter"] .activity-card {
+    border: 1px solid rgba(192, 132, 252, 0.3);
+    box-shadow: 0 0 20px rgba(244, 114, 182, 0.1);
+}
+
+[data-theme="easter"] .sidebar-header h2,
+[data-theme="easter"] .stat-value {
+    background: var(--pastel-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Bunny icon in header */
+[data-theme="easter"] .sidebar-header::before {
+    content: '🐰';
+    font-size: 20px;
+    margin-right: 8px;
+}
+
+/* Pastel rainbow navigation */
+[data-theme="easter"] .nav-item:nth-child(5n+1):hover,
+[data-theme="easter"] .nav-item:nth-child(5n+1).active {
+    background: linear-gradient(90deg, rgba(192, 132, 252, 0.2), transparent);
+    border-left-color: var(--easter-purple);
+}
+
+[data-theme="easter"] .nav-item:nth-child(5n+2):hover,
+[data-theme="easter"] .nav-item:nth-child(5n+2).active {
+    background: linear-gradient(90deg, rgba(244, 114, 182, 0.2), transparent);
+    border-left-color: var(--easter-pink);
+}
+
+[data-theme="easter"] .nav-item:nth-child(5n+3):hover,
+[data-theme="easter"] .nav-item:nth-child(5n+3).active {
+    background: linear-gradient(90deg, rgba(96, 165, 250, 0.2), transparent);
+    border-left-color: var(--easter-blue);
+}
+
+[data-theme="easter"] .nav-item:nth-child(5n+4):hover,
+[data-theme="easter"] .nav-item:nth-child(5n+4).active {
+    background: linear-gradient(90deg, rgba(253, 224, 71, 0.2), transparent);
+    border-left-color: var(--easter-yellow);
+}
+
+[data-theme="easter"] .nav-item:nth-child(5n):hover,
+[data-theme="easter"] .nav-item:nth-child(5n).active {
+    background: linear-gradient(90deg, rgba(134, 239, 172, 0.2), transparent);
+    border-left-color: var(--easter-green);
+}
+
+/* Stat cards with Easter egg colors */
+[data-theme="easter"] .stat-card:nth-child(1) {
+    border-top: 3px solid var(--easter-purple);
+}
+[data-theme="easter"] .stat-card:nth-child(2) {
+    border-top: 3px solid var(--easter-pink);
+}
+[data-theme="easter"] .stat-card:nth-child(3) {
+    border-top: 3px solid var(--easter-blue);
+}
+[data-theme="easter"] .stat-card:nth-child(4) {
+    border-top: 3px solid var(--easter-yellow);
+}
+
+/* Buttons */
+[data-theme="easter"] .btn-primary,
+[data-theme="easter"] .btn-settings.btn-primary {
+    background: var(--pastel-gradient);
+    border: none;
+}
+
+[data-theme="easter"] .btn-primary:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 0 20px rgba(192, 132, 252, 0.4);
+}
+
+/* Easter egg decorations */
+[data-theme="easter"] .dashboard-content::before {
+    content: '🥚';
+    position: fixed;
+    top: 30px;
+    right: 100px;
+    font-size: 22px;
+    opacity: 0.35;
+    animation: wobble 2s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+[data-theme="easter"] .dashboard-content::after {
+    content: '🐣';
+    position: fixed;
+    top: 80px;
+    right: 180px;
+    font-size: 18px;
+    opacity: 0.3;
+    animation: wobble 2.5s ease-in-out infinite;
+    animation-delay: -1s;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes wobble {
+    0%, 100% {
+        transform: rotate(-3deg) translateY(0);
+    }
+    25% {
+        transform: rotate(3deg) translateY(-3px);
+    }
+    50% {
+        transform: rotate(-3deg) translateY(0);
+    }
+    75% {
+        transform: rotate(3deg) translateY(-3px);
+    }
+}
+
+/* Badges */
+[data-theme="easter"] .badge-success,
+[data-theme="easter"] .tag-success {
+    background: var(--easter-green);
+    color: #1a1625;
+}
+
+[data-theme="easter"] .badge-warning,
+[data-theme="easter"] .tag-warning {
+    background: var(--easter-yellow);
+    color: #1a1625;
+}
+
+[data-theme="easter"] .badge-danger,
+[data-theme="easter"] .tag-danger {
+    background: var(--easter-pink);
+}
+
+/* Form inputs */
+[data-theme="easter"] input:focus,
+[data-theme="easter"] select:focus,
+[data-theme="easter"] textarea:focus {
+    border-color: var(--easter-purple);
+    box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.2);
+}
+
+/* Table rows */
+[data-theme="easter"] tr:hover {
+    background: rgba(192, 132, 252, 0.1);
+}
+
+/* Modal headers */
+[data-theme="easter"] .modal-header,
+[data-theme="easter"] .settings-header {
+    background: linear-gradient(135deg, rgba(192, 132, 252, 0.2), rgba(244, 114, 182, 0.2));
+    border-bottom: 1px solid var(--easter-purple);
+}
+
+/* Scrollbar */
+[data-theme="easter"]::-webkit-scrollbar-thumb {
+    background: var(--pastel-gradient);
+}
+
+/* Flower decoration */
+[data-theme="easter"] .sidebar::after {
+    content: '🌸';
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    font-size: 18px;
+    opacity: 0.25;
+    pointer-events: none;
+}
+
+/* Easter basket */
+[data-theme="easter"] body::after {
+    content: '🧺';
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    font-size: 24px;
+    opacity: 0.15;
+    pointer-events: none;
+}

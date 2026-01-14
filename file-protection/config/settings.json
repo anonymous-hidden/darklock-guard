@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "mode": "auto-revert",
+  "watcherEnabled": true,
+  "debounceDelay": 100,
+  "validateOnStartup": true,
+  "logRetentionDays": 30,
+  "backupRetentionDays": 7,
+  "notifications": {
+    "console": true,
+    "webhook": false,
+    "webhookUrl": ""
+  }
+}

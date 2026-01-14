@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status - DarkLock</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body x-data="statusPage()" x-init="init()">
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-shield-alt"></i>
+                <span>DarkLock</span>
+            </div>
+            <div class="nav-menu">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/landing#features" class="nav-link">Features</a>
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/landing#pricing" class="nav-link">Pricing</a>
+                <a href="/docs" class="nav-link">Docs</a>
+                <a href="/landing#support" class="nav-link">Support</a>
+            </div>
+            <div class="nav-actions">
+                <a href="/invite" class="btn btn-outline">
+                    <i class="fas fa-plus"></i>
+                    Invite Bot
+                </a>
+                <a href="/dashboard" class="btn btn-primary">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="status-container">
+        <div class="status-header">
+            <h1>System Status</h1>
+            <p>Real-time status and performance monitoring for DarkLock</p>
+            <div class="overall-status" :class="overallStatus.class">
+                <i :class="overallStatus.icon"></i>
+                <span x-text="overallStatus.text"></span>
+            </div>
+        </div>
+
+        <section class="status-section">
+            <h2>Current Status</h2>
+            <div class="services-grid">
+                <template x-for="service in services" :key="service.name">
+                    <div class="service-card" :class="service.status">
+                        <div class="service-header">
+                            <div class="service-info">
+                                <h3 x-text="service.name"></h3>
+                                <p x-text="service.description"></p>
+                            </div>
+                            <div class="service-status" :class="service.status">
+                                <i :class="service.icon"></i>
+                                <span x-text="service.statusText"></span>
+                            </div>
+                        </div>
+                        <div class="service-metrics">
+                            <div class="metric">
+                                <span class="metric-label">Response Time</span>
+                                <span class="metric-value" x-text="service.responseTime"></span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Uptime</span>
+                                <span class="metric-value" x-text="service.uptime"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </section>
+
+        <section class="status-section">
+            <h2>Performance Metrics</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Response Time</h3>
+                        <span class="metric-time">Last 24h</span>
+                    </div>
+                    <div class="metric-chart">
+                        <canvas id="responseChart" width="400" height="200"></canvas>
+                    </div>
+                    <div class="metric-stats">
+                        <div class="stat">
+                            <span class="stat-label">Average</span>
+                            <span class="stat-value" x-text="metrics.responseTime.average"></span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">95th Percentile</span>
+                            <span class="stat-value" x-text="metrics.responseTime.p95"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Uptime</h3>
+                        <span class="metric-time">Last 90 days</span>
+                    </div>
+                    <div class="uptime-calendar">
+                        <template x-for="day in uptimeHistory" :key="day.date">
+                            <div class="uptime-day" :class="day.status" :title="`${day.date}: ${day.uptime}% uptime`"></div>
+                        </template>
+                    </div>
+                    <div class="metric-stats">
+                        <div class="stat">
+                            <span class="stat-label">Current Month</span>
+                            <span class="stat-value" x-text="metrics.uptime.currentMonth"></span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Last 90 Days</span>
+                            <span class="stat-value" x-text="metrics.uptime.last90Days"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Threats Blocked</h3>
+                        <span class="metric-time">Real-time</span>
+                    </div>
+                    <div class="threats-stats">
+                        <div class="threat-category" x-for="cat in ['raids','spam','phishing','other']">
+                            <div class="threat-info">
+                                <i class="fas fa-shield-alt"></i>
+                                <span x-text="cat"></span>
+                            </div>
+                            <span class="threat-count" x-text="metrics.threats[cat]"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="status-section">
+            <h2>Recent Incidents</h2>
+            <div class="incidents-timeline" x-show="incidents.length">
+                <template x-for="incident in incidents" :key="incident.id">
+                    <div class="incident-item" :class="incident.severity">
+                        <div class="incident-icon"><i :class="incident.icon"></i></div>
+                        <div class="incident-content">
+                            <div class="incident-header">
+                                <h4 x-text="incident.title"></h4>
+                                <span class="incident-time" x-text="incident.time"></span>
+                            </div>
+                            <p x-text="incident.description"></p>
+                            <div class="incident-status" :class="incident.status">
+                                <span x-text="incident.statusText"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <div class="no-incidents" x-show="!incidents.length">
+                <i class="fas fa-check-circle"></i>
+                <h3>No Recent Incidents</h3>
+                <p>All systems operating normally.</p>
+            </div>
+        </section>
+
+        <section class="status-section">
+            <h2>Scheduled Maintenance</h2>
+            <div class="maintenance-schedule" x-show="scheduledMaintenance.length">
+                <template x-for="m in scheduledMaintenance" :key="m.id">
+                    <div class="maintenance-item">
+                        <div class="maintenance-date">
+                            <div class="date-day" x-text="m.day"></div>
+                            <div class="date-month" x-text="m.month"></div>
+                        </div>
+                        <div class="maintenance-info">
+                            <h4 x-text="m.title"></h4>
+                            <p x-text="m.description"></p>
+                            <div class="maintenance-details">
+                                <span class="maintenance-duration"><i class="fas fa-clock"></i><span x-text="m.duration"></span></span>
+                                <span class="maintenance-impact" :class="m.impact"><i class="fas fa-info-circle"></i><span x-text="m.impactText"></span></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <div class="no-maintenance" x-show="!scheduledMaintenance.length">
+                <i class="fas fa-calendar-check"></i>
+                <h3>No Scheduled Maintenance</h3>
+                <p>No maintenance currently planned.</p>
+            </div>
+        </section>
+
+        <section class="status-section">
+            <h2>Stay Updated</h2>
+            <div class="update-options">
+                <div class="update-card">
+                    <div class="update-icon"><i class="fab fa-discord"></i></div>
+                    <h3>Discord Notifications</h3>
+                    <p>Get real-time status updates in our server.</p>
+                    <a href="/invite" class="btn btn-outline">Join Server</a>
+                </div>
+                <div class="update-card">
+                    <div class="update-icon"><i class="fas fa-rss"></i></div>
+                    <h3>RSS Feed</h3>
+                    <p>Subscribe for automated status updates.</p>
+                    <a href="#" class="btn btn-outline">Get RSS Feed</a>
+                </div>
+                <div class="update-card">
+                    <div class="update-icon"><i class="fab fa-twitter"></i></div>
+                    <h3>Twitter Updates</h3>
+                    <p>Follow us for incident notices.</p>
+                    <a href="#" class="btn btn-outline">Follow Us</a>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="/js/secure-auth.js"></script>
+<script>
+        function statusPage(){
+            return {
+                overallStatus:{class:'degraded',icon:'fas fa-circle-notch fa-spin',text:'Loading Status...'},
+                services:[],
+                metrics:{responseTime:{average:'—',p95:'—'},uptime:{currentMonth:'—',last90Days:'—'},threats:{raids:'—',spam:'—',phishing:'—',other:'—'}},
+                uptimeHistory:generateUptimeHistory(),
+                incidents:[],
+                scheduledMaintenance:[],
+                async init(){ await this.loadStatus(); },
+                async loadStatus(){
+                    try {
+                        const res = await fetch('/api/status');
+                        if(!res.ok) throw new Error('Status fetch failed');
+                        const data = await res.json();
+                        // Overall
+                        this.overallStatus.class = data.overall === 'operational' ? 'operational' : 'degraded';
+                        this.overallStatus.icon = data.overall === 'operational' ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle';
+                        this.overallStatus.text = data.overall === 'operational' ? 'All Systems Operational' : 'Some Systems Degraded';
+                        // Services
+                        this.services = data.services || [];
+                        // Metrics threats map
+                        if(data.metrics?.threats){
+                            this.metrics.threats.raids = data.metrics.threats.total24h;
+                            this.metrics.threats.spam = data.metrics.threats.total24h - data.metrics.threats.high24h;
+                            this.metrics.threats.phishing = data.metrics.threats.high24h;
+                            this.metrics.threats.other = 0;
+                        }
+                        // Incidents
+                        this.incidents = data.incidents || [];
+                        this.scheduledMaintenance = data.scheduledMaintenance || [];
+                    } catch (e) {
+                        this.overallStatus.class='down';
+                        this.overallStatus.icon='fas fa-times-circle';
+                        this.overallStatus.text='Status Unavailable';
+                    }
+                }
+            }
+        }
+        function generateUptimeHistory(){const h=[];const t=new Date();for(let i=89;i>=0;i--){const d=new Date(t);d.setDate(d.getDate()-i);const r=Math.random();let s='excellent';if(r<0.02)s='poor';else if(r<0.05)s='fair';else if(r<0.1)s='good';h.push({date:d.toISOString().split('T')[0],status:s,uptime:s==='excellent'?'100':s==='good'?'99.5':s==='fair'?'98.2':'95.8'});}return h;}
+        document.addEventListener('DOMContentLoaded',()=>{const ctx=document.getElementById('responseChart');if(ctx){new Chart(ctx,{type:'line',data:{labels:Array.from({length:24},(_,i)=>`${i}:00`),datasets:[{label:'Response Time (ms)',data:[82,75,89,67,92,78,85,90,76,88,82,79,86,91,77,83,89,74,87,93,80,85,78,81],borderColor:'#00ffdd',backgroundColor:'rgba(0,255,221,0.1)',borderWidth:2,fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(180,188,212,0.1)'},ticks:{color:'#b4bcd4'}},y:{grid:{color:'rgba(180,188,212,0.1)'},ticks:{color:'#b4bcd4'}}}}});}});
+    </script>
+</body>
+</html>

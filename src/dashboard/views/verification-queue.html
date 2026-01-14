@@ -1,0 +1,524 @@
+<!-- Verification Queue View -->
+<div class="verification-queue-container">
+  <!-- Setup Warning Banner -->
+  <div class="setup-warning-banner" id="setup-warning" style="display: none;">
+    <div class="warning-icon">⚠️</div>
+    <div class="warning-content">
+      <h4>Verification Setup Incomplete</h4>
+      <p id="setup-issues">Some required settings are missing:</p>
+      <ul id="setup-issues-list"></ul>
+    </div>
+    <button class="btn btn-primary" onclick="switchView('settings')">Go to Settings</button>
+  </div>
+
+  <div class="queue-header">
+    <div class="queue-title-section">
+      <h2>🛡️ <span data-i18n="queue.empty.missing_setup">Verification Queue</span></h2>
+      <span class="queue-count-badge" id="queue-count">0</span>
+    </div>
+    <div class="queue-actions">
+      <button class="btn btn-secondary" id="refresh-queue" data-i18n="common.refresh"><i class="icon-refresh"></i> Refresh</button>
+      <button class="btn btn-primary" id="batch-verify-selected" disabled data-i18n="queue.batch.verify"><i class="icon-check"></i> Verify Selected</button>
+      <button class="btn btn-warning" id="batch-skip-selected" disabled data-i18n="queue.batch.skip"><i class="icon-forward"></i> Skip Selected</button>
+      <button class="btn btn-danger" id="batch-kick-selected" disabled data-i18n="queue.batch.kick"><i class="icon-ban"></i> Kick Selected</button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="queue-filters">
+    <input type="text" class="filter-input" id="search-username" placeholder="🔍" data-i18n-placeholder="queue.filter.search">
+    
+    <select class="filter-select" id="filter-status">
+      <option value="all">All Status</option>
+      <option value="pending" selected data-i18n="verification.status.pending">Pending</option>
+      <option value="awaiting_approval" data-i18n="verification.status.awaiting_approval">Awaiting Approval</option>
+    </select>
+
+    <select class="filter-select" id="filter-risk">
+      <option value="all">All Risk Levels</option>
+      <option value="critical" data-i18n="queue.risk.critical">Critical</option>
+      <option value="high" data-i18n="queue.risk.high">High</option>
+      <option value="medium" data-i18n="queue.risk.medium">Medium</option>
+      <option value="low" data-i18n="queue.risk.low">Low</option>
+    </select>
+
+    <button class="btn btn-ghost" id="clear-filters" data-i18n="common.clear_filters">Clear Filters</button>
+  </div>
+
+  <!-- Queue Table -->
+  <div class="queue-table-wrapper">
+    <table class="queue-table">
+      <thead>
+        <tr>
+          <th class="checkbox-col">
+            <input type="checkbox" id="select-all-queue">
+          </th>
+          <th data-i18n="queue.header.username">User</th>
+          <th data-i18n="queue.header.account_age">Account Age</th>
+          <th data-i18n="queue.header.joined">Join Time</th>
+          <th data-i18n="queue.header.risk">Risk</th>
+          <th data-i18n="queue.header.status">Status</th>
+          <th data-i18n="queue.header.notes">Notes</th>
+          <th data-i18n="queue.header.actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="queue-tbody">
+        <!-- Populated by JS -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="queue-pagination">
+    <button class="btn btn-ghost" id="prev-page" disabled data-i18n="queue.pagination.prev">← Previous</button>
+    <span id="page-info" data-i18n="queue.pagination.page" data-i18n-var-page="1">Page 1</span>
+    <button class="btn btn-ghost" id="next-page" data-i18n="queue.pagination.next">Next →</button>
+  </div>
+
+  <!-- Empty State -->
+  <div class="queue-empty-state" id="queue-empty" style="display: none;">
+    <div class="empty-icon">✅</div>
+    <h3 data-i18n="queue.empty.no_results">No Pending Verifications</h3>
+    <p data-i18n="queue.empty.processed">All users have been processed.</p>
+  </div>
+
+  <!-- Disabled State -->
+  <div class="queue-disabled-state" id="queue-disabled" style="display: none;">
+    <div class="disabled-icon">🔒</div>
+    <h3 data-i18n="queue.empty.disabled">Verification Disabled</h3>
+    <p data-i18n="queue.empty.disabled_hint">Enable verification in settings to use this feature.</p>
+    <button class="btn btn-primary" onclick="switchView('settings')">Go to Settings</button>
+  </div>
+</div>
+
+<!-- Row Template -->
+<template id="queue-row-template">
+  <tr class="queue-row">
+    <td class="checkbox-col">
+      <input type="checkbox" class="queue-checkbox">
+    </td>
+    <td class="user-col">
+      <div class="user-info">
+        <img class="user-avatar" src="" alt="">
+        <div class="user-details">
+          <span class="user-name"></span>
+          <span class="user-id"></span>
+        </div>
+        <div class="user-flags"></div>
+      </div>
+    </td>
+    <td class="account-age-col">
+      <span class="account-age"></span>
+    </td>
+    <td class="join-time-col">
+      <span class="join-time"></span>
+    </td>
+    <td class="risk-col">
+      <div class="risk-badge">
+        <span class="risk-score"></span>
+        <span class="risk-level"></span>
+      </div>
+    </td>
+    <td class="status-col">
+      <span class="status-badge"></span>
+    </td>
+    <td class="notes-col">
+      <button class="btn btn-sm note-btn" type="button" data-i18n="queue.modal.notes.append">Add Note</button>
+    </td>
+    <td class="actions-col">
+      <button class="btn btn-sm btn-success queue-action action-verify" data-action="verify">✓ Verify</button>
+      <button class="btn btn-sm btn-warning queue-action action-skip" data-action="skip">⏭ Skip</button>
+      <button class="btn btn-sm btn-danger queue-action action-kick" data-action="kick">🚫 Kick</button>
+      <button class="btn btn-sm btn-primary queue-action queue-approve action-approve" data-action="approve" style="display:none;">✅ Approve</button>
+      <button class="btn btn-sm btn-danger queue-action queue-reject action-reject" data-action="reject" style="display:none;">❌ Reject</button>
+    </td>
+  </tr>
+</template>
+
+<!-- Notes Modal -->
+<div id="note-modal" class="modal" style="display:none;">
+  <div class="modal-content note-modal-content">
+    <div class="modal-header">
+      <h3 data-i18n="queue.modal.notes.title">Verification Notes</h3>
+      <button class="close-note-modal" type="button">✖</button>
+    </div>
+    <div class="modal-body">
+      <div class="note-user-section">
+        <img id="note-user-avatar" class="note-avatar" src="" alt="">
+        <div class="note-user-meta">
+          <span id="note-username" class="note-username"></span>
+          <span id="note-user-id" class="note-user-id"></span>
+        </div>
+      </div>
+      <div id="ultra-note-hint" class="ultra-hint" style="display:none;">Awaiting Approval — add notes before approving.</div>
+      <div class="existing-notes-wrapper">
+        <label data-i18n="queue.modal.notes.existing">Existing Notes</label>
+        <pre id="existing-notes" class="existing-notes"></pre>
+      </div>
+      <div class="new-note-wrapper">
+        <label for="note-input" data-i18n="queue.modal.notes.placeholder">New Note</label>
+        <textarea id="note-input" class="note-input" rows="4" placeholder="Enter note text..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="append-note-btn" class="btn btn-primary" type="button" data-i18n="queue.modal.notes.append">Append</button>
+      <button id="replace-note-btn" class="btn btn-danger" type="button" data-i18n="queue.modal.notes.replace">Replace</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.verification-queue-container {
+  padding: 2rem;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.queue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.queue-title-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.queue-count-badge {
+  background: var(--color-primary);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.queue-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.queue-filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.filter-input, .filter-select {
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-color);
+  color: var(--text-color);
+  min-width: 200px;
+}
+
+.queue-table-wrapper {
+  overflow-x: auto;
+  border-radius: 12px;
+  background: var(--surface-color);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.queue-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.queue-table th {
+  background: var(--surface-hover);
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.queue-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.queue-row:hover {
+  background: var(--surface-hover);
+}
+
+.checkbox-col {
+  width: 40px;
+  text-align: center;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.user-id {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.user-flags {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.flag-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background: var(--color-warning);
+  color: white;
+}
+
+.risk-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.risk-score {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.risk-level {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.risk-critical { color: #dc2626; }
+.risk-high { color: #f97316; }
+.risk-medium { color: #eab308; }
+.risk-low { color: #10b981; }
+
+.status-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-awaiting_approval {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+.status-captcha_required {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.notes-col {
+  min-width: 120px;
+}
+
+.note-btn {
+  background: linear-gradient(135deg,#6366f1 0%, #4f46e5 100%);
+  color:#fff;
+  border:none;
+  padding:0.4rem 0.6rem;
+  border-radius:6px;
+  font-size:0.75rem;
+  cursor:pointer;
+}
+
+.note-btn.has-notes {
+  background: linear-gradient(135deg,#2563eb 0%, #1d4ed8 100%);
+}
+
+.modal-content.note-modal-content {
+  background: var(--surface-color,#1e1e2e);
+  border-radius:12px;
+  padding:1rem 1.5rem;
+  max-width:600px;
+  margin:5vh auto;
+  box-shadow:0 8px 30px rgba(0,0,0,0.4);
+  color:var(--text-color,#fff);
+}
+
+#note-modal {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.6);
+  z-index:2000;
+  display:none;
+}
+
+.note-user-section { display:flex; gap:1rem; align-items:center; margin-bottom:0.75rem; }
+.note-avatar { width:48px; height:48px; border-radius:50%; border:2px solid var(--border-color,#444); }
+.existing-notes { background:#0f172a; color:#e2e8f0; padding:0.75rem; border-radius:8px; max-height:160px; overflow:auto; font-size:0.75rem; }
+.existing-notes-wrapper { margin-bottom:0.75rem; }
+.new-note-wrapper { margin-bottom:0.75rem; }
+.note-input { width:100%; background:#0f172a; color:#fff; border:1px solid #334155; border-radius:8px; padding:0.5rem; }
+.modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; }
+.modal-footer { display:flex; gap:0.5rem; justify-content:flex-end; }
+.ultra-hint { background:#1e3a8a; color:#fff; padding:0.5rem 0.75rem; border-radius:6px; font-size:0.75rem; margin-bottom:0.75rem; }
+
+.actions-col {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.queue-action {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+  font-size: 0.85rem;
+}
+
+.action-verify {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+}
+
+.action-verify:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
+}
+
+.action-skip {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+.action-skip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.4);
+}
+
+.action-kick {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}
+
+.action-kick:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
+}
+
+.action-approve {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+  font-weight: 700;
+}
+
+.action-approve:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+}
+
+.action-reject {
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+}
+
+.action-reject:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(220, 38, 38, 0.4);
+}
+
+.setup-warning-banner {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  box-shadow: 0 4px 6px rgba(245, 158, 11, 0.1);
+}
+
+.warning-icon {
+  font-size: 3rem;
+  flex-shrink: 0;
+}
+
+.warning-content {
+  flex: 1;
+}
+
+.warning-content h4 {
+  margin: 0 0 0.5rem 0;
+  color: #92400e;
+  font-size: 1.2rem;
+}
+
+.warning-content p {
+  margin: 0 0 0.5rem 0;
+  color: #78350f;
+}
+
+.warning-content ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #78350f;
+}
+
+.queue-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.queue-empty-state, .queue-disabled-state {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.empty-icon, .disabled-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .queue-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .queue-actions {
+    flex-wrap: wrap;
+  }
+}
+</style>

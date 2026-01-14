@@ -1,0 +1,186 @@
+/* ⚫ OLED Black Theme */
+/* Pure black, minimal, battery saving */
+
+:root {
+    --theme-name: 'OLED Black';
+    --theme-emoji: '⚫';
+    
+    /* ============================================== */
+    /* UNIVERSAL VARIABLES (works with all stylesheets) */
+    /* ============================================== */
+    
+    /* Primary/Accent Colors - ALL naming conventions */
+    --color-primary: #ffffff !important;
+    --color-primary-light: #f0f0f0 !important;
+    --color-primary-dark: #cccccc !important;
+    --color-secondary: #888888 !important;
+    --color-accent: #555555 !important;
+    --accent-primary: #ffffff !important;
+    --accent-secondary: #888888 !important;
+    --accent-tertiary: #555555 !important;
+    --accent-gradient: linear-gradient(135deg, #1a1a1a 0%, #000000 100%) !important;
+    
+    /* Background Colors - ALL naming conventions */
+    --bg-body: #000000 !important;
+    --bg-primary: #000000 !important;
+    --bg-secondary: #0a0a0a !important;
+    --bg-tertiary: #141414 !important;
+    --bg-surface: #0a0a0a !important;
+    --bg-surface-hover: #141414 !important;
+    --bg-surface-elevated: #141414 !important;
+    --bg-card: rgba(10, 10, 10, 0.9) !important;
+    --bg-card-solid: #0a0a0a !important;
+    --bg-card-hover: rgba(20, 20, 20, 0.95) !important;
+    --bg-gradient: radial-gradient(ellipse at top, #0a0a0a 0%, #000000 100%) !important;
+    --bg-sidebar: linear-gradient(180deg, #000000 0%, #0a0a0a 100%) !important;
+    
+    /* Text Colors - ALL naming conventions */
+    --color-text: #ffffff !important;
+    --color-text-secondary: #c0c0c0 !important;
+    --color-muted: #606060 !important;
+    --text-primary: #ffffff !important;
+    --text-secondary: #c0c0c0 !important;
+    --text-muted: #606060 !important;
+    
+    /* Status Colors */
+    --color-success: #57F287 !important;
+    --color-warning: #FEE75C !important;
+    --color-danger: #ED4245 !important;
+    --color-info: #5865F2 !important;
+    --success: #57F287 !important;
+    --warning: #FEE75C !important;
+    --danger: #ED4245 !important;
+    --error: #ED4245 !important;
+    --info: #5865F2 !important;
+    
+    /* Border & Shadow - ALL naming conventions */
+    --color-border: rgba(255, 255, 255, 0.1) !important;
+    --color-border-light: rgba(255, 255, 255, 0.15) !important;
+    --border-color: rgba(255, 255, 255, 0.1) !important;
+    --border-color-light: rgba(255, 255, 255, 0.15) !important;
+    --border-glow: rgba(255, 255, 255, 0.2) !important;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.5) !important;
+    --shadow-md: 0 4px 15px rgba(0, 0, 0, 0.8) !important;
+    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.9) !important;
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 1) !important;
+    --shadow-glow: 0 0 30px rgba(255, 255, 255, 0.1) !important;
+    --shadow-glow-primary: 0 0 20px rgba(255, 255, 255, 0.15) !important;
+    --shadow-glow-accent: 0 0 20px rgba(136, 136, 136, 0.2) !important;
+    
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-pill: 9999px;
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.3s ease;
+    --transition: 0.25s ease;
+    --transition-base: 0.25s ease;
+}
+
+.theme-oled-black body {
+    background-color: #000000 !important;
+}
+
+.theme-oled-black .admin-header,
+.theme-oled-black .dashboard-header {
+    background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%) !important;
+    border-bottom: 1px solid #333;
+}
+
+.theme-oled-black .stat-card,
+.theme-oled-black .card {
+    background: #0a0a0a !important;
+    border: 1px solid #222 !important;
+    box-shadow: none !important;
+}
+
+.theme-oled-black .tab-btn.active {
+    color: #ffffff !important;
+    border-bottom-color: #ffffff !important;
+}
+
+.theme-oled-black .tab-btn {
+    color: #666;
+}
+
+/* Sidebar */
+.theme-oled-black .sidebar,
+.theme-oled-black .nav-sidebar {
+    background: #000000 !important;
+    border-right: 1px solid #222;
+}
+
+/* Inputs */
+.theme-oled-black input,
+.theme-oled-black select,
+.theme-oled-black textarea {
+    background: #0a0a0a !important;
+    border-color: #333 !important;
+    color: #fff !important;
+}
+
+/* Tables */
+.theme-oled-black table {
+    background: #000000 !important;
+}
+
+.theme-oled-black th {
+    background: #0a0a0a !important;
+    border-color: #222 !important;
+}
+
+.theme-oled-black td {
+    background: #000000 !important;
+    border-color: #222 !important;
+}
+
+.theme-oled-black tr:hover td {
+    background: #0a0a0a !important;
+}
+
+/* Minimal buttons */
+.theme-oled-black .btn-primary,
+.theme-oled-black .btn-small {
+    background: #1a1a1a !important;
+    border: 1px solid #333 !important;
+    color: #fff !important;
+}
+
+.theme-oled-black .btn-primary:hover,
+.theme-oled-black .btn-small:hover {
+    background: #2a2a2a !important;
+    border-color: #444 !important;
+}
+
+/* No theme effects */
+.theme-oled-black .theme-effects-container {
+    display: none;
+}
+
+/* Clean links */
+.theme-oled-black a:not(.btn) {
+    color: #aaa;
+}
+
+.theme-oled-black a:not(.btn):hover {
+    color: #fff;
+}
+
+/* Scrollbar */
+.theme-oled-black ::-webkit-scrollbar {
+    width: 8px;
+    background: #000;
+}
+
+.theme-oled-black ::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
+
+.theme-oled-black ::-webkit-scrollbar-thumb:hover {
+    background: #444;
+}

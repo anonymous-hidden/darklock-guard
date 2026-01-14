@@ -1,0 +1,221 @@
+/* Update Notification Modal Styles */
+
+.update-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 60px;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.update-modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: none;
+}
+
+.update-modal { pointer-events: auto; z-index: 10001; }
+
+.update-modal {
+    background: linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 100%);
+    border: 2px solid #00ff41;
+    border-radius: 20px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px rgba(0, 255, 65, 0.3);
+    transform: scale(0.8);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.update-modal-overlay.show .update-modal {
+    transform: scale(1);
+}
+
+.update-modal-header {
+    background: linear-gradient(135deg, #00ff41 0%, #00cc33 100%);
+    padding: 30px;
+    text-align: center;
+    border-radius: 18px 18px 0 0;
+    position: relative;
+}
+
+.update-icon {
+    font-size: 60px;
+    margin-bottom: 10px;
+    animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.update-modal-header h2 {
+    color: #000;
+    font-size: 32px;
+    font-weight: 800;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.version-badge {
+    display: inline-block;
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 14px;
+    margin-top: 10px;
+    letter-spacing: 1px;
+}
+
+.update-modal-body {
+    padding: 30px;
+    color: #fff;
+}
+
+.update-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #00ff41;
+    margin-bottom: 10px;
+}
+
+.update-date {
+    color: #888;
+    font-size: 14px;
+    margin-bottom: 30px;
+}
+
+.update-section {
+    margin-bottom: 30px;
+}
+
+.update-section h3 {
+    color: #00ff41;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.update-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.update-list li {
+    padding: 12px 0;
+    padding-left: 30px;
+    position: relative;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    line-height: 1.6;
+    color: #ddd;
+}
+
+.update-list li:last-child {
+    border-bottom: none;
+}
+
+.update-list li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: #00ff41;
+    font-weight: 900;
+    font-size: 18px;
+}
+
+.update-modal-footer {
+    padding: 20px 30px 30px;
+    text-align: center;
+}
+
+.update-modal-btn {
+    background: linear-gradient(135deg, #00ff41 0%, #00cc33 100%);
+    color: #000;
+    border: none;
+    padding: 15px 50px;
+    border-radius: 30px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 20px rgba(0, 255, 65, 0.4);
+}
+
+.update-modal-btn:hover {
+    background: linear-gradient(135deg, #00cc33 0%, #00ff41 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 255, 65, 0.6);
+}
+
+.update-modal-btn:active {
+    transform: translateY(0);
+}
+
+/* Custom scrollbar for modal */
+.update-modal::-webkit-scrollbar {
+    width: 8px;
+}
+
+.update-modal::-webkit-scrollbar-track {
+    background: #0d0d0d;
+}
+
+.update-modal::-webkit-scrollbar-thumb {
+    background: #00ff41;
+    border-radius: 4px;
+}
+
+.update-modal::-webkit-scrollbar-thumb:hover {
+    background: #00cc33;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .update-modal {
+        width: 95%;
+        max-height: 90vh;
+    }
+
+    .update-modal-header h2 {
+        font-size: 24px;
+    }
+
+    .update-icon {
+        font-size: 50px;
+    }
+
+    .update-title {
+        font-size: 20px;
+    }
+
+    .update-modal-body {
+        padding: 20px;
+    }
+}

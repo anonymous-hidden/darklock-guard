@@ -1,0 +1,1371 @@
+/**
+ * DarkLock Dashboard Design System
+ * Enterprise-grade SaaS UI Components
+ * 
+ * This design system provides consistent, theme-aware components
+ * for all dashboard pages. Uses CSS custom properties from global theme.
+ */
+
+/* ============================================
+   SECTION 1: Theme Variables Integration
+   ============================================ */
+
+:root {
+    /* Surface depths - layered backgrounds */
+    --ds-surface-0: var(--bg-body, #0a0e17);
+    --ds-surface-1: var(--bg-surface, rgba(15, 20, 35, 0.95));
+    --ds-surface-2: var(--bg-surface-hover, rgba(20, 28, 50, 0.95));
+    --ds-surface-3: rgba(30, 40, 70, 0.9);
+    
+    /* Primary colors from theme */
+    --ds-primary: var(--color-primary, #00d4ff);
+    --ds-primary-hover: var(--color-primary-light, #33ddff);
+    --ds-primary-bg: var(--color-primary-bg, rgba(0, 212, 255, 0.1));
+    --ds-primary-border: rgba(0, 212, 255, 0.3);
+    
+    /* Accent gradient */
+    --ds-accent-gradient: var(--gradient-primary, linear-gradient(135deg, #00d4ff 0%, #06ffa5 100%));
+    --ds-accent-gradient-hover: linear-gradient(135deg, #33ddff 0%, #33ffb5 100%);
+    
+    /* Semantic colors */
+    --ds-success: var(--color-success, #10b981);
+    --ds-success-bg: rgba(16, 185, 129, 0.12);
+    --ds-success-border: rgba(16, 185, 129, 0.3);
+    
+    --ds-warning: var(--color-warning, #f59e0b);
+    --ds-warning-bg: rgba(245, 158, 11, 0.12);
+    --ds-warning-border: rgba(245, 158, 11, 0.3);
+    
+    --ds-danger: var(--color-danger, #ef4444);
+    --ds-danger-bg: rgba(239, 68, 68, 0.12);
+    --ds-danger-border: rgba(239, 68, 68, 0.3);
+    
+    --ds-info: var(--color-info, #3b82f6);
+    --ds-info-bg: rgba(59, 130, 246, 0.12);
+    --ds-info-border: rgba(59, 130, 246, 0.3);
+    
+    /* Text hierarchy */
+    --ds-text-primary: var(--color-text, #e2e8f0);
+    --ds-text-secondary: var(--color-text-secondary, #94a3b8);
+    --ds-text-muted: var(--color-text-muted, #64748b);
+    --ds-text-inverse: #0f172a;
+    
+    /* Borders */
+    --ds-border: var(--color-border, rgba(148, 163, 184, 0.15));
+    --ds-border-light: rgba(148, 163, 184, 0.08);
+    --ds-border-focus: var(--color-primary, #00d4ff);
+    
+    /* Shadows */
+    --ds-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+    --ds-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
+    --ds-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.25);
+    --ds-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.3);
+    --ds-shadow-glow: 0 0 30px rgba(0, 212, 255, 0.15);
+    
+    /* Spacing scale */
+    --ds-space-xs: 4px;
+    --ds-space-sm: 8px;
+    --ds-space-md: 16px;
+    --ds-space-lg: 24px;
+    --ds-space-xl: 32px;
+    --ds-space-2xl: 48px;
+    
+    /* Border radius */
+    --ds-radius-sm: 6px;
+    --ds-radius-md: 10px;
+    --ds-radius-lg: 14px;
+    --ds-radius-xl: 20px;
+    --ds-radius-full: 9999px;
+    
+    /* Typography */
+    --ds-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --ds-font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    
+    /* Transitions */
+    --ds-transition-fast: 150ms ease;
+    --ds-transition-base: 250ms ease;
+    --ds-transition-slow: 400ms ease;
+}
+
+
+/* ============================================
+   SECTION 2: Base Page Layout
+   ============================================ */
+
+.ds-page {
+    min-height: 100vh;
+    background: var(--ds-surface-0);
+    padding: var(--ds-space-lg);
+    font-family: var(--ds-font-family);
+    color: var(--ds-text-primary);
+}
+
+.ds-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.ds-container-wide {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+
+/* ============================================
+   SECTION 3: Navigation Header
+   ============================================ */
+
+.ds-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--ds-space-md) var(--ds-space-lg);
+    background: var(--ds-surface-1);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-lg);
+    margin-bottom: var(--ds-space-lg);
+    backdrop-filter: blur(12px);
+}
+
+.ds-nav-back {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ds-space-sm);
+    color: var(--ds-text-secondary);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    padding: var(--ds-space-sm) var(--ds-space-md);
+    border-radius: var(--ds-radius-md);
+    transition: all var(--ds-transition-fast);
+}
+
+.ds-nav-back:hover {
+    color: var(--ds-primary);
+    background: var(--ds-primary-bg);
+}
+
+.ds-nav-back i {
+    font-size: 12px;
+}
+
+.ds-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-sm);
+}
+
+
+/* ============================================
+   SECTION 4: Page Header
+   ============================================ */
+
+.ds-page-header {
+    text-align: center;
+    margin-bottom: var(--ds-space-2xl);
+    padding: var(--ds-space-xl) 0;
+}
+
+.ds-page-header-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto var(--ds-space-lg);
+    background: var(--ds-accent-gradient);
+    border-radius: var(--ds-radius-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: var(--ds-text-inverse);
+    box-shadow: var(--ds-shadow-glow);
+}
+
+.ds-page-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 var(--ds-space-sm);
+    background: var(--ds-accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.ds-page-subtitle {
+    font-size: 16px;
+    color: var(--ds-text-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+
+/* ============================================
+   SECTION 5: Cards
+   ============================================ */
+
+.ds-card {
+    background: var(--ds-surface-1);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-lg);
+    padding: var(--ds-space-lg);
+    margin-bottom: var(--ds-space-lg);
+    transition: all var(--ds-transition-base);
+}
+
+.ds-card:hover {
+    border-color: var(--ds-primary-border);
+    box-shadow: var(--ds-shadow-md);
+}
+
+.ds-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--ds-space-lg);
+    padding-bottom: var(--ds-space-md);
+    border-bottom: 1px solid var(--ds-border-light);
+}
+
+.ds-card-title {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-sm);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ds-text-primary);
+    margin: 0;
+}
+
+.ds-card-title i {
+    color: var(--ds-primary);
+    font-size: 16px;
+}
+
+.ds-card-subtitle {
+    font-size: 13px;
+    color: var(--ds-text-muted);
+    margin-top: 4px;
+}
+
+.ds-card-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-sm);
+}
+
+/* Card variants */
+.ds-card-highlight {
+    border-left: 3px solid var(--ds-primary);
+}
+
+.ds-card-success {
+    border-left: 3px solid var(--ds-success);
+    background: linear-gradient(135deg, var(--ds-surface-1) 0%, var(--ds-success-bg) 100%);
+}
+
+.ds-card-warning {
+    border-left: 3px solid var(--ds-warning);
+    background: linear-gradient(135deg, var(--ds-surface-1) 0%, var(--ds-warning-bg) 100%);
+}
+
+.ds-card-danger {
+    border-left: 3px solid var(--ds-danger);
+    background: linear-gradient(135deg, var(--ds-surface-1) 0%, var(--ds-danger-bg) 100%);
+}
+
+
+/* ============================================
+   SECTION 6: Status Badges
+   ============================================ */
+
+.ds-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: var(--ds-radius-full);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ds-badge-enabled,
+.ds-badge-success {
+    background: var(--ds-success-bg);
+    color: var(--ds-success);
+    border: 1px solid var(--ds-success-border);
+}
+
+.ds-badge-disabled {
+    background: var(--ds-surface-2);
+    color: var(--ds-text-muted);
+    border: 1px solid var(--ds-border);
+}
+
+.ds-badge-warning {
+    background: var(--ds-warning-bg);
+    color: var(--ds-warning);
+    border: 1px solid var(--ds-warning-border);
+}
+
+.ds-badge-danger {
+    background: var(--ds-danger-bg);
+    color: var(--ds-danger);
+    border: 1px solid var(--ds-danger-border);
+}
+
+.ds-badge-info {
+    background: var(--ds-info-bg);
+    color: var(--ds-info);
+    border: 1px solid var(--ds-info-border);
+}
+
+.ds-badge-pro {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%);
+    color: #a78bfa;
+    border: 1px solid rgba(167, 139, 250, 0.3);
+}
+
+/* Badge with dot indicator */
+.ds-badge-dot::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+
+/* ============================================
+   SECTION 7: Form Controls
+   ============================================ */
+
+.ds-form-group {
+    margin-bottom: var(--ds-space-lg);
+}
+
+.ds-form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--ds-space-lg);
+}
+
+.ds-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ds-text-primary);
+    margin-bottom: var(--ds-space-sm);
+}
+
+.ds-label-hint {
+    font-size: 13px;
+    color: var(--ds-text-muted);
+    font-weight: 400;
+    margin-bottom: var(--ds-space-sm);
+}
+
+.ds-input,
+.ds-select,
+.ds-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--ds-text-primary);
+    background: var(--ds-surface-2);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-md);
+    transition: all var(--ds-transition-fast);
+    outline: none;
+}
+
+.ds-input:focus,
+.ds-select:focus,
+.ds-textarea:focus {
+    border-color: var(--ds-border-focus);
+    box-shadow: 0 0 0 3px var(--ds-primary-bg);
+}
+
+.ds-input::placeholder {
+    color: var(--ds-text-muted);
+}
+
+.ds-input-mono {
+    font-family: var(--ds-font-mono);
+}
+
+.ds-select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 40px;
+}
+
+.ds-select option {
+    background: var(--ds-surface-1);
+    color: var(--ds-text-primary);
+}
+
+.ds-textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+
+/* ============================================
+   SECTION 8: Toggle Switches
+   ============================================ */
+
+.ds-toggle-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ds-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--ds-space-md);
+    background: var(--ds-surface-2);
+    border-radius: var(--ds-radius-md);
+    transition: all var(--ds-transition-fast);
+}
+
+.ds-toggle-row:hover {
+    background: var(--ds-surface-3);
+}
+
+.ds-toggle-row:first-child {
+    border-radius: var(--ds-radius-md) var(--ds-radius-md) 4px 4px;
+}
+
+.ds-toggle-row:last-child {
+    border-radius: 4px 4px var(--ds-radius-md) var(--ds-radius-md);
+}
+
+.ds-toggle-row:only-child {
+    border-radius: var(--ds-radius-md);
+}
+
+.ds-toggle-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.ds-toggle-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ds-text-primary);
+    margin-bottom: 2px;
+}
+
+.ds-toggle-desc {
+    font-size: 13px;
+    color: var(--ds-text-muted);
+}
+
+.ds-toggle {
+    position: relative;
+    width: 48px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+.ds-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.ds-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--ds-surface-3);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-full);
+    transition: all var(--ds-transition-base);
+}
+
+.ds-toggle-slider::before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background: var(--ds-text-secondary);
+    border-radius: 50%;
+    transition: all var(--ds-transition-base);
+}
+
+.ds-toggle input:checked + .ds-toggle-slider {
+    background: var(--ds-accent-gradient);
+    border-color: transparent;
+}
+
+.ds-toggle input:checked + .ds-toggle-slider::before {
+    transform: translateX(22px);
+    background: white;
+}
+
+.ds-toggle input:focus + .ds-toggle-slider {
+    box-shadow: 0 0 0 3px var(--ds-primary-bg);
+}
+
+
+/* ============================================
+   SECTION 9: Buttons
+   ============================================ */
+
+.ds-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ds-space-sm);
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    border: none;
+    border-radius: var(--ds-radius-md);
+    cursor: pointer;
+    transition: all var(--ds-transition-fast);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.ds-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.ds-btn-primary {
+    background: var(--ds-accent-gradient);
+    color: var(--ds-text-inverse);
+    box-shadow: var(--ds-shadow-sm);
+}
+
+.ds-btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--ds-shadow-md), var(--ds-shadow-glow);
+}
+
+.ds-btn-secondary {
+    background: var(--ds-surface-2);
+    color: var(--ds-text-primary);
+    border: 1px solid var(--ds-border);
+}
+
+.ds-btn-secondary:hover:not(:disabled) {
+    background: var(--ds-surface-3);
+    border-color: var(--ds-primary-border);
+}
+
+.ds-btn-ghost {
+    background: transparent;
+    color: var(--ds-text-secondary);
+}
+
+.ds-btn-ghost:hover:not(:disabled) {
+    background: var(--ds-primary-bg);
+    color: var(--ds-primary);
+}
+
+.ds-btn-danger {
+    background: var(--ds-danger);
+    color: white;
+}
+
+.ds-btn-danger:hover:not(:disabled) {
+    background: #dc2626;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
+.ds-btn-success {
+    background: var(--ds-success);
+    color: white;
+}
+
+.ds-btn-success:hover:not(:disabled) {
+    background: #059669;
+}
+
+.ds-btn-lg {
+    padding: 14px 28px;
+    font-size: 16px;
+}
+
+.ds-btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.ds-btn-icon {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: var(--ds-radius-md);
+}
+
+.ds-btn-full {
+    width: 100%;
+}
+
+
+/* ============================================
+   SECTION 10: Alerts / Notices
+   ============================================ */
+
+.ds-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--ds-space-md);
+    padding: var(--ds-space-md) var(--ds-space-lg);
+    border-radius: var(--ds-radius-lg);
+    margin-bottom: var(--ds-space-lg);
+}
+
+.ds-alert-icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.ds-alert-content {
+    flex: 1;
+}
+
+.ds-alert-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.ds-alert-text {
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.ds-alert-info {
+    background: var(--ds-info-bg);
+    border: 1px solid var(--ds-info-border);
+    color: var(--ds-info);
+}
+
+.ds-alert-warning {
+    background: var(--ds-warning-bg);
+    border: 1px solid var(--ds-warning-border);
+    color: var(--ds-warning);
+}
+
+.ds-alert-danger {
+    background: var(--ds-danger-bg);
+    border: 1px solid var(--ds-danger-border);
+    color: var(--ds-danger);
+}
+
+.ds-alert-success {
+    background: var(--ds-success-bg);
+    border: 1px solid var(--ds-success-border);
+    color: var(--ds-success);
+}
+
+
+/* ============================================
+   SECTION 11: Stats Cards
+   ============================================ */
+
+.ds-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--ds-space-md);
+    margin-bottom: var(--ds-space-lg);
+}
+
+.ds-stat {
+    background: var(--ds-surface-1);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-lg);
+    padding: var(--ds-space-lg);
+    text-align: center;
+    transition: all var(--ds-transition-base);
+}
+
+.ds-stat:hover {
+    border-color: var(--ds-primary-border);
+    transform: translateY(-2px);
+}
+
+.ds-stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--ds-primary);
+    margin-bottom: 4px;
+}
+
+.ds-stat-label {
+    font-size: 13px;
+    color: var(--ds-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+
+/* ============================================
+   SECTION 12: Tables
+   ============================================ */
+
+.ds-table-container {
+    overflow-x: auto;
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-lg);
+    background: var(--ds-surface-1);
+}
+
+.ds-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.ds-table th {
+    text-align: left;
+    padding: var(--ds-space-md);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--ds-text-muted);
+    background: var(--ds-surface-2);
+    border-bottom: 1px solid var(--ds-border);
+}
+
+.ds-table td {
+    padding: var(--ds-space-md);
+    border-bottom: 1px solid var(--ds-border-light);
+    color: var(--ds-text-primary);
+}
+
+.ds-table tr:last-child td {
+    border-bottom: none;
+}
+
+.ds-table tr:hover td {
+    background: var(--ds-surface-2);
+}
+
+
+/* ============================================
+   SECTION 13: Severity Indicators (Logs)
+   ============================================ */
+
+.ds-severity {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--ds-radius-sm);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.ds-severity-info {
+    background: var(--ds-info-bg);
+    color: var(--ds-info);
+}
+
+.ds-severity-warning {
+    background: var(--ds-warning-bg);
+    color: var(--ds-warning);
+}
+
+.ds-severity-error,
+.ds-severity-critical {
+    background: var(--ds-danger-bg);
+    color: var(--ds-danger);
+}
+
+.ds-severity-success {
+    background: var(--ds-success-bg);
+    color: var(--ds-success);
+}
+
+.ds-severity-debug {
+    background: var(--ds-surface-2);
+    color: var(--ds-text-muted);
+}
+
+
+/* ============================================
+   SECTION 14: Console / Terminal Style
+   ============================================ */
+
+.ds-console {
+    background: #0d1117;
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-lg);
+    overflow: hidden;
+}
+
+.ds-console-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--ds-space-sm) var(--ds-space-md);
+    background: var(--ds-surface-2);
+    border-bottom: 1px solid var(--ds-border);
+}
+
+.ds-console-dots {
+    display: flex;
+    gap: 6px;
+}
+
+.ds-console-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.ds-console-dot-red { background: #ff5f57; }
+.ds-console-dot-yellow { background: #febc2e; }
+.ds-console-dot-green { background: #28c840; }
+
+.ds-console-title {
+    font-size: 12px;
+    color: var(--ds-text-muted);
+    font-family: var(--ds-font-mono);
+}
+
+.ds-console-body {
+    padding: var(--ds-space-md);
+    font-family: var(--ds-font-mono);
+    font-size: 13px;
+    line-height: 1.7;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.ds-console-line {
+    display: flex;
+    gap: var(--ds-space-sm);
+    margin-bottom: 4px;
+}
+
+.ds-console-prompt {
+    color: var(--ds-success);
+    user-select: none;
+}
+
+.ds-console-text {
+    color: var(--ds-text-secondary);
+}
+
+.ds-console-input {
+    width: 100%;
+    padding: var(--ds-space-sm) var(--ds-space-md);
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    border-top: 1px solid var(--ds-border);
+    color: var(--ds-text-primary);
+    font-family: var(--ds-font-mono);
+    font-size: 13px;
+    outline: none;
+}
+
+.ds-console-input:focus {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Console output colors */
+.ds-console .text-info { color: var(--ds-info); }
+.ds-console .text-warning { color: var(--ds-warning); }
+.ds-console .text-error { color: var(--ds-danger); }
+.ds-console .text-success { color: var(--ds-success); }
+.ds-console .text-muted { color: var(--ds-text-muted); }
+
+
+/* ============================================
+   SECTION 15: Multi-Select / Channel Picker
+   ============================================ */
+
+.ds-multi-select {
+    max-height: 250px;
+    overflow-y: auto;
+    background: var(--ds-surface-2);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-md);
+    padding: var(--ds-space-sm);
+}
+
+.ds-multi-select::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ds-multi-select::-webkit-scrollbar-thumb {
+    background: var(--ds-primary-border);
+    border-radius: 3px;
+}
+
+.ds-multi-select-item {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-sm);
+    padding: var(--ds-space-sm) var(--ds-space-md);
+    border-radius: var(--ds-radius-sm);
+    cursor: pointer;
+    transition: background var(--ds-transition-fast);
+}
+
+.ds-multi-select-item:hover {
+    background: var(--ds-surface-3);
+}
+
+.ds-multi-select-item.selected {
+    background: var(--ds-primary-bg);
+    border: 1px solid var(--ds-primary-border);
+}
+
+.ds-multi-select-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--ds-primary);
+}
+
+.ds-multi-select-name {
+    flex: 1;
+    font-size: 13px;
+    color: var(--ds-text-primary);
+}
+
+.ds-multi-select-meta {
+    font-size: 11px;
+    color: var(--ds-text-muted);
+    font-family: var(--ds-font-mono);
+}
+
+
+/* ============================================
+   SECTION 16: Tooltips
+   ============================================ */
+
+[data-tooltip] {
+    position: relative;
+    cursor: help;
+}
+
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    padding: 8px 12px;
+    background: var(--ds-surface-3);
+    color: var(--ds-text-primary);
+    font-size: 12px;
+    border-radius: var(--ds-radius-sm);
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--ds-transition-fast);
+    z-index: 1000;
+    box-shadow: var(--ds-shadow-lg);
+    border: 1px solid var(--ds-border);
+}
+
+[data-tooltip]:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-4px);
+}
+
+
+/* ============================================
+   SECTION 17: Loading States
+   ============================================ */
+
+.ds-skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--ds-surface-2) 25%,
+        var(--ds-surface-3) 50%,
+        var(--ds-surface-2) 75%
+    );
+    background-size: 200% 100%;
+    animation: ds-shimmer 1.5s infinite;
+    border-radius: var(--ds-radius-md);
+}
+
+@keyframes ds-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.ds-spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid var(--ds-surface-3);
+    border-top-color: var(--ds-primary);
+    border-radius: 50%;
+    animation: ds-spin 0.8s linear infinite;
+}
+
+@keyframes ds-spin {
+    to { transform: rotate(360deg); }
+}
+
+
+/* ============================================
+   SECTION 18: Empty States
+   ============================================ */
+
+.ds-empty {
+    text-align: center;
+    padding: var(--ds-space-2xl);
+}
+
+.ds-empty-icon {
+    font-size: 64px;
+    color: var(--ds-text-muted);
+    opacity: 0.5;
+    margin-bottom: var(--ds-space-lg);
+}
+
+.ds-empty-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ds-text-primary);
+    margin-bottom: var(--ds-space-sm);
+}
+
+.ds-empty-text {
+    font-size: 14px;
+    color: var(--ds-text-muted);
+    margin-bottom: var(--ds-space-lg);
+}
+
+
+/* ============================================
+   SECTION 19: Modals
+   ============================================ */
+
+.ds-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--ds-transition-base);
+}
+
+.ds-modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.ds-modal {
+    background: var(--ds-surface-1);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-xl);
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow: hidden;
+    transform: scale(0.95) translateY(20px);
+    transition: transform var(--ds-transition-base);
+}
+
+.ds-modal-overlay.active .ds-modal {
+    transform: scale(1) translateY(0);
+}
+
+.ds-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--ds-space-lg);
+    border-bottom: 1px solid var(--ds-border);
+}
+
+.ds-modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ds-text-primary);
+}
+
+.ds-modal-close {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--ds-text-muted);
+    cursor: pointer;
+    border-radius: var(--ds-radius-sm);
+    transition: all var(--ds-transition-fast);
+}
+
+.ds-modal-close:hover {
+    background: var(--ds-surface-2);
+    color: var(--ds-text-primary);
+}
+
+.ds-modal-body {
+    padding: var(--ds-space-lg);
+    overflow-y: auto;
+    max-height: 60vh;
+}
+
+.ds-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--ds-space-sm);
+    padding: var(--ds-space-md) var(--ds-space-lg);
+    border-top: 1px solid var(--ds-border);
+    background: var(--ds-surface-2);
+}
+
+
+/* ============================================
+   SECTION 20: Section Dividers
+   ============================================ */
+
+.ds-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-md);
+    margin: var(--ds-space-xl) 0;
+    color: var(--ds-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.ds-divider::before,
+.ds-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--ds-border);
+}
+
+
+/* ============================================
+   SECTION 21: Grid Layouts
+   ============================================ */
+
+.ds-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--ds-space-lg);
+}
+
+.ds-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--ds-space-lg);
+}
+
+.ds-grid-auto {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--ds-space-lg);
+}
+
+@media (max-width: 768px) {
+    .ds-grid-2,
+    .ds-grid-3 {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* ============================================
+   SECTION 22: Utility Classes
+   ============================================ */
+
+.ds-text-primary { color: var(--ds-text-primary); }
+.ds-text-secondary { color: var(--ds-text-secondary); }
+.ds-text-muted { color: var(--ds-text-muted); }
+.ds-text-success { color: var(--ds-success); }
+.ds-text-warning { color: var(--ds-warning); }
+.ds-text-danger { color: var(--ds-danger); }
+.ds-text-info { color: var(--ds-info); }
+
+.ds-bg-surface-1 { background: var(--ds-surface-1); }
+.ds-bg-surface-2 { background: var(--ds-surface-2); }
+
+.ds-mb-0 { margin-bottom: 0; }
+.ds-mb-sm { margin-bottom: var(--ds-space-sm); }
+.ds-mb-md { margin-bottom: var(--ds-space-md); }
+.ds-mb-lg { margin-bottom: var(--ds-space-lg); }
+
+.ds-mt-auto { margin-top: auto; }
+.ds-ml-auto { margin-left: auto; }
+
+.ds-flex { display: flex; }
+.ds-flex-col { flex-direction: column; }
+.ds-items-center { align-items: center; }
+.ds-justify-between { justify-content: space-between; }
+.ds-gap-sm { gap: var(--ds-space-sm); }
+.ds-gap-md { gap: var(--ds-space-md); }
+.ds-gap-lg { gap: var(--ds-space-lg); }
+
+.ds-hidden { display: none; }
+.ds-visible { visibility: visible; }
+
+.ds-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ds-mono {
+    font-family: var(--ds-font-mono);
+}
+
+
+/* ============================================
+   SECTION 23: Responsive Helpers
+   ============================================ */
+
+@media (max-width: 640px) {
+    .ds-page {
+        padding: var(--ds-space-md);
+    }
+    
+    .ds-page-header {
+        padding: var(--ds-space-md) 0;
+    }
+    
+    .ds-page-title {
+        font-size: 24px;
+    }
+    
+    .ds-card {
+        padding: var(--ds-space-md);
+    }
+    
+    .ds-nav {
+        flex-direction: column;
+        gap: var(--ds-space-md);
+    }
+}
+
+
+/* ============================================
+   SECTION 24: Danger Zone (Destructive Actions)
+   ============================================ */
+
+.ds-danger-zone {
+    margin-top: var(--ds-space-2xl);
+    padding-top: var(--ds-space-xl);
+    border-top: 1px dashed var(--ds-danger-border);
+}
+
+.ds-danger-zone .ds-card {
+    border-color: var(--ds-danger-border);
+    background: linear-gradient(135deg, var(--ds-surface-1) 0%, var(--ds-danger-bg) 100%);
+}
+
+.ds-danger-zone .ds-card-title {
+    color: var(--ds-danger);
+}
+
+.ds-danger-zone .ds-card-title i {
+    color: var(--ds-danger);
+}
+
+
+/* ============================================
+   SECTION 25: Setup Page Components
+   ============================================ */
+
+.setup-multi-select {
+    max-height: 200px;
+    overflow-y: auto;
+    background: var(--ds-surface-0);
+    border: 1px solid var(--ds-border);
+    border-radius: var(--ds-radius-md);
+    padding: var(--ds-space-xs);
+}
+
+.setup-multi-select::-webkit-scrollbar {
+    width: 6px;
+}
+
+.setup-multi-select::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.setup-multi-select::-webkit-scrollbar-thumb {
+    background: var(--ds-border);
+    border-radius: 3px;
+}
+
+.setup-multi-item {
+    display: flex;
+    align-items: center;
+    gap: var(--ds-space-sm);
+    padding: var(--ds-space-sm) var(--ds-space-md);
+    border-radius: var(--ds-radius-sm);
+    cursor: pointer;
+    transition: background var(--ds-transition-fast);
+}
+
+.setup-multi-item:hover {
+    background: var(--ds-primary-bg);
+}
+
+.setup-multi-item.selected {
+    background: var(--ds-primary-bg);
+    border: 1px solid var(--ds-primary-border);
+}
+
+.setup-multi-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--ds-primary);
+}
+
+.setup-multi-item-name {
+    flex: 1;
+    font-size: 14px;
+    color: var(--ds-text-primary);
+}
+
+.setup-multi-item-id {
+    font-size: 11px;
+    color: var(--ds-text-muted);
+    font-family: var(--ds-font-mono);
+}
+
+.setup-multi-loading {
+    padding: var(--ds-space-lg);
+    text-align: center;
+    color: var(--ds-text-muted);
+    font-size: 13px;
+}

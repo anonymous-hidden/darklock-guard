@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DarkLock — Advanced Discord Security</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link id="dynamic-theme-stylesheet" rel="stylesheet" href="" />
+  <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+  <style>
+    :root { --bg:#0c0f14; --card:#121722; --muted:#8a94a6; --text:#e8eef8; --brand:#4f7cff; --brand2:#6ee7b7; }
+    *{ box-sizing:border-box }
+    body{ margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--text); background:radial-gradient(1200px 800px at 80% -10%, #1b2440 0%, rgba(27,36,64,0) 60%), var(--bg); }
+    .container{ max-width:1100px; margin:0 auto; padding:24px; }
+    header{ display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .brand{ display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.3px; }
+    .brand i{ color:var(--brand); }
+    nav a{ color:var(--muted); text-decoration:none; margin-left:16px; font-weight:600; }
+    nav a:hover{ color:var(--text); }
+    .hero{ display:grid; grid-template-columns:1.2fr .8fr; gap:36px; padding:70px 0 30px; align-items:center; }
+    .hero h1{ font-size:44px; line-height:1.1; margin:0 0 14px; }
+    .hero p{ color:var(--muted); font-size:18px; margin:0 0 24px; }
+    .cta{ display:flex; gap:12px; flex-wrap:wrap; }
+    .btn{ display:inline-flex; align-items:center; gap:10px; padding:12px 16px; border-radius:10px; text-decoration:none; font-weight:700; }
+    .btn-primary{ background:linear-gradient(135deg,var(--brand),#7c3aed); color:white; }
+    .btn-secondary{ background:#1a2332; color:var(--text); border:1px solid #243047; }
+    .statgrid{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:26px; }
+    .card{ background:linear-gradient(180deg,#111827,#0d1320); border:1px solid #212a3f; padding:18px; border-radius:12px; }
+    .card h3{ margin:0 0 10px; font-size:16px; color:#b9c3d9; }
+    .card .num{ font-size:24px; font-weight:800; }
+    .illu{ background:radial-gradient(500px 400px at 70% 30%, #1b2440 0%, rgba(27,36,64,0) 60%), #0d1320; border:1px solid #1e2740; height:320px; border-radius:16px; position:relative; overflow:hidden; }
+    .badge{ position:absolute; top:18px; right:18px; background:#0f172a; border:1px solid #1e293b; padding:8px 12px; border-radius:999px; font-size:13px; color:#cbd5e1; }
+    .features{ padding:30px 0 60px; }
+    .features h2{ font-size:26px; margin:0 0 12px; }
+    .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+    .feature{ background:linear-gradient(180deg,#0e1424,#0c1220); border:1px solid #1d2740; padding:16px; border-radius:12px; }
+    .feature h3{ margin:0 0 8px; font-size:18px; }
+    footer{ padding:24px 0 30px; color:var(--muted); font-size:14px; display:flex; justify-content:space-between; align-items:center; }
+    @media(max-width:900px){ .hero{ grid-template-columns:1fr; } .statgrid,.grid{ grid-template-columns:1fr; } .illu{ height:220px; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand"><i class="fa-solid fa-shield-halved"></i> DarkLock</div>
+      <nav>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/invite">Invite</a>
+        <a href="/auth/debug">Debug</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <div>
+        <h1>Keep your Discord server safe and thriving</h1>
+        <p>Advanced, modular protection against raids, spam, phishing, and malicious links — with real-time analytics and a clean dashboard.</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="/invite"><i class="fa-solid fa-plus"></i> Add to Server</a>
+          <a class="btn btn-secondary" href="/dashboard"><i class="fa-solid fa-gauge"></i> Open Dashboard</a>
+        </div>
+        <div class="statgrid">
+          <div class="card"><h3>Active Guilds</h3><div class="num" id="guilds">—</div></div>
+          <div class="card"><h3>Threats Blocked</h3><div class="num" id="threats">—</div></div>
+          <div class="card"><h3>Uptime</h3><div class="num" id="uptime">—</div></div>
+        </div>
+      </div>
+      <div class="illu">
+        <div class="badge"><i class="fa-solid fa-lock"></i> Real-time Protection</div>
+      </div>
+    </section>
+
+    <section class="features">
+      <h2>Why DarkLock?</h2>
+      <div class="grid">
+        <div class="feature"><h3><i class="fa-solid fa-robot"></i> Smart Anti-Spam</h3><p>Adaptive rate limits, link controls, and behavior heuristics reduce false positives.</p></div>
+        <div class="feature"><h3><i class="fa-solid fa-user-shield"></i> Raid Protection</h3><p>Join spikes, burner accounts, and suspicious invites automatically contained.</p></div>
+        <div class="feature"><h3><i class="fa-solid fa-magnifying-glass-chart"></i> Analytics</h3><p>Message, member, and command analytics to track server health.</p></div>
+      </div>
+    </section>
+
+    <footer>
+      <div>© <span id="year"></span> DarkLock</div>
+      <div><a href="/privacy" style="color:inherit;text-decoration:none">Privacy</a> • <a href="/terms" style="color:inherit;text-decoration:none">Terms</a></div>
+    </footer>
+  </div>
+
+    <script src="/js/secure-auth.js"></script>
+<script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    // Fetch a few simple stats for the hero cards
+    Promise.all([
+      fetch('/api/bot/health').then(r=>r.ok?r.json():null).catch(()=>null),
+      fetch('/health').then(r=>r.ok?r.json():null).catch(()=>null)
+    ]).then(([health, svc]) => {
+      if (health?.bot?.guildCount != null) document.getElementById('guilds').textContent = health.bot.guildCount;
+      if (health?.threatsBlocked != null) document.getElementById('threats').textContent = health.threatsBlocked; else document.getElementById('threats').textContent = '—';
+      if (svc?.uptime != null) document.getElementById('uptime').textContent = Math.floor(svc.uptime/60)+'m';
+    }).catch(()=>{});
+  </script>
+</body>
+</html>

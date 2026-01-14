@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status - DarkLock</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="css/themes/christmas.css">
+    <script src="js/global-theme.js"></script>
+    <script src="js/theme-effects.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body x-data="statusPage()">
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/site/" class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <span class="brand-text">DarkLock</span>
+            </a>
+            
+            <div class="nav-menu">
+                <a href="/site/" class="nav-link">Home</a>
+                <a href="/site/#features" class="nav-link">Features</a>
+                <a href="/site/#pricing" class="nav-link">Pricing</a>
+                <a href="/site/docs.html" class="nav-link">Docs</a>
+            </div>
+            
+            <div class="nav-actions">
+                <a href="/dashboard" class="btn btn-ghost">
+                    <i class="fas fa-right-to-bracket"></i>
+                    <span>Login</span>
+                </a>
+                <a href="#" class="btn btn-primary" onclick="inviteBot(); return false;">
+                    <i class="fas fa-plus"></i>
+                    <span>Add to Discord</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Status Page Content -->
+    <div class="status-container">
+        <!-- Header -->
+        <div class="status-header">
+            <h1>System Status</h1>
+            <p>Real-time status and performance monitoring for DarkLock</p>
+            <div class="overall-status" :class="overallStatus.class">
+                <i :class="overallStatus.icon"></i>
+                <span x-text="overallStatus.text"></span>
+            </div>
+        </div>
+
+        <!-- Current Status -->
+        <section class="status-section">
+            <h2>Current Status</h2>
+            <div class="services-grid">
+                <template x-for="service in services" :key="service.name">
+                    <div class="service-card" :class="service.status">
+                        <div class="service-header">
+                            <div class="service-info">
+                                <h3 x-text="service.name"></h3>
+                                <p x-text="service.description"></p>
+                            </div>
+                            <div class="service-status">
+                                <i :class="service.icon"></i>
+                                <span x-text="service.statusText"></span>
+                            </div>
+                        </div>
+                        <div class="service-metrics">
+                            <div class="metric">
+                                <span class="metric-label">Response Time</span>
+                                <span class="metric-value" x-text="service.responseTime"></span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Uptime</span>
+                                <span class="metric-value" x-text="service.uptime"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </section>
+
+        <!-- Performance Metrics -->
+        <section class="status-section">
+            <h2>Performance Metrics</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Response Time</h3>
+                        <span class="metric-time">Last 24h</span>
+                    </div>
+                    <div class="metric-chart">
+                        <canvas id="responseChart" width="400" height="200"></canvas>
+                    </div>
+                    <div class="metric-stats">
+                        <div class="stat">
+                            <span class="stat-label">Average</span>
+                            <span class="stat-value" x-text="metrics.responseTime.average"></span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">95th Percentile</span>
+                            <span class="stat-value" x-text="metrics.responseTime.p95"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Uptime</h3>
+                        <span class="metric-time">Last 90 days</span>
+                    </div>
+                    <div class="uptime-calendar">
+                        <template x-for="day in uptimeHistory" :key="day.date">
+                            <div class="uptime-day" :class="day.status" :title="`${day.date}: ${day.uptime}% uptime`"></div>
+                        </template>
+                    </div>
+                    <div class="metric-stats">
+                        <div class="stat">
+                            <span class="stat-label">Current Month</span>
+                            <span class="stat-value" x-text="metrics.uptime.currentMonth"></span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Last 90 Days</span>
+                            <span class="stat-value" x-text="metrics.uptime.last90Days"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Threats Blocked</h3>
+                        <span class="metric-time">Real-time</span>
+                    </div>
+                    <div class="threats-stats">
+                        <div class="threat-category">
+                            <div class="threat-info">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>Raid Attempts</span>
+                            </div>
+                            <span class="threat-count" x-text="metrics.threats.raids"></span>
+                        </div>
+                        <div class="threat-category">
+                            <div class="threat-info">
+                                <i class="fas fa-ban"></i>
+                                <span>Spam Messages</span>
+                            </div>
+                            <span class="threat-count" x-text="metrics.threats.spam"></span>
+                        </div>
+                        <div class="threat-category">
+                            <div class="threat-info">
+                                <i class="fas fa-link"></i>
+                                <span>Malicious Links</span>
+                            </div>
+                            <span class="threat-count" x-text="metrics.threats.phishing"></span>
+                        </div>
+                        <div class="threat-category">
+                            <div class="threat-info">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>Other Threats</span>
+                            </div>
+                            <span class="threat-count" x-text="metrics.threats.other"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recent Incidents -->
+        <section class="status-section">
+            <h2>Recent Incidents</h2>
+            <div class="incidents-timeline">
+                <template x-for="incident in incidents" :key="incident.id">
+                    <div class="incident-item" :class="incident.severity">
+                        <div class="incident-icon">
+                            <i :class="incident.icon"></i>
+                        </div>
+                        <div class="incident-content">
+                            <div class="incident-header">
+                                <h4 x-text="incident.title"></h4>
+                                <span class="incident-time" x-text="incident.time"></span>
+                            </div>
+                            <p x-text="incident.description"></p>
+                            <div class="incident-status" :class="incident.status">
+                                <span x-text="incident.statusText"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div class="no-incidents" x-show="incidents.length === 0">
+                <i class="fas fa-check-circle"></i>
+                <h3>No Recent Incidents</h3>
+                <p>All systems have been operating normally. No incidents reported in the last 30 days.</p>
+            </div>
+        </section>
+
+        <!-- Maintenance Schedule -->
+        <section class="status-section">
+            <h2>Scheduled Maintenance</h2>
+            <div class="maintenance-schedule">
+                <template x-for="maintenance in scheduledMaintenance" :key="maintenance.id">
+                    <div class="maintenance-item">
+                        <div class="maintenance-date">
+                            <div class="date-day" x-text="maintenance.day"></div>
+                            <div class="date-month" x-text="maintenance.month"></div>
+                        </div>
+                        <div class="maintenance-info">
+                            <h4 x-text="maintenance.title"></h4>
+                            <p x-text="maintenance.description"></p>
+                            <div class="maintenance-details">
+                                <span class="maintenance-duration">
+                                    <i class="fas fa-clock"></i>
+                                    <span x-text="maintenance.duration"></span>
+                                </span>
+                                <span class="maintenance-impact" :class="maintenance.impact">
+                                    <i class="fas fa-info-circle"></i>
+                                    <span x-text="maintenance.impactText"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div class="no-maintenance" x-show="scheduledMaintenance.length === 0">
+                <i class="fas fa-calendar-check"></i>
+                <h3>No Scheduled Maintenance</h3>
+                <p>No maintenance activities are currently scheduled. We'll notify you in advance of any planned downtime.</p>
+            </div>
+        </section>
+
+        <!-- Subscribe to Updates -->
+        <section class="status-section">
+            <h2>Stay Updated</h2>
+            <div class="update-options">
+                <div class="update-card">
+                    <div class="update-icon">
+                        <i class="fab fa-discord"></i>
+                    </div>
+                    <h3>Discord Notifications</h3>
+                    <p>Get real-time status updates in our Discord server</p>
+                    <a href="#" class="btn btn-outline">Join Server</a>
+                </div>
+                <div class="update-card">
+                    <div class="update-icon">
+                        <i class="fas fa-rss"></i>
+                    </div>
+                    <h3>RSS Feed</h3>
+                    <p>Subscribe to our RSS feed for automated updates</p>
+                    <a href="#" class="btn btn-outline">Get RSS Feed</a>
+                </div>
+                <div class="update-card">
+                    <div class="update-icon">
+                        <i class="fab fa-twitter"></i>
+                    </div>
+                    <h3>Twitter Updates</h3>
+                    <p>Follow us on Twitter for status announcements</p>
+                    <a href="#" class="btn btn-outline">Follow Us</a>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <style>
+        /* Status Page Specific Styles */
+        body {
+            padding-top: 80px;
+            background: var(--primary-bg);
+        }
+
+        .status-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-2xl);
+        }
+
+        .status-header {
+            text-align: center;
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .status-header h1 {
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .status-header p {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .overall-status {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-md) var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .overall-status.operational {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .overall-status.degraded {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--warning);
+            color: var(--warning);
+        }
+
+        .overall-status.down {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+
+        .status-section {
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .status-section h2 {
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xl);
+            padding-bottom: var(--spacing-md);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        /* Services Grid */
+        .services-grid {
+            display: grid;
+            gap: var(--spacing-lg);
+        }
+
+        .service-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+        }
+
+        .service-card.operational {
+            border-left: 4px solid var(--success);
+        }
+
+        .service-card.degraded {
+            border-left: 4px solid var(--warning);
+        }
+
+        .service-card.down {
+            border-left: 4px solid var(--error);
+        }
+
+        .service-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .service-info h3 {
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .service-info p {
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .service-status {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-weight: 600;
+        }
+
+        .service-status.operational {
+            color: var(--success);
+        }
+
+        .service-status.degraded {
+            color: var(--warning);
+        }
+
+        .service-status.down {
+            color: var(--error);
+        }
+
+        .service-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-lg);
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .metric-label {
+            color: var(--text-secondary);
+        }
+
+        .metric-value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: var(--spacing-xl);
+        }
+
+        .metric-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .metric-header h3 {
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .metric-time {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .metric-chart {
+            margin-bottom: var(--spacing-lg);
+            height: 200px;
+        }
+
+        .metric-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .stat-value {
+            color: var(--accent-cyan);
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        /* Uptime Calendar */
+        .uptime-calendar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(12px, 1fr));
+            gap: 2px;
+            margin-bottom: var(--spacing-lg);
+            max-height: 100px;
+            overflow: hidden;
+        }
+
+        .uptime-day {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+
+        .uptime-day.excellent {
+            background: var(--success);
+        }
+
+        .uptime-day.good {
+            background: rgba(16, 185, 129, 0.7);
+        }
+
+        .uptime-day.fair {
+            background: var(--warning);
+        }
+
+        .uptime-day.poor {
+            background: var(--error);
+        }
+
+        /* Threats Stats */
+        .threats-stats {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .threat-category {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-md);
+            background: var(--secondary-bg);
+            border-radius: var(--radius-md);
+        }
+
+        .threat-info {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            color: var(--text-secondary);
+        }
+
+        .threat-info i {
+            color: var(--accent-cyan);
+        }
+
+        .threat-count {
+            color: var(--accent-cyan);
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        /* Incidents Timeline */
+        .incidents-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+        }
+
+        .incident-item {
+            display: flex;
+            gap: var(--spacing-lg);
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+        }
+
+        .incident-item.critical {
+            border-left: 4px solid var(--error);
+        }
+
+        .incident-item.major {
+            border-left: 4px solid var(--warning);
+        }
+
+        .incident-item.minor {
+            border-left: 4px solid var(--accent-blue);
+        }
+
+        .incident-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--secondary-bg);
+            color: var(--accent-cyan);
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .incident-content {
+            flex: 1;
+        }
+
+        .incident-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .incident-header h4 {
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .incident-time {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .incident-content p {
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .incident-status {
+            display: inline-flex;
+            align-items: center;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .incident-status.resolved {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .incident-status.investigating {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .incident-status.monitoring {
+            background: rgba(0, 102, 255, 0.1);
+            color: var(--accent-blue);
+        }
+
+        /* No Items States */
+        .no-incidents,
+        .no-maintenance {
+            text-align: center;
+            padding: var(--spacing-2xl);
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+        }
+
+        .no-incidents i,
+        .no-maintenance i {
+            font-size: 3rem;
+            color: var(--success);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .no-incidents h3,
+        .no-maintenance h3 {
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .no-incidents p,
+        .no-maintenance p {
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        /* Maintenance Schedule */
+        .maintenance-schedule {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-lg);
+        }
+
+        .maintenance-item {
+            display: flex;
+            gap: var(--spacing-lg);
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+        }
+
+        .maintenance-date {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 80px;
+            background: var(--secondary-bg);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+        }
+
+        .date-day {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        .date-month {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .maintenance-info {
+            flex: 1;
+        }
+
+        .maintenance-info h4 {
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .maintenance-info p {
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .maintenance-details {
+            display: flex;
+            gap: var(--spacing-lg);
+        }
+
+        .maintenance-duration,
+        .maintenance-impact {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            font-size: 0.9rem;
+        }
+
+        .maintenance-duration {
+            color: var(--text-secondary);
+        }
+
+        .maintenance-impact.low {
+            color: var(--success);
+        }
+
+        .maintenance-impact.medium {
+            color: var(--warning);
+        }
+
+        .maintenance-impact.high {
+            color: var(--error);
+        }
+
+        /* Update Options */
+        .update-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-xl);
+        }
+
+        .update-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .update-card:hover {
+            border-color: var(--accent-cyan);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .update-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto var(--spacing-lg);
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .update-card h3 {
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .update-card p {
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .status-container {
+                padding: var(--spacing-lg);
+            }
+
+            .service-header {
+                flex-direction: column;
+                gap: var(--spacing-md);
+            }
+
+            .service-metrics {
+                grid-template-columns: 1fr;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .incident-item {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .maintenance-item {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .maintenance-details {
+                justify-content: center;
+            }
+
+            .update-options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <script>
+        function statusPage() {
+            return {
+                overallStatus: {
+                    class: 'operational',
+                    icon: 'fas fa-check-circle',
+                    text: 'All Systems Operational'
+                },
+                services: [],
+                metrics: {
+                    responseTime: {
+                        average: '—',
+                        p95: '—'
+                    },
+                    uptime: {
+                        currentMonth: '99.97%',
+                        last90Days: '99.94%'
+                    },
+                    threats: {
+                        raids: '—',
+                        spam: '—',
+                        phishing: '—',
+                        other: '—'
+                    }
+                },
+                uptimeHistory: this.generateUptimeHistory(),
+                incidents: [],
+                scheduledMaintenance: [],
+                init() {
+                    this.loadLiveStatus();
+                    // Refresh every 15 seconds
+                    setInterval(() => this.loadLiveStatus(), 15000);
+                },
+                async loadLiveStatus() {
+                    try {
+                        const response = await fetch('/api/status');
+                        if (response.ok) {
+                            const data = await response.json();
+                            
+                            // Update overall status
+                            if (data.overall === 'operational') {
+                                this.overallStatus.class = 'operational';
+                                this.overallStatus.icon = 'fas fa-check-circle';
+                                this.overallStatus.text = 'All Systems Operational';
+                            } else {
+                                this.overallStatus.class = 'degraded';
+                                this.overallStatus.icon = 'fas fa-exclamation-triangle';
+                                this.overallStatus.text = 'Some Systems Degraded';
+                            }
+                            
+                            // Update services
+                            this.services = data.services || [];
+                            
+                            // Update threats metrics from real data
+                            if (data.metrics?.threats) {
+                                this.metrics.threats.raids = data.metrics.threats.high24h?.toLocaleString() || '0';
+                                this.metrics.threats.spam = data.metrics.threats.total24h?.toLocaleString() || '0';
+                            }
+                            
+                            // Update incidents
+                            this.incidents = data.incidents || [];
+                            
+                            // Update uptime
+                            if (data.overallUptime) {
+                                this.metrics.uptime.currentMonth = data.overallUptime;
+                            }
+                            
+                            // Update response time from gateway ping
+                            if (data.health?.gatewayPing) {
+                                this.metrics.responseTime.average = Math.round(data.health.gatewayPing) + 'ms';
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Failed to load live status:', error);
+                    }
+                }
+            }
+        }
+
+        // Generate uptime history for the last 90 days
+        function generateUptimeHistory() {
+            const history = [];
+            const today = new Date();
+            
+            for (let i = 89; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                
+                // Simulate uptime data (mostly excellent with occasional issues)
+                const random = Math.random();
+                let status = 'excellent';
+                
+                if (random < 0.02) status = 'poor';
+                else if (random < 0.05) status = 'fair';
+                else if (random < 0.1) status = 'good';
+                
+                history.push({
+                    date: date.toISOString().split('T')[0],
+                    status: status,
+                    uptime: status === 'excellent' ? '100' : 
+                           status === 'good' ? '99.5' :
+                           status === 'fair' ? '98.2' : '95.8'
+                });
+            }
+            
+            return history;
+        }
+
+        // Initialize charts when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Response Time Chart
+            const ctx = document.getElementById('responseChart');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                        datasets: [{
+                            label: 'Response Time (ms)',
+                            data: [82, 75, 89, 67, 92, 78, 85, 90, 76, 88, 82, 79, 86, 91, 77, 83, 89, 74, 87, 93, 80, 85, 78, 81],
+                            borderColor: '#00ffdd',
+                            backgroundColor: 'rgba(0, 255, 221, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    color: 'rgba(180, 188, 212, 0.1)'
+                                },
+                                ticks: {
+                                    color: '#b4bcd4'
+                                }
+                            },
+                            y: {
+                                grid: {
+                                    color: 'rgba(180, 188, 212, 0.1)'
+                                },
+                                ticks: {
+                                    color: '#b4bcd4'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+
+    <script src="js/main.js?v=2"></script>
+    <script src="js/global-theme.js"></script>
+</body>
+</html>

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
+    <title>Ticket System - DarkLock Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <style>
+        .setup-page { min-height: 100vh; background: var(--ds-surface-0); }
+        .setup-nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: var(--ds-space-md) var(--ds-space-xl); background: var(--ds-surface-1); border-bottom: 1px solid var(--ds-border); backdrop-filter: blur(12px); }
+        .back-button { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--ds-surface-2); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); color: var(--ds-text-primary); text-decoration: none; font-size: 14px; font-weight: 500; transition: all var(--ds-transition-fast); }
+        .back-button:hover { background: var(--ds-surface-3); border-color: var(--ds-primary); transform: translateX(-2px); }
+        .back-button i { font-size: 12px; }
+        .setup-breadcrumb { display: flex; align-items: center; gap: var(--ds-space-sm); font-size: 14px; color: var(--ds-text-muted); }
+        .setup-breadcrumb a { color: var(--ds-text-muted); text-decoration: none; }
+        .setup-breadcrumb a:hover { color: var(--ds-primary); }
+        .setup-breadcrumb-current { color: var(--ds-text-primary); font-weight: 500; }
+        .setup-container { max-width: 900px; margin: 0 auto; padding: var(--ds-space-xl) var(--ds-space-lg); }
+        .setup-header { margin-bottom: var(--ds-space-xl); }
+        .setup-header-icon { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; background: var(--ds-primary-bg); border: 1px solid var(--ds-primary-border); border-radius: var(--ds-radius-lg); margin-bottom: var(--ds-space-md); }
+        .setup-header-icon i { font-size: 24px; color: var(--ds-primary); }
+        .setup-header h1 { font-size: 28px; font-weight: 700; color: var(--ds-text-primary); margin: 0 0 var(--ds-space-sm) 0; }
+        .setup-header p { color: var(--ds-text-muted); font-size: 15px; margin: 0; }
+        .setup-status { display: inline-flex; align-items: center; gap: var(--ds-space-xs); padding: 4px 12px; border-radius: var(--ds-radius-full); font-size: 12px; font-weight: 500; }
+        .setup-status.enabled { background: var(--ds-success-bg); color: var(--ds-success); border: 1px solid var(--ds-success-border); }
+        .setup-status.disabled { background: var(--ds-surface-2); color: var(--ds-text-muted); border: 1px solid var(--ds-border); }
+        .setup-card { background: var(--ds-surface-1); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg); margin-bottom: var(--ds-space-lg); overflow: hidden; }
+        .setup-card-header { display: flex; align-items: center; justify-content: space-between; padding: var(--ds-space-lg); border-bottom: 1px solid var(--ds-border); background: var(--ds-surface-2); }
+        .setup-card-title { display: flex; align-items: center; gap: var(--ds-space-sm); }
+        .setup-card-title i { color: var(--ds-primary); font-size: 16px; }
+        .setup-card-title h3 { font-size: 15px; font-weight: 600; color: var(--ds-text-primary); margin: 0; }
+        .setup-card-body { padding: var(--ds-space-lg); }
+        .setup-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: var(--ds-space-md); background: var(--ds-surface-0); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); margin-bottom: var(--ds-space-md); }
+        .setup-toggle-row:last-child { margin-bottom: 0; }
+        .setup-toggle-info h4 { margin: 0 0 4px 0; font-size: 14px; font-weight: 500; color: var(--ds-text-primary); }
+        .setup-toggle-info p { margin: 0; font-size: 13px; color: var(--ds-text-muted); }
+        .setup-form-group { margin-bottom: var(--ds-space-lg); }
+        .setup-form-group:last-child { margin-bottom: 0; }
+        .setup-form-label { display: block; font-size: 14px; font-weight: 500; color: var(--ds-text-primary); margin-bottom: var(--ds-space-xs); }
+        .setup-form-desc { font-size: 13px; color: var(--ds-text-muted); margin-bottom: var(--ds-space-sm); }
+        .setup-form-input, .setup-form-select, .setup-form-textarea { width: 100%; padding: 10px 14px; background: var(--ds-surface-0); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); color: var(--ds-text-primary); font-size: 14px; transition: all var(--ds-transition-fast); }
+        .setup-form-input:focus, .setup-form-select:focus, .setup-form-textarea:focus { outline: none; border-color: var(--ds-primary); box-shadow: 0 0 0 3px var(--ds-primary-shadow); }
+        .setup-form-textarea { resize: vertical; min-height: 100px; font-family: inherit; }
+        .alert-info { display: flex; align-items: flex-start; gap: var(--ds-space-md); padding: var(--ds-space-md); background: var(--ds-info-bg); border: 1px solid var(--ds-info-border); border-radius: var(--ds-radius-md); color: var(--ds-info); margin-bottom: var(--ds-space-md); }
+        .alert-info i { font-size: 18px; }
+        .btn-save { width: 100%; padding: 14px 24px; background: var(--ds-primary); color: white; border: none; border-radius: var(--ds-radius-md); font-size: 15px; font-weight: 600; cursor: pointer; transition: all var(--ds-transition-fast); }
+        .btn-save:hover { background: var(--ds-primary-hover); transform: translateY(-1px); }
+        .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body class="setup-page">
+    <nav class="setup-nav">
+        <div style="display: flex; align-items: center; gap: var(--ds-space-lg);">
+            <a href="/dashboard" class="back-button">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+            </a>
+            <div class="setup-breadcrumb">
+                <a href="/dashboard"><i class="fas fa-home"></i></a>
+                <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                <a href="/dashboard">Dashboard</a>
+                <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                <span class="setup-breadcrumb-current">Tickets</span>
+            </div>
+        </div>
+        <div class="setup-status disabled" id="featureStatus">
+            <i class="fas fa-circle" style="font-size: 8px;"></i>
+            <span>Disabled</span>
+        </div>
+    </nav>
+
+    <main class="setup-container">
+        <div class="setup-header">
+            <div class="setup-header-icon"><i class="fas fa-ticket-alt"></i></div>
+            <h1>Ticket System</h1>
+            <p>Configure your support ticket system for member assistance</p>
+        </div>
+
+        <div class="setup-card">
+            <div class="setup-card-header">
+                <div class="setup-card-title"><i class="fas fa-power-off"></i><h3>Enable Tickets</h3></div>
+            </div>
+            <div class="setup-card-body">
+                <div class="setup-toggle-row">
+                    <div class="setup-toggle-info">
+                        <h4>Enable Ticket System</h4>
+                        <p>Allow members to create support tickets</p>
+                    </div>
+                    <label class="ds-toggle"><input type="checkbox" id="ticketsEnabled"><span class="ds-toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <div class="setup-card">
+            <div class="setup-card-header">
+                <div class="setup-card-title"><i class="fas fa-cog"></i><h3>Channels</h3></div>
+            </div>
+            <div class="setup-card-body">
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Ticket Category</label>
+                    <p class="setup-form-desc">Category where new tickets will be created</p>
+                    <select class="setup-form-select" id="ticketCategory">
+                        <option value="">Select a category...</option>
+                    </select>
+                </div>
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Panel Channel</label>
+                    <p class="setup-form-desc">Channel where the ticket panel will be displayed</p>
+                    <select class="setup-form-select" id="ticketPanelChannel">
+                        <option value="">Select a channel...</option>
+                    </select>
+                </div>
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Transcript Channel</label>
+                    <p class="setup-form-desc">Channel where ticket transcripts will be saved</p>
+                    <select class="setup-form-select" id="ticketTranscriptChannel">
+                        <option value="">Select a channel...</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="setup-card">
+            <div class="setup-card-header">
+                <div class="setup-card-title"><i class="fas fa-comment"></i><h3>Welcome Message</h3></div>
+            </div>
+            <div class="setup-card-body">
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Ticket Welcome Message</label>
+                    <p class="setup-form-desc">Message shown when a new ticket is created</p>
+                    <textarea class="setup-form-textarea" id="ticketWelcomeMessage" placeholder="Thank you for creating a ticket! A support team member will be with you shortly."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="setup-card">
+            <div class="setup-card-header">
+                <div class="setup-card-title"><i class="fas fa-clock"></i><h3>Auto-Close</h3></div>
+            </div>
+            <div class="setup-card-body">
+                <div class="setup-toggle-row">
+                    <div class="setup-toggle-info">
+                        <h4>Auto-Close Inactive Tickets</h4>
+                        <p>Automatically close tickets after inactivity</p>
+                    </div>
+                    <label class="ds-toggle"><input type="checkbox" id="ticketAutoclose"><span class="ds-toggle-slider"></span></label>
+                </div>
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Auto-Close Hours</label>
+                    <p class="setup-form-desc">Close tickets after this many hours of inactivity</p>
+                    <input type="number" class="setup-form-input" id="ticketAutocloseHours" value="48" min="1" max="168">
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-save" id="saveBtn" onclick="saveSettings()">
+            <i class="fas fa-save"></i> Save Settings
+        </button>
+    </main>
+
+    <script src="/js/secure-auth.js"></script>
+    <script>
+        const guildId = localStorage.getItem('selectedGuildId');
+        if (!guildId) { alert('Please select a server first'); window.location.href = '/dashboard'; }
+
+        async function loadChannels() {
+            if (!guildId) return;
+            try {
+                const res = await fetch(`/api/guild/${guildId}/channels`, { credentials: 'include' });
+                
+                // Check if response is HTML instead of JSON
+                const contentType = res.headers.get('content-type');
+                if (contentType && contentType.includes('text/html')) {
+                    console.error('Received HTML instead of JSON - possible routing error');
+                    return;
+                }
+                
+                if (res.status === 503) {
+                    console.log('Bot is starting up, retrying channels in 3 seconds...');
+                    setTimeout(loadChannels, 3000);
+                    return;
+                }
+                
+                if (res.ok) {
+                    const payload = await res.json();
+                    let allChannels = Array.isArray(payload) ? payload : (payload.data?.channels || payload.data || payload.channels || []);
+                    const textChannels = allChannels.filter(ch => ch.type === 0);
+                    const categories = allChannels.filter(ch => ch.type === 4);
+                    
+                    const categorySelect = document.getElementById('ticketCategory');
+                    categorySelect.innerHTML = '<option value="">Select a category...</option>';
+                    categories.forEach(cat => {
+                        const option = document.createElement('option');
+                        option.value = cat.id;
+                        option.textContent = cat.name;
+                        categorySelect.appendChild(option);
+                    });
+                    
+                    const panelSelect = document.getElementById('ticketPanelChannel');
+                    const transcriptSelect = document.getElementById('ticketTranscriptChannel');
+                    [panelSelect, transcriptSelect].forEach(select => {
+                        select.innerHTML = '<option value="">Select a channel...</option>';
+                        textChannels.forEach(ch => {
+                            const option = document.createElement('option');
+                            option.value = ch.id;
+                            option.textContent = '# ' + ch.name;
+                            select.appendChild(option);
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading channels:', error);
+            }
+        }
+
+        async function loadSettings() {
+            try {
+                const res = await fetch(`/api/guild/${guildId}/settings`, { credentials: 'include' });
+                
+                // Check if response is HTML instead of JSON
+                const contentType = res.headers.get('content-type');
+                if (contentType && contentType.includes('text/html')) {
+                    console.error('Received HTML instead of JSON - possible routing error');
+                    throw new Error('Server returned HTML instead of JSON');
+                }
+                
+                if (res.status === 503) {
+                    console.log('Bot is starting up, retrying in 3 seconds...');
+                    setTimeout(loadSettings, 3000);
+                    return;
+                }
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                
+                const response = await res.json();
+                const data = response.data || response;
+                
+                document.getElementById('ticketsEnabled').checked = data.tickets_enabled || false;
+                document.getElementById('ticketCategory').value = data.ticket_category || '';
+                document.getElementById('ticketPanelChannel').value = data.ticket_panel_channel || '';
+                document.getElementById('ticketTranscriptChannel').value = data.ticket_transcript_channel || '';
+                document.getElementById('ticketWelcomeMessage').value = data.ticket_welcome_message || '';
+                document.getElementById('ticketAutoclose').checked = data.ticket_autoclose || false;
+                document.getElementById('ticketAutocloseHours').value = data.ticket_autoclose_hours || 48;
+                
+                updateFeatureStatus(data.tickets_enabled);
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                // Show user-friendly error
+                if (error.message.includes('HTML')) {
+                    alert('Error: Unable to load settings. Please refresh the page.');
+                }
+            }
+        }
+
+        async function saveSettings() {
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            
+            try {
+                const settings = {
+                    tickets_enabled: document.getElementById('ticketsEnabled').checked,
+                    ticket_category: document.getElementById('ticketCategory').value,
+                    ticket_panel_channel: document.getElementById('ticketPanelChannel').value,
+                    ticket_transcript_channel: document.getElementById('ticketTranscriptChannel').value,
+                    ticket_welcome_message: document.getElementById('ticketWelcomeMessage').value,
+                    ticket_autoclose: document.getElementById('ticketAutoclose').checked,
+                    ticket_autoclose_hours: parseInt(document.getElementById('ticketAutocloseHours').value)
+                };
+                
+                const res = await SecureAuth.fetch(`/api/guild/${guildId}/settings`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings),
+                    credentials: 'include'
+                });
+                
+                if (res.ok) {
+                    btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+                    setTimeout(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Settings'; }, 2000);
+                } else {
+                    throw new Error('Failed to save');
+                }
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                btn.innerHTML = '<i class="fas fa-times"></i> Error';
+                setTimeout(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Settings'; }, 2000);
+            }
+        }
+
+        function updateFeatureStatus(enabled) {
+            const status = document.getElementById('featureStatus');
+            if (enabled) {
+                status.className = 'setup-status enabled';
+                status.innerHTML = '<i class="fas fa-circle" style="font-size: 8px;"></i><span>Enabled</span>';
+            } else {
+                status.className = 'setup-status disabled';
+                status.innerHTML = '<i class="fas fa-circle" style="font-size: 8px;"></i><span>Disabled</span>';
+            }
+        }
+
+        document.getElementById('ticketsEnabled').addEventListener('change', (e) => updateFeatureStatus(e.target.checked));
+        loadChannels();
+        loadSettings();
+    </script>
+</body>
+</html>

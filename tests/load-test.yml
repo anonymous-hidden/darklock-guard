@@ -1,0 +1,166 @@
+# Artillery Load Test Configuration for DarkLock Dashboard
+# 
+# Usage:
+#   npm install -g artillery
+#   artillery run tests/load-test.yml
+#
+# This simulates:
+# - 500 requests/sec sustained load
+# - Burst spikes on critical endpoints
+# - Realistic user flows (login -> navigate -> configure)
+
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Warm-up phase
+    - duration: 60
+      arrivalRate: 10
+      name: "Warm up"
+    
+    # Sustained load
+    - duration: 120
+      arrivalRate: 50
+      name: "Sustained load - 50 req/sec"
+    
+    # Spike test
+    - duration: 60
+      arrivalRate: 500
+      name: "Spike test - 500 req/sec"
+    
+    # Recovery
+    - duration: 60
+      arrivalRate: 20
+      name: "Recovery"
+  
+  # HTTP configuration
+  http:
+    timeout: 10
+  
+  # Performance thresholds
+  ensure:
+    maxErrorRate: 1  # Max 1% error rate
+    p95: 2000        # 95th percentile < 2000ms
+    p99: 5000        # 99th percentile < 5000ms
+
+  # Custom variables
+  variables:
+    testGuildId: "123456789012345678"
+    testUserId: "987654321098765432"
+
+scenarios:
+  # Scenario 1: Health Check
+  - name: "Health Check"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/health"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: data.status
+
+  # Scenario 2: Public Status Page
+  - name: "Status Page Load"
+    weight: 15
+    flow:
+      - get:
+          url: "/status.html"
+          expect:
+            - statusCode: 200
+
+  # Scenario 3: Guild Channels Endpoint (Stress Test)
+  - name: "Load Guild Channels"
+    weight: 20
+    flow:
+      - get:
+          url: "/api/guilds/{{ testGuildId }}/channels"
+          headers:
+            Cookie: "dashboardToken=test-token"
+          expect:
+            - statusCode: [200, 401, 403, 404]  # Allow auth failures in test
+
+  # Scenario 4: Guild Roles Endpoint (Stress Test)
+  - name: "Load Guild Roles"
+    weight: 20
+    flow:
+      - get:
+          url: "/api/guilds/{{ testGuildId }}/roles"
+          headers:
+            Cookie: "dashboardToken=test-token"
+          expect:
+            - statusCode: [200, 401, 403, 404]
+
+  # Scenario 5: Settings Load
+  - name: "Load Guild Settings"
+    weight: 15
+    flow:
+      - get:
+          url: "/api/guilds/{{ testGuildId }}/settings"
+          headers:
+            Cookie: "dashboardToken=test-token"
+          expect:
+            - statusCode: [200, 401, 403, 404]
+
+  # Scenario 6: Verification Queue
+  - name: "Load Verification Queue"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/guilds/{{ testGuildId }}/verify-queue"
+          headers:
+            Cookie: "dashboardToken=test-token"
+          expect:
+            - statusCode: [200, 401, 403, 404]
+
+  # Scenario 7: Full User Flow
+  - name: "Complete User Journey"
+    weight: 10
+    flow:
+      # Load dashboard
+      - get:
+          url: "/"
+      
+      # Check health
+      - get:
+          url: "/api/health"
+      
+      # Load setup page
+      - get:
+          url: "/setup-anti-raid.html"
+      
+      # Load channels
+      - get:
+          url: "/api/guilds/{{ testGuildId }}/channels"
+          headers:
+            Cookie: "dashboardToken=test-token"
+      
+      # Load roles
+      - get:
+          url: "/api/guilds/{{ testGuildId }}/roles"
+          headers:
+            Cookie: "dashboardToken=test-token"
+      
+      # Think time (user reads page)
+      - think: 2
+      
+      # Update settings
+      - post:
+          url: "/api/guilds/{{ testGuildId }}/anti-raid"
+          headers:
+            Cookie: "dashboardToken=test-token"
+            Content-Type: "application/json"
+          json:
+            enabled: true
+            threshold: 5
+            timeWindow: 10
+            action: "kick"
+
+# Custom metrics
+plugins:
+  expect: {}
+  metrics-by-endpoint: {}
+
+# Reporting
+output:
+  - json: "load-test-results.json"
+  - html: "load-test-results.html"

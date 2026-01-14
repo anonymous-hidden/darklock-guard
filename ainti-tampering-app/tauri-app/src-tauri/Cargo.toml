@@ -1,0 +1,44 @@
+[package]
+name = "darklock-guard"
+version = "1.0.0"
+description = "Advanced File Integrity Monitoring and Tamper Detection"
+authors = ["Darklock"]
+edition = "2021"
+license = "MIT"
+
+[lib]
+name = "darklock_guard_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["devtools"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+sha2 = "0.10"
+hex = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+walkdir = "2"
+thiserror = "1"
+parking_lot = "0.12"
+directories = "5"
+ed25519-dalek = { version = "2", features = ["serde", "rand_core"] }
+rand = "0.8"
+keyring = "2"
+base64 = "0.21"
+reqwest = { version = "0.11", features = ["json"] }
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["dpapi", "wincrypt", "winbase"] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

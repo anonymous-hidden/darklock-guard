@@ -1,0 +1,142 @@
+/* ❄️ Winter Theme */
+/* Icy blue, snow - non-holiday winter */
+
+:root {
+    --theme-name: 'Winter';
+    --theme-emoji: '❄️';
+    
+    /* ============================================== */
+    /* UNIVERSAL VARIABLES (works with all stylesheets) */
+    /* ============================================== */
+    
+    /* Primary/Accent Colors - ALL naming conventions */
+    --color-primary: #4a90d9 !important;
+    --color-primary-light: #87ceeb !important;
+    --color-primary-dark: #1e90ff !important;
+    --color-secondary: #b0e0e6 !important;
+    --color-accent: #ffffff !important;
+    --accent-primary: #4a90d9 !important;
+    --accent-secondary: #b0e0e6 !important;
+    --accent-tertiary: #ffffff !important;
+    --accent-gradient: linear-gradient(135deg, #4a90d9 0%, #b0e0e6 100%) !important;
+    
+    /* Background Colors - ALL naming conventions */
+    --bg-body: #0a1520 !important;
+    --bg-primary: #0a1520 !important;
+    --bg-secondary: #102030 !important;
+    --bg-tertiary: #183050 !important;
+    --bg-surface: #102030 !important;
+    --bg-surface-hover: #183050 !important;
+    --bg-surface-elevated: #183050 !important;
+    --bg-card: rgba(16, 32, 48, 0.8) !important;
+    --bg-card-solid: #102030 !important;
+    --bg-card-hover: rgba(24, 48, 80, 0.9) !important;
+    --bg-gradient: radial-gradient(ellipse at top, #102030 0%, #0a1520 100%) !important;
+    --bg-sidebar: linear-gradient(180deg, #0a1520 0%, #102030 100%) !important;
+    
+    /* Text Colors - ALL naming conventions */
+    --color-text: #ffffff !important;
+    --color-text-secondary: #b0e0e6 !important;
+    --color-muted: #6090b0 !important;
+    --text-primary: #ffffff !important;
+    --text-secondary: #b0e0e6 !important;
+    --text-muted: #6090b0 !important;
+    
+    /* Status Colors */
+    --color-success: #57F287 !important;
+    --color-warning: #FEE75C !important;
+    --color-danger: #ED4245 !important;
+    --color-info: #87ceeb !important;
+    --success: #57F287 !important;
+    --warning: #FEE75C !important;
+    --danger: #ED4245 !important;
+    --error: #ED4245 !important;
+    --info: #87ceeb !important;
+    
+    /* Border & Shadow - ALL naming conventions */
+    --color-border: rgba(74, 144, 217, 0.3) !important;
+    --color-border-light: rgba(176, 224, 230, 0.3) !important;
+    --border-color: rgba(74, 144, 217, 0.3) !important;
+    --border-color-light: rgba(176, 224, 230, 0.3) !important;
+    --border-glow: rgba(74, 144, 217, 0.4) !important;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3) !important;
+    --shadow-md: 0 4px 15px rgba(74, 144, 217, 0.2) !important;
+    --shadow-lg: 0 10px 25px rgba(74, 144, 217, 0.25) !important;
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+    --shadow-glow: 0 0 30px rgba(74, 144, 217, 0.25) !important;
+    --shadow-glow-primary: 0 0 20px rgba(74, 144, 217, 0.4) !important;
+    --shadow-glow-accent: 0 0 20px rgba(176, 224, 230, 0.4) !important;
+    
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-pill: 9999px;
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.3s ease;
+    --transition: 0.25s ease;
+    --transition-base: 0.25s ease;
+}
+
+.theme-winter .admin-header,
+.theme-winter .dashboard-header {
+    background: linear-gradient(135deg, #4a90d9 0%, #b0e0e6 100%) !important;
+}
+
+.theme-winter .stat-card,
+.theme-winter .card {
+    border: 1px solid rgba(74, 144, 217, 0.3);
+    box-shadow: 0 4px 15px rgba(176, 224, 230, 0.2);
+}
+
+.theme-winter .tab-btn.active {
+    color: #87ceeb !important;
+    border-bottom-color: #87ceeb !important;
+}
+
+/* Snowflakes */
+.theme-winter .theme-effects-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.theme-winter .theme-particle {
+    position: absolute;
+    top: -20px;
+    color: #fff;
+    font-size: 1.2em;
+    text-shadow: 0 0 5px rgba(176, 224, 230, 0.8);
+    animation: gentle-snow linear infinite;
+    opacity: 0.9;
+}
+
+@keyframes gentle-snow {
+    0% {
+        transform: translateY(-20px) rotate(0deg);
+        opacity: 0.9;
+    }
+    100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0.4;
+    }
+}
+
+.theme-winter .theme-particle:nth-child(1) { left: 5%; animation-duration: 15s; animation-delay: 0s; }
+.theme-winter .theme-particle:nth-child(2) { left: 15%; animation-duration: 18s; animation-delay: 2s; }
+.theme-winter .theme-particle:nth-child(3) { left: 25%; animation-duration: 12s; animation-delay: 4s; }
+.theme-winter .theme-particle:nth-child(4) { left: 35%; animation-duration: 16s; animation-delay: 1s; }
+.theme-winter .theme-particle:nth-child(5) { left: 45%; animation-duration: 14s; animation-delay: 3s; }
+.theme-winter .theme-particle:nth-child(6) { left: 55%; animation-duration: 17s; animation-delay: 5s; }
+.theme-winter .theme-particle:nth-child(7) { left: 65%; animation-duration: 13s; animation-delay: 2s; }
+.theme-winter .theme-particle:nth-child(8) { left: 75%; animation-duration: 19s; animation-delay: 4s; }
+.theme-winter .theme-particle:nth-child(9) { left: 85%; animation-duration: 15s; animation-delay: 1s; }
+.theme-winter .theme-particle:nth-child(10) { left: 95%; animation-duration: 16s; animation-delay: 3s; }

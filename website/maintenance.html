@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance Mode - DarkLock</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #0f1420;
+            --accent-primary: #00f0ff;
+            --accent-secondary: #7c3aed;
+            --accent-tertiary: #ec4899;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --warning: #f59e0b;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Animated Background */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .gradient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .orb-1 {
+            width: 600px;
+            height: 600px;
+            background: linear-gradient(135deg, #00f0ff, #7c3aed);
+            top: -200px;
+            right: -200px;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 500px;
+            height: 500px;
+            background: linear-gradient(135deg, #7c3aed, #ec4899);
+            bottom: -150px;
+            left: -150px;
+            animation-delay: -7s;
+        }
+
+        .orb-3 {
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation-delay: -14s;
+            opacity: 0.2;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -30px) scale(1.05); }
+            50% { transform: translate(-20px, 20px) scale(0.95); }
+            75% { transform: translate(-30px, -20px) scale(1.02); }
+        }
+
+        /* Main Content */
+        .maintenance-container {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 2rem;
+            max-width: 600px;
+        }
+
+        /* Animated Icon */
+        .maintenance-icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 2rem;
+            position: relative;
+        }
+
+        .icon-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(239, 68, 68, 0.2));
+            border: 2px solid rgba(245, 158, 11, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse-ring 2s ease-out infinite;
+        }
+
+        .icon-circle i {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: wrench-rotate 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+            70% { box-shadow: 0 0 0 20px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+
+        @keyframes wrench-rotate {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-15deg); }
+            75% { transform: rotate(15deg); }
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        /* Custom Message Box */
+        .message-box {
+            background: rgba(21, 28, 44, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: left;
+        }
+
+        .message-box.has-message {
+            border-left: 4px solid var(--warning);
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--warning);
+            font-weight: 600;
+        }
+
+        .message-content {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+
+        /* Status Info */
+        .status-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .status-item i {
+            color: var(--accent-primary);
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin: 2rem 0;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: rgba(148, 163, 184, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 3px;
+            animation: progress-animation 2s ease-in-out infinite;
+            width: 70%;
+        }
+
+        @keyframes progress-animation {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        /* Countdown Timer */
+        .countdown {
+            display: none;
+            margin: 2rem 0;
+        }
+
+        .countdown.active {
+            display: block;
+        }
+
+        .countdown-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .countdown-timer {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .countdown-item {
+            background: rgba(21, 28, 44, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 0.75rem;
+            padding: 1rem 1.25rem;
+            min-width: 70px;
+        }
+
+        .countdown-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .countdown-unit {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Actions */
+        .actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 240, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(148, 163, 184, 0.1);
+            color: var(--text-primary);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(148, 163, 184, 0.2);
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+
+        /* Brand */
+        .brand {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            z-index: 20;
+        }
+
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--bg-primary);
+            font-size: 1.25rem;
+        }
+
+        .brand-text {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Footer */
+        .footer {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            z-index: 20;
+        }
+
+        .footer a {
+            color: var(--accent-primary);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            h1 { font-size: 1.75rem; }
+            .subtitle { font-size: 1rem; }
+            .maintenance-icon { width: 80px; height: 80px; }
+            .icon-circle i { font-size: 2rem; }
+            .brand { top: 1rem; left: 1rem; }
+            .countdown-item { padding: 0.75rem; min-width: 60px; }
+            .countdown-value { font-size: 1.5rem; }
+        }
+
+        /* Hidden when not in maintenance */
+        .not-maintenance {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Brand -->
+    <a href="/" class="brand">
+        <div class="brand-icon">
+            <i class="fas fa-shield-halved"></i>
+        </div>
+        <span class="brand-text">DarkLock</span>
+    </a>
+
+    <!-- Main Content -->
+    <div class="maintenance-container">
+        <!-- Animated Icon -->
+        <div class="maintenance-icon">
+            <div class="icon-circle">
+                <i class="fas fa-wrench"></i>
+            </div>
+        </div>
+
+        <h1>Under Maintenance</h1>
+        <p class="subtitle">
+            We're performing scheduled maintenance to improve your experience.
+            We'll be back shortly!
+        </p>
+
+        <!-- Custom Message (populated dynamically) -->
+        <div class="message-box" id="customMessage" style="display: none;">
+            <div class="message-header">
+                <i class="fas fa-info-circle"></i>
+                <span>Update from our team</span>
+            </div>
+            <div class="message-content" id="messageContent"></div>
+        </div>
+
+        <!-- Status Info -->
+        <div class="status-info">
+            <div class="status-item">
+                <i class="fas fa-server"></i>
+                <span>Bot Status: <strong id="botStatus">Online</strong></span>
+            </div>
+            <div class="status-item">
+                <i class="fas fa-clock"></i>
+                <span>Started: <strong id="startTime">--</strong></span>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-container">
+            <div class="progress-label">
+                <span>Maintenance in progress...</span>
+                <span id="progressPercent">--</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <!-- Countdown Timer (shown if ETA is set) -->
+        <div class="countdown" id="countdown">
+            <div class="countdown-label">Estimated time remaining:</div>
+            <div class="countdown-timer">
+                <div class="countdown-item">
+                    <div class="countdown-value" id="hours">00</div>
+                    <div class="countdown-unit">Hours</div>
+                </div>
+                <div class="countdown-item">
+                    <div class="countdown-value" id="minutes">00</div>
+                    <div class="countdown-unit">Minutes</div>
+                </div>
+                <div class="countdown-item">
+                    <div class="countdown-value" id="seconds">00</div>
+                    <div class="countdown-unit">Seconds</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions">
+            <a href="https://discord.gg/r8dvnad9c9" class="btn btn-primary" target="_blank">
+                <i class="fab fa-discord"></i>
+                Join Support Server
+            </a>
+            <button class="btn btn-secondary" onclick="checkStatus()">
+                <i class="fas fa-rotate"></i>
+                Check Status
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <a href="https://status.DarkLock.io" target="_blank">Status Page</a> • 
+        <a href="https://twitter.com/DarkLock" target="_blank">@DarkLock</a>
+    </div>
+
+    <script>
+        // Configuration - will be populated by API
+        let maintenanceData = {
+            enabled: true,
+            message: '',
+            startedAt: null,
+            estimatedEnd: null,
+            botOnline: true
+        };
+
+        // Fetch maintenance status from API
+        async function fetchMaintenanceStatus() {
+            try {
+                const response = await fetch('/api/maintenance/status');
+                if (response.ok) {
+                    maintenanceData = await response.json();
+                    updateUI();
+                    
+                    // If maintenance is off, redirect to home
+                    if (!maintenanceData.enabled) {
+                        window.location.href = '/';
+                    }
+                }
+            } catch (error) {
+                console.log('Could not fetch maintenance status, using defaults');
+            }
+        }
+
+        // Update UI with maintenance data
+        function updateUI() {
+            // Custom message
+            if (maintenanceData.message && maintenanceData.message.trim()) {
+                document.getElementById('customMessage').style.display = 'block';
+                document.getElementById('customMessage').classList.add('has-message');
+                document.getElementById('messageContent').textContent = maintenanceData.message;
+            }
+
+            // Bot status
+            document.getElementById('botStatus').textContent = maintenanceData.botOnline ? 'Online' : 'Offline';
+            document.getElementById('botStatus').style.color = maintenanceData.botOnline ? '#10b981' : '#ef4444';
+
+            // Start time
+            if (maintenanceData.startedAt) {
+                const startDate = new Date(maintenanceData.startedAt);
+                document.getElementById('startTime').textContent = startDate.toLocaleTimeString();
+            }
+
+            // Countdown
+            if (maintenanceData.estimatedEnd) {
+                document.getElementById('countdown').classList.add('active');
+                startCountdown(new Date(maintenanceData.estimatedEnd));
+            }
+        }
+
+        // Countdown timer
+        let countdownInterval;
+        function startCountdown(endTime) {
+            if (countdownInterval) clearInterval(countdownInterval);
+            
+            countdownInterval = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = endTime.getTime() - now;
+
+                if (distance < 0) {
+                    clearInterval(countdownInterval);
+                    document.getElementById('hours').textContent = '00';
+                    document.getElementById('minutes').textContent = '00';
+                    document.getElementById('seconds').textContent = '00';
+                    // Auto-check if maintenance is complete
+                    setTimeout(checkStatus, 5000);
+                    return;
+                }
+
+                const hours = Math.floor(distance / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                document.getElementById('hours').textContent = String(hours).padStart(2, '0');
+                document.getElementById('minutes').textContent = String(minutes).padStart(2, '0');
+                document.getElementById('seconds').textContent = String(seconds).padStart(2, '0');
+
+                // Update progress bar based on time
+                if (maintenanceData.startedAt) {
+                    const start = new Date(maintenanceData.startedAt).getTime();
+                    const total = endTime.getTime() - start;
+                    const elapsed = now - start;
+                    const percent = Math.min(100, Math.round((elapsed / total) * 100));
+                    document.getElementById('progressPercent').textContent = percent + '%';
+                    document.getElementById('progressFill').style.width = percent + '%';
+                }
+            }, 1000);
+        }
+
+        // Check status and redirect if maintenance is over
+        async function checkStatus() {
+            const btn = event?.target;
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+            }
+
+            try {
+                const response = await fetch('/api/maintenance/status');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (!data.enabled) {
+                        window.location.href = '/';
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.log('Status check failed');
+            }
+
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-rotate"></i> Check Status';
+            }
+
+            // Show a message that maintenance is still active
+            alert('Maintenance is still in progress. Please check back soon!');
+        }
+
+        // Auto-refresh status every 30 seconds
+        setInterval(fetchMaintenanceStatus, 30000);
+
+        // Initial fetch
+        fetchMaintenanceStatus();
+
+        // Parse URL params for direct message override (for testing)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('message')) {
+            maintenanceData.message = urlParams.get('message');
+            updateUI();
+        }
+        if (urlParams.has('eta')) {
+            const etaMinutes = parseInt(urlParams.get('eta'));
+            if (!isNaN(etaMinutes)) {
+                maintenanceData.estimatedEnd = new Date(Date.now() + etaMinutes * 60000).toISOString();
+                maintenanceData.startedAt = new Date().toISOString();
+                updateUI();
+            }
+        }
+    </script>
+</body>
+</html>

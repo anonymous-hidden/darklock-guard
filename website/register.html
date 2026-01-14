@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - DarkLock</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="css/themes/christmas.css">
+    <script src="js/global-theme.js"></script>
+    <script src="js/theme-effects.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body x-data="registerPage()">
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/site/" class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <span class="brand-text">DarkLock</span>
+            </a>
+            
+            <div class="nav-menu">
+                <a href="/site/" class="nav-link">Home</a>
+                <a href="/site/#features" class="nav-link">Features</a>
+                <a href="/site/#pricing" class="nav-link">Pricing</a>
+                <a href="/site/docs.html" class="nav-link">Docs</a>
+                <a href="/site/status.html" class="nav-link">Status</a>
+            </div>
+            
+            <div class="nav-actions">
+                <a href="/platform/auth/login" class="btn btn-ghost">Already have an account? Login</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Registration Form -->
+    <div class="container" style="max-width: 600px; margin-top: 120px; margin-bottom: 60px;">
+        <div class="section-header" style="text-align: center; margin-bottom: 40px;">
+            <i class="fas fa-user-plus" style="font-size: 3rem; color: #00d4ff; margin-bottom: 20px;"></i>
+            <h1>Create Admin Account</h1>
+            <p>Register to manage your DarkLock dashboard</p>
+        </div>
+
+        <div class="card" style="background: rgba(15, 20, 35, 0.8); border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 12px; padding: 40px;">
+            <form @submit.prevent="submitRegistration" class="register-form">
+                <div class="form-group">
+                    <label for="username">
+                        <i class="fas fa-user"></i> Username *
+                    </label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        x-model="formData.username" 
+                        @input="validateUsername"
+                        required 
+                        minlength="3"
+                        maxlength="32"
+                        placeholder="Choose a username"
+                        class="form-input">
+                    <small x-show="usernameError" class="field-error" x-text="usernameError"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">
+                        <i class="fas fa-envelope"></i> Email Address *
+                    </label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        x-model="formData.email" 
+                        @input="validateEmail"
+                        required 
+                        placeholder="your@email.com"
+                        class="form-input">
+                    <small x-show="emailError" class="field-error" x-text="emailError"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i> Password *
+                    </label>
+                    <div style="position: relative;">
+                        <input 
+                            :type="showPassword ? 'text' : 'password'" 
+                            id="password" 
+                            x-model="formData.password" 
+                            @input="checkPasswordStrength"
+                            required 
+                            minlength="8"
+                            placeholder="Create a strong password"
+                            class="form-input"
+                            style="padding-right: 100px;">
+                        <button 
+                            type="button" 
+                            @click="showPassword = !showPassword" 
+                            class="toggle-password"
+                            style="position: absolute; right: 50px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #00d4ff; cursor: pointer;">
+                            <i class="fas" :class="showPassword ? 'fa-eye-slash' : 'fa-eye'"></i>
+                        </button>
+                        <button 
+                            type="button" 
+                            @click="generatePassword" 
+                            class="generate-password"
+                            title="Generate strong password"
+                            style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #00d4ff; cursor: pointer;">
+                            <i class="fas fa-wand-magic-sparkles"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Password Strength Meter -->
+                    <div class="password-strength-meter" x-show="formData.password.length > 0" style="margin-top: 10px;">
+                        <div class="strength-bar">
+                            <div class="strength-fill" :class="passwordStrength.class" :style="`width: ${passwordStrength.percentage}%`"></div>
+                        </div>
+                        <div class="strength-text" :style="`color: ${passwordStrength.color}`" x-text="passwordStrength.text"></div>
+                    </div>
+
+                    <!-- Password Requirements -->
+                    <div class="password-requirements" x-show="formData.password.length > 0" style="margin-top: 15px;">
+                        <div class="requirement" :class="{ 'met': passwordChecks.length }">
+                            <i class="fas" :class="passwordChecks.length ? 'fa-check-circle' : 'fa-circle'"></i>
+                            At least 8 characters
+                        </div>
+                        <div class="requirement" :class="{ 'met': passwordChecks.uppercase }">
+                            <i class="fas" :class="passwordChecks.uppercase ? 'fa-check-circle' : 'fa-circle'"></i>
+                            One uppercase letter
+                        </div>
+                        <div class="requirement" :class="{ 'met': passwordChecks.lowercase }">
+                            <i class="fas" :class="passwordChecks.lowercase ? 'fa-check-circle' : 'fa-circle'"></i>
+                            One lowercase letter
+                        </div>
+                        <div class="requirement" :class="{ 'met': passwordChecks.number }">
+                            <i class="fas" :class="passwordChecks.number ? 'fa-check-circle' : 'fa-circle'"></i>
+                            One number
+                        </div>
+                        <div class="requirement" :class="{ 'met': passwordChecks.special }">
+                            <i class="fas" :class="passwordChecks.special ? 'fa-check-circle' : 'fa-circle'"></i>
+                            One special character
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm_password">
+                        <i class="fas fa-lock-open"></i> Confirm Password *
+                    </label>
+                    <input 
+                        :type="showPassword ? 'text' : 'password'" 
+                        id="confirm_password" 
+                        x-model="formData.confirm_password" 
+                        @input="validatePasswordMatch"
+                        required 
+                        placeholder="Re-enter your password"
+                        class="form-input">
+                    <small x-show="passwordMatchError" class="field-error" x-text="passwordMatchError"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="discord_id">
+                        <i class="fab fa-discord"></i> Discord User ID (Optional)
+                    </label>
+                    <input 
+                        type="text" 
+                        id="discord_id" 
+                        x-model="formData.discord_id" 
+                        placeholder="Your Discord user ID"
+                        class="form-input">
+                    <small style="color: #6b7280; font-size: 0.85rem;">Link your Discord account for easier management</small>
+                </div>
+
+                <div class="form-group" style="margin-top: 25px;">
+                    <label style="display: flex; align-items: start; cursor: pointer;">
+                        <input 
+                            type="checkbox" 
+                            x-model="formData.agree_terms" 
+                            required
+                            style="margin-right: 10px; margin-top: 3px;">
+                        <span style="color: #b4bcd4; font-size: 0.9rem;">
+                            I agree to the <a href="/terms" style="color: #00d4ff;">Terms of Service</a> and <a href="/privacy" style="color: #00d4ff;">Privacy Policy</a>
+                        </span>
+                    </label>
+                </div>
+
+                <div x-show="error" class="alert alert-error" style="margin-bottom: 20px;" x-text="error"></div>
+                <div x-show="success" class="alert alert-success" style="margin-bottom: 20px;" x-text="success"></div>
+
+                <button type="submit" class="btn btn-primary btn-full" :disabled="loading || !isFormValid()">
+                    <i class="fas" :class="loading ? 'fa-spinner fa-spin' : 'fa-user-plus'"></i>
+                    <span x-text="loading ? 'Creating Account...' : 'Create Account'"></span>
+                </button>
+            </form>
+
+            <div style="text-align: center; margin-top: 25px; padding-top: 25px; border-top: 1px solid rgba(0, 212, 255, 0.1);">
+                <p style="color: #b4bcd4;">
+                    Already have an account? 
+                    <a href="/login" style="color: #00d4ff; text-decoration: none; font-weight: 600;">Login here</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #00d4ff;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .form-group label i {
+            margin-right: 8px;
+            opacity: 0.8;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(10, 14, 26, 0.6);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+            color: #e8ecf4;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: #6b7280;
+        }
+
+        .field-error {
+            display: block;
+            color: #ef4444;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+
+        .password-strength-meter {
+            animation: fadeIn 0.3s ease;
+        }
+
+        .strength-bar {
+            height: 6px;
+            background: rgba(107, 114, 128, 0.3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .strength-fill {
+            height: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .strength-fill.weak {
+            background: #ef4444;
+        }
+
+        .strength-fill.fair {
+            background: #f59e0b;
+        }
+
+        .strength-fill.good {
+            background: #10b981;
+        }
+
+        .strength-fill.strong {
+            background: #00d4ff;
+        }
+
+        .strength-text {
+            font-size: 0.85rem;
+            margin-top: 5px;
+            font-weight: 600;
+        }
+
+        .password-requirements {
+            font-size: 0.85rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .requirement {
+            display: flex;
+            align-items: center;
+            padding: 5px 0;
+            color: #6b7280;
+            transition: color 0.3s ease;
+        }
+
+        .requirement.met {
+            color: #10b981;
+        }
+
+        .requirement i {
+            margin-right: 8px;
+            font-size: 0.9rem;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+
+        .btn-full {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.05rem;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+
+    <script>
+        function registerPage() {
+            return {
+                formData: {
+                    username: '',
+                    email: '',
+                    password: '',
+                    confirm_password: '',
+                    discord_id: '',
+                    agree_terms: false
+                },
+                showPassword: false,
+                loading: false,
+                error: null,
+                success: null,
+                usernameError: '',
+                emailError: '',
+                passwordMatchError: '',
+                passwordStrength: {
+                    percentage: 0,
+                    text: '',
+                    color: '',
+                    class: ''
+                },
+                passwordChecks: {
+                    length: false,
+                    uppercase: false,
+                    lowercase: false,
+                    number: false,
+                    special: false
+                },
+                validateUsername() {
+                    const username = this.formData.username;
+                    if (username.length < 3) {
+                        this.usernameError = 'Username must be at least 3 characters';
+                    } else if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+                        this.usernameError = 'Username can only contain letters, numbers, underscores, and hyphens';
+                    } else {
+                        this.usernameError = '';
+                    }
+                },
+                validateEmail() {
+                    const email = this.formData.email;
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (email && !emailRegex.test(email)) {
+                        this.emailError = 'Please enter a valid email address';
+                    } else {
+                        this.emailError = '';
+                    }
+                },
+                validatePasswordMatch() {
+                    if (this.formData.confirm_password && this.formData.password !== this.formData.confirm_password) {
+                        this.passwordMatchError = 'Passwords do not match';
+                    } else {
+                        this.passwordMatchError = '';
+                    }
+                },
+                checkPasswordStrength() {
+                    const password = this.formData.password;
+                    
+                    // Check requirements
+                    this.passwordChecks.length = password.length >= 8;
+                    this.passwordChecks.uppercase = /[A-Z]/.test(password);
+                    this.passwordChecks.lowercase = /[a-z]/.test(password);
+                    this.passwordChecks.number = /\d/.test(password);
+                    this.passwordChecks.special = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+                    
+                    // Calculate strength
+                    let strength = 0;
+                    if (this.passwordChecks.length) strength += 20;
+                    if (this.passwordChecks.uppercase) strength += 20;
+                    if (this.passwordChecks.lowercase) strength += 20;
+                    if (this.passwordChecks.number) strength += 20;
+                    if (this.passwordChecks.special) strength += 20;
+                    
+                    // Bonus for length
+                    if (password.length >= 12) strength += 10;
+                    if (password.length >= 16) strength += 10;
+                    
+                    strength = Math.min(strength, 100);
+                    
+                    // Set strength display
+                    this.passwordStrength.percentage = strength;
+                    
+                    if (strength < 40) {
+                        this.passwordStrength.text = 'Weak';
+                        this.passwordStrength.color = '#ef4444';
+                        this.passwordStrength.class = 'weak';
+                    } else if (strength < 60) {
+                        this.passwordStrength.text = 'Fair';
+                        this.passwordStrength.color = '#f59e0b';
+                        this.passwordStrength.class = 'fair';
+                    } else if (strength < 80) {
+                        this.passwordStrength.text = 'Good';
+                        this.passwordStrength.color = '#10b981';
+                        this.passwordStrength.class = 'good';
+                    } else {
+                        this.passwordStrength.text = 'Strong';
+                        this.passwordStrength.color = '#00d4ff';
+                        this.passwordStrength.class = 'strong';
+                    }
+                },
+                generatePassword() {
+                    const length = 16;
+                    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+                    const numbers = '0123456789';
+                    const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+                    const all = uppercase + lowercase + numbers + special;
+                    
+                    let password = '';
+                    // Ensure at least one of each type
+                    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+                    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+                    password += numbers[Math.floor(Math.random() * numbers.length)];
+                    password += special[Math.floor(Math.random() * special.length)];
+                    
+                    // Fill the rest randomly
+                    for (let i = password.length; i < length; i++) {
+                        password += all[Math.floor(Math.random() * all.length)];
+                    }
+                    
+                    // Shuffle the password
+                    password = password.split('').sort(() => Math.random() - 0.5).join('');
+                    
+                    this.formData.password = password;
+                    this.checkPasswordStrength();
+                    this.showPassword = true;
+                },
+                isFormValid() {
+                    return this.formData.username.length >= 3 &&
+                           this.formData.email &&
+                           !this.emailError &&
+                           this.formData.password.length >= 8 &&
+                           this.passwordStrength.percentage >= 60 &&
+                           this.formData.password === this.formData.confirm_password &&
+                           this.formData.agree_terms;
+                },
+                async submitRegistration() {
+                    if (!this.isFormValid()) {
+                        this.error = 'Please fill out all required fields correctly';
+                        return;
+                    }
+
+                    this.loading = true;
+                    this.error = null;
+                    this.success = null;
+
+                    try {
+                        const response = await fetch('/api/auth/register', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                username: this.formData.username,
+                                email: this.formData.email,
+                                password: this.formData.password,
+                                discord_id: this.formData.discord_id
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok) {
+                            this.success = 'Account created successfully! Redirecting to login...';
+                            setTimeout(() => {
+                                window.location.href = '/login';
+                            }, 2000);
+                        } else {
+                            this.error = data.error || 'Registration failed. Please try again.';
+                        }
+                    } catch (error) {
+                        console.error('Registration error:', error);
+                        this.error = 'Network error. Please check your connection and try again.';
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

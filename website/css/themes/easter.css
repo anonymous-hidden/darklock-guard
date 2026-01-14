@@ -1,0 +1,249 @@
+/* 🐰 Easter Theme */
+/* Pastels with eggs and bunnies */
+
+:root {
+    --theme-name: 'Easter';
+    --theme-emoji: '🐰';
+    
+    /* ============================================== */
+    /* UNIVERSAL VARIABLES (works with all stylesheets) */
+    /* ============================================== */
+    
+    /* Primary/Accent Colors - ALL naming conventions */
+    --color-primary: #dda0dd !important;
+    --color-primary-light: #e6e6fa !important;
+    --color-primary-dark: #ba55d3 !important;
+    --color-secondary: #98fb98 !important;
+    --color-accent: #87ceeb !important;
+    --accent-primary: #dda0dd !important;
+    --accent-secondary: #98fb98 !important;
+    --accent-tertiary: #87ceeb !important;
+    --accent-gradient: linear-gradient(135deg, #ffb6c1 0%, #98fb98 50%, #87ceeb 100%) !important;
+    
+    /* Background Colors - ALL naming conventions */
+    --bg-body: #1a1520 !important;
+    --bg-primary: #1a1520 !important;
+    --bg-secondary: #252030 !important;
+    --bg-tertiary: #302840 !important;
+    --bg-surface: #252030 !important;
+    --bg-surface-hover: #302840 !important;
+    --bg-surface-elevated: #302840 !important;
+    --bg-card: rgba(37, 32, 48, 0.8) !important;
+    --bg-card-solid: #252030 !important;
+    --bg-card-hover: rgba(48, 40, 64, 0.9) !important;
+    --bg-gradient: radial-gradient(ellipse at top, #252030 0%, #1a1520 100%) !important;
+    --bg-sidebar: linear-gradient(180deg, #1a1520 0%, #252030 100%) !important;
+    
+    /* Text Colors - ALL naming conventions */
+    --color-text: #ffffff !important;
+    --color-text-secondary: #e6e6fa !important;
+    --color-muted: #a090b0 !important;
+    --text-primary: #ffffff !important;
+    --text-secondary: #e6e6fa !important;
+    --text-muted: #a090b0 !important;
+    
+    /* Status Colors */
+    --color-success: #98fb98 !important;
+    --color-warning: #ffd700 !important;
+    --color-danger: #ff6b6b !important;
+    --color-info: #87ceeb !important;
+    --success: #98fb98 !important;
+    --warning: #ffd700 !important;
+    --danger: #ff6b6b !important;
+    --error: #ff6b6b !important;
+    --info: #87ceeb !important;
+    
+    /* Border & Shadow - ALL naming conventions */
+    --color-border: rgba(221, 160, 221, 0.3) !important;
+    --color-border-light: rgba(152, 251, 152, 0.3) !important;
+    --border-color: rgba(221, 160, 221, 0.3) !important;
+    --border-color-light: rgba(152, 251, 152, 0.3) !important;
+    --border-glow: rgba(221, 160, 221, 0.4) !important;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3) !important;
+    --shadow-md: 0 4px 15px rgba(221, 160, 221, 0.2) !important;
+    --shadow-lg: 0 10px 25px rgba(221, 160, 221, 0.25) !important;
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+    --shadow-glow: 0 0 30px rgba(221, 160, 221, 0.25) !important;
+    --shadow-glow-primary: 0 0 20px rgba(221, 160, 221, 0.4) !important;
+    --shadow-glow-accent: 0 0 20px rgba(152, 251, 152, 0.4) !important;
+    
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-pill: 9999px;
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.3s ease;
+    --transition: 0.25s ease;
+    --transition-base: 0.25s ease;
+}
+
+.theme-easter .admin-header,
+.theme-easter .dashboard-header {
+    background: linear-gradient(135deg, #ffb6c1 0%, #98fb98 50%, #87ceeb 100%) !important;
+}
+
+.theme-easter .stat-card,
+.theme-easter .card {
+    border: 1px solid rgba(221, 160, 221, 0.3);
+    box-shadow: 0 4px 15px rgba(221, 160, 221, 0.2);
+}
+
+.theme-easter .tab-btn.active {
+    color: #dda0dd !important;
+    border-bottom-color: #dda0dd !important;
+}
+
+/* Floating Eggs & Bunnies */
+.theme-easter .theme-effects-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.theme-easter .theme-particle {
+    position: absolute;
+    top: -40px;
+    font-size: 1.6em;
+    animation: egg-bounce linear infinite;
+    opacity: 0.85;
+}
+
+@keyframes egg-bounce {
+    0% {
+        transform: translateY(-40px) rotate(0deg);
+        opacity: 0.85;
+    }
+    25% {
+        transform: translateY(25vh) rotate(90deg) translateX(10px);
+    }
+    50% {
+        transform: translateY(50vh) rotate(180deg) translateX(-10px);
+    }
+    75% {
+        transform: translateY(75vh) rotate(270deg) translateX(10px);
+    }
+    100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0.3;
+    }
+}
+
+.theme-easter .theme-particle:nth-child(1) { left: 5%; animation-duration: 12s; animation-delay: 0s; }
+.theme-easter .theme-particle:nth-child(2) { left: 15%; animation-duration: 14s; animation-delay: 2s; }
+.theme-easter .theme-particle:nth-child(3) { left: 25%; animation-duration: 10s; animation-delay: 4s; }
+.theme-easter .theme-particle:nth-child(4) { left: 35%; animation-duration: 13s; animation-delay: 1s; }
+.theme-easter .theme-particle:nth-child(5) { left: 45%; animation-duration: 11s; animation-delay: 3s; }
+.theme-easter .theme-particle:nth-child(6) { left: 55%; animation-duration: 15s; animation-delay: 5s; }
+.theme-easter .theme-particle:nth-child(7) { left: 65%; animation-duration: 12s; animation-delay: 2s; }
+.theme-easter .theme-particle:nth-child(8) { left: 75%; animation-duration: 14s; animation-delay: 4s; }
+.theme-easter .theme-particle:nth-child(9) { left: 85%; animation-duration: 10s; animation-delay: 1s; }
+.theme-easter .theme-particle:nth-child(10) { left: 95%; animation-duration: 13s; animation-delay: 3s; }
+
+/* Easter decorations */
+.theme-easter .stat-card::after {
+    content: '🥚';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 1.2rem;
+    opacity: 0.8;
+}
+
+.theme-easter .stat-card:nth-child(2)::after { content: '🐰'; }
+.theme-easter .stat-card:nth-child(3)::after { content: '🌷'; }
+.theme-easter .stat-card:nth-child(4)::after { content: '🐣'; }
+
+/* ============================================== */
+/* ENHANCED EASTER EFFECTS */
+/* ============================================== */
+
+/* Rainbow Pastel Scrollbar */
+.theme-easter ::-webkit-scrollbar {
+    width: 12px;
+}
+
+.theme-easter ::-webkit-scrollbar-track {
+    background: #1a1520;
+}
+
+.theme-easter ::-webkit-scrollbar-thumb {
+    background: linear-gradient(
+        180deg,
+        #ffb6c1 0%,
+        #98fb98 25%,
+        #87ceeb 50%,
+        #dda0dd 75%,
+        #ffd700 100%
+    );
+    border-radius: 6px;
+}
+
+/* Bunny Hop on Card Hover */
+.theme-easter .card:hover,
+.theme-easter .stat-card:hover {
+    animation: bunny-hop 0.5s ease;
+    box-shadow: 
+        0 0 20px rgba(221, 160, 221, 0.4),
+        0 0 40px rgba(152, 251, 152, 0.3) !important;
+}
+
+@keyframes bunny-hop {
+    0%, 100% { transform: translateY(0); }
+    25% { transform: translateY(-8px); }
+    50% { transform: translateY(0); }
+    75% { transform: translateY(-4px); }
+}
+
+/* Easter Egg Gradient Border */
+.theme-easter .card,
+.theme-easter .stat-card {
+    position: relative;
+}
+
+.theme-easter .card::before,
+.theme-easter .stat-card::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, #ffb6c1, #98fb98, #87ceeb, #dda0dd);
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0.3;
+}
+
+/* Pastel Glow on Focus */
+.theme-easter input:focus,
+.theme-easter select:focus,
+.theme-easter textarea:focus {
+    box-shadow: 
+        0 0 0 3px rgba(221, 160, 221, 0.3),
+        0 0 20px rgba(152, 251, 152, 0.3) !important;
+}
+
+/* Egg emoji spin on hover */
+.theme-easter .stat-card:hover::after {
+    animation: egg-spin 0.8s ease-in-out;
+}
+
+@keyframes egg-spin {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.3); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+/* Hidden Egg Hover Glow */
+.hidden-easter-egg:hover {
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+}

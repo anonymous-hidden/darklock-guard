@@ -1,0 +1,123 @@
+/* 🌙 Default Dark Theme */
+/* Clean, neutral dark mode - the base theme */
+
+:root {
+    --theme-name: 'Default Dark';
+    --theme-emoji: '🌙';
+    
+    /* ============================================== */
+    /* UNIVERSAL VARIABLES (works with all stylesheets) */
+    /* ============================================== */
+    
+    /* Primary/Accent Colors - ALL naming conventions */
+    --color-primary: #5865F2 !important;
+    --color-primary-light: #7289da !important;
+    --color-primary-dark: #4752c4 !important;
+    --color-secondary: #57F287 !important;
+    --color-accent: #FEE75C !important;
+    --accent-primary: #5865F2 !important;
+    --accent-secondary: #57F287 !important;
+    --accent-tertiary: #FEE75C !important;
+    --accent-gradient: linear-gradient(135deg, #5865F2 0%, #7289da 100%) !important;
+    
+    /* Background Colors - ALL naming conventions */
+    --bg-body: #1a1a2e !important;
+    --bg-primary: #1a1a2e !important;
+    --bg-secondary: #16213e !important;
+    --bg-tertiary: #0f3460 !important;
+    --bg-surface: #16213e !important;
+    --bg-surface-hover: #1e2a4a !important;
+    --bg-surface-elevated: #0f3460 !important;
+    --bg-card: rgba(22, 33, 62, 0.8) !important;
+    --bg-card-solid: #16213e !important;
+    --bg-card-hover: rgba(30, 42, 74, 0.9) !important;
+    --bg-gradient: radial-gradient(ellipse at top, #16213e 0%, #1a1a2e 100%) !important;
+    --bg-sidebar: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%) !important;
+    
+    /* Text Colors - ALL naming conventions */
+    --color-text: #ffffff !important;
+    --color-text-secondary: #b9bbbe !important;
+    --color-muted: #72767d !important;
+    --text-primary: #ffffff !important;
+    --text-secondary: #b9bbbe !important;
+    --text-muted: #72767d !important;
+    
+    /* Status Colors */
+    --color-success: #57F287 !important;
+    --color-warning: #FEE75C !important;
+    --color-danger: #ED4245 !important;
+    --color-info: #5865F2 !important;
+    --success: #57F287 !important;
+    --warning: #FEE75C !important;
+    --danger: #ED4245 !important;
+    --error: #ED4245 !important;
+    --info: #5865F2 !important;
+    
+    /* Border & Shadow - ALL naming conventions */
+    --color-border: rgba(255, 255, 255, 0.1) !important;
+    --color-border-light: rgba(255, 255, 255, 0.15) !important;
+    --border-color: rgba(255, 255, 255, 0.1) !important;
+    --border-color-light: rgba(255, 255, 255, 0.15) !important;
+    --border-glow: rgba(88, 101, 242, 0.3) !important;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3) !important;
+    --shadow-md: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.4) !important;
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+    --shadow-glow: 0 0 30px rgba(88, 101, 242, 0.2) !important;
+    --shadow-glow-primary: 0 0 20px rgba(88, 101, 242, 0.3) !important;
+    --shadow-glow-accent: 0 0 20px rgba(87, 242, 135, 0.3) !important;
+    
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-pill: 9999px;
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.3s ease;
+    --transition: 0.25s ease;
+    --transition-base: 0.25s ease;
+}
+}
+
+/* Header Gradient */
+.theme-default-dark .admin-header,
+.theme-default-dark .dashboard-header {
+    background: linear-gradient(135deg, #5865F2 0%, #7289da 100%) !important;
+}
+
+/* Card Styling */
+.theme-default-dark .stat-card,
+.theme-default-dark .card {
+    border-color: var(--theme-border);
+    box-shadow: 0 4px 15px var(--theme-shadow);
+}
+
+/* Button Primary */
+.theme-default-dark .btn-primary,
+.theme-default-dark .btn-small {
+    background: var(--theme-primary) !important;
+}
+
+.theme-default-dark .btn-primary:hover,
+.theme-default-dark .btn-small:hover {
+    background: var(--theme-primary-dark) !important;
+}
+
+/* Links */
+.theme-default-dark a:not(.btn) {
+    color: var(--theme-primary-light);
+}
+
+/* Tab Active State */
+.theme-default-dark .tab-btn.active {
+    color: var(--theme-primary) !important;
+    border-bottom-color: var(--theme-primary) !important;
+}
+
+/* No special effects for default theme */
+.theme-default-dark .theme-effects-container {
+    display: none;
+}

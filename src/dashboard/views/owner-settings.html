@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owner Settings - DarkLock</title>
+    <link rel="stylesheet" href="/css/dashboard-pro.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <style>
+        .settings-header {
+            background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            color: #000;
+        }
+
+        .settings-header h1 {
+            font-size: 2rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .owner-badge {
+            background: #000;
+            color: #ffd700;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .settings-card {
+            background: var(--dark-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .settings-card h2 {
+            font-size: 1.25rem;
+            margin: 0 0 1rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        .settings-card h2 i {
+            color: var(--discord-blue);
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+
+        .setting-info {
+            flex: 1;
+        }
+
+        .setting-info label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .setting-info .description {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .setting-control {
+            margin-left: 1rem;
+        }
+
+        .setting-control input[type="text"],
+        .setting-control input[type="number"],
+        .setting-control select {
+            background: var(--dark-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            color: var(--text-primary);
+            min-width: 150px;
+        }
+
+        .setting-control input:focus,
+        .setting-control select:focus {
+            outline: none;
+            border-color: var(--discord-blue);
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--dark-tertiary);
+            border-radius: 26px;
+            transition: 0.3s;
+        }
+
+        .toggle-slider::before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background: var(--alert-green);
+        }
+
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(24px);
+        }
+
+        .btn-save {
+            background: var(--discord-blue);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            margin-top: 1.5rem;
+            transition: all 0.2s;
+        }
+
+        .btn-save:hover {
+            background: #4752c4;
+        }
+
+        .btn-save:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            margin-bottom: 1rem;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--text-primary);
+        }
+
+        .quick-links {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .quick-link {
+            background: var(--dark-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            text-decoration: none;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .quick-link:hover {
+            border-color: var(--discord-blue);
+            transform: translateY(-2px);
+        }
+
+        .quick-link i {
+            font-size: 1.5rem;
+            color: var(--discord-blue);
+        }
+
+        .saving-indicator {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--dark-secondary);
+            border: 1px solid var(--border-color);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+
+        .saving-indicator.show {
+            display: flex;
+        }
+
+        .clock-display {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: var(--dark-secondary);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 1rem;
+            z-index: 1000;
+        }
+
+        .test-btn {
+            background: var(--dark-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .test-btn:hover {
+            background: var(--discord-blue);
+            border-color: var(--discord-blue);
+        }
+    </style>
+</head>
+<body class="bg-dark text-white">
+    <!-- Clock Display -->
+    <div class="clock-display" id="clockDisplay">
+        <span id="currentTime">--:--:--</span>
+        <span id="currentDate" style="color: var(--text-muted); margin-left: 0.5rem; font-size: 0.85rem;"></span>
+    </div>
+
+    <main class="dashboard-container" style="padding: 2rem; max-width: 1200px; margin: 0 auto;">
+        <a href="/admin" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Admin Dashboard
+        </a>
+
+        <div class="settings-header">
+            <h1>
+                <i class="fas fa-crown"></i> Owner Settings
+                <span class="owner-badge">OWNER ONLY</span>
+            </h1>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.8;">Configure dashboard behavior, bot settings, and notifications</p>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="quick-links">
+            <a href="/admin/theme" class="quick-link">
+                <i class="fas fa-palette"></i>
+                <span>Theme Manager</span>
+            </a>
+            <a href="/admin/users" class="quick-link">
+                <i class="fas fa-users-cog"></i>
+                <span>User Management</span>
+            </a>
+            <a href="/admin/2fa" class="quick-link">
+                <i class="fas fa-shield-alt"></i>
+                <span>2FA Settings</span>
+            </a>
+        </div>
+
+        <div class="settings-grid">
+            <!-- Bot Configuration -->
+            <div class="settings-card">
+                <h2><i class="fas fa-robot"></i> Bot Configuration</h2>
+                
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Maintenance Mode</label>
+                        <div class="description">Disable all bot commands and show maintenance page</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="maintenanceMode">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="setting-item" id="maintenanceMessageRow">
+                    <div class="setting-info">
+                        <label>Maintenance Message</label>
+                        <div class="description">Custom message shown on maintenance page</div>
+                    </div>
+                    <div class="setting-control" style="flex: 1; margin-left: 1rem;">
+                        <textarea id="maintenanceMessage" placeholder="We're performing scheduled maintenance to improve your experience. Please check back soon!" style="width: 100%; min-height: 80px; resize: vertical; background: var(--dark-tertiary); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem; color: var(--text-primary);"></textarea>
+                    </div>
+                </div>
+
+                <div class="setting-item" id="maintenanceEtaRow">
+                    <div class="setting-info">
+                        <label>Estimated Duration</label>
+                        <div class="description">Time until maintenance completes (optional)</div>
+                    </div>
+                    <div class="setting-control">
+                        <select id="maintenanceEta">
+                            <option value="">No estimate</option>
+                            <option value="15">15 minutes</option>
+                            <option value="30">30 minutes</option>
+                            <option value="60">1 hour</option>
+                            <option value="120">2 hours</option>
+                            <option value="240">4 hours</option>
+                            <option value="480">8 hours</option>
+                            <option value="1440">24 hours</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item" id="maintenanceApplyRow" style="display: none; border-top: 2px solid var(--discord-blue);">
+                    <div class="setting-info">
+                        <label style="color: var(--discord-blue);">Apply Maintenance Changes</label>
+                        <div class="description">Click to activate/deactivate maintenance mode</div>
+                    </div>
+                    <div class="setting-control">
+                        <button type="button" id="applyMaintenanceBtn" class="save-btn" style="background: linear-gradient(135deg, #f59e0b, #ef4444); padding: 0.5rem 1rem;">
+                            <i class="fas fa-wrench"></i> Apply Now
+                        </button>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Default Language</label>
+                        <div class="description">Default locale for bot responses</div>
+                    </div>
+                    <div class="setting-control">
+                        <select id="defaultLanguage">
+                            <option value="en">English</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                            <option value="de">German</option>
+                            <option value="pt">Portuguese</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Auto-Backup Schedule</label>
+                        <div class="description">Automatic database backups</div>
+                    </div>
+                    <div class="setting-control">
+                        <select id="backupSchedule">
+                            <option value="disabled">Disabled</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Log Retention (days)</label>
+                        <div class="description">How long to keep log entries</div>
+                    </div>
+                    <div class="setting-control">
+                        <select id="logRetention">
+                            <option value="7">7 days</option>
+                            <option value="14">14 days</option>
+                            <option value="30">30 days</option>
+                            <option value="90">90 days</option>
+                            <option value="365">1 year</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Behavior -->
+            <div class="settings-card">
+                <h2><i class="fas fa-desktop"></i> Dashboard Behavior</h2>
+                
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Auto-Refresh Interval</label>
+                        <div class="description">How often dashboard stats update</div>
+                    </div>
+                    <div class="setting-control">
+                        <select id="refreshInterval">
+                            <option value="10">10 seconds</option>
+                            <option value="30">30 seconds</option>
+                            <option value="60">1 minute</option>
+                            <option value="300">5 minutes</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Items Per Page</label>
+                        <div class="description">Pagination for tables and lists</div>
+                    </div>
+                    <div class="setting-control">
+                        <select id="itemsPerPage">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Timezone</label>
+                        <div class="description">For displaying timestamps (auto-detected)</div>
+                    </div>
+                    <div class="setting-control">
+                        <select id="timezone">
+                            <option value="auto">Auto-detect</option>
+                            <option value="UTC">UTC</option>
+                            <option value="America/New_York">Eastern (US)</option>
+                            <option value="America/Chicago">Central (US)</option>
+                            <option value="America/Denver">Mountain (US)</option>
+                            <option value="America/Los_Angeles">Pacific (US)</option>
+                            <option value="Europe/London">London</option>
+                            <option value="Europe/Paris">Paris</option>
+                            <option value="Asia/Tokyo">Tokyo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Show Clock</label>
+                        <div class="description">Display clock on dashboard</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="showClock" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Show Quick Actions</label>
+                        <div class="description">Display Quick Actions widget on dashboard</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="showQuickActions" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Compact Mode</label>
+                        <div class="description">Use smaller cards and tighter spacing</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="compactMode">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions Widget -->
+            <div class="settings-card">
+                <h2><i class="fas fa-bolt"></i> Quick Actions Widget</h2>
+                
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Show Users Action</label>
+                        <div class="description">Display "View Users" button in Quick Actions</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="quickActionsShowUsers" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Show Logs Action</label>
+                        <div class="description">Display "View Logs" button in Quick Actions</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="quickActionsShowLogs" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Show Tickets Action</label>
+                        <div class="description">Display "View Tickets" button in Quick Actions</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="quickActionsShowTickets" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Show Backups Action</label>
+                        <div class="description">Display "View Backups" button in Quick Actions</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="quickActionsShowBackups" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Show Settings Action</label>
+                        <div class="description">Display "Bot Settings" button in Quick Actions</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="quickActionsShowSettings" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Show Invite Action</label>
+                        <div class="description">Display "Invite Bot" button in Quick Actions</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="quickActionsShowInvite" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notifications -->
+            <div class="settings-card">
+                <h2><i class="fas fa-bell"></i> Notifications</h2>
+                
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Login Notification Webhook</label>
+                        <div class="description">Discord webhook URL for login alerts</div>
+                    </div>
+                    <div class="setting-control">
+                        <input type="text" id="loginWebhook" placeholder="https://discord.com/api/webhooks/..." style="width: 200px;">
+                        <button class="test-btn" onclick="testWebhook('login')">Test</button>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Critical Alerts Webhook</label>
+                        <div class="description">For security events, errors, etc.</div>
+                    </div>
+                    <div class="setting-control">
+                        <input type="text" id="alertsWebhook" placeholder="https://discord.com/api/webhooks/..." style="width: 200px;">
+                        <button class="test-btn" onclick="testWebhook('alerts')">Test</button>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Daily Reports</label>
+                        <div class="description">Send daily summary to a channel</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="dailyReports">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Report Channel ID</label>
+                        <div class="description">Discord channel for daily reports</div>
+                    </div>
+                    <div class="setting-control">
+                        <input type="text" id="reportChannel" placeholder="Channel ID" style="width: 180px;">
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Alert on High-Risk Events</label>
+                        <div class="description">Raid attempts, nuke attempts, etc.</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="highRiskAlerts" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced -->
+            <div class="settings-card">
+                <h2><i class="fas fa-cogs"></i> Advanced</h2>
+                
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Debug Mode</label>
+                        <div class="description">Enable verbose logging (performance impact)</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="debugMode">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>API Rate Limit</label>
+                        <div class="description">Max API requests per minute per user</div>
+                    </div>
+                    <div class="setting-control">
+                        <select id="apiRateLimit">
+                            <option value="30">30/min</option>
+                            <option value="60">60/min</option>
+                            <option value="120">120/min</option>
+                            <option value="unlimited">Unlimited</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Theme Effects</label>
+                        <div class="description">Enable animations (snow, leaves, etc.)</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="themeEffects" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Cache Duration (minutes)</label>
+                        <div class="description">How long to cache API responses</div>
+                    </div>
+                    <div class="setting-control">
+                        <select id="cacheDuration">
+                            <option value="1">1 minute</option>
+                            <option value="5">5 minutes</option>
+                            <option value="15">15 minutes</option>
+                            <option value="30">30 minutes</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bot Owner Permissions -->
+            <div class="settings-card">
+                <h2><i class="fas fa-user-shield"></i> Bot Owner Controls</h2>
+                
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Support Server Link</label>
+                        <div class="description">Discord invite link for your support server</div>
+                    </div>
+                    <div class="setting-control">
+                        <input type="text" id="supportServerLink" placeholder="https://discord.gg/your-server" style="width: 220px;">
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Bot Website URL</label>
+                        <div class="description">Your bot's website or documentation URL</div>
+                    </div>
+                    <div class="setting-control">
+                        <input type="text" id="botWebsiteUrl" placeholder="https://your-bot-website.com" style="width: 220px;">
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Owner Commands</label>
+                        <div class="description">Enable special owner-only slash commands</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="ownerCommandsEnabled" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>DM on Critical Events</label>
+                        <div class="description">Send DMs to bot owner for raids, nukes, critical errors</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="dmOwnerCritical" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Emergency Lockdown Key</label>
+                        <div class="description">Secret phrase to trigger emergency lockdown in any server</div>
+                    </div>
+                    <div class="setting-control">
+                        <input type="password" id="emergencyLockdownKey" placeholder="Secret phrase..." style="width: 180px;">
+                        <button class="test-btn" onclick="togglePasswordVisibility('emergencyLockdownKey')"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Auto-Join Message</label>
+                        <div class="description">DM sent to server owner when bot joins a new server</div>
+                    </div>
+                    <div class="setting-control" style="flex: 1; margin-left: 1rem;">
+                        <textarea id="autoJoinMessage" placeholder="Thanks for adding me! Use /help to get started..." style="width: 100%; min-height: 60px; resize: vertical; background: var(--dark-tertiary); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem; color: var(--text-primary);"></textarea>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Blacklisted Servers</label>
+                        <div class="description">Server IDs where bot will auto-leave (one per line)</div>
+                    </div>
+                    <div class="setting-control" style="flex: 1; margin-left: 1rem;">
+                        <textarea id="blacklistedServers" placeholder="123456789&#10;987654321" style="width: 100%; min-height: 60px; resize: vertical; background: var(--dark-tertiary); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem; color: var(--text-primary);"></textarea>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Blacklisted Users</label>
+                        <div class="description">User IDs banned from using the bot (one per line)</div>
+                    </div>
+                    <div class="setting-control" style="flex: 1; margin-left: 1rem;">
+                        <textarea id="blacklistedUsers" placeholder="123456789&#10;987654321" style="width: 100%; min-height: 60px; resize: vertical; background: var(--dark-tertiary); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem; color: var(--text-primary);"></textarea>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label>Global Announcements</label>
+                        <div class="description">Enable sending announcements to all servers</div>
+                    </div>
+                    <div class="setting-control">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="globalAnnouncementsEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-save" id="saveBtn" onclick="saveSettings()">
+            <i class="fas fa-save"></i> Save All Settings
+        </button>
+    </main>
+
+    <div class="saving-indicator" id="savingIndicator">
+        <i class="fas fa-spinner fa-spin"></i>
+        <span>Saving...</span>
+    </div>
+
+    <script src="/js/secure-auth.js"></script>
+    <script>
+        // Clock update
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString();
+            const dateStr = now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+            document.getElementById('currentTime').textContent = timeStr;
+            document.getElementById('currentDate').textContent = dateStr;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Load settings
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/settings', {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        alert('Access denied. Owner role required.');
+                        window.location.href = '/admin';
+                        return;
+                    }
+                    throw new Error('Failed to load settings');
+                }
+                
+                const data = await response.json();
+                const s = data.settings || {};
+                
+                // Bot Configuration
+                document.getElementById('maintenanceMode').checked = s.maintenance_mode === 'true';
+                document.getElementById('maintenanceMessage').value = s.maintenance_message || '';
+                document.getElementById('defaultLanguage').value = s.default_language || 'en';
+                document.getElementById('backupSchedule').value = s.backup_schedule || 'disabled';
+                document.getElementById('logRetention').value = s.log_retention || '30';
+                
+                // Dashboard Behavior
+                document.getElementById('refreshInterval').value = s.refresh_interval || '30';
+                document.getElementById('itemsPerPage').value = s.items_per_page || '25';
+                document.getElementById('timezone').value = s.timezone || 'auto';
+                document.getElementById('showClock').checked = s.show_clock !== 'false';
+                document.getElementById('showQuickActions').checked = s.show_quick_actions !== 'false';
+                document.getElementById('compactMode').checked = s.compact_mode === 'true';
+                
+                // Quick Actions Widget
+                document.getElementById('quickActionsShowUsers').checked = s.quick_actions_show_users !== 'false';
+                document.getElementById('quickActionsShowLogs').checked = s.quick_actions_show_logs !== 'false';
+                document.getElementById('quickActionsShowTickets').checked = s.quick_actions_show_tickets !== 'false';
+                document.getElementById('quickActionsShowBackups').checked = s.quick_actions_show_backups !== 'false';
+                document.getElementById('quickActionsShowSettings').checked = s.quick_actions_show_settings !== 'false';
+                document.getElementById('quickActionsShowInvite').checked = s.quick_actions_show_invite !== 'false';
+                
+                // Notifications
+                document.getElementById('loginWebhook').value = s.login_webhook || '';
+                document.getElementById('alertsWebhook').value = s.alerts_webhook || '';
+                document.getElementById('dailyReports').checked = s.daily_reports === 'true';
+                document.getElementById('reportChannel').value = s.report_channel || '';
+                document.getElementById('highRiskAlerts').checked = s.high_risk_alerts !== 'false';
+                
+                // Advanced
+                document.getElementById('debugMode').checked = s.debug_mode === 'true';
+                document.getElementById('apiRateLimit').value = s.api_rate_limit || '60';
+                document.getElementById('themeEffects').checked = s.theme_effects !== 'false';
+                document.getElementById('cacheDuration').value = s.cache_duration || '5';
+                
+                // Bot Owner Controls
+                document.getElementById('supportServerLink').value = s.support_server_link || '';
+                document.getElementById('botWebsiteUrl').value = s.bot_website_url || '';
+                document.getElementById('ownerCommandsEnabled').checked = s.owner_commands_enabled !== 'false';
+                document.getElementById('dmOwnerCritical').checked = s.dm_owner_critical !== 'false';
+                document.getElementById('emergencyLockdownKey').value = s.emergency_lockdown_key || '';
+                document.getElementById('autoJoinMessage').value = s.auto_join_message || '';
+                document.getElementById('blacklistedServers').value = s.blacklisted_servers || '';
+                document.getElementById('blacklistedUsers').value = s.blacklisted_users || '';
+                document.getElementById('globalAnnouncementsEnabled').checked = s.global_announcements_enabled === 'true';
+                
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        // Save settings
+        async function saveSettings() {
+            const indicator = document.getElementById('savingIndicator');
+            indicator.classList.add('show');
+            indicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Saving...</span>';
+            
+            const settings = {
+                // Bot Configuration
+                maintenance_mode: document.getElementById('maintenanceMode').checked.toString(),
+                maintenance_message: document.getElementById('maintenanceMessage').value,
+                default_language: document.getElementById('defaultLanguage').value,
+                backup_schedule: document.getElementById('backupSchedule').value,
+                log_retention: document.getElementById('logRetention').value,
+                
+                // Dashboard Behavior
+                refresh_interval: document.getElementById('refreshInterval').value,
+                items_per_page: document.getElementById('itemsPerPage').value,
+                timezone: document.getElementById('timezone').value,
+                show_clock: document.getElementById('showClock').checked.toString(),
+                show_quick_actions: document.getElementById('showQuickActions').checked.toString(),
+                compact_mode: document.getElementById('compactMode').checked.toString(),
+                
+                // Quick Actions Widget
+                quick_actions_show_users: document.getElementById('quickActionsShowUsers').checked.toString(),
+                quick_actions_show_logs: document.getElementById('quickActionsShowLogs').checked.toString(),
+                quick_actions_show_tickets: document.getElementById('quickActionsShowTickets').checked.toString(),
+                quick_actions_show_backups: document.getElementById('quickActionsShowBackups').checked.toString(),
+                quick_actions_show_settings: document.getElementById('quickActionsShowSettings').checked.toString(),
+                quick_actions_show_invite: document.getElementById('quickActionsShowInvite').checked.toString(),
+                
+                // Notifications
+                login_webhook: document.getElementById('loginWebhook').value,
+                alerts_webhook: document.getElementById('alertsWebhook').value,
+                daily_reports: document.getElementById('dailyReports').checked.toString(),
+                report_channel: document.getElementById('reportChannel').value,
+                high_risk_alerts: document.getElementById('highRiskAlerts').checked.toString(),
+                
+                // Advanced
+                debug_mode: document.getElementById('debugMode').checked.toString(),
+                api_rate_limit: document.getElementById('apiRateLimit').value,
+                theme_effects: document.getElementById('themeEffects').checked.toString(),
+                cache_duration: document.getElementById('cacheDuration').value,
+                
+                // Bot Owner Controls
+                support_server_link: document.getElementById('supportServerLink').value,
+                bot_website_url: document.getElementById('botWebsiteUrl').value,
+                owner_commands_enabled: document.getElementById('ownerCommandsEnabled').checked.toString(),
+                dm_owner_critical: document.getElementById('dmOwnerCritical').checked.toString(),
+                emergency_lockdown_key: document.getElementById('emergencyLockdownKey').value,
+                auto_join_message: document.getElementById('autoJoinMessage').value,
+                blacklisted_servers: document.getElementById('blacklistedServers').value,
+                blacklisted_users: document.getElementById('blacklistedUsers').value,
+                global_announcements_enabled: document.getElementById('globalAnnouncementsEnabled').checked.toString()
+            };
+            
+            try {
+                const response = await SecureAuth.fetch('/api/settings', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ settings })
+                });
+                
+                if (!response.ok) throw new Error('Failed to save settings');
+                
+                indicator.innerHTML = '<i class="fas fa-check" style="color: var(--alert-green)"></i><span>Settings saved!</span>';
+                setTimeout(() => indicator.classList.remove('show'), 2000);
+            } catch (error) {
+                console.error('Error:', error);
+                indicator.innerHTML = '<i class="fas fa-times" style="color: var(--alert-red)"></i><span>Failed to save</span>';
+                setTimeout(() => indicator.classList.remove('show'), 2000);
+            }
+        }
+
+        // Test webhook
+        async function testWebhook(type) {
+            const webhookId = type === 'login' ? 'loginWebhook' : 'alertsWebhook';
+            const webhookUrl = document.getElementById(webhookId).value;
+            
+            if (!webhookUrl) {
+                alert('Please enter a webhook URL first');
+                return;
+            }
+            
+            try {
+                const response = await SecureAuth.fetch('/api/settings/test-webhook', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ webhookUrl, type })
+                });
+                
+                if (response.ok) {
+                    alert('✅ Test message sent! Check your Discord channel.');
+                } else {
+                    alert('❌ Failed to send test message. Check the webhook URL.');
+                }
+            } catch (error) {
+                alert('❌ Error testing webhook: ' + error.message);
+            }
+        }
+
+        // Maintenance mode handling
+        let maintenanceChanged = false;
+        
+        function setupMaintenanceListeners() {
+            const modeToggle = document.getElementById('maintenanceMode');
+            const messageInput = document.getElementById('maintenanceMessage');
+            const etaSelect = document.getElementById('maintenanceEta');
+            const applyRow = document.getElementById('maintenanceApplyRow');
+            const applyBtn = document.getElementById('applyMaintenanceBtn');
+            
+            const showApplyButton = () => {
+                applyRow.style.display = 'flex';
+                maintenanceChanged = true;
+            };
+            
+            modeToggle.addEventListener('change', showApplyButton);
+            messageInput.addEventListener('input', showApplyButton);
+            etaSelect.addEventListener('change', showApplyButton);
+            
+            applyBtn.addEventListener('click', applyMaintenanceMode);
+        }
+        
+        async function applyMaintenanceMode() {
+            const enabled = document.getElementById('maintenanceMode').checked;
+            const message = document.getElementById('maintenanceMessage').value;
+            const estimatedMinutes = document.getElementById('maintenanceEta').value;
+            const applyBtn = document.getElementById('applyMaintenanceBtn');
+            const applyRow = document.getElementById('maintenanceApplyRow');
+            
+            applyBtn.disabled = true;
+            applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying...';
+            
+            try {
+                const response = await SecureAuth.fetch('/api/maintenance', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled, message, estimatedMinutes })
+                });
+                
+                if (!response.ok) throw new Error('Failed to update maintenance mode');
+                
+                const result = await response.json();
+                
+                applyBtn.innerHTML = '<i class="fas fa-check"></i> Applied!';
+                applyBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                
+                setTimeout(() => {
+                    applyRow.style.display = 'none';
+                    applyBtn.disabled = false;
+                    applyBtn.innerHTML = '<i class="fas fa-wrench"></i> Apply Now';
+                    applyBtn.style.background = 'linear-gradient(135deg, #f59e0b, #ef4444)';
+                    maintenanceChanged = false;
+                }, 2000);
+                
+                // Show status notification
+                const statusMsg = enabled ? 
+                    '🔧 Maintenance mode ENABLED - Website will show maintenance page' : 
+                    '✅ Maintenance mode DISABLED - Website is live';
+                alert(statusMsg);
+                
+            } catch (error) {
+                console.error('Error applying maintenance mode:', error);
+                applyBtn.innerHTML = '<i class="fas fa-times"></i> Failed';
+                applyBtn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+                
+                setTimeout(() => {
+                    applyBtn.disabled = false;
+                    applyBtn.innerHTML = '<i class="fas fa-wrench"></i> Apply Now';
+                    applyBtn.style.background = 'linear-gradient(135deg, #f59e0b, #ef4444)';
+                }, 2000);
+            }
+        }
+
+        // Toggle password visibility
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            const button = input.nextElementSibling;
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.innerHTML = '<i class="fas fa-eye-slash"></i>';
+            } else {
+                input.type = 'password';
+                button.innerHTML = '<i class="fas fa-eye"></i>';
+            }
+        }
+
+        // Initialize
+        (async function() {
+            // Initialize SecureAuth to get CSRF token
+            await SecureAuth.init();
+            
+            // Load settings and setup listeners
+            loadSettings();
+            setupMaintenanceListeners();
+        })();
+    </script>
+</body>
+</html>

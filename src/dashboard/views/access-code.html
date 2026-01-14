@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DarkLock - Enter Access Code</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .access-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1B1E23 0%, #2C2F33 100%);
+            padding: 20px;
+        }
+        
+        .access-card {
+            background: var(--dark-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-xl);
+            width: 100%;
+            max-width: 500px;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .access-header {
+            text-align: center;
+            margin-bottom: var(--spacing-xl);
+        }
+        
+        .access-header .logo {
+            font-size: 3rem;
+            color: var(--security-green);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .access-header h1 {
+            font-size: 1.75rem;
+            margin-bottom: var(--spacing-sm);
+            color: var(--text-primary);
+        }
+        
+        .access-header p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        .user-info {
+            background: rgba(88, 101, 242, 0.1);
+            border: 1px solid rgba(88, 101, 242, 0.3);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-xl);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+        
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--discord-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+        
+        .user-details {
+            flex: 1;
+        }
+        
+        .user-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        
+        .user-status {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+        
+        .form-group {
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+            color: var(--text-primary);
+        }
+        
+        .code-input-wrapper {
+            position: relative;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: var(--spacing-md);
+            background: var(--dark-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 1.125rem;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+            text-align: center;
+            text-transform: uppercase;
+            transition: var(--transition-fast);
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--discord-blue);
+            box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.1);
+        }
+        
+        .redeem-button {
+            width: 100%;
+            padding: var(--spacing-md);
+            background: var(--discord-blue);
+            border: none;
+            border-radius: var(--radius-md);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .redeem-button:hover {
+            background: var(--discord-blue-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3);
+        }
+        
+        .redeem-button:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .info-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-top: var(--spacing-lg);
+        }
+        
+        .info-box h3 {
+            font-size: 1rem;
+            margin-bottom: var(--spacing-sm);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .info-box ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .info-box li {
+            color: var(--text-secondary);
+            padding: var(--spacing-xs) 0;
+            font-size: 0.875rem;
+            line-height: 1.6;
+        }
+        
+        .info-box li:before {
+            content: "→";
+            margin-right: var(--spacing-sm);
+            color: var(--discord-blue);
+        }
+        
+        .alert {
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-lg);
+            display: none;
+        }
+        
+        .alert.show {
+            display: block;
+        }
+        
+        .alert-success {
+            background: rgba(67, 181, 129, 0.1);
+            border: 1px solid rgba(67, 181, 129, 0.3);
+            color: #43b581;
+        }
+        
+        .alert-error {
+            background: rgba(240, 71, 71, 0.1);
+            border: 1px solid rgba(240, 71, 71, 0.3);
+            color: #f04747;
+        }
+        
+        .logout-link {
+            text-align: center;
+            margin-top: var(--spacing-lg);
+        }
+        
+        .logout-link a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: var(--transition-fast);
+        }
+        
+        .logout-link a:hover {
+            color: var(--text-primary);
+        }
+
+        .spinner {
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+</head>
+<body>
+    <div class="access-container">
+        <div class="access-card">
+            <div class="access-header">
+                <div class="logo">🛡️</div>
+                <h1>Enter Access Code</h1>
+                <p>You need an access code to manage a server's dashboard</p>
+            </div>
+
+            <div class="user-info" id="userInfo" style="display: none;">
+                <div class="user-avatar" id="userAvatar">👤</div>
+                <div class="user-details">
+                    <div class="user-name" id="userName">Loading...</div>
+                    <div class="user-status">Logged in via Discord</div>
+                </div>
+            </div>
+
+            <div class="alert alert-error" id="errorAlert"></div>
+            <div class="alert alert-success" id="successAlert"></div>
+
+            <form id="accessCodeForm">
+                <div class="form-group">
+                    <label for="accessCode">Access Code</label>
+                    <div class="code-input-wrapper">
+                        <input 
+                            type="text" 
+                            id="accessCode" 
+                            placeholder="XXXX-XXXX-XXXX"
+                            maxlength="14"
+                            autocomplete="off"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <button type="submit" class="redeem-button" id="redeemBtn">
+                    <span>🎁 Redeem Code</span>
+                </button>
+            </form>
+
+            <div class="info-box">
+                <h3>ℹ️ How to Get an Access Code</h3>
+                <ul>
+                    <li>Ask a server administrator to generate an access code for you</li>
+                    <li>They can create one from the server's dashboard in the "Shared Access" section</li>
+                    <li>Access codes are temporary and expire after the specified time</li>
+                    <li>Once redeemed, you'll have access to that server's dashboard</li>
+                </ul>
+            </div>
+
+            <div class="logout-link">
+                <a href="/logout">← Log out and return to login</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/secure-auth.js"></script>
+<script>
+        // Get user info from cookie/token
+        async function loadUserInfo() {
+            try {
+                const response = await fetch('/api/user', {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const userInfo = document.getElementById('userInfo');
+                    const userName = document.getElementById('userName');
+                    const userAvatar = document.getElementById('userAvatar');
+                    
+                    userName.textContent = data.globalName || data.username;
+                    
+                    if (data.avatar) {
+                        userAvatar.innerHTML = `<img src="https://cdn.discordapp.com/avatars/${data.userId}/${data.avatar}.png" style="width: 100%; height: 100%; border-radius: 50%;">`;
+                    } else {
+                        userAvatar.textContent = (data.username || 'U').charAt(0).toUpperCase();
+                    }
+                    
+                    userInfo.style.display = 'flex';
+                }
+            } catch (error) {
+                console.error('Failed to load user info:', error);
+            }
+        }
+
+        // Format access code input
+        const accessCodeInput = document.getElementById('accessCode');
+        accessCodeInput.addEventListener('input', (e) => {
+            let value = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+            
+            // Format as XXXX-XXXX-XXXX
+            if (value.length > 4) {
+                value = value.slice(0, 4) + '-' + value.slice(4);
+            }
+            if (value.length > 9) {
+                value = value.slice(0, 9) + '-' + value.slice(9, 13);
+            }
+            
+            e.target.value = value;
+        });
+
+        // Handle form submission
+        document.getElementById('accessCodeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const code = accessCodeInput.value.replace(/-/g, '');
+            const redeemBtn = document.getElementById('redeemBtn');
+            const errorAlert = document.getElementById('errorAlert');
+            const successAlert = document.getElementById('successAlert');
+            
+            // Hide alerts
+            errorAlert.classList.remove('show');
+            successAlert.classList.remove('show');
+            
+            // Validate code format
+            if (code.length !== 12) {
+                errorAlert.textContent = 'Please enter a valid 12-character access code';
+                errorAlert.classList.add('show');
+                return;
+            }
+            
+            // Disable button and show loading
+            redeemBtn.disabled = true;
+            redeemBtn.innerHTML = '<div class="spinner"></div><span>Verifying...</span>';
+            
+            try {
+                const response = await SecureAuth.fetch('/api/redeem-access-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ code: code })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    successAlert.textContent = `✅ Success! Access granted to ${data.serverName}. Redirecting...`;
+                    successAlert.classList.add('show');
+                    
+                    // Redirect to dashboard after 1.5 seconds
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1500);
+                } else {
+                    errorAlert.textContent = data.error || 'Invalid or expired access code';
+                    errorAlert.classList.add('show');
+                    redeemBtn.disabled = false;
+                    redeemBtn.innerHTML = '<span>🎁 Redeem Code</span>';
+                }
+            } catch (error) {
+                console.error('Error redeeming code:', error);
+                errorAlert.textContent = 'Network error. Please try again.';
+                errorAlert.classList.add('show');
+                redeemBtn.disabled = false;
+                redeemBtn.innerHTML = '<span>🎁 Redeem Code</span>';
+            }
+        });
+
+        // Load user info on page load
+        loadUserInfo();
+    </script>
+</body>
+</html>

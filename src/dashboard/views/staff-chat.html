@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Chat - DarkLock</title>
+    <link rel="stylesheet" href="/css/dashboard-pro.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-body, #0a0e1a);
+            background-image: var(--bg-gradient, radial-gradient(ellipse at top, #1a2332 0%, #0a0e1a 100%));
+            background-attachment: fixed;
+            color: var(--color-text, #ffffff);
+            font-family: var(--font-stack, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ============================================== */
+        /* NAVIGATION */
+        /* ============================================== */
+        .navbar {
+            background: var(--bg-surface, #151b2d);
+            border-bottom: 1px solid var(--color-border, #2a3441);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--color-text, #fff);
+            text-decoration: none;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .navbar-brand i {
+            color: var(--color-primary, #10b981);
+            font-size: 1.5rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .nav-link {
+            color: var(--color-text-secondary, #b4bcd4);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-md, 12px);
+            transition: all var(--transition-fast, 0.15s);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--color-text, #fff);
+            background: var(--bg-surface-hover, #212d3f);
+        }
+
+        .nav-link.active {
+            background: var(--color-primary, #10b981);
+            color: #fff;
+        }
+
+        .nav-link.logout {
+            color: var(--color-danger, #ef4444);
+        }
+
+        .nav-link.logout:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        /* ============================================== */
+        /* MAIN CONTAINER */
+        /* ============================================== */
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        /* ============================================== */
+        /* PAGE HEADER */
+        /* ============================================== */
+        .page-header {
+            background: linear-gradient(135deg, var(--color-primary, #10b981) 0%, var(--color-info, #0066ff) 100%);
+            padding: 1.5rem 2rem;
+            border-radius: var(--radius-lg, 16px);
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0,0,0,.6));
+        }
+
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: #fff;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+        }
+
+        .user-info .status-dot {
+            width: 10px;
+            height: 10px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(0.9); }
+        }
+
+        /* ============================================== */
+        /* CHAT CONTAINER */
+        /* ============================================== */
+        .chat-card {
+            background: var(--bg-surface, #151b2d);
+            border: 1px solid var(--color-border, #2a3441);
+            border-radius: var(--radius-lg, 16px);
+            overflow: hidden;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0,0,0,.6));
+        }
+
+        /* ============================================== */
+        /* MESSAGES AREA */
+        /* ============================================== */
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-height: 400px;
+            max-height: calc(100vh - 350px);
+            background: var(--bg-surface-elevated, #1a2332);
+        }
+
+        .messages-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background: var(--color-border, #2a3441);
+            border-radius: 4px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: var(--color-border-light, #334254);
+        }
+
+        /* ============================================== */
+        /* MESSAGE STYLES */
+        /* ============================================== */
+        .message {
+            display: flex;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-md, 12px);
+            transition: background var(--transition-fast, 0.15s);
+            position: relative;
+        }
+
+        .message:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .message:hover .delete-btn {
+            opacity: 1;
+        }
+
+        .message-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1rem;
+            flex-shrink: 0;
+            text-transform: uppercase;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .message-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+            flex-wrap: wrap;
+        }
+
+        .message-author {
+            font-weight: 600;
+            color: var(--color-text, #fff);
+        }
+
+        .message-role {
+            font-size: 0.65rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: var(--radius-pill, 9999px);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .role-owner { 
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%); 
+            color: white; 
+            box-shadow: 0 2px 10px rgba(255, 107, 107, 0.3);
+        }
+        .role-super_admin { 
+            background: linear-gradient(135deg, #ffd93d 0%, #ff9f43 100%); 
+            color: #333; 
+            box-shadow: 0 2px 10px rgba(255, 217, 61, 0.3);
+        }
+        .role-admin { 
+            background: linear-gradient(135deg, #5865F2 0%, #7289da 100%); 
+            color: white; 
+            box-shadow: 0 2px 10px rgba(88, 101, 242, 0.3);
+        }
+        .role-moderator { 
+            background: linear-gradient(135deg, #10b981 0%, #34d399 100%); 
+            color: white; 
+            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            color: var(--color-muted, #6b7280);
+        }
+
+        .message-text {
+            color: var(--color-text-secondary, #b4bcd4);
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+
+        .delete-btn {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--color-danger, #ef4444);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm, 8px);
+            cursor: pointer;
+            opacity: 0;
+            transition: all var(--transition-fast, 0.15s);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .delete-btn:hover {
+            background: #dc2626;
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        /* ============================================== */
+        /* DATE SEPARATOR */
+        /* ============================================== */
+        .date-separator {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1rem 0;
+            color: var(--color-muted, #6b7280);
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .date-separator::before,
+        .date-separator::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--color-border, #2a3441), transparent);
+        }
+
+        /* ============================================== */
+        /* INPUT AREA */
+        /* ============================================== */
+        .chat-input-container {
+            background: var(--bg-surface, #151b2d);
+            border-top: 1px solid var(--color-border, #2a3441);
+            padding: 1rem 1.5rem;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 0.75rem;
+            background: var(--bg-surface-elevated, #1a2332);
+            border: 1px solid var(--color-border, #2a3441);
+            border-radius: var(--radius-lg, 16px);
+            padding: 0.75rem 1rem;
+            transition: border-color var(--transition-fast, 0.15s);
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--color-primary, #10b981);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .input-wrapper textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--color-text, #fff);
+            font-size: 1rem;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+            line-height: 1.5;
+            max-height: 150px;
+        }
+
+        .input-wrapper textarea::placeholder {
+            color: var(--color-muted, #6b7280);
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, var(--color-primary, #10b981) 0%, var(--color-primary-light, #34d399) 100%);
+            border: none;
+            color: white;
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-md, 12px);
+            cursor: pointer;
+            transition: all var(--transition-fast, 0.15s);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-glow-primary, 0 0 20px rgba(16,185,129,.3));
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        .send-btn:disabled {
+            background: var(--color-muted, #6b7280);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* ============================================== */
+        /* LOADING & EMPTY STATES */
+        /* ============================================== */
+        .loading-messages {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: var(--color-muted, #6b7280);
+            gap: 1rem;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--color-border, #2a3441);
+            border-top-color: var(--color-primary, #10b981);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .no-messages {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--color-muted, #6b7280);
+        }
+
+        .no-messages i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: var(--color-primary, #10b981);
+            opacity: 0.5;
+        }
+
+        .no-messages h5 {
+            color: var(--color-text, #fff);
+            margin-bottom: 0.5rem;
+        }
+
+        /* ============================================== */
+        /* ERROR BANNER */
+        /* ============================================== */
+        .error-banner {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--color-danger, #ef4444);
+            color: var(--color-danger, #ef4444);
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-md, 12px);
+            margin-bottom: 1rem;
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* ============================================== */
+        /* ACCESS DENIED */
+        /* ============================================== */
+        .access-denied {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 70vh;
+            text-align: center;
+            padding: 3rem;
+            background: var(--bg-surface, #151b2d);
+            border: 1px solid var(--color-border, #2a3441);
+            border-radius: var(--radius-xl, 20px);
+            max-width: 500px;
+            margin: 2rem auto;
+            box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0,0,0,.7));
+        }
+
+        .access-denied i {
+            font-size: 5rem;
+            color: var(--color-danger, #ef4444);
+            margin-bottom: 1.5rem;
+            filter: drop-shadow(0 0 30px rgba(239, 68, 68, 0.5));
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .access-denied h3 {
+            margin-bottom: 0.75rem;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--color-text, #fff);
+        }
+
+        .access-denied p {
+            color: var(--color-muted, #6b7280);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--color-primary, #10b981) 0%, var(--color-primary-light, #34d399) 100%);
+            color: #fff;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: var(--radius-md, 12px);
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all var(--transition-fast, 0.15s);
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-glow-primary, 0 0 20px rgba(16,185,129,.3));
+        }
+
+        /* ============================================== */
+        /* TOAST NOTIFICATIONS */
+        /* ============================================== */
+        .toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            background: var(--bg-surface, #151b2d);
+            border: 1px solid var(--color-border, #2a3441);
+            border-radius: var(--radius-md, 12px);
+            padding: 1rem 1.5rem;
+            color: var(--color-text, #fff);
+            box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0,0,0,.6));
+            animation: slideIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .toast.success { border-color: var(--color-success, #10b981); }
+        .toast.error { border-color: var(--color-danger, #ef4444); }
+
+        .toast.success i { color: var(--color-success, #10b981); }
+        .toast.error i { color: var(--color-danger, #ef4444); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* ============================================== */
+        /* RESPONSIVE */
+        /* ============================================== */
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1rem;
+            }
+
+            .nav-links {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .page-header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .main-container {
+                padding: 1rem;
+            }
+
+            .messages-container {
+                max-height: calc(100vh - 400px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <a class="navbar-brand" href="/">
+            <i class="fas fa-shield-alt"></i>
+            DarkLock
+        </a>
+        <div class="nav-links">
+            <a class="nav-link" href="/admin">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a class="nav-link active" href="/staff-chat">
+                <i class="fas fa-comments"></i> Staff Chat
+            </a>
+            <a class="nav-link" href="/logs">
+                <i class="fas fa-scroll"></i> Logs
+            </a>
+            <a class="nav-link logout" href="/logout">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </nav>
+
+    <!-- Access Denied -->
+    <div id="access-denied" class="access-denied" style="display: none;">
+        <i class="fas fa-shield-alt"></i>
+        <h3>Access Denied</h3>
+        <p>Staff Chat is only available to Moderators and above.</p>
+        <a href="/admin" class="btn-primary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Main Container -->
+    <main id="chat-area" class="main-container">
+        <!-- Error Banner -->
+        <div class="error-banner" id="error-banner">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span id="error-text"></span>
+        </div>
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1>
+                <i class="fas fa-comments"></i>
+                Staff Chat
+            </h1>
+            <div class="user-info">
+                <span class="status-dot"></span>
+                <span id="user-role">Loading...</span>
+            </div>
+        </div>
+
+        <!-- Chat Card -->
+        <div class="chat-card">
+            <!-- Messages -->
+            <div class="messages-container" id="messages">
+                <div class="loading-messages" id="loading">
+                    <div class="loading-spinner"></div>
+                    <span>Loading messages...</span>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="chat-input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="message-input" 
+                        placeholder="Type a message to staff..." 
+                        rows="1"
+                        maxlength="2000"
+                    ></textarea>
+                    <button class="send-btn" id="send-btn" title="Send message">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/js/secure-auth.js"></script>
+    <script>
+        // State
+        let currentUser = null;
+        let messages = [];
+        let canDeleteMessages = false;
+        let isLoading = false;
+
+        // DOM Elements
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const loadingEl = document.getElementById('loading');
+        const errorBanner = document.getElementById('error-banner');
+        const errorText = document.getElementById('error-text');
+        const userRoleEl = document.getElementById('user-role');
+        const chatArea = document.getElementById('chat-area');
+        const accessDenied = document.getElementById('access-denied');
+
+        // Role colors for avatars
+        const roleColors = {
+            'owner': 'linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%)',
+            'super_admin': 'linear-gradient(135deg, #ffd93d 0%, #ff9f43 100%)',
+            'admin': 'linear-gradient(135deg, #5865F2 0%, #7289da 100%)',
+            'moderator': 'linear-gradient(135deg, #10b981 0%, #34d399 100%)'
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', init);
+
+        async function init() {
+            try {
+                const response = await fetch('/api/me', { credentials: 'include' });
+                if (!response.ok) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const data = await response.json();
+                currentUser = data.user || data;
+                console.log('Staff Chat - User role:', currentUser.role);
+                
+                const allowedRoles = ['moderator', 'admin', 'super_admin', 'owner'];
+                if (!allowedRoles.includes(currentUser.role)) {
+                    chatArea.style.display = 'none';
+                    accessDenied.style.display = 'flex';
+                    return;
+                }
+
+                canDeleteMessages = ['admin', 'super_admin', 'owner'].includes(currentUser.role);
+                userRoleEl.textContent = `${currentUser.globalName || currentUser.username} • ${formatRole(currentUser.role)}`;
+
+                await loadMessages();
+                setupEventListeners();
+                setInterval(refreshMessages, 10000);
+                scrollToBottom();
+            } catch (error) {
+                console.error('Init error:', error);
+                showError('Failed to initialize chat');
+            }
+        }
+
+        function setupEventListeners() {
+            sendBtn.addEventListener('click', sendMessage);
+
+            messageInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            messageInput.addEventListener('input', () => {
+                messageInput.style.height = 'auto';
+                messageInput.style.height = Math.min(messageInput.scrollHeight, 150) + 'px';
+            });
+        }
+
+        async function loadMessages() {
+            try {
+                loadingEl.style.display = 'flex';
+                const response = await fetch('/api/staff-chat?limit=100', { credentials: 'include' });
+                
+                if (!response.ok) throw new Error('Failed to load messages');
+
+                const data = await response.json();
+                messages = data.messages || [];
+                renderMessages();
+            } catch (error) {
+                console.error('Load messages error:', error);
+                showError('Failed to load messages');
+            } finally {
+                loadingEl.style.display = 'none';
+            }
+        }
+
+        async function refreshMessages() {
+            if (isLoading) return;
+
+            try {
+                const response = await fetch('/api/staff-chat?limit=100', { credentials: 'include' });
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const newMessages = data.messages || [];
+
+                if (newMessages.length !== messages.length || 
+                    (newMessages.length > 0 && messages.length > 0 && 
+                     newMessages[newMessages.length - 1].id !== messages[messages.length - 1].id)) {
+                    
+                    const wasAtBottom = isScrolledToBottom();
+                    messages = newMessages;
+                    renderMessages();
+                    
+                    if (wasAtBottom) scrollToBottom();
+                }
+            } catch (error) {
+                console.error('Refresh error:', error);
+            }
+        }
+
+        function renderMessages() {
+            if (messages.length === 0) {
+                messagesContainer.innerHTML = `
+                    <div class="no-messages">
+                        <i class="fas fa-comments"></i>
+                        <h5>No messages yet</h5>
+                        <p>Start the conversation with your staff!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            let lastDate = null;
+
+            messages.forEach((msg) => {
+                const msgDate = new Date(msg.created_at).toLocaleDateString();
+                
+                if (msgDate !== lastDate) {
+                    html += `<div class="date-separator">${formatDateSeparator(msg.created_at)}</div>`;
+                    lastDate = msgDate;
+                }
+
+                html += renderMessage(msg);
+            });
+
+            messagesContainer.innerHTML = html;
+
+            if (canDeleteMessages) {
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', () => deleteMessage(btn.dataset.id));
+                });
+            }
+        }
+
+        function renderMessage(msg) {
+            const initials = getInitials(msg.display_name || msg.username);
+            const roleColor = roleColors[msg.role] || roleColors['moderator'];
+            const deleteBtn = canDeleteMessages ? 
+                `<button class="delete-btn" data-id="${msg.id}" title="Delete message"><i class="fas fa-trash"></i></button>` : '';
+
+            return `
+                <div class="message" data-id="${msg.id}">
+                    <div class="message-avatar" style="background: ${roleColor}">${initials}</div>
+                    <div class="message-content">
+                        <div class="message-header">
+                            <span class="message-author">${escapeHtml(msg.display_name || msg.username)}</span>
+                            <span class="message-role role-${msg.role}">${formatRole(msg.role)}</span>
+                            <span class="message-time">${formatTime(msg.created_at)}</span>
+                        </div>
+                        <div class="message-text">${escapeHtml(msg.message)}</div>
+                    </div>
+                    ${deleteBtn}
+                </div>
+            `;
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            sendBtn.disabled = true;
+
+            try {
+                const response = await SecureAuth.fetch('/api/staff-chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ message })
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to send message');
+                }
+
+                const data = await response.json();
+                messages.push(data.message);
+                renderMessages();
+                scrollToBottom();
+
+                messageInput.value = '';
+                messageInput.style.height = 'auto';
+                hideError();
+            } catch (error) {
+                console.error('Send error:', error);
+                showError(error.message);
+            } finally {
+                sendBtn.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        async function deleteMessage(id) {
+            if (!confirm('Delete this message?')) return;
+
+            try {
+                const response = await SecureAuth.fetch(`/api/staff-chat/${id}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                if (!response.ok) throw new Error('Failed to delete message');
+
+                messages = messages.filter(m => m.id !== parseInt(id));
+                renderMessages();
+                showToast('Message deleted', 'success');
+            } catch (error) {
+                console.error('Delete error:', error);
+                showError('Failed to delete message');
+            }
+        }
+
+        // Utility functions
+        function formatRole(role) {
+            const roleNames = {
+                'owner': 'Owner',
+                'super_admin': 'Super Admin',
+                'admin': 'Admin',
+                'moderator': 'Moderator',
+                'viewer': 'Viewer'
+            };
+            return roleNames[role] || role;
+        }
+
+        function formatTime(dateStr) {
+            const date = new Date(dateStr);
+            const now = new Date();
+
+            if (date.toDateString() === now.toDateString()) {
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (date.toDateString() === yesterday.toDateString()) {
+                return 'Yesterday ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function formatDateSeparator(dateStr) {
+            const date = new Date(dateStr);
+            const now = new Date();
+
+            if (date.toDateString() === now.toDateString()) return 'Today';
+
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+
+            return date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        }
+
+        function getInitials(name) {
+            if (!name) return '?';
+            const parts = name.split(/[\s_-]+/);
+            if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+            return name.substring(0, 2).toUpperCase();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function isScrolledToBottom() {
+            return messagesContainer.scrollHeight - messagesContainer.clientHeight <= messagesContainer.scrollTop + 50;
+        }
+
+        function scrollToBottom() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function showError(message) {
+            errorText.textContent = message;
+            errorBanner.style.display = 'flex';
+        }
+
+        function hideError() {
+            errorBanner.style.display = 'none';
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                <span>${message}</span>
+            `;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

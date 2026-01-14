@@ -1,0 +1,163 @@
+/* 🦃 Thanksgiving Theme */
+/* Orange, Brown, Gold with falling leaves */
+
+:root {
+    --theme-name: 'Thanksgiving';
+    --theme-emoji: '🦃';
+    
+    /* ============================================== */
+    /* UNIVERSAL VARIABLES (works with all stylesheets) */
+    /* ============================================== */
+    
+    /* Primary/Accent Colors - ALL naming conventions */
+    --color-primary: #d2691e !important;
+    --color-primary-light: #ff8c00 !important;
+    --color-primary-dark: #8b4513 !important;
+    --color-secondary: #daa520 !important;
+    --color-accent: #8b0000 !important;
+    --accent-primary: #d2691e !important;
+    --accent-secondary: #daa520 !important;
+    --accent-tertiary: #8b4513 !important;
+    --accent-gradient: linear-gradient(135deg, #d2691e 0%, #daa520 50%, #8b4513 100%) !important;
+    
+    /* Background Colors - ALL naming conventions */
+    --bg-body: #1a1008 !important;
+    --bg-primary: #1a1008 !important;
+    --bg-secondary: #2a1a10 !important;
+    --bg-tertiary: #3a2518 !important;
+    --bg-surface: #2a1a10 !important;
+    --bg-surface-hover: #3a2518 !important;
+    --bg-surface-elevated: #3a2518 !important;
+    --bg-card: rgba(42, 26, 16, 0.8) !important;
+    --bg-card-solid: #2a1a10 !important;
+    --bg-card-hover: rgba(58, 37, 24, 0.9) !important;
+    --bg-gradient: radial-gradient(ellipse at top, #2a1a10 0%, #1a1008 100%) !important;
+    --bg-sidebar: linear-gradient(180deg, #1a1008 0%, #2a1a10 100%) !important;
+    
+    /* Text Colors - ALL naming conventions */
+    --color-text: #ffffff !important;
+    --color-text-secondary: #ffe0c0 !important;
+    --color-muted: #a08060 !important;
+    --text-primary: #ffffff !important;
+    --text-secondary: #ffe0c0 !important;
+    --text-muted: #a08060 !important;
+    
+    /* Status Colors */
+    --color-success: #57F287 !important;
+    --color-warning: #daa520 !important;
+    --color-danger: #8b0000 !important;
+    --color-info: #d2691e !important;
+    --success: #57F287 !important;
+    --warning: #daa520 !important;
+    --danger: #8b0000 !important;
+    --error: #8b0000 !important;
+    --info: #d2691e !important;
+    
+    /* Border & Shadow - ALL naming conventions */
+    --color-border: rgba(210, 105, 30, 0.3) !important;
+    --color-border-light: rgba(218, 165, 32, 0.3) !important;
+    --border-color: rgba(210, 105, 30, 0.3) !important;
+    --border-color-light: rgba(218, 165, 32, 0.3) !important;
+    --border-glow: rgba(210, 105, 30, 0.4) !important;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3) !important;
+    --shadow-md: 0 4px 15px rgba(210, 105, 30, 0.2) !important;
+    --shadow-lg: 0 10px 25px rgba(210, 105, 30, 0.25) !important;
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+    --shadow-glow: 0 0 30px rgba(210, 105, 30, 0.25) !important;
+    --shadow-glow-primary: 0 0 20px rgba(210, 105, 30, 0.4) !important;
+    --shadow-glow-accent: 0 0 20px rgba(218, 165, 32, 0.4) !important;
+    
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-pill: 9999px;
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.3s ease;
+    --transition: 0.25s ease;
+    --transition-base: 0.25s ease;
+}
+
+.theme-thanksgiving .admin-header,
+.theme-thanksgiving .dashboard-header {
+    background: linear-gradient(135deg, #d2691e 0%, #daa520 50%, #8b4513 100%) !important;
+}
+
+.theme-thanksgiving .stat-card,
+.theme-thanksgiving .card {
+    border: 1px solid rgba(210, 105, 30, 0.4);
+    box-shadow: 0 4px 15px rgba(218, 165, 32, 0.2);
+}
+
+.theme-thanksgiving .tab-btn.active {
+    color: #daa520 !important;
+    border-bottom-color: #daa520 !important;
+}
+
+/* Falling Leaves */
+.theme-thanksgiving .theme-effects-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.theme-thanksgiving .theme-particle {
+    position: absolute;
+    top: -40px;
+    font-size: 1.6em;
+    animation: leaf-fall linear infinite;
+    opacity: 0.85;
+}
+
+@keyframes leaf-fall {
+    0% {
+        transform: translateY(-40px) rotate(0deg) translateX(0);
+        opacity: 0.85;
+    }
+    25% {
+        transform: translateY(25vh) rotate(90deg) translateX(30px);
+    }
+    50% {
+        transform: translateY(50vh) rotate(180deg) translateX(-30px);
+    }
+    75% {
+        transform: translateY(75vh) rotate(270deg) translateX(30px);
+    }
+    100% {
+        transform: translateY(100vh) rotate(360deg) translateX(0);
+        opacity: 0.3;
+    }
+}
+
+.theme-thanksgiving .theme-particle:nth-child(1) { left: 5%; animation-duration: 10s; animation-delay: 0s; }
+.theme-thanksgiving .theme-particle:nth-child(2) { left: 15%; animation-duration: 12s; animation-delay: 1s; }
+.theme-thanksgiving .theme-particle:nth-child(3) { left: 25%; animation-duration: 9s; animation-delay: 2s; }
+.theme-thanksgiving .theme-particle:nth-child(4) { left: 35%; animation-duration: 11s; animation-delay: 0.5s; }
+.theme-thanksgiving .theme-particle:nth-child(5) { left: 45%; animation-duration: 13s; animation-delay: 3s; }
+.theme-thanksgiving .theme-particle:nth-child(6) { left: 55%; animation-duration: 10s; animation-delay: 1.5s; }
+.theme-thanksgiving .theme-particle:nth-child(7) { left: 65%; animation-duration: 12s; animation-delay: 4s; }
+.theme-thanksgiving .theme-particle:nth-child(8) { left: 75%; animation-duration: 9s; animation-delay: 2.5s; }
+.theme-thanksgiving .theme-particle:nth-child(9) { left: 85%; animation-duration: 11s; animation-delay: 0.8s; }
+.theme-thanksgiving .theme-particle:nth-child(10) { left: 95%; animation-duration: 13s; animation-delay: 5s; }
+
+/* Thanksgiving decorations */
+.theme-thanksgiving .stat-card::after {
+    content: '🍂';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 1.2rem;
+    opacity: 0.8;
+}
+
+.theme-thanksgiving .stat-card:nth-child(2)::after { content: '🦃'; }
+.theme-thanksgiving .stat-card:nth-child(3)::after { content: '🌽'; }
+.theme-thanksgiving .stat-card:nth-child(4)::after { content: '🥧'; }

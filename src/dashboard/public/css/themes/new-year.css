@@ -1,0 +1,166 @@
+/* ================================================
+   NEW YEAR THEME - Gold, Silver, Black with Celebration
+   ================================================ */
+
+:root {
+    /* Primary Colors - Gold & Silver */
+    --color-primary: #ffd700;
+    --color-primary-light: #ffec8b;
+    --color-primary-dark: #daa520;
+    --color-secondary: #c0c0c0;
+    --color-accent: #ff8c00;
+    
+    /* Background Colors */
+    --bg-body: #0a0a0f;
+    --bg-gradient: radial-gradient(ellipse at top, #1a1a2e 0%, #0a0a0f 50%, #000000 100%);
+    --bg-surface: rgba(26, 26, 46, 0.9);
+    --bg-surface-elevated: rgba(40, 40, 60, 0.95);
+    --bg-card: linear-gradient(145deg, rgba(26, 26, 46, 0.9) 0%, rgba(20, 20, 35, 0.95) 100%);
+    
+    /* Text Colors */
+    --color-text: #ffffff;
+    --color-text-secondary: #c0c0c0;
+    --color-muted: #808080;
+    
+    /* Border & UI */
+    --color-border: rgba(255, 215, 0, 0.2);
+    --color-border-hover: rgba(255, 215, 0, 0.5);
+    
+    /* Status Colors */
+    --color-success: #ffd700;
+    --color-warning: #ff8c00;
+    --color-error: #ff4444;
+    --color-info: #c0c0c0;
+    
+    /* Effects */
+    --glow-primary: 0 0 20px rgba(255, 215, 0, 0.4);
+    --glow-secondary: 0 0 15px rgba(192, 192, 192, 0.3);
+}
+
+/* Body Background with Stars */
+body {
+    background: var(--bg-body);
+    background-image: var(--bg-gradient);
+    position: relative;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        radial-gradient(2px 2px at 20px 30px, #ffd700, transparent),
+        radial-gradient(2px 2px at 40px 70px, #c0c0c0, transparent),
+        radial-gradient(1px 1px at 90px 40px, #ffffff, transparent),
+        radial-gradient(2px 2px at 130px 80px, #ffd700, transparent),
+        radial-gradient(1px 1px at 160px 120px, #c0c0c0, transparent);
+    background-repeat: repeat;
+    background-size: 200px 200px;
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 0;
+    animation: twinkle 4s ease-in-out infinite alternate;
+}
+
+@keyframes twinkle {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+}
+
+/* Glowing Gold Borders */
+.card, .stat-card, .chart-container, .updates-widget {
+    border: 1px solid var(--color-border);
+    box-shadow: var(--glow-primary);
+}
+
+.card:hover, .stat-card:hover {
+    border-color: var(--color-border-hover);
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+}
+
+/* Sidebar Styling */
+.sidebar {
+    background: linear-gradient(180deg, rgba(26, 26, 46, 0.98) 0%, rgba(15, 15, 30, 0.98) 100%);
+    border-right: 1px solid var(--color-border);
+}
+
+.sidebar-brand {
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+/* Navigation Items */
+.nav-item {
+    transition: all 0.3s ease;
+}
+
+.nav-item:hover {
+    background: rgba(255, 215, 0, 0.1);
+    border-left: 3px solid var(--color-primary);
+}
+
+.nav-item.active {
+    background: linear-gradient(90deg, rgba(255, 215, 0, 0.2) 0%, transparent 100%);
+    border-left: 3px solid var(--color-primary);
+}
+
+/* Buttons */
+.btn-primary, .button-primary {
+    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+    color: #000;
+    border: none;
+    text-shadow: none;
+    font-weight: 600;
+}
+
+.btn-primary:hover, .button-primary:hover {
+    background: linear-gradient(135deg, #ffec8b 0%, #ffa500 100%);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+/* Stats Cards */
+.stat-value {
+    background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Headers */
+h1, h2, h3 {
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+/* Input Fields */
+input, select, textarea {
+    background: rgba(26, 26, 46, 0.8);
+    border: 1px solid var(--color-border);
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(26, 26, 46, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #ffd700 0%, #ff8c00 100%);
+    border-radius: 4px;
+}
+
+/* Badge/Tag Styling */
+.badge, .tag {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 140, 0, 0.2) 100%);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    color: #ffd700;
+}

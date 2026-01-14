@@ -1,0 +1,174 @@
+/* 🌊 Ocean Theme */
+/* Deep blue gradients, waves */
+
+:root {
+    --theme-name: 'Ocean';
+    --theme-emoji: '🌊';
+    
+    /* ============================================== */
+    /* UNIVERSAL VARIABLES (works with all stylesheets) */
+    /* ============================================== */
+    
+    /* Primary/Accent Colors - ALL naming conventions */
+    --color-primary: #006994 !important;
+    --color-primary-light: #00bfff !important;
+    --color-primary-dark: #00416a !important;
+    --color-secondary: #00ced1 !important;
+    --color-accent: #20b2aa !important;
+    --accent-primary: #006994 !important;
+    --accent-secondary: #00ced1 !important;
+    --accent-tertiary: #20b2aa !important;
+    --accent-gradient: linear-gradient(135deg, #006994 0%, #00ced1 100%) !important;
+    
+    /* Background Colors - ALL naming conventions */
+    --bg-body: #001220 !important;
+    --bg-primary: #001220 !important;
+    --bg-secondary: #002030 !important;
+    --bg-tertiary: #003050 !important;
+    --bg-surface: #002030 !important;
+    --bg-surface-hover: #003050 !important;
+    --bg-surface-elevated: #003050 !important;
+    --bg-card: rgba(0, 32, 48, 0.8) !important;
+    --bg-card-solid: #002030 !important;
+    --bg-card-hover: rgba(0, 48, 80, 0.9) !important;
+    --bg-gradient: radial-gradient(ellipse at top, #002030 0%, #001220 100%) !important;
+    --bg-sidebar: linear-gradient(180deg, #001220 0%, #002030 100%) !important;
+    
+    /* Text Colors - ALL naming conventions */
+    --color-text: #ffffff !important;
+    --color-text-secondary: #b0e0e6 !important;
+    --color-muted: #5f9ea0 !important;
+    --text-primary: #ffffff !important;
+    --text-secondary: #b0e0e6 !important;
+    --text-muted: #5f9ea0 !important;
+    
+    /* Status Colors */
+    --color-success: #20b2aa !important;
+    --color-warning: #ffd700 !important;
+    --color-danger: #ff6b6b !important;
+    --color-info: #00bfff !important;
+    --success: #20b2aa !important;
+    --warning: #ffd700 !important;
+    --danger: #ff6b6b !important;
+    --error: #ff6b6b !important;
+    --info: #00bfff !important;
+    
+    /* Border & Shadow - ALL naming conventions */
+    --color-border: rgba(0, 105, 148, 0.4) !important;
+    --color-border-light: rgba(0, 206, 209, 0.3) !important;
+    --border-color: rgba(0, 105, 148, 0.4) !important;
+    --border-color-light: rgba(0, 206, 209, 0.3) !important;
+    --border-glow: rgba(0, 206, 209, 0.4) !important;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3) !important;
+    --shadow-md: 0 4px 20px rgba(0, 206, 209, 0.2) !important;
+    --shadow-lg: 0 10px 30px rgba(0, 206, 209, 0.25) !important;
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+    --shadow-glow: 0 0 30px rgba(0, 206, 209, 0.25) !important;
+    --shadow-glow-primary: 0 0 20px rgba(0, 105, 148, 0.4) !important;
+    --shadow-glow-accent: 0 0 20px rgba(0, 206, 209, 0.4) !important;
+    
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-pill: 9999px;
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.3s ease;
+    --transition: 0.25s ease;
+    --transition-base: 0.25s ease;
+}
+
+.theme-ocean .admin-header,
+.theme-ocean .dashboard-header {
+    background: linear-gradient(135deg, #006994 0%, #00ced1 100%) !important;
+}
+
+.theme-ocean .stat-card,
+.theme-ocean .card {
+    border: 1px solid rgba(0, 105, 148, 0.4);
+    box-shadow: 0 4px 20px rgba(0, 206, 209, 0.2);
+}
+
+.theme-ocean .tab-btn.active {
+    color: #00bfff !important;
+    border-bottom-color: #00bfff !important;
+}
+
+/* Wave Effect at Bottom */
+.theme-ocean::after {
+    content: '';
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 200%;
+    height: 100px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%23006994' fill-opacity='0.3' d='M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: repeat-x;
+    animation: wave-motion 8s linear infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes wave-motion {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+/* Bubbles */
+.theme-ocean .theme-effects-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.theme-ocean .theme-particle {
+    position: absolute;
+    bottom: -50px;
+    font-size: 1.2em;
+    animation: bubble-rise linear infinite;
+    opacity: 0.6;
+}
+
+@keyframes bubble-rise {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 0.6;
+    }
+    100% {
+        transform: translateY(-100vh) scale(0.5);
+        opacity: 0;
+    }
+}
+
+.theme-ocean .theme-particle:nth-child(1) { left: 5%; animation-duration: 8s; animation-delay: 0s; }
+.theme-ocean .theme-particle:nth-child(2) { left: 15%; animation-duration: 10s; animation-delay: 2s; }
+.theme-ocean .theme-particle:nth-child(3) { left: 25%; animation-duration: 7s; animation-delay: 4s; }
+.theme-ocean .theme-particle:nth-child(4) { left: 35%; animation-duration: 9s; animation-delay: 1s; }
+.theme-ocean .theme-particle:nth-child(5) { left: 45%; animation-duration: 11s; animation-delay: 3s; }
+.theme-ocean .theme-particle:nth-child(6) { left: 55%; animation-duration: 8s; animation-delay: 5s; }
+.theme-ocean .theme-particle:nth-child(7) { left: 65%; animation-duration: 10s; animation-delay: 2s; }
+.theme-ocean .theme-particle:nth-child(8) { left: 75%; animation-duration: 7s; animation-delay: 4s; }
+.theme-ocean .theme-particle:nth-child(9) { left: 85%; animation-duration: 9s; animation-delay: 1s; }
+.theme-ocean .theme-particle:nth-child(10) { left: 95%; animation-duration: 11s; animation-delay: 3s; }
+
+/* Ocean decorations */
+.theme-ocean .stat-card::after {
+    content: '🐠';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 1.2rem;
+    opacity: 0.8;
+}
+
+.theme-ocean .stat-card:nth-child(2)::after { content: '🐬'; }
+.theme-ocean .stat-card:nth-child(3)::after { content: '🦈'; }
+.theme-ocean .stat-card:nth-child(4)::after { content: '🐙'; }

@@ -1,0 +1,163 @@
+/* 🌸 Spring Theme */
+/* Cherry blossoms, pastels */
+
+:root {
+    --theme-name: 'Spring';
+    --theme-emoji: '🌸';
+    
+    /* ============================================== */
+    /* UNIVERSAL VARIABLES (works with all stylesheets) */
+    /* ============================================== */
+    
+    /* Primary/Accent Colors - ALL naming conventions */
+    --color-primary: #ffb7c5 !important;
+    --color-primary-light: #ffc0cb !important;
+    --color-primary-dark: #ff69b4 !important;
+    --color-secondary: #98fb98 !important;
+    --color-accent: #87ceeb !important;
+    --accent-primary: #ffb7c5 !important;
+    --accent-secondary: #98fb98 !important;
+    --accent-tertiary: #87ceeb !important;
+    --accent-gradient: linear-gradient(135deg, #ffb7c5 0%, #98fb98 100%) !important;
+    
+    /* Background Colors - ALL naming conventions */
+    --bg-body: #1a1520 !important;
+    --bg-primary: #1a1520 !important;
+    --bg-secondary: #251a28 !important;
+    --bg-tertiary: #302535 !important;
+    --bg-surface: #251a28 !important;
+    --bg-surface-hover: #302535 !important;
+    --bg-surface-elevated: #302535 !important;
+    --bg-card: rgba(37, 26, 40, 0.8) !important;
+    --bg-card-solid: #251a28 !important;
+    --bg-card-hover: rgba(48, 37, 53, 0.9) !important;
+    --bg-gradient: radial-gradient(ellipse at top, #251a28 0%, #1a1520 100%) !important;
+    --bg-sidebar: linear-gradient(180deg, #1a1520 0%, #251a28 100%) !important;
+    
+    /* Text Colors - ALL naming conventions */
+    --color-text: #ffffff !important;
+    --color-text-secondary: #ffd0e0 !important;
+    --color-muted: #c090a0 !important;
+    --text-primary: #ffffff !important;
+    --text-secondary: #ffd0e0 !important;
+    --text-muted: #c090a0 !important;
+    
+    /* Status Colors */
+    --color-success: #98fb98 !important;
+    --color-warning: #FEE75C !important;
+    --color-danger: #ff6b6b !important;
+    --color-info: #87ceeb !important;
+    --success: #98fb98 !important;
+    --warning: #FEE75C !important;
+    --danger: #ff6b6b !important;
+    --error: #ff6b6b !important;
+    --info: #87ceeb !important;
+    
+    /* Border & Shadow - ALL naming conventions */
+    --color-border: rgba(255, 183, 197, 0.3) !important;
+    --color-border-light: rgba(152, 251, 152, 0.3) !important;
+    --border-color: rgba(255, 183, 197, 0.3) !important;
+    --border-color-light: rgba(152, 251, 152, 0.3) !important;
+    --border-glow: rgba(255, 183, 197, 0.4) !important;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3) !important;
+    --shadow-md: 0 4px 15px rgba(255, 183, 197, 0.2) !important;
+    --shadow-lg: 0 10px 25px rgba(255, 183, 197, 0.25) !important;
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+    --shadow-glow: 0 0 30px rgba(255, 183, 197, 0.25) !important;
+    --shadow-glow-primary: 0 0 20px rgba(255, 183, 197, 0.4) !important;
+    --shadow-glow-accent: 0 0 20px rgba(152, 251, 152, 0.4) !important;
+    
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-pill: 9999px;
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.3s ease;
+    --transition: 0.25s ease;
+    --transition-base: 0.25s ease;
+}
+
+.theme-spring .admin-header,
+.theme-spring .dashboard-header {
+    background: linear-gradient(135deg, #ffb7c5 0%, #98fb98 100%) !important;
+}
+
+.theme-spring .stat-card,
+.theme-spring .card {
+    border: 1px solid rgba(255, 183, 197, 0.3);
+    box-shadow: 0 4px 15px rgba(255, 183, 197, 0.2);
+}
+
+.theme-spring .tab-btn.active {
+    color: #ffb7c5 !important;
+    border-bottom-color: #ffb7c5 !important;
+}
+
+/* Cherry Blossom Petals */
+.theme-spring .theme-effects-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.theme-spring .theme-particle {
+    position: absolute;
+    top: -30px;
+    font-size: 1.4em;
+    animation: petal-fall linear infinite;
+    opacity: 0.8;
+}
+
+@keyframes petal-fall {
+    0% {
+        transform: translateY(-30px) rotate(0deg) translateX(0);
+        opacity: 0.8;
+    }
+    25% {
+        transform: translateY(25vh) rotate(90deg) translateX(40px);
+    }
+    50% {
+        transform: translateY(50vh) rotate(180deg) translateX(-20px);
+    }
+    75% {
+        transform: translateY(75vh) rotate(270deg) translateX(30px);
+    }
+    100% {
+        transform: translateY(100vh) rotate(360deg) translateX(0);
+        opacity: 0.3;
+    }
+}
+
+.theme-spring .theme-particle:nth-child(1) { left: 5%; animation-duration: 12s; animation-delay: 0s; }
+.theme-spring .theme-particle:nth-child(2) { left: 15%; animation-duration: 14s; animation-delay: 2s; }
+.theme-spring .theme-particle:nth-child(3) { left: 25%; animation-duration: 10s; animation-delay: 4s; }
+.theme-spring .theme-particle:nth-child(4) { left: 35%; animation-duration: 13s; animation-delay: 1s; }
+.theme-spring .theme-particle:nth-child(5) { left: 45%; animation-duration: 11s; animation-delay: 3s; }
+.theme-spring .theme-particle:nth-child(6) { left: 55%; animation-duration: 15s; animation-delay: 5s; }
+.theme-spring .theme-particle:nth-child(7) { left: 65%; animation-duration: 12s; animation-delay: 2s; }
+.theme-spring .theme-particle:nth-child(8) { left: 75%; animation-duration: 14s; animation-delay: 4s; }
+.theme-spring .theme-particle:nth-child(9) { left: 85%; animation-duration: 10s; animation-delay: 1s; }
+.theme-spring .theme-particle:nth-child(10) { left: 95%; animation-duration: 13s; animation-delay: 3s; }
+
+/* Spring decorations */
+.theme-spring .stat-card::after {
+    content: '🌸';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 1.2rem;
+    opacity: 0.8;
+}
+
+.theme-spring .stat-card:nth-child(2)::after { content: '🌷'; }
+.theme-spring .stat-card:nth-child(3)::after { content: '🦋'; }
+.theme-spring .stat-card:nth-child(4)::after { content: '🌼'; }

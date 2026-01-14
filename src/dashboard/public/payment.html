@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Upgrade to Guardian Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+  <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: rgba(255, 255, 255, 0.03);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.7);
+      --text-muted: rgba(255, 255, 255, 0.4);
+      --accent-primary: #00f0ff;
+      --accent-secondary: #7c3aed;
+      --accent-tertiary: #ec4899;
+      --success: #10b981;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated Background */
+    .bg-animation {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      overflow: hidden;
+    }
+
+    .bg-animation::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(ellipse at 20% 20%, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(124, 58, 237, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(236, 72, 153, 0.05) 0%, transparent 50%);
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.5;
+      animation: float 20s ease-in-out infinite;
+    }
+
+    .orb-1 {
+      width: 400px;
+      height: 400px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      top: -100px;
+      left: -100px;
+      animation-delay: 0s;
+    }
+
+    .orb-2 {
+      width: 350px;
+      height: 350px;
+      background: linear-gradient(135deg, var(--accent-secondary), var(--accent-tertiary));
+      bottom: -100px;
+      right: -100px;
+      animation-delay: -7s;
+    }
+
+    .orb-3 {
+      width: 250px;
+      height: 250px;
+      background: linear-gradient(135deg, var(--accent-tertiary), var(--accent-primary));
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation-delay: -14s;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      25% { transform: translate(30px, -30px) scale(1.05); }
+      50% { transform: translate(-20px, 20px) scale(0.95); }
+      75% { transform: translate(-30px, -20px) scale(1.02); }
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      margin-bottom: 2rem;
+      transition: color 0.3s ease;
+    }
+
+    .back-link:hover {
+      color: var(--accent-primary);
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 50px;
+      font-size: 0.85rem;
+      color: var(--accent-primary);
+      margin-bottom: 1.5rem;
+    }
+
+    .hero h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, var(--text-primary), var(--accent-primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+    }
+
+    /* Plans Grid */
+    .plans {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+
+    .plan-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 2.5rem;
+      position: relative;
+      transition: all 0.3s ease;
+      overflow: hidden;
+    }
+
+    .plan-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-color), transparent);
+    }
+
+    .plan-card:hover {
+      transform: translateY(-8px);
+      border-color: rgba(0, 240, 255, 0.3);
+      box-shadow: 0 20px 60px rgba(0, 240, 255, 0.1);
+    }
+
+    .plan-card.popular {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 40px rgba(0, 240, 255, 0.15);
+    }
+
+    .plan-card.popular::before {
+      background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+    }
+
+    .popular-badge {
+      position: absolute;
+      top: -1px;
+      right: 2rem;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 0 0 12px 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .plan-name {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    .plan-price {
+      font-size: 3.5rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin: 1rem 0;
+      line-height: 1;
+    }
+
+    .plan-price span {
+      font-size: 1.25rem;
+      font-weight: 500;
+      opacity: 0.7;
+    }
+
+    .plan-desc {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+    }
+
+    .plan-features {
+      list-style: none;
+      margin: 1.5rem 0;
+    }
+
+    .plan-features li {
+      padding: 0.75rem 0;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .plan-features li:last-child {
+      border-bottom: none;
+    }
+
+    .plan-features li i {
+      color: var(--success);
+      font-size: 0.9rem;
+    }
+
+    .plan-btn {
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      color: white;
+      border: none;
+      padding: 1rem;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 1rem;
+      font-family: inherit;
+      margin-top: 1.5rem;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .plan-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(0, 240, 255, 0.3);
+    }
+
+    .plan-btn:disabled {
+      background: var(--text-muted);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .secure-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      color: var(--success);
+      font-size: 0.85rem;
+      margin-top: 1rem;
+    }
+
+    /* Info Panel */
+    .info-panel {
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 2rem;
+      margin-top: 3rem;
+    }
+
+    .info-panel h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .info-panel h3 i {
+      color: var(--accent-primary);
+    }
+
+    .info-panel ol {
+      margin: 0;
+      padding-left: 1.5rem;
+      color: var(--text-secondary);
+    }
+
+    .info-panel li {
+      padding: 0.5rem 0;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 2rem 1rem;
+      }
+
+      .hero h1 {
+        font-size: 2rem;
+      }
+
+      .plans {
+        grid-template-columns: 1fr;
+      }
+
+      .plan-price {
+        font-size: 2.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-animation">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="container">
+    <a href="/site/" class="back-link">
+      <i class="fas fa-arrow-left"></i> Back to Home
+    </a>
+
+    <div class="hero">
+      <div class="badge">
+        <i class="fas fa-sparkles"></i>
+        Simple, Transparent Pricing
+      </div>
+      <h1>Upgrade to Guardian Pro</h1>
+      <p>Choose the plan that works best for your server</p>
+    </div>
+
+    <div class="plans">
+      <!-- Monthly Plan -->
+      <div class="plan-card">
+        <div class="plan-name">Monthly</div>
+        <div class="plan-price">$4.99<span>/month</span></div>
+        <div class="plan-desc">Perfect for trying out Pro features</div>
+        <ul class="plan-features">
+          <li><i class="fas fa-check"></i> Full anti-nuke protection</li>
+          <li><i class="fas fa-check"></i> Real-time analytics</li>
+          <li><i class="fas fa-check"></i> Unlimited AI scans</li>
+          <li><i class="fas fa-check"></i> Advanced ticket system</li>
+          <li><i class="fas fa-check"></i> Incident alerts</li>
+          <li><i class="fas fa-check"></i> Custom themes</li>
+        </ul>
+        <button class="plan-btn" onclick="checkout('monthly')">
+          <i class="fas fa-bolt"></i> Subscribe Now
+        </button>
+        <div class="secure-badge">
+          <i class="fas fa-lock"></i> Secure checkout with Stripe
+        </div>
+      </div>
+
+      <!-- Yearly Plan -->
+      <div class="plan-card popular">
+        <div class="popular-badge">Best Value</div>
+        <div class="plan-name">Yearly</div>
+        <div class="plan-price">$50<span>/year</span></div>
+        <div class="plan-desc">Save $10 per year • Just $4.17/month</div>
+        <ul class="plan-features">
+          <li><i class="fas fa-check"></i> Everything in Monthly</li>
+          <li><i class="fas fa-check"></i> 2 months free</li>
+          <li><i class="fas fa-check"></i> Priority support</li>
+          <li><i class="fas fa-check"></i> Early access to features</li>
+          <li><i class="fas fa-check"></i> Dedicated account manager</li>
+          <li><i class="fas fa-check"></i> Volume discounts available</li>
+        </ul>
+        <button class="plan-btn" onclick="checkout('yearly')">
+          <i class="fas fa-bolt"></i> Subscribe Now
+        </button>
+        <div class="secure-badge">
+          <i class="fas fa-lock"></i> Secure checkout with Stripe
+        </div>
+      </div>
+    </div>
+
+    <div class="info-panel">
+      <h3><i class="fas fa-info-circle"></i> How it works</h3>
+      <ol>
+        <li>Choose your plan and click Subscribe Now</li>
+        <li>Complete secure checkout through Stripe</li>
+        <li>Your Pro features activate instantly</li>
+        <li>Manage your subscription anytime from your dashboard</li>
+      </ol>
+    </div>
+  </div>
+
+<script>
+  // Check authentication on page load using server-side cookie (HttpOnly)
+  window.addEventListener('DOMContentLoaded', async () => {
+    try {
+      const res = await fetch('/api/me', { credentials: 'include' });
+      if (!res.ok) throw new Error('Unauthorized');
+      const data = await res.json();
+      if (!data?.success) throw new Error('Unauthorized');
+    } catch (_) {
+      alert('Please log in first');
+      window.location.href = '/login';
+    }
+  });
+
+  async function checkout(plan) {
+    try {
+      // Get current guild ID if available (from URL params or localStorage)
+      const urlParams = new URLSearchParams(window.location.search);
+      const guildId = urlParams.get('guild') || localStorage.getItem('selectedGuildId') || '';
+      
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ plan, guildId })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Checkout API error:', errorData);
+        alert(errorData.error || 'Failed to create checkout session. Please try again.');
+        return;
+      }
+      
+      const { sessionId } = await response.json();
+      
+      if (!sessionId) {
+        alert('Failed to create checkout session. Please try again.');
+        return;
+      }
+      
+      // Redirect to Stripe Checkout
+      const stripe = Stripe('{{ STRIPE_PUBLISHABLE_KEY }}');
+      await stripe.redirectToCheckout({ sessionId });
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('Payment system temporarily unavailable. Please try again later.');
+    }
+  }
+</script>
+</body>
+</html>

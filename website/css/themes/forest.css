@@ -1,0 +1,157 @@
+/* 🌲 Forest Theme */
+/* Deep greens, nature vibes */
+
+:root {
+    --theme-name: 'Forest';
+    --theme-emoji: '🌲';
+    
+    /* ============================================== */
+    /* UNIVERSAL VARIABLES (works with all stylesheets) */
+    /* ============================================== */
+    
+    /* Primary/Accent Colors - ALL naming conventions */
+    --color-primary: #228b22 !important;
+    --color-primary-light: #32cd32 !important;
+    --color-primary-dark: #006400 !important;
+    --color-secondary: #8fbc8f !important;
+    --color-accent: #9acd32 !important;
+    --accent-primary: #228b22 !important;
+    --accent-secondary: #8fbc8f !important;
+    --accent-tertiary: #9acd32 !important;
+    --accent-gradient: linear-gradient(135deg, #228b22 0%, #006400 100%) !important;
+    
+    /* Background Colors - ALL naming conventions */
+    --bg-body: #0a150a !important;
+    --bg-primary: #0a150a !important;
+    --bg-secondary: #102010 !important;
+    --bg-tertiary: #183018 !important;
+    --bg-surface: #102010 !important;
+    --bg-surface-hover: #183018 !important;
+    --bg-surface-elevated: #183018 !important;
+    --bg-card: rgba(16, 32, 16, 0.8) !important;
+    --bg-card-solid: #102010 !important;
+    --bg-card-hover: rgba(24, 48, 24, 0.9) !important;
+    --bg-gradient: radial-gradient(ellipse at top, #102010 0%, #0a150a 100%) !important;
+    --bg-sidebar: linear-gradient(180deg, #0a150a 0%, #102010 100%) !important;
+    
+    /* Text Colors - ALL naming conventions */
+    --color-text: #ffffff !important;
+    --color-text-secondary: #90ee90 !important;
+    --color-muted: #607060 !important;
+    --text-primary: #ffffff !important;
+    --text-secondary: #90ee90 !important;
+    --text-muted: #607060 !important;
+    
+    /* Status Colors */
+    --color-success: #32cd32 !important;
+    --color-warning: #ffd700 !important;
+    --color-danger: #ff4500 !important;
+    --color-info: #8fbc8f !important;
+    --success: #32cd32 !important;
+    --warning: #ffd700 !important;
+    --danger: #ff4500 !important;
+    --error: #ff4500 !important;
+    --info: #8fbc8f !important;
+    
+    /* Border & Shadow - ALL naming conventions */
+    --color-border: rgba(34, 139, 34, 0.3) !important;
+    --color-border-light: rgba(143, 188, 143, 0.3) !important;
+    --border-color: rgba(34, 139, 34, 0.3) !important;
+    --border-color-light: rgba(143, 188, 143, 0.3) !important;
+    --border-glow: rgba(34, 139, 34, 0.4) !important;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3) !important;
+    --shadow-md: 0 4px 15px rgba(34, 139, 34, 0.2) !important;
+    --shadow-lg: 0 10px 25px rgba(34, 139, 34, 0.25) !important;
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+    --shadow-glow: 0 0 30px rgba(34, 139, 34, 0.25) !important;
+    --shadow-glow-primary: 0 0 20px rgba(34, 139, 34, 0.4) !important;
+    --shadow-glow-accent: 0 0 20px rgba(143, 188, 143, 0.4) !important;
+    
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-pill: 9999px;
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.3s ease;
+    --transition: 0.25s ease;
+    --transition-base: 0.25s ease;
+}
+
+.theme-forest .admin-header,
+.theme-forest .dashboard-header {
+    background: linear-gradient(135deg, #228b22 0%, #006400 100%) !important;
+}
+
+.theme-forest .stat-card,
+.theme-forest .card {
+    border: 1px solid rgba(34, 139, 34, 0.4);
+    box-shadow: 0 4px 15px rgba(143, 188, 143, 0.2);
+}
+
+.theme-forest .tab-btn.active {
+    color: #32cd32 !important;
+    border-bottom-color: #32cd32 !important;
+}
+
+/* Floating Leaves */
+.theme-forest .theme-effects-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.theme-forest .theme-particle {
+    position: absolute;
+    top: -30px;
+    font-size: 1.3em;
+    animation: forest-drift linear infinite;
+    opacity: 0.7;
+}
+
+@keyframes forest-drift {
+    0% {
+        transform: translateY(-30px) rotate(0deg) translateX(0);
+        opacity: 0.7;
+    }
+    50% {
+        transform: translateY(50vh) rotate(180deg) translateX(20px);
+    }
+    100% {
+        transform: translateY(100vh) rotate(360deg) translateX(-10px);
+        opacity: 0.3;
+    }
+}
+
+.theme-forest .theme-particle:nth-child(1) { left: 5%; animation-duration: 15s; animation-delay: 0s; }
+.theme-forest .theme-particle:nth-child(2) { left: 15%; animation-duration: 18s; animation-delay: 2s; }
+.theme-forest .theme-particle:nth-child(3) { left: 25%; animation-duration: 12s; animation-delay: 4s; }
+.theme-forest .theme-particle:nth-child(4) { left: 35%; animation-duration: 16s; animation-delay: 1s; }
+.theme-forest .theme-particle:nth-child(5) { left: 45%; animation-duration: 14s; animation-delay: 3s; }
+.theme-forest .theme-particle:nth-child(6) { left: 55%; animation-duration: 17s; animation-delay: 5s; }
+.theme-forest .theme-particle:nth-child(7) { left: 65%; animation-duration: 13s; animation-delay: 2s; }
+.theme-forest .theme-particle:nth-child(8) { left: 75%; animation-duration: 19s; animation-delay: 4s; }
+.theme-forest .theme-particle:nth-child(9) { left: 85%; animation-duration: 15s; animation-delay: 1s; }
+.theme-forest .theme-particle:nth-child(10) { left: 95%; animation-duration: 16s; animation-delay: 3s; }
+
+/* Forest decorations */
+.theme-forest .stat-card::after {
+    content: '🌲';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 1.2rem;
+    opacity: 0.8;
+}
+
+.theme-forest .stat-card:nth-child(2)::after { content: '🦌'; }
+.theme-forest .stat-card:nth-child(3)::after { content: '🍃'; }
+.theme-forest .stat-card:nth-child(4)::after { content: '🦉'; }

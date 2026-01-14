@@ -1,0 +1,242 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+@layer base {
+  * {
+    @apply border-darklock-border;
+  }
+  
+  body {
+    @apply bg-darklock-bg-primary text-darklock-text-primary;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-darklock-bg-primary;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-darklock-bg-hover rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-darklock-bg-active;
+  }
+}
+
+/* Component styles */
+@layer components {
+  /* Cards */
+  .card {
+    @apply bg-darklock-bg-secondary border border-darklock-border rounded-xl;
+    @apply transition-all duration-200;
+  }
+
+  .card:hover {
+    @apply border-darklock-border-accent bg-darklock-bg-tertiary;
+  }
+
+  .card-elevated {
+    @apply bg-darklock-bg-tertiary border border-darklock-border rounded-xl shadow-darklock;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-darklock-bg-primary;
+  }
+
+  .btn-primary {
+    @apply bg-darklock-accent text-white hover:bg-darklock-accent-light;
+    @apply focus:ring-darklock-accent;
+  }
+
+  .btn-secondary {
+    @apply bg-darklock-bg-hover text-darklock-text-primary border border-darklock-border;
+    @apply hover:bg-darklock-bg-active hover:border-darklock-border-accent;
+    @apply focus:ring-darklock-accent;
+  }
+
+  .btn-danger {
+    @apply bg-darklock-error-bg text-darklock-error border border-darklock-error/30;
+    @apply hover:bg-darklock-error/20 hover:border-darklock-error/50;
+    @apply focus:ring-darklock-error;
+  }
+
+  .btn-success {
+    @apply bg-darklock-success-bg text-darklock-success border border-darklock-success/30;
+    @apply hover:bg-darklock-success/20 hover:border-darklock-success/50;
+    @apply focus:ring-darklock-success;
+  }
+
+  .btn-icon {
+    @apply p-2 rounded-lg transition-all duration-200;
+    @apply hover:bg-darklock-bg-hover;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    @apply w-64 h-screen bg-darklock-bg-secondary border-r border-darklock-border;
+    @apply flex flex-col;
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 mx-2 rounded-lg cursor-pointer;
+    @apply text-darklock-text-secondary transition-all duration-200;
+  }
+
+  .sidebar-item:hover {
+    @apply bg-darklock-bg-hover text-darklock-text-primary;
+  }
+
+  .sidebar-item.active {
+    @apply bg-darklock-accent-subtle text-darklock-accent border-l-2 border-darklock-accent;
+    @apply ml-0 pl-[14px];
+  }
+
+  /* Status indicators */
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-dot-success {
+    @apply bg-darklock-success shadow-glow-success;
+  }
+
+  .status-dot-error {
+    @apply bg-darklock-error shadow-glow-error;
+  }
+
+  .status-dot-warning {
+    @apply bg-darklock-warning;
+  }
+
+  /* Badges */
+  .badge {
+    @apply px-2 py-0.5 rounded text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply bg-darklock-success-bg text-darklock-success;
+  }
+
+  .badge-warning {
+    @apply bg-darklock-warning-bg text-darklock-warning;
+  }
+
+  .badge-error {
+    @apply bg-darklock-error-bg text-darklock-error;
+  }
+
+  .badge-info {
+    @apply bg-darklock-info-bg text-darklock-info;
+  }
+
+  /* Tables */
+  .table-container {
+    @apply overflow-x-auto rounded-lg border border-darklock-border;
+  }
+
+  .table {
+    @apply w-full text-sm;
+  }
+
+  .table th {
+    @apply px-4 py-3 text-left text-darklock-text-muted font-medium bg-darklock-bg-tertiary;
+    @apply border-b border-darklock-border;
+  }
+
+  .table td {
+    @apply px-4 py-3 border-b border-darklock-border;
+  }
+
+  .table tr:hover td {
+    @apply bg-darklock-bg-hover;
+  }
+
+  /* Stats cards */
+  .stat-card {
+    @apply card p-6;
+  }
+
+  .stat-value {
+    @apply text-3xl font-bold text-darklock-text-primary;
+  }
+
+  .stat-label {
+    @apply text-sm text-darklock-text-muted mt-1;
+  }
+
+  .stat-icon {
+    @apply w-12 h-12 rounded-lg flex items-center justify-center;
+    @apply bg-darklock-accent-subtle text-darklock-accent;
+  }
+
+  /* Progress bars */
+  .progress-bar {
+    @apply h-2 bg-darklock-bg-hover rounded-full overflow-hidden;
+  }
+
+  .progress-bar-fill {
+    @apply h-full bg-darklock-accent rounded-full transition-all duration-500;
+  }
+
+  /* Inputs */
+  .input {
+    @apply w-full px-4 py-2 bg-darklock-bg-tertiary border border-darklock-border rounded-lg;
+    @apply text-darklock-text-primary placeholder-darklock-text-muted;
+    @apply focus:outline-none focus:border-darklock-accent focus:ring-1 focus:ring-darklock-accent;
+    @apply transition-all duration-200;
+  }
+
+  /* Toggle switch */
+  .toggle {
+    @apply relative inline-flex h-6 w-11 items-center rounded-full;
+    @apply bg-darklock-bg-hover transition-colors duration-200;
+  }
+
+  .toggle.active {
+    @apply bg-darklock-accent;
+  }
+
+  .toggle-knob {
+    @apply inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200;
+    @apply translate-x-1;
+  }
+
+  .toggle.active .toggle-knob {
+    @apply translate-x-6;
+  }
+
+  /* Tooltips */
+  .tooltip {
+    @apply absolute z-50 px-2 py-1 text-xs rounded bg-darklock-bg-active text-darklock-text-primary;
+    @apply shadow-darklock border border-darklock-border;
+    @apply opacity-0 invisible transition-all duration-200;
+  }
+
+  .tooltip-trigger:hover .tooltip {
+    @apply opacity-100 visible;
+  }
+}
+
+/* Utility styles */
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-darklock-accent to-darklock-accent-light bg-clip-text text-transparent;
+  }
+
+  .border-glow {
+    @apply border-darklock-accent shadow-glow;
+  }
+}

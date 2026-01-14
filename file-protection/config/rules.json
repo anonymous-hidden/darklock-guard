@@ -1,0 +1,14 @@
+{
+  "mode": "auto-revert",
+  "alertOnTamper": true,
+  "blockExecution": false,
+  "createBackups": true,
+  "allowedProcesses": [],
+  "description": "Protection Rules Configuration",
+  "modes": {
+    "alert-only": "Only log and alert, no automatic action",
+    "auto-revert": "Automatically restore files from backup",
+    "quarantine": "Move tampered files to quarantine folder",
+    "block-execution": "Terminate process immediately on tampering"
+  }
+}

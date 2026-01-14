@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
+    <title>Welcome & Goodbye Messages - DarkLock Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <style>
+        .setup-page {
+            min-height: 100vh;
+            background: var(--ds-surface-0);
+        }
+
+        .setup-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--ds-space-md) var(--ds-space-xl);
+            background: var(--ds-surface-1);
+            border-bottom: 1px solid var(--ds-border);
+            backdrop-filter: blur(12px);
+        }
+
+        .setup-nav-left {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-lg);
+        }
+
+        .setup-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+            font-size: 14px;
+            color: var(--ds-text-muted);
+        }
+
+        .setup-breadcrumb a {
+            color: var(--ds-text-muted);
+            text-decoration: none;
+            transition: color var(--ds-transition-fast);
+        }
+
+        .setup-breadcrumb a:hover {
+            color: var(--ds-primary);
+        }
+
+        .setup-breadcrumb-current {
+            color: var(--ds-text-primary);
+            font-weight: 500;
+        }
+
+        .setup-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: var(--ds-space-xl) var(--ds-space-lg);
+        }
+
+        .setup-header {
+            margin-bottom: var(--ds-space-xl);
+        }
+
+        .setup-header-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            background: var(--ds-success-bg);
+            border: 1px solid var(--ds-success-border);
+            border-radius: var(--ds-radius-lg);
+            margin-bottom: var(--ds-space-md);
+        }
+
+        .setup-header-icon i {
+            font-size: 24px;
+            color: var(--ds-success);
+        }
+
+        .setup-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--ds-text-primary);
+            margin: 0 0 var(--ds-space-sm) 0;
+        }
+
+        .setup-header p {
+            color: var(--ds-text-muted);
+            font-size: 15px;
+            margin: 0;
+        }
+
+        .setup-status {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--ds-space-xs);
+            padding: 4px 12px;
+            border-radius: var(--ds-radius-full);
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .setup-status.enabled {
+            background: var(--ds-success-bg);
+            color: var(--ds-success);
+            border: 1px solid var(--ds-success-border);
+        }
+
+        .setup-status.disabled {
+            background: var(--ds-surface-2);
+            color: var(--ds-text-muted);
+            border: 1px solid var(--ds-border);
+        }
+
+        .setup-card {
+            background: var(--ds-surface-1);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-lg);
+            margin-bottom: var(--ds-space-lg);
+            overflow: hidden;
+        }
+
+        .setup-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--ds-space-lg);
+            border-bottom: 1px solid var(--ds-border);
+            background: var(--ds-surface-2);
+        }
+
+        .setup-card-title {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+        }
+
+        .setup-card-title i {
+            color: var(--ds-success);
+            font-size: 16px;
+        }
+
+        .setup-card-title.warning i {
+            color: var(--ds-warning);
+        }
+
+        .setup-card-title h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--ds-text-primary);
+            margin: 0;
+        }
+
+        .setup-card-body {
+            padding: var(--ds-space-lg);
+        }
+
+        .setup-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--ds-space-md);
+            background: var(--ds-surface-0);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            margin-bottom: var(--ds-space-md);
+        }
+
+        .setup-toggle-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .setup-toggle-info h4 {
+            margin: 0 0 4px 0;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--ds-text-primary);
+        }
+
+        .setup-toggle-info p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--ds-text-muted);
+        }
+
+        .setup-form-group {
+            margin-bottom: var(--ds-space-lg);
+        }
+
+        .setup-form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .setup-form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--ds-text-primary);
+            margin-bottom: var(--ds-space-xs);
+        }
+
+        .setup-form-desc {
+            font-size: 13px;
+            color: var(--ds-text-muted);
+            margin-bottom: var(--ds-space-sm);
+        }
+
+        .setup-form-input,
+        .setup-form-select,
+        .setup-form-textarea {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--ds-surface-0);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            color: var(--ds-text-primary);
+            font-size: 14px;
+            transition: all var(--ds-transition-fast);
+            font-family: inherit;
+        }
+
+        .setup-form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .setup-form-input:focus,
+        .setup-form-select:focus,
+        .setup-form-textarea:focus {
+            outline: none;
+            border-color: var(--ds-primary);
+            box-shadow: 0 0 0 3px var(--ds-primary-bg);
+        }
+
+        .setup-form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 10px center;
+            background-repeat: no-repeat;
+            background-size: 20px;
+            padding-right: 40px;
+        }
+
+        .variable-hint {
+            display: inline-block;
+            padding: 4px 8px;
+            background: var(--ds-primary-bg);
+            border: 1px solid var(--ds-primary-border);
+            border-radius: var(--ds-radius-sm);
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--ds-primary);
+            margin-right: 6px;
+            margin-bottom: 6px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: var(--ds-space-sm);
+            flex-wrap: wrap;
+        }
+
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+            padding: var(--ds-space-sm) var(--ds-space-md);
+            background: var(--ds-surface-0);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            cursor: pointer;
+            transition: all var(--ds-transition-fast);
+            font-size: 14px;
+            color: var(--ds-text-primary);
+        }
+
+        .checkbox-option:hover {
+            border-color: var(--ds-primary-border);
+            background: var(--ds-primary-bg);
+        }
+
+        .checkbox-option input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--ds-primary);
+            cursor: pointer;
+        }
+
+        .checkbox-option.checked {
+            background: var(--ds-primary-bg);
+            border-color: var(--ds-primary-border);
+        }
+
+        .setup-status-msg {
+            display: none;
+            padding: var(--ds-space-md);
+            border-radius: var(--ds-radius-md);
+            font-size: 14px;
+            text-align: center;
+            margin-top: var(--ds-space-md);
+        }
+
+        .setup-status-msg.success {
+            display: block;
+            background: var(--ds-success-bg);
+            border: 1px solid var(--ds-success-border);
+            color: var(--ds-success);
+        }
+
+        .setup-status-msg.error {
+            display: block;
+            background: var(--ds-danger-bg);
+            border: 1px solid var(--ds-danger-border);
+            color: var(--ds-danger);
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--ds-surface-2);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            color: var(--ds-text-primary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all var(--ds-transition-fast);
+        }
+
+        .back-button:hover {
+            background: var(--ds-surface-3);
+            border-color: var(--ds-primary);
+            transform: translateX(-2px);
+        }
+
+        .back-button i {
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body class="setup-page">
+    <nav class="setup-nav">
+        <div class="setup-nav-left">
+            <a href="/dashboard" class="back-button">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+            </a>
+            <div class="setup-breadcrumb">
+                <a href="/dashboard"><i class="fas fa-home"></i></a>
+                <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                <a href="/dashboard">Dashboard</a>
+                <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                <span class="setup-breadcrumb-current">Welcome & Goodbye</span>
+            </div>
+        </div>
+        <div class="setup-status disabled" id="featureStatus">
+            <i class="fas fa-circle" style="font-size: 8px;"></i>
+            <span>Disabled</span>
+        </div>
+    </nav>
+
+    <main class="setup-container">
+        <div class="setup-header">
+            <div class="setup-header-icon">
+                <i class="fas fa-handshake"></i>
+            </div>
+            <h1>Welcome & Goodbye Messages</h1>
+            <p>Greet new members and say farewell when they leave</p>
+        </div>
+
+        <!-- Welcome Messages Section -->
+        <div class="setup-card">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-door-open"></i>
+                    <h3>Welcome Messages</h3>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <div class="setup-toggle-row" style="margin-bottom: var(--ds-space-lg);">
+                    <div class="setup-toggle-info">
+                        <h4>Enable Welcome Messages</h4>
+                        <p>Send a message when new members join</p>
+                    </div>
+                    <label class="ds-toggle">
+                        <input type="checkbox" id="welcomeEnabled">
+                        <span class="ds-toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Welcome Channel</label>
+                    <p class="setup-form-desc">Channel where welcome messages will be sent</p>
+                    <select class="setup-form-select" id="welcomeChannel">
+                        <option value="">Select a channel...</option>
+                    </select>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Welcome Message</label>
+                    <p class="setup-form-desc">Use variables to personalize the message:</p>
+                    <div style="margin-bottom: 10px;">
+                        <span class="variable-hint">{user}</span>
+                        <span class="variable-hint">{mention}</span>
+                        <span class="variable-hint">{server}</span>
+                        <span class="variable-hint">{memberCount}</span>
+                    </div>
+                    <textarea class="setup-form-textarea" id="welcomeMessage" placeholder="Welcome {mention} to {server}! You are member #{memberCount}! 🎉"></textarea>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Options</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="welcomeEmbedEnabled">
+                            <span>Send as Embed</span>
+                        </label>
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="welcomePingUser">
+                            <span>Ping User in Message</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Auto-Delete After (seconds)</label>
+                    <p class="setup-form-desc">Automatically delete the welcome message after this many seconds (0 = never)</p>
+                    <input type="number" class="setup-form-input" id="welcomeDeleteAfter" value="0" min="0" max="300">
+                </div>
+            </div>
+        </div>
+
+        <!-- Goodbye Messages Section -->
+        <div class="setup-card">
+            <div class="setup-card-header">
+                <div class="setup-card-title warning">
+                    <i class="fas fa-door-closed"></i>
+                    <h3>Goodbye Messages</h3>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <div class="setup-toggle-row" style="margin-bottom: var(--ds-space-lg);">
+                    <div class="setup-toggle-info">
+                        <h4>Enable Goodbye Messages</h4>
+                        <p>Send a message when members leave</p>
+                    </div>
+                    <label class="ds-toggle">
+                        <input type="checkbox" id="goodbyeEnabled">
+                        <span class="ds-toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Goodbye Channel</label>
+                    <p class="setup-form-desc">Channel where goodbye messages will be sent</p>
+                    <select class="setup-form-select" id="goodbyeChannel">
+                        <option value="">Select a channel...</option>
+                    </select>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Goodbye Message</label>
+                    <p class="setup-form-desc">Use variables to personalize the message:</p>
+                    <div style="margin-bottom: 10px;">
+                        <span class="variable-hint">{user}</span>
+                        <span class="variable-hint">{server}</span>
+                        <span class="variable-hint">{memberCount}</span>
+                    </div>
+                    <textarea class="setup-form-textarea" id="goodbyeMessage" placeholder="Goodbye {user}! We'll miss you in {server}. 👋"></textarea>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Options</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="goodbyeEmbedEnabled">
+                            <span>Send as Embed</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Auto-Delete After (seconds)</label>
+                    <p class="setup-form-desc">Automatically delete the goodbye message after this many seconds (0 = never)</p>
+                    <input type="number" class="setup-form-input" id="goodbyeDeleteAfter" value="0" min="0" max="300">
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <div style="display: flex; justify-content: flex-end; gap: var(--ds-space-md); margin-top: var(--ds-space-lg);">
+            <a href="/dashboard" class="ds-btn ds-btn-secondary">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+            <button class="ds-btn ds-btn-primary" id="saveBtn" onclick="saveSettings()">
+                <i class="fas fa-save"></i> Save Settings
+            </button>
+        </div>
+
+        <div class="setup-status-msg" id="statusMsg"></div>
+    </main>
+
+    <script src="/js/secure-auth.js"></script>
+    <script>
+        let currentGuildId = null;
+        let channels = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await SecureAuth.init();
+            currentGuildId = localStorage.getItem('selectedGuildId');
+            if (!currentGuildId) {
+                showStatus('error', 'No server selected. Please return to dashboard and select a server.');
+                return;
+            }
+
+            await loadChannels();
+            await loadSettings();
+        });
+
+        function updateFeatureState() {
+            const welcomeEnabled = document.getElementById('welcomeEnabled').checked;
+            const goodbyeEnabled = document.getElementById('goodbyeEnabled').checked;
+            const statusEl = document.getElementById('featureStatus');
+            
+            if (welcomeEnabled || goodbyeEnabled) {
+                statusEl.className = 'setup-status enabled';
+                statusEl.innerHTML = '<i class="fas fa-circle" style="font-size: 8px;"></i><span>Enabled</span>';
+            } else {
+                statusEl.className = 'setup-status disabled';
+                statusEl.innerHTML = '<i class="fas fa-circle" style="font-size: 8px;"></i><span>Disabled</span>';
+            }
+        }
+
+        async function apiFetch(path, opts = {}) {
+            const headers = {
+                'Content-Type': 'application/json',
+                'X-Guild-Id': currentGuildId,
+                ...(opts.headers || {})
+            };
+
+            const response = await SecureAuth.fetch(path, {
+                ...opts,
+                headers,
+                credentials: 'include'
+            });
+
+            if (response.status === 401 || response.status === 403) {
+                window.location.href = '/login';
+                throw new Error('Authentication required');
+            }
+
+            return response;
+        }
+
+        async function loadChannels() {
+            try {
+                const response = await apiFetch(`/api/guild/${currentGuildId}/channels`);
+                const payload = await response.json();
+                const data = payload.data || payload;
+                const list = data.channels || (Array.isArray(data) ? data : []);
+                channels = Array.isArray(list) ? list : [];
+
+                const welcomeSelect = document.getElementById('welcomeChannel');
+                const goodbyeSelect = document.getElementById('goodbyeChannel');
+                welcomeSelect.innerHTML = '<option value="">Select a channel...</option>';
+                goodbyeSelect.innerHTML = '<option value="">Select a channel...</option>';
+                
+                channels.filter(ch => ch.type === 0).forEach(ch => {
+                    const option1 = document.createElement('option');
+                    option1.value = ch.id;
+                    option1.textContent = '#' + ch.name;
+                    welcomeSelect.appendChild(option1);
+
+                    const option2 = document.createElement('option');
+                    option2.value = ch.id;
+                    option2.textContent = '#' + ch.name;
+                    goodbyeSelect.appendChild(option2);
+                });
+            } catch (error) {
+                console.error('Error loading channels:', error);
+            }
+        }
+
+        async function loadSettings() {
+            try {
+                const response = await apiFetch(`/api/guild/${currentGuildId}/settings`);
+                const data = await response.json();
+
+                // Welcome settings
+                document.getElementById('welcomeEnabled').checked = data.welcome_enabled || false;
+                document.getElementById('welcomeChannel').value = data.welcome_channel_id || '';
+                document.getElementById('welcomeMessage').value = data.welcome_message || '';
+                document.getElementById('welcomeEmbedEnabled').checked = data.welcome_embed_enabled || false;
+                document.getElementById('welcomePingUser').checked = data.welcome_ping_user || false;
+                document.getElementById('welcomeDeleteAfter').value = data.welcome_delete_after || 0;
+
+                // Goodbye settings
+                document.getElementById('goodbyeEnabled').checked = data.goodbye_enabled || false;
+                document.getElementById('goodbyeChannel').value = data.goodbye_channel_id || '';
+                document.getElementById('goodbyeMessage').value = data.goodbye_message || '';
+                document.getElementById('goodbyeEmbedEnabled').checked = data.goodbye_embed_enabled || false;
+                document.getElementById('goodbyeDeleteAfter').value = data.goodbye_delete_after || 0;
+
+                updateFeatureState();
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                showStatus('error', 'Failed to load settings');
+            }
+        }
+
+        async function saveSettings() {
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            try {
+                const settings = {
+                    welcome_enabled: document.getElementById('welcomeEnabled').checked,
+                    welcome_channel_id: document.getElementById('welcomeChannel').value,
+                    welcome_message: document.getElementById('welcomeMessage').value,
+                    welcome_embed_enabled: document.getElementById('welcomeEmbedEnabled').checked,
+                    welcome_ping_user: document.getElementById('welcomePingUser').checked,
+                    welcome_delete_after: parseInt(document.getElementById('welcomeDeleteAfter').value) || 0,
+                    goodbye_enabled: document.getElementById('goodbyeEnabled').checked,
+                    goodbye_channel_id: document.getElementById('goodbyeChannel').value,
+                    goodbye_message: document.getElementById('goodbyeMessage').value,
+                    goodbye_embed_enabled: document.getElementById('goodbyeEmbedEnabled').checked,
+                    goodbye_delete_after: parseInt(document.getElementById('goodbyeDeleteAfter').value) || 0
+                };
+
+                const response = await apiFetch(`/api/guild/${currentGuildId}/settings`, {
+                    method: 'POST',
+                    body: JSON.stringify(settings)
+                });
+
+                if (response.ok) {
+                    showStatus('success', 'Settings saved successfully!');
+                    updateFeatureState();
+                } else {
+                    const error = await response.json();
+                    showStatus('error', error.error || 'Failed to save settings');
+                }
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                showStatus('error', 'Failed to save settings: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Save Settings';
+            }
+        }
+
+        function showStatus(type, message) {
+            const statusMsg = document.getElementById('statusMsg');
+            statusMsg.className = 'setup-status-msg ' + type;
+            statusMsg.textContent = message;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusMsg.className = 'setup-status-msg';
+                }, 3000);
+            }
+        }
+
+        // Update status badge when toggles change
+        document.getElementById('welcomeEnabled').addEventListener('change', updateFeatureState);
+        document.getElementById('goodbyeEnabled').addEventListener('change', updateFeatureState);
+    </script>
+</body>
+</html>

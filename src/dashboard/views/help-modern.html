@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help & Documentation - DarkLock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/dashboard-modern.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="dashboard-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/site/" class="sidebar-brand">
+                    <div class="sidebar-logo">🛡️</div>
+                    <span class="sidebar-title">DarkLock</span>
+                </a>
+            </div>
+
+            <!-- Server Selector -->
+            <div class="server-selector">
+                <div class="server-current" id="serverSelector" onclick="toggleServerDropdown()">
+                    <img src="" alt="Server" class="server-icon" id="currentServerIcon" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                    <div class="server-info">
+                        <div class="server-name" id="currentServerName">Loading...</div>
+                        <div class="server-members" id="currentServerMembers">-- members</div>
+                    </div>
+                    <i class="fas fa-chevron-down server-dropdown-icon" id="serverDropdownIcon"></i>
+                </div>
+                <div class="server-dropdown" id="serverDropdown">
+                    <div class="server-dropdown-header">Select Server</div>
+                    <div class="server-dropdown-list" id="serverList">
+                        <div class="server-dropdown-loading">Loading servers...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <a href="/dashboard" class="nav-item">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Management</div>
+                    <a href="/tickets" class="nav-item">
+                        <i class="fas fa-ticket-alt"></i>
+                        <span>Tickets</span>
+                        <span class="nav-badge" id="openTicketsCount" style="display: none;">0</span>
+                    </a>
+                    <a href="/analytics" class="nav-item">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Analytics</span>
+                    </a>
+                    <a href="/dashboard/logs" class="nav-item">
+                        <i class="fas fa-scroll"></i>
+                        <span>Logs & Audit</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Security</div>
+                    <a href="/setup/anti-raid" class="nav-item">
+                        <i class="fas fa-users-slash"></i>
+                        <span>Anti-Raid</span>
+                    </a>
+                    <a href="/setup/anti-spam" class="nav-item">
+                        <i class="fas fa-comment-slash"></i>
+                        <span>Anti-Spam</span>
+                    </a>
+                    <a href="/setup/antinuke" class="nav-item">
+                        <i class="fas fa-radiation"></i>
+                        <span>Anti-Nuke</span>
+                    </a>
+                    <a href="/setup/anti-phishing" class="nav-item">
+                        <i class="fas fa-fish"></i>
+                        <span>Anti-Phishing</span>
+                    </a>
+                    <a href="/setup/moderation" class="nav-item">
+                        <i class="fas fa-gavel"></i>
+                        <span>Moderation</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Configuration</div>
+                    <a href="/setup/tickets" class="nav-item">
+                        <i class="fas fa-cog"></i>
+                        <span>Ticket Settings</span>
+                    </a>
+                    <a href="/setup/welcome" class="nav-item">
+                        <i class="fas fa-door-open"></i>
+                        <span>Welcome & Goodbye Messages</span>
+                    </a>
+                    <a href="/setup/verification" class="nav-item">
+                        <i class="fas fa-user-check"></i>
+                        <span>Verification Settings</span>
+                    </a>
+                    <a href="/setup/autorole" class="nav-item">
+                        <i class="fas fa-user-tag"></i>
+                        <span>Auto Role & Reaction Roles</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Tools</div>
+                    <a href="/help" class="nav-item active">
+                        <i class="fas fa-book"></i>
+                        <span>Help & Commands</span>
+                    </a>
+                    <a href="/dashboard/console" class="nav-item">
+                        <i class="fas fa-terminal"></i>
+                        <span>Bot Console</span>
+                    </a>
+                    <a href="/access-generator" class="nav-item">
+                        <i class="fas fa-key"></i>
+                        <span>Access Generator</span>
+                    </a>
+                    <a href="/access-share" class="nav-item">
+                        <i class="fas fa-share-alt"></i>
+                        <span>Access Share</span>
+                    </a>
+                </div>
+            </nav>
+
+            <!-- User Block -->
+            <div class="sidebar-user">
+                <div class="user-block">
+                    <img src="" alt="User" class="user-avatar" id="userAvatar">
+                    <div class="user-info">
+                        <div class="user-name" id="userName">Loading...</div>
+                        <div class="user-role" id="userRole">User</div>
+                    </div>
+                    <div class="user-actions">
+                        <button class="user-action-btn" onclick="logout()" title="Logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="dashboard-header">
+                <div class="header-title">
+                    <button class="btn btn-ghost" id="menuToggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1>📚 Help & Documentation</h1>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" onclick="expandAll()">
+                        <i class="fas fa-expand-alt"></i>
+                        Expand All
+                    </button>
+                    <button class="btn btn-secondary" onclick="collapseAll()">
+                        <i class="fas fa-compress-alt"></i>
+                        Collapse All
+                    </button>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div class="page-content">
+                <!-- Search Bar -->
+                <div class="card" style="margin-bottom: 24px;">
+                    <div class="card-body">
+                        <div style="position: relative;">
+                            <i class="fas fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                            <input type="text" id="searchInput" placeholder="Search commands, features, or documentation..." style="width: 100%; padding: 12px 16px 12px 48px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-size: 15px;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Core Security Features Section -->
+                <details class="card help-section" open>
+                    <summary class="help-summary">
+                        <div class="help-summary-content">
+                            <i class="fas fa-shield-alt help-icon"></i>
+                            <div>
+                                <h2>🛡️ Core Security Features</h2>
+                                <p>Advanced protection systems to keep your Discord server safe</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-down help-chevron"></i>
+                    </summary>
+                    <div class="help-content">
+                        <div class="security-grid">
+                            <div class="security-feature">
+                                <div class="feature-header">
+                                    <i class="fas fa-users-slash feature-icon"></i>
+                                    <h3>Anti-Raid Protection</h3>
+                                </div>
+                                <p>Automatically detects and prevents coordinated raid attacks by monitoring suspicious join patterns.</p>
+                                <ul class="feature-list">
+                                    <li><strong>Join Rate Monitoring:</strong> Tracks members joining per minute</li>
+                                    <li><strong>Auto-Lockdown:</strong> Automatically locks server when threshold exceeded (default: 10 joins/min)</li>
+                                    <li><strong>Suspicious Pattern Detection:</strong> Identifies bot raids and coordinated attacks</li>
+                                    <li><strong>Real-Time Alerts:</strong> Notifies staff immediately via configured channel</li>
+                                    <li><strong>Account Age Filtering:</strong> Optionally kicks accounts under X days old</li>
+                                </ul>
+                                <div class="feature-commands">
+                                    <code>/antiraid enable</code>
+                                    <code>/antiraid threshold [number]</code>
+                                    <code>/antiraid action [kick/ban/timeout]</code>
+                                </div>
+                            </div>
+
+                            <div class="security-feature">
+                                <div class="feature-header">
+                                    <i class="fas fa-comment-slash feature-icon"></i>
+                                    <h3>Anti-Spam Protection</h3>
+                                </div>
+                                <p>Prevents message spam, duplicate content, and mass mentions with intelligent detection.</p>
+                                <ul class="feature-list">
+                                    <li><strong>Duplicate Message Detection:</strong> Blocks repeated messages (max 5 in 10 seconds)</li>
+                                    <li><strong>Mention Spam Prevention:</strong> Limits mass mentions (max 5 per message)</li>
+                                    <li><strong>Rapid Fire Detection:</strong> Identifies unusually fast message sending</li>
+                                    <li><strong>Auto-Moderation:</strong> Automatically deletes spam and warns users</li>
+                                    <li><strong>Link Spam Filter:</strong> Detects and blocks repetitive link posting</li>
+                                </ul>
+                                <div class="feature-commands">
+                                    <code>/antispam enable</code>
+                                    <code>/antispam configure</code>
+                                    <code>/antispam whitelist @role</code>
+                                </div>
+                            </div>
+
+                            <div class="security-feature">
+                                <div class="feature-header">
+                                    <i class="fas fa-radiation feature-icon"></i>
+                                    <h3>Anti-Nuke Protection</h3>
+                                </div>
+                                <p>Prevents compromised accounts from destroying your server with advanced action limits.</p>
+                                <ul class="feature-list">
+                                    <li><strong>Channel Protection:</strong> Limits channel deletions (max 5/min)</li>
+                                    <li><strong>Role Protection:</strong> Prevents mass role deletion (max 5/min)</li>
+                                    <li><strong>Ban Limits:</strong> Stops mass ban attacks (max 10/min)</li>
+                                    <li><strong>Permission Monitoring:</strong> Tracks bulk permission changes</li>
+                                    <li><strong>Whitelist System:</strong> Bypass limits for trusted administrators</li>
+                                </ul>
+                                <div class="feature-commands">
+                                    <code>/antinuke enable</code>
+                                    <code>/antinuke whitelist @user</code>
+                                    <code>/antinuke settings</code>
+                                </div>
+                            </div>
+
+                            <div class="security-feature">
+                                <div class="feature-header">
+                                    <i class="fas fa-fish feature-icon"></i>
+                                    <h3>Anti-Phishing Protection</h3>
+                                </div>
+                                <p>Scans messages for malicious links and phishing attempts using multiple databases.</p>
+                                <ul class="feature-list">
+                                    <li><strong>Link Scanning:</strong> Checks all URLs against known phishing databases</li>
+                                    <li><strong>Pattern Analysis:</strong> Detects suspicious link structures</li>
+                                    <li><strong>Auto-Delete:</strong> Instantly removes dangerous links</li>
+                                    <li><strong>User Warnings:</strong> Alerts users about blocked attempts</li>
+                                    <li><strong>API Integration:</strong> Optional VirusTotal, URLVoid, Google Safe Browsing</li>
+                                </ul>
+                                <div class="feature-commands">
+                                    <code>/antiphishing enable</code>
+                                    <code>/antiphishing check [url]</code>
+                                    <code>/antiphishing whitelist [domain]</code>
+                                </div>
+                            </div>
+
+                            <div class="security-feature">
+                                <div class="feature-header">
+                                    <i class="fas fa-lock feature-icon"></i>
+                                    <h3>Lockdown System</h3>
+                                </div>
+                                <p>Emergency server lockdown with multiple modes to stop active threats immediately.</p>
+                                <ul class="feature-list">
+                                    <li><strong>Full Lockdown:</strong> Prevents all new messages server-wide</li>
+                                    <li><strong>Soft Lockdown:</strong> Restricts to verified members only</li>
+                                    <li><strong>Channel Lockdown:</strong> Lock specific channels individually</li>
+                                    <li><strong>Auto-Unlock:</strong> Schedule automatic unlocking after X minutes</li>
+                                    <li><strong>Raid Response:</strong> Integrates with anti-raid for automatic lockdown</li>
+                                </ul>
+                                <div class="feature-commands">
+                                    <code>/lockdown [mode] [duration]</code>
+                                    <code>/lockdown channel #channel</code>
+                                    <code>/unlockdown</code>
+                                </div>
+                            </div>
+
+                            <div class="security-feature">
+                                <div class="feature-header">
+                                    <i class="fas fa-user-check feature-icon"></i>
+                                    <h3>Verification System</h3>
+                                </div>
+                                <p>Multi-layer verification to prevent bot accounts and ensure legitimate members.</p>
+                                <ul class="feature-list">
+                                    <li><strong>Captcha Verification:</strong> Solve captcha to gain access</li>
+                                    <li><strong>Button Verification:</strong> Simple click-to-verify system</li>
+                                    <li><strong>Manual Approval:</strong> Staff-reviewed verification for sensitive servers</li>
+                                    <li><strong>Role Assignment:</strong> Automatically grants verified role on success</li>
+                                    <li><strong>DM Verification:</strong> Send verification prompts via direct message</li>
+                                </ul>
+                                <div class="feature-commands">
+                                    <code>/verification setup</code>
+                                    <code>/verification mode [captcha/button/manual]</code>
+                                    <code>/verification role @role</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Security Commands Section -->
+                <details class="card help-section">
+                    <summary class="help-summary">
+                        <div class="help-summary-content">
+                            <i class="fas fa-shield-halved help-icon"></i>
+                            <div>
+                                <h2>🔒 Security Commands</h2>
+                                <p>Commands for configuring and managing security features</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-down help-chevron"></i>
+                    </summary>
+                    <div class="help-content">
+                        <div class="command-category">
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/anti-raid on|off|status</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Manage Anti-Raid Protection with automatic monitoring</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/anti-spam on|off|status</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Manage Anti-Spam Protection across all channels</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/anti-phishing on|off|scan</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Manage Anti-Phishing Protection and scan links</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/anti-links on|off|status</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Manage anti-links protection settings</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/antinuke enable|disable|status|whitelist|settings|incidents</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Advanced anti-nuke protection with restore capabilities</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/lockdown [mode] [duration] [channels]</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Emergency server lockdown with multiple modes</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/unlockdown</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">End server lockdown and restore normal operations</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/status</code>
+                                    <span class="badge badge-everyone">Everyone</span>
+                                </div>
+                                <p class="command-desc">Check the security status of the server</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/security logs|threats|report|alerts</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">View security logs and threat statistics</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/verification setup</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Set up and enable user verification</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/wordfilter add|remove|list|clear|exempt</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Manage auto-mod word filters for your server</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/altdetect on|off|status|minage|check|review</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Alt account detection commands</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/webhookprotect on|off|whitelist|scan|status</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Webhook protection management</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/emojispam on|limit|action|disable|status</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Configure emoji and sticker spam detection</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/rolescan [role]</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Scan server roles for dangerous permissions</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/baseline-update</code>
+                                    <span class="badge badge-owner">Owner</span>
+                                </div>
+                                <p class="command-desc">Regenerate and sign the tamper-protection baseline</p>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Moderation Commands Section -->
+                <details class="card help-section">
+                    <summary class="help-summary">
+                        <div class="help-summary-content">
+                            <i class="fas fa-gavel help-icon"></i>
+                            <div>
+                                <h2>⚖️ Moderation Commands</h2>
+                                <p>Tools for managing users and maintaining order</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-down help-chevron"></i>
+                    </summary>
+                    <div class="help-content">
+                        <div class="command-category">
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/ban @user [reason] [delete_days]</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Ban a member from the server with optional message deletion</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/unban [user_id] [reason]</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Unban a user from the server by their Discord ID</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/kick @user [reason]</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Kick a member from the server (they can rejoin)</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/timeout @user [duration] [reason]</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Timeout a member (duration: 1m-28d)</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/warn @user [reason]</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Warn a member (tracked in moderation logs)</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/purge [amount] [user]</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Delete multiple messages at once (1-100)</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/lock #channel [reason]</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Lock a channel to prevent members from sending messages</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/unlock #channel</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Unlock a channel to allow members to send messages</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/slowmode [seconds] [channel]</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Set slowmode delay for a channel (0-21600 seconds)</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/cases user|search|case</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">View moderation case history for users</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/modnote add|list|remove @user</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Manage moderator notes for users</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/strike add|remove|list|check|config</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Strike/points system management</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/quarantine add|release|check|list|sync</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Quarantine system management for suspicious users</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/appeal setup|list|review|approve|deny</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Ban appeal system commands</p>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Utility Commands Section -->
+                <details class="card help-section">
+                    <summary class="help-summary">
+                        <div class="help-summary-content">
+                            <i class="fas fa-tools help-icon"></i>
+                            <div>
+                                <h2>🔧 Utility Commands</h2>
+                                <p>General utility and information commands</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-down help-chevron"></i>
+                    </summary>
+                    <div class="help-content">
+                        <div class="command-category">
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/ticket create|close</code>
+                                    <span class="badge badge-everyone">Everyone</span>
+                                </div>
+                                <p class="command-desc">Ticket system for creating and closing support tickets</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/ticket-manage claim|add|remove|assign|close</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Advanced ticket management commands for staff</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/ping</code>
+                                    <span class="badge badge-everyone">Everyone</span>
+                                </div>
+                                <p class="command-desc">Check bot latency and response time</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/serverinfo</code>
+                                    <span class="badge badge-everyone">Everyone</span>
+                                </div>
+                                <p class="command-desc">Get detailed information about the server</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/userinfo [@user]</code>
+                                    <span class="badge badge-everyone">Everyone</span>
+                                </div>
+                                <p class="command-desc">Get detailed information about a user</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/help [command]</code>
+                                    <span class="badge badge-everyone">Everyone</span>
+                                </div>
+                                <p class="command-desc">Get help with bot commands or submit a support ticket</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/analytics overview|members|activity|export</code>
+                                    <span class="badge badge-everyone">Everyone</span>
+                                </div>
+                                <p class="command-desc">View detailed server analytics and statistics</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/poll [question] [options]</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Create an interactive poll with reactions</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/announce [channel] [message]</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Send a formatted announcement to a channel</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/embed create</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Create a custom embed message with interactive builder</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/invites check|leaderboard|who|bonus|reset</code>
+                                    <span class="badge badge-everyone">Everyone</span>
+                                </div>
+                                <p class="command-desc">Invite tracking commands</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/schedule mute|unmute|lock|announcement</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">Schedule actions to be executed later</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/modmail setup|open|close|reply</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">ModMail system for private user-staff communication</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/auditlog view|search|export|tracking</code>
+                                    <span class="badge badge-mod">Moderator</span>
+                                </div>
+                                <p class="command-desc">View and search the moderation audit log</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/trustscore [@user]</code>
+                                    <span class="badge badge-everyone">Everyone</span>
+                                </div>
+                                <p class="command-desc">View your trust score or another user's trust score</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/rank [@user]</code>
+                                    <span class="badge badge-everyone">Everyone</span>
+                                </div>
+                                <p class="command-desc">View your XP rank card or another user's rank</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/leaderboard</code>
+                                    <span class="badge badge-everyone">Everyone</span>
+                                </div>
+                                <p class="command-desc">View the server XP leaderboard</p>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Configuration Commands Section -->
+                <details class="card help-section">
+                    <summary class="help-summary">
+                        <div class="help-summary-content">
+                            <i class="fas fa-cog help-icon"></i>
+                            <div>
+                                <h2>⚙️ Configuration Commands</h2>
+                                <p>Server setup and configuration options</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-down help-chevron"></i>
+                    </summary>
+                    <div class="help-content">
+                        <div class="command-category">
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/wizard start|restart|cancel|status</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Run interactive setup wizard to configure all bot features</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/serversetup [template] [prefix] [keep_existing]</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Complete server setup with channels, roles, and categories</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/autorole add|remove|list @role</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Manage automatic role assignment for new members</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/reactionroles create|add|deploy</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Manage self-assignable reaction roles (supports buttons)</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/selfrole add|remove|list|panel</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Manage self-assignable roles for users</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/welcome setup|customize</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Configure welcome messages for new members</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/goodbye setup|enable|disable|customize|test</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Configure goodbye messages when members leave</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/permissions view|grant|revoke|list</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Manage who can use bot commands by role</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/serverbackup create|list|restore|delete|info|verify|schedule</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Server backup and restore management</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/language set|list|status</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Server language settings</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/onboarding welcome|verification|preview|disable</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Manage onboarding mode (welcome vs verification)</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/verified_setup channel|role|message</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Configure verified onboarding when verification is active</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/channelaccess setup|addrole</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Set up button panel for granting channel access</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/voicemonitor enable|disable|detection|alerts|status</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Configure voice channel monitoring</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/server info|settings|audit|roles|channels</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Advanced server controls and information</p>
+                            </div>
+
+                            <div class="command-item">
+                                <div class="command-header">
+                                    <code class="command-name">/xp set|add|remove|reset|levelrole|enable|disable</code>
+                                    <span class="badge badge-admin">Admin</span>
+                                </div>
+                                <p class="command-desc">Manage the XP leveling system</p>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Privacy Policy Section -->
+                <details class="card help-section">
+                    <summary class="help-summary">
+                        <div class="help-summary-content">
+                            <i class="fas fa-user-shield help-icon"></i>
+                            <div>
+                                <h2>🔐 Privacy Policy</h2>
+                                <p>How we collect, use, and protect your data</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-down help-chevron"></i>
+                    </summary>
+                    <div class="help-content">
+                        <div class="privacy-section">
+                            <h3><i class="fas fa-database"></i> Data Collection</h3>
+                            <p>DarkLock collects and stores the following data to provide security and moderation services:</p>
+                            <ul class="privacy-list">
+                                <li><strong>Server Data:</strong> Server ID, server name, member count, channel information</li>
+                                <li><strong>User Data:</strong> User ID, username, discriminator, avatar URL, roles</li>
+                                <li><strong>Message Data:</strong> Message content for anti-spam/phishing detection (not permanently stored)</li>
+                                <li><strong>Moderation Logs:</strong> Ban/kick/warn records, moderator actions, case notes</li>
+                                <li><strong>Security Incidents:</strong> Join patterns, suspicious activities, threat data</li>
+                                <li><strong>Settings:</strong> Bot configuration, feature toggles, custom settings per server</li>
+                            </ul>
+
+                            <h3><i class="fas fa-lock"></i> Data Usage</h3>
+                            <p>We use collected data exclusively for the following purposes:</p>
+                            <ul class="privacy-list">
+                                <li><strong>Security Protection:</strong> Detecting raids, spam, phishing, and malicious activity</li>
+                                <li><strong>Moderation:</strong> Tracking warnings, bans, and moderator actions</li>
+                                <li><strong>Analytics:</strong> Server statistics, usage metrics, and activity trends (dashboard only)</li>
+                                <li><strong>Bot Functionality:</strong> Welcome messages, verification, leveling, economy features</li>
+                                <li><strong>Support:</strong> Ticket system, AI assistance (if enabled)</li>
+                            </ul>
+
+                            <h3><i class="fas fa-shield-alt"></i> Data Protection</h3>
+                            <p>We implement strong security measures to protect your data:</p>
+                            <ul class="privacy-list">
+                                <li><strong>Encryption:</strong> Dashboard authentication uses JWT tokens with HTTPS</li>
+                                <li><strong>Access Control:</strong> Role-based permissions ensure only authorized users access data</li>
+                                <li><strong>Local Storage:</strong> Data stored in SQLite database on your server (self-hosted)</li>
+                                <li><strong>No Third-Party Sharing:</strong> Your data is never sold or shared with third parties</li>
+                                <li><strong>Automatic Cleanup:</strong> Old logs and unused data automatically deleted after 90 days</li>
+                            </ul>
+
+                            <h3><i class="fas fa-user-times"></i> Data Deletion</h3>
+                            <p>You have full control over your data:</p>
+                            <ul class="privacy-list">
+                                <li><strong>Remove Bot:</strong> Kicking the bot deletes all server data within 48 hours</li>
+                                <li><strong>Manual Request:</strong> Contact bot administrator to request immediate data deletion</li>
+                                <li><strong>User Data:</strong> Individual users can request deletion of their personal data</li>
+                                <li><strong>Export Data:</strong> Server admins can export all data via dashboard backup feature</li>
+                            </ul>
+
+                            <h3><i class="fas fa-code"></i> Third-Party Services</h3>
+                            <p>DarkLock may integrate with these optional services:</p>
+                            <ul class="privacy-list">
+                                <li><strong>VirusTotal:</strong> Link scanning for phishing detection - URLs checked against VirusTotal database</li>
+                                <li><strong>Google Safe Browsing:</strong> Additional phishing protection - URLs verified with Google</li>
+                                <li><strong>Stripe:</strong> Payment processing for premium features - handles payment data securely (never stored by bot)</li>
+                            </ul>
+                            <p><strong>Note:</strong> All third-party integrations are optional and can be disabled. Review each service's privacy policy before enabling.</p>
+
+                            <h3><i class="fas fa-balance-scale"></i> Legal Compliance</h3>
+                            <ul class="privacy-list">
+                                <li><strong>GDPR Compliant:</strong> Users in EU have right to access, rectify, and delete their data</li>
+                                <li><strong>COPPA Compliant:</strong> No collection of data from users under 13</li>
+                                <li><strong>Discord ToS:</strong> Fully compliant with Discord's Terms of Service and Developer Terms</li>
+                                <li><strong>Data Retention:</strong> Moderation logs kept for 90 days, security logs for 30 days</li>
+                            </ul>
+
+                            <h3><i class="fas fa-envelope"></i> Contact & Questions</h3>
+                            <p>For privacy-related questions or data requests:</p>
+                            <ul class="privacy-list">
+                                <li><strong>Email:</strong> Contact server administrator or bot developer</li>
+                                <li><strong>Discord Support:</strong> Join bot support server for assistance</li>
+                                <li><strong>Data Requests:</strong> Response within 30 days per GDPR requirements</li>
+                            </ul>
+
+                            <div class="privacy-update">
+                                <p><strong>Last Updated:</strong> December 19, 2025</p>
+                                <p><strong>Version:</strong> 1.0.0</p>
+                                <p><em>We reserve the right to update this privacy policy. Major changes will be announced in bot updates.</em></p>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+            </div>
+        </main>
+    </div>
+
+    <style>
+        /* Help-specific styles */
+        .help-section {
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .page-content {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .help-summary {
+            cursor: pointer;
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            transition: all 0.3s ease;
+            border-radius: 12px;
+        }
+
+        .help-summary:hover {
+            background: rgba(0, 240, 255, 0.05);
+        }
+
+        .help-summary-content {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .help-icon {
+            font-size: 32px;
+            color: var(--accent-primary);
+            min-width: 40px;
+        }
+
+        .help-summary h2 {
+            font-size: 24px;
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .help-summary p {
+            color: var(--text-secondary);
+            margin: 4px 0 0 0;
+            font-size: 14px;
+        }
+
+        .help-chevron {
+            color: var(--text-muted);
+            transition: transform 0.3s ease;
+            font-size: 18px;
+        }
+
+        details[open] .help-chevron {
+            transform: rotate(180deg);
+        }
+
+        details[open] .help-summary {
+            background: rgba(0, 240, 255, 0.08);
+            border-bottom: 1px solid var(--border-color);
+            border-radius: 12px 12px 0 0;
+        }
+
+        .help-content {
+            padding: 32px 24px;
+        }
+
+        /* Security Features Grid */
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 450px), 1fr));
+            gap: 24px;
+        }
+
+        .security-feature {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .security-feature:hover {
+            border-color: var(--accent-primary);
+            box-shadow: 0 4px 20px rgba(0, 240, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .feature-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .feature-icon {
+            font-size: 28px;
+            color: var(--accent-primary);
+        }
+
+        .feature-header h3 {
+            font-size: 20px;
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .security-feature p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 16px 0;
+        }
+
+        .feature-list li {
+            padding: 8px 0;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+        }
+
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+
+        .feature-list strong {
+            color: var(--accent-primary);
+        }
+
+        .feature-commands {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .feature-commands code {
+            background: rgba(0, 240, 255, 0.1);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--accent-primary);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+        }
+
+        /* Command Categories */
+        .command-category {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .command-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .command-item:hover {
+            border-color: var(--accent-primary);
+            box-shadow: 0 2px 12px rgba(0, 240, 255, 0.08);
+        }
+
+        .command-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .command-name {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 15px;
+            color: var(--accent-primary);
+            background: rgba(0, 240, 255, 0.1);
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+        }
+
+        .command-desc {
+            color: var(--text-secondary);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-owner {
+            background: rgba(168, 85, 247, 0.2);
+            color: #a855f7;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+
+        .badge-admin {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .badge-mod {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .badge-everyone {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        /* Privacy Section */
+        .privacy-section h3 {
+            color: var(--accent-primary);
+            margin-top: 32px;
+            margin-bottom: 16px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .privacy-section h3:first-child {
+            margin-top: 0;
+        }
+
+        .privacy-section h3 i {
+            font-size: 22px;
+        }
+
+        .privacy-section p {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 12px;
+        }
+
+        .privacy-list {
+            list-style: none;
+            padding: 0;
+            margin: 16px 0;
+        }
+
+        .privacy-list li {
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border-left: 3px solid var(--accent-primary);
+            margin-bottom: 8px;
+            border-radius: 4px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .privacy-list strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .privacy-update {
+            background: rgba(0, 240, 255, 0.05);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 32px;
+        }
+
+        .privacy-update p {
+            margin: 4px 0;
+        }
+
+        .privacy-update strong {
+            color: var(--accent-primary);
+        }
+
+        .privacy-update em {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .security-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .help-summary-content {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .command-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+
+    <script src="/js/secure-auth.js"></script>
+<script>
+        // Initialize
+        let serverDropdownOpen = false;
+        let userGuilds = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUserData();
+            await loadUserServers();
+        });
+
+        // Load user data
+        async function loadUserData() {
+            try {
+                const response = await fetch('/api/me', { credentials: 'include' });
+                if (!response.ok) {
+                    window.location.href = '/login';
+                    return;
+                }
+                const data = await response.json();
+
+                if (data.user) {
+                    document.getElementById('userName').textContent = data.user.globalName || data.user.username || 'User';
+                    document.getElementById('userRole').textContent = data.user.role || 'User';
+                    
+                    if (data.user.avatar) {
+                        document.getElementById('userAvatar').src = `https://cdn.discordapp.com/avatars/${data.user.userId || data.user.id}/${data.user.avatar}.png?size=64`;
+                    } else {
+                        document.getElementById('userAvatar').src = 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading user data:', error);
+                window.location.href = '/login';
+            }
+        }
+
+        // Load user servers using /api/servers/list endpoint
+        async function loadUserServers() {
+            try {
+                const response = await fetch('/api/servers/list', { credentials: 'include' });
+                if (!response.ok) {
+                    console.error('Failed to load servers:', response.status);
+                    return;
+                }
+                
+                const data = await response.json();
+                userGuilds = data.servers || [];
+                
+                const selectedGuildId = localStorage.getItem('selectedGuildId');
+                if (selectedGuildId && userGuilds.find(g => g.id === selectedGuildId)) {
+                    updateCurrentServerDisplay(selectedGuildId);
+                } else if (userGuilds.length > 0) {
+                    updateCurrentServerDisplay(userGuilds[0].id);
+                    localStorage.setItem('selectedGuildId', userGuilds[0].id);
+                }
+                
+                renderServerDropdown();
+            } catch (error) {
+                console.error('Error loading servers:', error);
+            }
+        }
+
+        // Update current server display
+        function updateCurrentServerDisplay(guildId) {
+            const guild = userGuilds.find(g => g.id === guildId);
+            if (!guild) return;
+            
+            document.getElementById('currentServerName').textContent = guild.name;
+            document.getElementById('currentServerMembers').textContent = `${guild.memberCount || 0} members`;
+            
+            // Use icon from server data (already formatted URL) or construct it
+            const iconUrl = guild.icon && guild.icon.startsWith('http') 
+                ? guild.icon
+                : guild.icon 
+                    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`
+                    : 'https://cdn.discordapp.com/embed/avatars/0.png';
+            document.getElementById('currentServerIcon').src = iconUrl;
+        }
+
+        // Render server dropdown
+        function renderServerDropdown() {
+            const listEl = document.getElementById('serverList');
+            if (!userGuilds.length) {
+                listEl.innerHTML = '<div class="server-dropdown-empty">No servers found</div>';
+                return;
+            }
+            
+            listEl.innerHTML = userGuilds.map(guild => {
+                // Use icon from server data (already formatted URL) or construct it
+                const iconUrl = guild.icon && guild.icon.startsWith('http') 
+                    ? guild.icon
+                    : guild.icon 
+                        ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`
+                        : 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    
+                return `
+                    <div class="server-dropdown-item" onclick="selectServer('${guild.id}')">
+                        <img src="${iconUrl}" alt="${guild.name}" class="server-dropdown-img" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                        <div class="server-dropdown-info">
+                            <div class="server-dropdown-name">${guild.name}</div>
+                            <div class="server-dropdown-members">${guild.memberCount || 0} members</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Toggle server dropdown
+        function toggleServerDropdown() {
+            serverDropdownOpen = !serverDropdownOpen;
+            const dropdown = document.getElementById('serverDropdown');
+            const icon = document.getElementById('serverDropdownIcon');
+            
+            if (serverDropdownOpen) {
+                dropdown.style.display = 'block';
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                dropdown.style.display = 'none';
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // Close server dropdown
+        function closeServerDropdown() {
+            serverDropdownOpen = false;
+            document.getElementById('serverDropdown').style.display = 'none';
+            document.getElementById('serverDropdownIcon').style.transform = 'rotate(0deg)';
+        }
+
+        // Select server
+        function selectServer(guildId) {
+            localStorage.setItem('selectedGuildId', guildId);
+            updateCurrentServerDisplay(guildId);
+            closeServerDropdown();
+        }
+
+        // Sidebar toggle
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        }
+
+        // Logout
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/logout';
+        }
+
+        // Expand/collapse all
+        function expandAll() {
+            document.querySelectorAll('details.help-section').forEach(el => el.open = true);
+        }
+
+        function collapseAll() {
+            document.querySelectorAll('details.help-section').forEach(el => el.open = false);
+        }
+
+        // Search functionality
+        const searchInput = document.getElementById('searchInput');
+        let searchTimeout;
+
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const term = e.target.value.toLowerCase();
+                const sections = document.querySelectorAll('.help-section');
+                
+                if (term === '') {
+                    sections.forEach(section => {
+                        section.style.display = 'block';
+                    });
+                    return;
+                }
+
+                sections.forEach(section => {
+                    const content = section.textContent.toLowerCase();
+                    if (content.includes(term)) {
+                        section.style.display = 'block';
+                        section.open = true;
+                    } else {
+                        section.style.display = 'none';
+                    }
+                });
+            }, 300);
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.server-selector')) {
+                closeServerDropdown();
+            }
+        });
+    </script>
+</body>
+</html>
+

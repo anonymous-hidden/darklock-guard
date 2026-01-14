@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
+    <title>Login History - Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="stylesheet" href="/css/settings-panel.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <style>
+        :root {
+            --fallback-b1: #1d232a;
+            --fallback-b2: #191e24;
+            --fallback-b3: #15191e;
+        }
+
+        body {
+            background: var(--bg-primary, oklch(var(--b1)));
+            color: var(--color-text, #e2e8f0);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        .page-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--color-text, #f1f5f9);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .page-header p {
+            color: var(--color-text-muted, #94a3b8);
+            font-size: 0.95rem;
+        }
+
+        .filters-bar {
+            background: var(--bg-surface, oklch(var(--b2)));
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-text-muted, #94a3b8);
+            margin-bottom: 0.5rem;
+        }
+
+        .filter-input, .filter-select {
+            width: 100%;
+            padding: 0.625rem 1rem;
+            background: var(--bg-primary, oklch(var(--b1)));
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+            border-radius: 0.5rem;
+            color: var(--color-text, #e2e8f9);
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .filter-input:focus, .filter-select:focus {
+            outline: none;
+            border-color: var(--color-primary, #6366f1);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .login-table {
+            background: var(--bg-surface, oklch(var(--b2)));
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: var(--bg-elevated, rgba(0, 0, 0, 0.2));
+        }
+
+        thead th {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--color-text-muted, #94a3b8);
+            border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+        }
+
+        tbody tr {
+            border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
+            transition: background 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background: var(--bg-hover, rgba(255, 255, 255, 0.02));
+        }
+
+        tbody td {
+            padding: 1.25rem 1.5rem;
+            color: var(--color-text, #e2e8f0);
+            font-size: 0.9rem;
+        }
+
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: var(--color-text, #f1f5f9);
+        }
+
+        .user-id {
+            font-size: 0.8rem;
+            color: var(--color-text-muted, #64748b);
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-success {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+        }
+
+        .status-failed {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .status-warning {
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+        }
+
+        .device-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--color-text-muted, #94a3b8);
+        }
+
+        .device-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-primary, oklch(var(--b1)));
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+        }
+
+        .location-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.25rem 0.625rem;
+            background: var(--bg-primary, oklch(var(--b1)));
+            border-radius: 0.375rem;
+            font-size: 0.8rem;
+            color: var(--color-text-muted, #94a3b8);
+        }
+
+        .time-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .time-primary {
+            color: var(--color-text, #e2e8f0);
+            font-weight: 500;
+        }
+
+        .time-relative {
+            font-size: 0.8rem;
+            color: var(--color-text-muted, #64748b);
+        }
+
+        .actions-btn {
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-primary, oklch(var(--b1)));
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+            border-radius: 0.5rem;
+            color: var(--color-text-muted, #94a3b8);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+        }
+
+        .actions-btn:hover {
+            background: var(--bg-hover, rgba(255, 255, 255, 0.05));
+            border-color: var(--color-primary, #6366f1);
+            color: var(--color-primary, #6366f1);
+        }
+
+        .loading-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--color-text-muted, #94a3b8);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            color: var(--color-text-muted, #64748b);
+            margin-bottom: 1rem;
+        }
+
+        .empty-state-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-text, #e2e8f0);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state-desc {
+            color: var(--color-text-muted, #94a3b8);
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            background: var(--bg-surface, oklch(var(--b2)));
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+            border-radius: 0.5rem;
+            color: var(--color-text, #e2e8f0);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin-bottom: 1.5rem;
+        }
+
+        .back-btn:hover {
+            background: var(--bg-hover, rgba(255, 255, 255, 0.05));
+            border-color: var(--color-primary, #6366f1);
+            color: var(--color-primary, #6366f1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-surface, oklch(var(--b2)));
+            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--color-text-muted, #94a3b8);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--color-text, #f1f5f9);
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <a href="/dashboard" class="back-btn">
+            <i class="fas fa-arrow-left"></i>
+            Back to Dashboard
+        </a>
+
+        <div class="page-header">
+            <h1>
+                <i class="fas fa-history"></i>
+                Login History
+            </h1>
+            <p>Monitor and analyze all authentication attempts across your dashboard</p>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-label">Total Logins</div>
+                <div class="stat-value" id="totalLogins">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Successful</div>
+                <div class="stat-value" style="color: #22c55e;" id="successLogins">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Failed</div>
+                <div class="stat-value" style="color: #ef4444;" id="failedLogins">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Unique IPs</div>
+                <div class="stat-value" id="uniqueIPs">-</div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-bar">
+            <div class="filter-group">
+                <label for="userFilter">User</label>
+                <input type="text" id="userFilter" class="filter-input" placeholder="Search by username or ID...">
+            </div>
+            <div class="filter-group">
+                <label for="statusFilter">Status</label>
+                <select id="statusFilter" class="filter-select">
+                    <option value="">All Statuses</option>
+                    <option value="success">Successful</option>
+                    <option value="failed">Failed</option>
+                    <option value="suspicious">Suspicious</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="timeFilter">Time Range</label>
+                <select id="timeFilter" class="filter-select">
+                    <option value="24h">Last 24 Hours</option>
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d">Last 30 Days</option>
+                    <option value="all">All Time</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Login Table -->
+        <div class="login-table">
+            <div class="table-wrapper">
+                <table id="loginTable">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Status</th>
+                            <th>Device</th>
+                            <th>Location</th>
+                            <th>IP Address</th>
+                            <th>Time</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="loginTableBody">
+                        <tr>
+                            <td colspan="7">
+                                <div class="loading-state">
+                                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                                    <p style="margin-top: 1rem;">Loading login history...</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Fetch and display login history
+        async function loadLoginHistory() {
+            try {
+                const timeFilter = document.getElementById('timeFilter').value;
+                const statusFilter = document.getElementById('statusFilter').value;
+                const userFilter = document.getElementById('userFilter').value;
+
+                const params = new URLSearchParams({
+                    timeRange: timeFilter,
+                    ...(statusFilter && { status: statusFilter }),
+                    ...(userFilter && { user: userFilter })
+                });
+
+                const response = await fetch(`/api/admin/login-history?${params}`, {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch login history');
+                }
+
+                const data = await response.json();
+                
+                // Update stats
+                document.getElementById('totalLogins').textContent = data.stats.total || 0;
+                document.getElementById('successLogins').textContent = data.stats.successful || 0;
+                document.getElementById('failedLogins').textContent = data.stats.failed || 0;
+                document.getElementById('uniqueIPs').textContent = data.stats.uniqueIPs || 0;
+
+                // Render table
+                renderLoginTable(data.history || []);
+            } catch (error) {
+                console.error('Error loading login history:', error);
+                document.getElementById('loginTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <div class="empty-state-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                                <div class="empty-state-title">Failed to Load History</div>
+                                <div class="empty-state-desc">An error occurred while loading the login history. Please try again.</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function renderLoginTable(history) {
+            const tbody = document.getElementById('loginTableBody');
+
+            if (!history || history.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <div class="empty-state-icon"><i class="fas fa-inbox"></i></div>
+                                <div class="empty-state-title">No Login History Found</div>
+                                <div class="empty-state-desc">There are no login attempts matching your filters.</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = history.map(entry => `
+                <tr>
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar">${getInitials(entry.username || entry.user_id)}</div>
+                            <div class="user-info">
+                                <span class="user-name">${escapeHtml(entry.username || 'Unknown')}</span>
+                                <span class="user-id">${escapeHtml(entry.user_id || 'N/A')}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-badge status-${entry.status}">
+                            <i class="fas fa-${entry.status === 'success' ? 'check' : entry.status === 'failed' ? 'times' : 'exclamation-triangle'}"></i>
+                            ${entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="device-info">
+                            <div class="device-icon">
+                                <i class="fas fa-${getDeviceIcon(entry.device)}"></i>
+                            </div>
+                            <div>
+                                <div>${escapeHtml(entry.device || 'Unknown Device')}</div>
+                                <div style="font-size: 0.8rem; color: var(--color-text-muted, #64748b);">
+                                    ${escapeHtml(entry.browser || 'Unknown Browser')}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="location-tag">
+                            <i class="fas fa-map-marker-alt"></i>
+                            ${escapeHtml(entry.location || 'Unknown')}
+                        </div>
+                    </td>
+                    <td style="font-family: 'Courier New', monospace; color: var(--color-text-muted, #94a3b8);">
+                        ${escapeHtml(entry.ip || 'N/A')}
+                    </td>
+                    <td>
+                        <div class="time-cell">
+                            <span class="time-primary">${formatDateTime(entry.timestamp)}</span>
+                            <span class="time-relative">${getRelativeTime(entry.timestamp)}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <button class="actions-btn" onclick="viewDetails('${entry.id}')">
+                            <i class="fas fa-info-circle"></i> Details
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getInitials(name) {
+            if (!name) return '?';
+            return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function getDeviceIcon(device) {
+            if (!device) return 'question';
+            const d = device.toLowerCase();
+            if (d.includes('mobile') || d.includes('phone')) return 'mobile-alt';
+            if (d.includes('tablet') || d.includes('ipad')) return 'tablet-alt';
+            return 'desktop';
+        }
+
+        function formatDateTime(timestamp) {
+            if (!timestamp) return 'N/A';
+            const date = new Date(timestamp);
+            return date.toLocaleString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function getRelativeTime(timestamp) {
+            if (!timestamp) return '';
+            const now = new Date();
+            const then = new Date(timestamp);
+            const diff = now - then;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+
+            if (minutes < 1) return 'Just now';
+            if (minutes < 60) return `${minutes}m ago`;
+            if (hours < 24) return `${hours}h ago`;
+            return `${days}d ago`;
+        }
+
+        function viewDetails(id) {
+            alert(`View details for entry: ${id}\n\n(Details modal to be implemented)`);
+        }
+
+        // Event listeners
+        document.getElementById('timeFilter').addEventListener('change', loadLoginHistory);
+        document.getElementById('statusFilter').addEventListener('change', loadLoginHistory);
+        
+        let searchTimeout;
+        document.getElementById('userFilter').addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(loadLoginHistory, 500);
+        });
+
+        // Initial load
+        loadLoginHistory();
+    </script>
+</body>
+</html>

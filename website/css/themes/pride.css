@@ -1,0 +1,173 @@
+/* 🏳️‍🌈 Pride Theme */
+/* Rainbow gradient effects */
+
+:root {
+    --theme-name: 'Pride';
+    --theme-emoji: '🏳️‍🌈';
+    
+    /* Rainbow Colors */
+    --pride-red: #e40303;
+    --pride-orange: #ff8c00;
+    --pride-yellow: #ffed00;
+    --pride-green: #008026;
+    --pride-blue: #004dff;
+    --pride-purple: #750787;
+    
+    /* ============================================== */
+    /* UNIVERSAL VARIABLES (works with all stylesheets) */
+    /* ============================================== */
+    
+    /* Primary/Accent Colors - ALL naming conventions */
+    --color-primary: #e40303 !important;
+    --color-primary-light: #ff4444 !important;
+    --color-primary-dark: #aa0000 !important;
+    --color-secondary: #008026 !important;
+    --color-accent: #004dff !important;
+    --accent-primary: #e40303 !important;
+    --accent-secondary: #008026 !important;
+    --accent-tertiary: #004dff !important;
+    --accent-gradient: linear-gradient(135deg, #e40303 0%, #ff8c00 17%, #ffed00 33%, #008026 50%, #004dff 67%, #750787 100%) !important;
+    
+    /* Background Colors - ALL naming conventions */
+    --bg-body: #1a1a2e !important;
+    --bg-primary: #1a1a2e !important;
+    --bg-secondary: #16213e !important;
+    --bg-tertiary: #0f3460 !important;
+    --bg-surface: #16213e !important;
+    --bg-surface-hover: #1e2a4a !important;
+    --bg-surface-elevated: #0f3460 !important;
+    --bg-card: rgba(22, 33, 62, 0.8) !important;
+    --bg-card-solid: #16213e !important;
+    --bg-card-hover: rgba(30, 42, 74, 0.9) !important;
+    --bg-gradient: radial-gradient(ellipse at top, #16213e 0%, #1a1a2e 100%) !important;
+    --bg-sidebar: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%) !important;
+    
+    /* Text Colors - ALL naming conventions */
+    --color-text: #ffffff !important;
+    --color-text-secondary: #e0e0e0 !important;
+    --color-muted: #808080 !important;
+    --text-primary: #ffffff !important;
+    --text-secondary: #e0e0e0 !important;
+    --text-muted: #808080 !important;
+    
+    /* Status Colors */
+    --color-success: #008026 !important;
+    --color-warning: #ffed00 !important;
+    --color-danger: #e40303 !important;
+    --color-info: #004dff !important;
+    --success: #008026 !important;
+    --warning: #ffed00 !important;
+    --danger: #e40303 !important;
+    --error: #e40303 !important;
+    --info: #004dff !important;
+    
+    /* Border & Shadow - ALL naming conventions */
+    --color-border: rgba(228, 3, 3, 0.3) !important;
+    --color-border-light: rgba(0, 77, 255, 0.3) !important;
+    --border-color: rgba(228, 3, 3, 0.3) !important;
+    --border-color-light: rgba(0, 77, 255, 0.3) !important;
+    --border-glow: rgba(117, 7, 135, 0.4) !important;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3) !important;
+    --shadow-md: 0 4px 15px rgba(117, 7, 135, 0.2) !important;
+    --shadow-lg: 0 10px 25px rgba(117, 7, 135, 0.25) !important;
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+    --shadow-glow: 0 0 30px rgba(117, 7, 135, 0.25) !important;
+    --shadow-glow-primary: 0 0 20px rgba(228, 3, 3, 0.4) !important;
+    --shadow-glow-accent: 0 0 20px rgba(0, 77, 255, 0.4) !important;
+    
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-pill: 9999px;
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.3s ease;
+    --transition: 0.25s ease;
+    --transition-base: 0.25s ease;
+}
+
+.theme-pride .admin-header,
+.theme-pride .dashboard-header {
+    background: linear-gradient(135deg, 
+        #e40303 0%, 
+        #ff8c00 17%, 
+        #ffed00 33%, 
+        #008026 50%, 
+        #004dff 67%, 
+        #750787 100%) !important;
+}
+
+.theme-pride .stat-card,
+.theme-pride .card {
+    border: 2px solid transparent;
+    background: linear-gradient(var(--theme-bg-secondary), var(--theme-bg-secondary)) padding-box,
+                linear-gradient(135deg, #e40303, #ff8c00, #ffed00, #008026, #004dff, #750787) border-box;
+    box-shadow: 0 4px 15px rgba(117, 7, 135, 0.3);
+}
+
+.theme-pride .tab-btn.active {
+    background: linear-gradient(135deg, #e40303, #ff8c00, #ffed00, #008026, #004dff, #750787);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    border-bottom: 3px solid;
+    border-image: linear-gradient(90deg, #e40303, #ff8c00, #ffed00, #008026, #004dff, #750787) 1;
+}
+
+/* Rainbow Wave */
+.theme-pride .theme-effects-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+.theme-pride .theme-particle {
+    position: absolute;
+    font-size: 1.5em;
+    animation: rainbow-float ease-in-out infinite;
+    opacity: 0.7;
+}
+
+@keyframes rainbow-float {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+        opacity: 0.7;
+    }
+    50% {
+        transform: translateY(-20px) scale(1.1);
+        opacity: 1;
+    }
+}
+
+.theme-pride .theme-particle:nth-child(1) { left: 5%; top: 80%; animation-duration: 4s; animation-delay: 0s; }
+.theme-pride .theme-particle:nth-child(2) { left: 15%; top: 85%; animation-duration: 4.5s; animation-delay: 0.5s; }
+.theme-pride .theme-particle:nth-child(3) { left: 25%; top: 82%; animation-duration: 3.8s; animation-delay: 1s; }
+.theme-pride .theme-particle:nth-child(4) { left: 35%; top: 87%; animation-duration: 4.2s; animation-delay: 1.5s; }
+.theme-pride .theme-particle:nth-child(5) { left: 45%; top: 83%; animation-duration: 4s; animation-delay: 2s; }
+.theme-pride .theme-particle:nth-child(6) { left: 55%; top: 86%; animation-duration: 3.7s; animation-delay: 0.3s; }
+.theme-pride .theme-particle:nth-child(7) { left: 65%; top: 81%; animation-duration: 4.3s; animation-delay: 0.8s; }
+.theme-pride .theme-particle:nth-child(8) { left: 75%; top: 88%; animation-duration: 3.9s; animation-delay: 1.3s; }
+.theme-pride .theme-particle:nth-child(9) { left: 85%; top: 84%; animation-duration: 4.1s; animation-delay: 1.8s; }
+.theme-pride .theme-particle:nth-child(10) { left: 95%; top: 86%; animation-duration: 4.4s; animation-delay: 2.3s; }
+
+/* Rainbow button */
+.theme-pride .btn-primary,
+.theme-pride .btn-small {
+    background: linear-gradient(135deg, #e40303, #ff8c00, #ffed00, #008026, #004dff, #750787) !important;
+    background-size: 200% 200%;
+    animation: rainbow-shift 3s ease infinite;
+}
+
+@keyframes rainbow-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}

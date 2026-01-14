@@ -1,0 +1,16 @@
+PRIVACY POLICY
+
+This installer does not collect, transmit, or store personal data.
+
+All installations occur locally using official sources (winget).
+
+No telemetry, tracking, or analytics are used.
+
+Your installation preferences are saved locally on your device only.
+
+This software connects to:
+  - Microsoft winget repositories (for package installation)
+  - Official software vendor websites (for direct downloads)
+  - No other external services
+
+We respect your privacy and believe in transparency.

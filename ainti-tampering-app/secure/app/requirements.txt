@@ -1,0 +1,17 @@
+# FileGuard Dependencies
+# =====================
+
+# UI Framework
+PySide6>=6.5.0
+
+# Cryptography
+cryptography>=41.0.0
+
+# File System Monitoring
+watchdog>=3.0.0
+
+# Canonical JSON for deterministic signing
+canonicaljson>=2.0.0
+
+# For Windows Named Pipes IPC (optional, Windows-only)
+pywin32>=306; sys_platform == 'win32'

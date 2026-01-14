@@ -1,0 +1,174 @@
+/**
+ * Valentine's Day Theme
+ * Active: Feb 13 - Feb 15
+ */
+
+:root[data-theme="valentine"] {
+    /* Valentine colors */
+    --cyber-primary: #1a0a14;
+    --cyber-secondary: #2d1424;
+    --cyber-tertiary: #3d1f32;
+    --cyber-accent: #ec4899;
+    --cyber-accent-hover: #f472b6;
+    --cyber-accent-rgb: 236, 72, 153;
+    
+    /* Valentine themed colors */
+    --valentine-pink: #ec4899;
+    --valentine-red: #ef4444;
+    --valentine-rose: #fb7185;
+    --valentine-white: #fdf2f8;
+    --valentine-purple: #a855f7;
+    
+    --text-primary: var(--valentine-white);
+    --text-secondary: #f9a8d4;
+    
+    /* Romantic gradients */
+    --love-gradient: linear-gradient(135deg, var(--valentine-pink), var(--valentine-red));
+}
+
+/* Romantic glow effects */
+[data-theme="valentine"] .sidebar,
+[data-theme="valentine"] .stat-card,
+[data-theme="valentine"] .activity-card {
+    border: 1px solid rgba(236, 72, 153, 0.3);
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.1);
+}
+
+[data-theme="valentine"] .sidebar-header h2,
+[data-theme="valentine"] .stat-value {
+    background: var(--love-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Heart icon in header */
+[data-theme="valentine"] .sidebar-header::before {
+    content: '💕';
+    font-size: 20px;
+    margin-right: 8px;
+}
+
+/* Navigation items */
+[data-theme="valentine"] .nav-item:hover,
+[data-theme="valentine"] .nav-item.active {
+    background: linear-gradient(90deg, rgba(236, 72, 153, 0.2), transparent);
+    border-left-color: var(--valentine-pink);
+}
+
+/* Stat cards with valentine colors */
+[data-theme="valentine"] .stat-card:nth-child(1) {
+    border-top: 3px solid var(--valentine-pink);
+}
+[data-theme="valentine"] .stat-card:nth-child(2) {
+    border-top: 3px solid var(--valentine-red);
+}
+[data-theme="valentine"] .stat-card:nth-child(3) {
+    border-top: 3px solid var(--valentine-rose);
+}
+[data-theme="valentine"] .stat-card:nth-child(4) {
+    border-top: 3px solid var(--valentine-purple);
+}
+
+/* Buttons */
+[data-theme="valentine"] .btn-primary,
+[data-theme="valentine"] .btn-settings.btn-primary {
+    background: var(--love-gradient);
+    border: none;
+}
+
+[data-theme="valentine"] .btn-primary:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.4);
+}
+
+/* Floating hearts */
+[data-theme="valentine"] .dashboard-content::before {
+    content: '💖';
+    position: fixed;
+    top: 30px;
+    right: 120px;
+    font-size: 20px;
+    opacity: 0.3;
+    animation: heartbeat 1.5s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+[data-theme="valentine"] .dashboard-content::after {
+    content: '💝';
+    position: fixed;
+    top: 80px;
+    right: 200px;
+    font-size: 16px;
+    opacity: 0.25;
+    animation: heartbeat 2s ease-in-out infinite;
+    animation-delay: -0.5s;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes heartbeat {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+}
+
+/* Badges */
+[data-theme="valentine"] .badge-success,
+[data-theme="valentine"] .tag-success {
+    background: var(--valentine-pink);
+}
+
+[data-theme="valentine"] .badge-warning,
+[data-theme="valentine"] .tag-warning {
+    background: var(--valentine-rose);
+}
+
+[data-theme="valentine"] .badge-danger,
+[data-theme="valentine"] .tag-danger {
+    background: var(--valentine-red);
+}
+
+/* Form inputs */
+[data-theme="valentine"] input:focus,
+[data-theme="valentine"] select:focus,
+[data-theme="valentine"] textarea:focus {
+    border-color: var(--valentine-pink);
+    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.2);
+}
+
+/* Table rows */
+[data-theme="valentine"] tr:hover {
+    background: rgba(236, 72, 153, 0.1);
+}
+
+/* Modal headers */
+[data-theme="valentine"] .modal-header,
+[data-theme="valentine"] .settings-header {
+    background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(239, 68, 68, 0.2));
+    border-bottom: 1px solid var(--valentine-pink);
+}
+
+/* Scrollbar */
+[data-theme="valentine"]::-webkit-scrollbar-thumb {
+    background: var(--love-gradient);
+}
+
+[data-theme="valentine"] *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--valentine-pink), var(--valentine-red));
+}
+
+/* Rose petals effect */
+[data-theme="valentine"] body::after {
+    content: '🌹';
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    font-size: 24px;
+    opacity: 0.2;
+    pointer-events: none;
+}

@@ -1,0 +1,175 @@
+/**
+ * Halloween Theme
+ * Active: Oct 25 - Nov 1
+ */
+
+:root[data-theme="halloween"] {
+    /* Halloween colors */
+    --cyber-primary: #0d0d0d;
+    --cyber-secondary: #1a0f1f;
+    --cyber-tertiary: #2d1f32;
+    --cyber-accent: #ff6b00;
+    --cyber-accent-hover: #ff8c00;
+    --cyber-accent-rgb: 255, 107, 0;
+    
+    /* Halloween themed colors */
+    --halloween-orange: #ff6b00;
+    --halloween-purple: #8b5cf6;
+    --halloween-green: #22c55e;
+    --halloween-black: #0d0d0d;
+    --halloween-blood: #dc2626;
+    
+    --text-primary: #f4f4f4;
+    --text-secondary: #a3a3a3;
+    
+    /* Spooky gradients */
+    --spooky-gradient: linear-gradient(135deg, var(--halloween-orange), var(--halloween-purple));
+}
+
+/* Spooky glow effects */
+[data-theme="halloween"] .sidebar,
+[data-theme="halloween"] .stat-card,
+[data-theme="halloween"] .activity-card {
+    border: 1px solid rgba(255, 107, 0, 0.3);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+}
+
+[data-theme="halloween"] .sidebar-header h2,
+[data-theme="halloween"] .stat-value {
+    background: var(--spooky-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Pumpkin icon in header */
+[data-theme="halloween"] .sidebar-header::before {
+    content: '🎃';
+    font-size: 20px;
+    margin-right: 8px;
+}
+
+/* Navigation items with spooky hover */
+[data-theme="halloween"] .nav-item:hover,
+[data-theme="halloween"] .nav-item.active {
+    background: linear-gradient(90deg, rgba(255, 107, 0, 0.2), transparent);
+    border-left-color: var(--halloween-orange);
+}
+
+/* Stat cards with halloween colors */
+[data-theme="halloween"] .stat-card:nth-child(1) {
+    border-top: 3px solid var(--halloween-orange);
+}
+[data-theme="halloween"] .stat-card:nth-child(2) {
+    border-top: 3px solid var(--halloween-purple);
+}
+[data-theme="halloween"] .stat-card:nth-child(3) {
+    border-top: 3px solid var(--halloween-green);
+}
+[data-theme="halloween"] .stat-card:nth-child(4) {
+    border-top: 3px solid var(--halloween-blood);
+}
+
+/* Buttons */
+[data-theme="halloween"] .btn-primary,
+[data-theme="halloween"] .btn-settings.btn-primary {
+    background: var(--spooky-gradient);
+    border: none;
+}
+
+[data-theme="halloween"] .btn-primary:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 0 20px rgba(255, 107, 0, 0.4);
+}
+
+/* Ghost decorations */
+[data-theme="halloween"] .dashboard-content::before {
+    content: '👻';
+    position: fixed;
+    top: 20px;
+    right: 100px;
+    font-size: 24px;
+    opacity: 0.3;
+    animation: float 3s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+[data-theme="halloween"] .dashboard-content::after {
+    content: '🦇';
+    position: fixed;
+    top: 80px;
+    right: 180px;
+    font-size: 18px;
+    opacity: 0.25;
+    animation: float 4s ease-in-out infinite;
+    animation-delay: -1s;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-20px) rotate(5deg);
+    }
+}
+
+/* Badges */
+[data-theme="halloween"] .badge-success,
+[data-theme="halloween"] .tag-success {
+    background: var(--halloween-green);
+}
+
+[data-theme="halloween"] .badge-warning,
+[data-theme="halloween"] .tag-warning {
+    background: var(--halloween-orange);
+}
+
+[data-theme="halloween"] .badge-danger,
+[data-theme="halloween"] .tag-danger {
+    background: var(--halloween-blood);
+}
+
+/* Form inputs */
+[data-theme="halloween"] input:focus,
+[data-theme="halloween"] select:focus,
+[data-theme="halloween"] textarea:focus {
+    border-color: var(--halloween-purple);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+/* Table rows */
+[data-theme="halloween"] tr:hover {
+    background: rgba(139, 92, 246, 0.1);
+}
+
+/* Modal headers */
+[data-theme="halloween"] .modal-header,
+[data-theme="halloween"] .settings-header {
+    background: linear-gradient(135deg, rgba(255, 107, 0, 0.2), rgba(139, 92, 246, 0.2));
+    border-bottom: 1px solid var(--halloween-orange);
+}
+
+/* Scrollbar */
+[data-theme="halloween"]::-webkit-scrollbar-thumb {
+    background: var(--spooky-gradient);
+}
+
+[data-theme="halloween"] *::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--halloween-orange), var(--halloween-purple));
+}
+
+/* Cobweb effect for corners */
+[data-theme="halloween"] .sidebar::before {
+    content: '🕸️';
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 40px;
+    opacity: 0.15;
+    transform: rotate(45deg);
+    pointer-events: none;
+}

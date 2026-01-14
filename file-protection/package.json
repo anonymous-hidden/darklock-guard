@@ -1,0 +1,14 @@
+{
+  "name": "file-tamper-protection",
+  "version": "1.0.0",
+  "description": "Complete file tamper protection system with real-time monitoring",
+  "main": "index.js",
+  "scripts": {
+    "generate-baseline": "node agent/baseline-generator.js",
+    "start": "node index.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "chokidar": "^3.5.3"
+  }
+}

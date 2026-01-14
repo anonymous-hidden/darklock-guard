@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Setup - DarkLock</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/cyber-theme.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .setup-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .setup-header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding: 40px 20px;
+            background: rgba(0, 212, 255, 0.05);
+            border-radius: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .setup-header h1 {
+            font-size: 3em;
+            margin: 0;
+            background: linear-gradient(135deg, #00d4ff 0%, #06ffa5 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .setup-header p {
+            font-size: 1.2em;
+            color: var(--text-secondary);
+            margin: 10px 0 0 0;
+        }
+
+        .settings-section {
+            background: rgba(18, 23, 39, 0.9);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .settings-section:hover {
+            border-color: rgba(0, 212, 255, 0.5);
+            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.15);
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .section-title i {
+            font-size: 2em;
+            color: #00d4ff;
+        }
+
+        .section-title h2 {
+            margin: 0;
+            font-size: 1.8em;
+            color: var(--text);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .form-description {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px;
+            background: rgba(10, 14, 39, 0.8);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 1em;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        select.form-input {
+            cursor: pointer;
+        }
+
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            background: rgba(10, 14, 39, 0.5);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .toggle-info h4 {
+            margin: 0 0 5px 0;
+            font-size: 1.1em;
+            color: var(--text);
+        }
+
+        .toggle-info p {
+            margin: 0;
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+
+        .save-button {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #00d4ff 0%, #06ffa5 100%);
+            border: none;
+            border-radius: 12px;
+            color: #0a0e27;
+            font-size: 1.2em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 30px;
+        }
+
+        .save-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.4);
+        }
+
+        .save-button:active {
+            transform: translateY(0);
+        }
+
+        .success-message {
+            background: rgba(6, 255, 165, 0.1);
+            border: 1px solid #06ffa5;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #06ffa5;
+            font-weight: 600;
+        }
+
+        .error-message {
+            background: rgba(255, 0, 110, 0.1);
+            border: 1px solid #ff006e;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ff006e;
+            font-weight: 600;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 25px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 10px;
+            color: #00d4ff;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .back-button:hover {
+            background: rgba(0, 212, 255, 0.2);
+            border-color: #00d4ff;
+        }
+
+        .channel-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .channel-option {
+            padding: 15px;
+            background: rgba(10, 14, 39, 0.8);
+            border: 2px solid rgba(0, 212, 255, 0.2);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .channel-option:hover {
+            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .channel-option.selected {
+            border-color: #06ffa5;
+            background: rgba(6, 255, 165, 0.1);
+        }
+
+        .channel-option input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- Include shared server selector component -->
+    <script src="/js/server-selector.js"></script>
+    
+    <div class="setup-container" x-data="securitySetup()">
+        <!-- Navigation with server selector -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <a href="/dashboard" class="back-button">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+            </a>
+            <div id="server-selector-container"></div>
+        </div>
+
+        <div class="setup-header">
+            <h1><i class="fas fa-shield-alt"></i> Security Setup</h1>
+            <p>Configure comprehensive security protection for your server</p>
+        </div>
+
+        <!-- Anti-Raid Protection -->
+        <div class="settings-section">
+            <div class="section-title">
+                <i class="fas fa-users-slash"></i>
+                <h2>Anti-Raid Protection</h2>
+            </div>
+
+            <div class="form-group">
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <h4>Enable Anti-Raid</h4>
+                        <p>Automatically detect and stop server raids</p>
+                    </div>
+                    <div class="toggle-switch-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" x-model="settings.antiRaid.enabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-status" x-text="settings.antiRaid.enabled ? 'ON' : 'OFF'">OFF</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group" x-show="settings.antiRaid.enabled">
+                <label class="form-label">Join Threshold (users per minute)</label>
+                <span class="form-description">Trigger raid protection when this many users join per minute</span>
+                <input type="number" class="form-input" x-model.number="settings.antiRaid.joinThreshold" min="5" max="50">
+            </div>
+
+            <div class="form-group" x-show="settings.antiRaid.enabled">
+                <label class="form-label">Action on Raid Detection</label>
+                <span class="form-description">What to do when a raid is detected</span>
+                <select class="form-input" x-model="settings.antiRaid.action">
+                    <option value="kick">Kick New Members</option>
+                    <option value="ban">Ban New Members</option>
+                    <option value="lockdown">Server Lockdown</option>
+                    <option value="alert">Alert Only</option>
+                </select>
+            </div>
+
+            <div class="form-group" x-show="settings.antiRaid.enabled">
+                <label class="form-label">Alert Channel</label>
+                <span class="form-description">Channel to receive raid alerts</span>
+                <select class="form-input" x-model="settings.antiRaid.alertChannel">
+                    <option value="">Select a channel...</option>
+                    <template x-for="channel in channels" :key="channel.id">
+                        <option :value="channel.id" x-text="'#' + channel.name"></option>
+                    </template>
+                </select>
+            </div>
+        </div>
+
+        <!-- Anti-Spam -->
+        <div class="settings-section">
+            <div class="section-title">
+                <i class="fas fa-comment-slash"></i>
+                <h2>Anti-Spam Protection</h2>
+            </div>
+
+            <div class="form-group">
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <h4>Enable Anti-Spam</h4>
+                        <p>Block spam messages and flood attacks</p>
+                    </div>
+                    <div class="toggle-switch-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" x-model="settings.antiSpam.enabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-status" x-text="settings.antiSpam.enabled ? 'ON' : 'OFF'">OFF</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group" x-show="settings.antiSpam.enabled">
+                <label class="form-label">Message Limit</label>
+                <span class="form-description">Maximum messages allowed in the time window</span>
+                <input type="number" class="form-input" x-model.number="settings.antiSpam.messageLimit" min="3" max="20">
+            </div>
+
+            <div class="form-group" x-show="settings.antiSpam.enabled">
+                <label class="form-label">Time Window (seconds)</label>
+                <span class="form-description">Time period to track messages</span>
+                <input type="number" class="form-input" x-model.number="settings.antiSpam.timeWindow" min="5" max="60">
+            </div>
+
+            <div class="form-group" x-show="settings.antiSpam.enabled">
+                <label class="form-label">Punishment</label>
+                <select class="form-input" x-model="settings.antiSpam.punishment">
+                    <option value="delete">Delete Messages</option>
+                    <option value="timeout">Timeout (5 minutes)</option>
+                    <option value="kick">Kick Member</option>
+                    <option value="ban">Ban Member</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Anti-Phishing -->
+        <div class="settings-section">
+            <div class="section-title">
+                <i class="fas fa-fish"></i>
+                <h2>Anti-Phishing Protection</h2>
+            </div>
+
+            <div class="form-group">
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <h4>Enable Anti-Phishing</h4>
+                        <p>Detect and block phishing links</p>
+                    </div>
+                    <div class="toggle-switch-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" x-model="settings.antiPhishing.enabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-status" x-text="settings.antiPhishing.enabled ? 'ON' : 'OFF'">OFF</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group" x-show="settings.antiPhishing.enabled">
+                <label class="form-label">Action on Detection</label>
+                <select class="form-input" x-model="settings.antiPhishing.action">
+                    <option value="delete">Delete Message</option>
+                    <option value="timeout">Delete + Timeout</option>
+                    <option value="kick">Delete + Kick</option>
+                    <option value="ban">Delete + Ban</option>
+                </select>
+            </div>
+
+            <div class="form-group" x-show="settings.antiPhishing.enabled">
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <h4>Check Discord Phishing Database</h4>
+                        <p>Use external phishing database for detection</p>
+                    </div>
+                    <div class="toggle-switch-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" x-model="settings.antiPhishing.useDatabase">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-status" x-text="settings.antiPhishing.useDatabase ? 'ON' : 'OFF'">OFF</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Anti-Nuke -->
+        <div class="settings-section" id="section-antinuke">
+            <div class="section-title">
+                <i class="fas fa-bomb"></i>
+                <h2>Anti-Nuke Protection</h2>
+            </div>
+
+            <div class="form-group">
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <h4>Enable Anti-Nuke</h4>
+                        <p>Prevent mass deletions and server nuking</p>
+                    </div>
+                    <div class="toggle-switch-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" x-model="settings.antiNuke.enabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-status" x-text="settings.antiNuke.enabled ? 'ON' : 'OFF'">OFF</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group" x-show="settings.antiNuke.enabled">
+                <label class="form-label">Max Role Deletions (per minute)</label>
+                <input type="number" class="form-input" x-model.number="settings.antiNuke.roleLimit" min="1" max="10">
+            </div>
+
+            <div class="form-group" x-show="settings.antiNuke.enabled">
+                <label class="form-label">Max Channel Deletions (per minute)</label>
+                <input type="number" class="form-input" x-model.number="settings.antiNuke.channelLimit" min="1" max="10">
+            </div>
+
+            <div class="form-group" x-show="settings.antiNuke.enabled">
+                <label class="form-label">Max Bans (per minute)</label>
+                <input type="number" class="form-input" x-model.number="settings.antiNuke.banLimit" min="1" max="10">
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <button class="save-button" @click="saveSettings()" :disabled="saving">
+            <i class="fas fa-save"></i>
+            <span x-text="saving ? 'Saving...' : 'Save All Settings'"></span>
+        </button>
+
+        <!-- Success/Error Messages -->
+        <div class="success-message" x-show="showSuccess" x-transition>
+            <i class="fas fa-check-circle"></i>
+            <span>Settings saved successfully!</span>
+        </div>
+
+        <div class="error-message" x-show="showError" x-transition>
+            <i class="fas fa-exclamation-circle"></i>
+            <span x-text="errorMessage"></span>
+        </div>
+    </div>
+
+    <script src="/js/secure-auth.js"></script>
+<script>
+        function securitySetup() {
+            return {
+                settings: {
+                    antiRaid: {
+                        enabled: false,
+                        joinThreshold: 10,
+                        action: 'kick',
+                        alertChannel: ''
+                    },
+                    antiSpam: {
+                        enabled: false,
+                        messageLimit: 5,
+                        timeWindow: 10,
+                        punishment: 'timeout'
+                    },
+                    antiPhishing: {
+                        enabled: false,
+                        action: 'delete',
+                        useDatabase: true
+                    },
+                    antiNuke: {
+                        enabled: false,
+                        roleLimit: 3,
+                        channelLimit: 3,
+                        banLimit: 3
+                    }
+                },
+                channels: [],
+                saving: false,
+                showSuccess: false,
+                showError: false,
+                errorMessage: '',
+                guildId: localStorage.getItem('selectedGuildId'),
+
+                async init() {
+                    if (!this.guildId) {
+                        alert('Please select a server first');
+                        window.location.href = '/dashboard';
+                        return;
+                    }
+                    await this.loadSettings();
+                    await this.loadChannels();
+                },
+
+                async loadSettings() {
+                    try {
+                        const response = await fetch(`/api/settings/security?guildId=${this.guildId}`, { credentials: 'include' });
+                        if (response.ok) {
+                            const result = await response.json();
+                            // Handle standardized response format {success, data, error}
+                            const data = result.data || result;
+                            if (data.settings) {
+                                this.settings = { ...this.settings, ...data.settings };
+                            } else if (data) {
+                                this.settings = { ...this.settings, ...data };
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Failed to load settings:', error);
+                    }
+                },
+
+                async loadChannels() {
+                    try {
+                        const response = await fetch(`/api/guild/${this.guildId}/channels`, { credentials: 'include' });
+                        if (response.ok) {
+                            const result = await response.json();
+                            // Handle standardized response format {success, data, error}
+                            const data = result.data || result;
+                            this.channels = data.channels || (Array.isArray(data) ? data : []);
+                        }
+                    } catch (error) {
+                        console.error('Failed to load channels:', error);
+                    }
+                },
+
+                async saveSettings() {
+                    this.saving = true;
+                    this.showSuccess = false;
+                    this.showError = false;
+
+                    try {
+                        const response = await SecureAuth.fetch(`/api/settings/security?guildId=${this.guildId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify(this.settings)
+                        });
+
+                        const result = await response.json();
+                        if (response.ok && (result.success !== false)) {
+                            this.showSuccess = true;
+                            setTimeout(() => {
+                                this.showSuccess = false;
+                            }, 5000);
+                        } else {
+                            throw new Error(result.error || 'Failed to save settings');
+                        }
+                    } catch (error) {
+                        this.showError = true;
+                        this.errorMessage = error.message || 'Failed to save settings';
+                        setTimeout(() => {
+                            this.showError = false;
+                        }, 5000);
+                    } finally {
+                        this.saving = false;
+                    }
+                }
+            };
+        }
+    </script>
+</body>
+</html>

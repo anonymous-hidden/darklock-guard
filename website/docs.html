@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation - DarkLock</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="css/themes/christmas.css">
+    <script src="js/global-theme.js"></script>
+    <script src="js/theme-effects.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/site/" class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <span class="brand-text">DarkLock</span>
+            </a>
+            
+            <div class="nav-menu">
+                <a href="/site/" class="nav-link">Home</a>
+                <a href="/site/#features" class="nav-link">Features</a>
+                <a href="/site/#pricing" class="nav-link">Pricing</a>
+                <a href="/site/status.html" class="nav-link">Status</a>
+            </div>
+            
+            <div class="nav-actions">
+                <a href="/dashboard" class="btn btn-ghost">
+                    <i class="fas fa-right-to-bracket"></i>
+                    <span>Login</span>
+                </a>
+                <a href="#" class="btn btn-primary" onclick="inviteBot(); return false;">
+                    <i class="fas fa-plus"></i>
+                    <span>Add to Discord</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Documentation Content -->
+    <div class="docs-container">
+        <div class="docs-sidebar" x-data="{ activeSection: 'getting-started' }">
+            <div class="docs-nav">
+                <h3>Getting Started</h3>
+                <ul>
+                    <li><a href="#setup" :class="{ 'active': activeSection === 'setup' }" @click="activeSection = 'setup'">Initial Setup</a></li>
+                    <li><a href="#permissions" :class="{ 'active': activeSection === 'permissions' }" @click="activeSection = 'permissions'">Permissions</a></li>
+                    <li><a href="#configuration" :class="{ 'active': activeSection === 'configuration' }" @click="activeSection = 'configuration'">Basic Configuration</a></li>
+                </ul>
+
+                <h3>Security Features</h3>
+                <ul>
+                    <li><a href="#verification" :class="{ 'active': activeSection === 'verification' }" @click="activeSection = 'verification'">User Verification System</a></li>
+                    <li><a href="#anti-raid" :class="{ 'active': activeSection === 'anti-raid' }" @click="activeSection = 'anti-raid'">Anti-Raid Protection</a></li>
+                    <li><a href="#anti-spam" :class="{ 'active': activeSection === 'anti-spam' }" @click="activeSection = 'anti-spam'">Anti-Spam System</a></li>
+                    <li><a href="#anti-phishing" :class="{ 'active': activeSection === 'anti-phishing' }" @click="activeSection = 'anti-phishing'">Anti-Phishing</a></li>
+                    <li><a href="#moderation" :class="{ 'active': activeSection === 'moderation' }" @click="activeSection = 'moderation'">Moderation Tools</a></li>
+                </ul>
+
+                <h3>Dashboard</h3>
+                <ul>
+                    <li><a href="#dashboard-guide" :class="{ 'active': activeSection === 'dashboard-guide' }" @click="activeSection = 'dashboard-guide'">Dashboard Guide</a></li>
+                    <li><a href="#analytics" :class="{ 'active': activeSection === 'analytics' }" @click="activeSection = 'analytics'">Analytics & Logs</a></li>
+                    <li><a href="#alerts" :class="{ 'active': activeSection === 'alerts' }" @click="activeSection = 'alerts'">Alert System</a></li>
+                </ul>
+
+                <h3>Advanced</h3>
+                <ul>
+                    <li><a href="#commands" :class="{ 'active': activeSection === 'commands' }" @click="activeSection = 'commands'">Bot Commands</a></li>
+                    <li><a href="#webhooks" :class="{ 'active': activeSection === 'webhooks' }" @click="activeSection = 'webhooks'">Webhooks & API</a></li>
+                    <li><a href="#troubleshooting" :class="{ 'active': activeSection === 'troubleshooting' }" @click="activeSection = 'troubleshooting'">Troubleshooting</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="docs-content">
+            <div class="docs-header">
+                <h1>DarkLock Documentation</h1>
+                <p>Complete guide to securing your Discord server</p>
+            </div>
+
+            <!-- Setup Section -->
+            <section id="setup" class="docs-section">
+                <h2><i class="fas fa-rocket"></i> Initial Setup</h2>
+                
+                <div class="docs-card">
+                    <h3>Step 1: Invite the Bot</h3>
+                    <p>Click the invite link and select your server. Make sure you have "Manage Server" permissions.</p>
+                    <div class="code-block">
+                        <pre><code>Required Permissions:
+• Manage Messages
+• Kick Members  
+• Ban Members
+• Manage Roles
+• View Audit Log
+• Read Message History</code></pre>
+                    </div>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Step 2: Run Setup Command</h3>
+                    <p>Use the setup command to configure basic settings:</p>
+                    <div class="code-block">
+                        <pre><code>/setup</code></pre>
+                    </div>
+                    <p>This will guide you through configuring:</p>
+                    <ul>
+                        <li>Moderation log channel</li>
+                        <li>Alert channel for threats</li>
+                        <li>Basic protection levels</li>
+                        <li>Trusted roles</li>
+                    </ul>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Step 3: Configure Dashboard</h3>
+                    <p>Access the web dashboard for advanced configuration:</p>
+                    <ol>
+                        <li>Visit the dashboard URL</li>
+                        <li>Login with Discord OAuth2</li>
+                        <li>Select your server</li>
+                        <li>Complete the setup wizard</li>
+                    </ol>
+                </div>
+            </section>
+
+            <!-- Permissions Section -->
+            <section id="permissions" class="docs-section">
+                <h2><i class="fas fa-key"></i> Permissions Setup</h2>
+                
+                <div class="docs-card">
+                    <h3>Bot Role Position</h3>
+                    <p>For maximum effectiveness, place the DarkLock role near the top of your role hierarchy:</p>
+                    <div class="warning-box">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>The bot can only moderate users with roles below its own position.</p>
+                    </div>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Required Permissions Explained</h3>
+                    <div class="permission-grid">
+                        <div class="permission-item">
+                            <h4>Manage Messages</h4>
+                            <p>Delete spam and malicious messages</p>
+                        </div>
+                        <div class="permission-item">
+                            <h4>Kick/Ban Members</h4>
+                            <p>Remove threats from your server</p>
+                        </div>
+                        <div class="permission-item">
+                            <h4>Manage Roles</h4>
+                            <p>Apply quarantine and mute roles</p>
+                        </div>
+                        <div class="permission-item">
+                            <h4>View Audit Log</h4>
+                            <p>Track moderation actions</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- User Verification Section -->
+            <section id="verification" class="docs-section">
+                <h2><i class="fas fa-user-check"></i> User Verification System</h2>
+                
+                <div class="docs-card">
+                    <h3>Overview</h3>
+                    <p>DarkLock features an enterprise-grade user verification system with three security profiles, risk scoring, captcha challenges, and staff approval workflows. Perfect for protecting your community from raids, bots, and malicious actors.</p>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Verification Profiles</h3>
+                    <div class="permission-grid">
+                        <div class="permission-item">
+                            <h4>🟢 Standard Profile</h4>
+                            <p><strong>Best for:</strong> Casual communities</p>
+                            <ul style="font-size: 0.85rem; color: var(--text-secondary); padding-left: 1.2rem;">
+                                <li>Automatic verification</li>
+                                <li>Basic risk checks</li>
+                                <li>7-day account age minimum</li>
+                                <li>24-hour timeout on failure</li>
+                            </ul>
+                        </div>
+                        <div class="permission-item">
+                            <h4>🟡 High Security Profile</h4>
+                            <p><strong>Best for:</strong> Medium-risk servers</p>
+                            <ul style="font-size: 0.85rem; color: var(--text-secondary); padding-left: 1.2rem;">
+                                <li>Captcha challenge required</li>
+                                <li>30-day account age minimum</li>
+                                <li>Advanced risk scoring</li>
+                                <li>3-day timeout on failure</li>
+                            </ul>
+                        </div>
+                        <div class="permission-item">
+                            <h4>🔴 Ultra Security Profile</h4>
+                            <p><strong>Best for:</strong> High-value servers</p>
+                            <ul style="font-size: 0.85rem; color: var(--text-secondary); padding-left: 1.2rem;">
+                                <li>Manual staff approval</li>
+                                <li>Captcha + review notes</li>
+                                <li>90-day account age minimum</li>
+                                <li>7-day timeout on rejection</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Setup Requirements</h3>
+                    <ol>
+                        <li><strong>Create Roles:</strong>
+                            <ul>
+                                <li>Unverified role (restrictive permissions)</li>
+                                <li>Verified role (full member access)</li>
+                            </ul>
+                        </li>
+                        <li><strong>Configure in Dashboard:</strong>
+                            <ul>
+                                <li>Go to Dashboard → Verification Settings</li>
+                                <li>Enable verification system</li>
+                                <li>Select security profile</li>
+                                <li>Set role IDs and timeout durations</li>
+                            </ul>
+                        </li>
+                        <li><strong>Set Channel Permissions:</strong>
+                            <ul>
+                                <li>Deny @Unverified from seeing main channels</li>
+                                <li>Create a welcome/verification channel visible to @Unverified</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Verification + Welcome Flow</h3>
+                    <p>DarkLock supports a clean onboarding experience where Welcome and Verification can be used together or separately. Both toggles can be ON at the same time; when both are ON, the welcome is sent after successful verification.</p>
+                    <ul>
+                        <li><strong>Welcome ON, Verification OFF:</strong> Sends welcome immediately on join.</li>
+                        <li><strong>Welcome OFF, Verification ON:</strong> Routes the user to verification; no welcome is sent.</li>
+                        <li><strong>Welcome ON, Verification ON:</strong> Verification runs on join; welcome is sent after approval (deferred).</li>
+                        <li><strong>Both OFF:</strong> No welcome or verification; normal entry.</li>
+                    </ul>
+                    <p>Goodbye messages can also be enabled. Free servers use the default template; Pro servers can set a custom goodbye in the customization tab.</p>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Risk Scoring System</h3>
+                    <p>Users are automatically scored based on multiple factors:</p>
+                    <table class="config-table">
+                        <thead>
+                            <tr>
+                                <th>Factor</th>
+                                <th>Risk Points</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Account Age</td>
+                                <td>5-40 points</td>
+                                <td>Newer accounts = higher risk</td>
+                            </tr>
+                            <tr>
+                                <td>No Avatar</td>
+                                <td>+15 points</td>
+                                <td>Default Discord avatar</td>
+                            </tr>
+                            <tr>
+                                <td>No Discriminator</td>
+                                <td>+10 points</td>
+                                <td>New username system indicator</td>
+                            </tr>
+                            <tr>
+                                <td>Suspicious Flags</td>
+                                <td>+20 points</td>
+                                <td>Flagged username patterns</td>
+                            </tr>
+                            <tr>
+                                <td>Short Username</td>
+                                <td>+5 points</td>
+                                <td>1-2 character usernames</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="warning-box" style="margin-top: 1rem;">
+                        <i class="fas fa-info-circle"></i>
+                        <p><strong>Risk Levels:</strong> Low (0-30) | Medium (31-60) | High (61-80) | Critical (81+)</p>
+                    </div>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Verification Queue Dashboard</h3>
+                    <p>Access the web-based verification queue to manage pending users:</p>
+                    <ul>
+                        <li><strong>Real-time updates</strong> via WebSocket</li>
+                        <li><strong>Batch actions:</strong> Approve/reject multiple users</li>
+                        <li><strong>Staff notes:</strong> Add internal notes for each user</li>
+                        <li><strong>Filtering:</strong> By status, risk level, or username</li>
+                        <li><strong>Pagination:</strong> Handle large queues efficiently</li>
+                        <li><strong>Multi-language:</strong> Support for 5+ languages</li>
+                    </ul>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Verification Commands</h3>
+                    <div class="command-list">
+                        <div class="command-item">
+                            <code>/verify-status [user]</code>
+                            <p>Check verification status of a user</p>
+                        </div>
+                        <div class="command-item">
+                            <code>/verify-approve [user]</code>
+                            <p>Manually approve a pending user (Ultra profile)</p>
+                        </div>
+                        <div class="command-item">
+                            <code>/verify-reject [user] [reason]</code>
+                            <p>Reject and kick a pending user</p>
+                        </div>
+                        <div class="command-item">
+                            <code>/verify-reset [user]</code>
+                            <p>Reset verification state and retry</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Automatic Cleanup</h3>
+                    <p>The system automatically removes users who fail to verify within the timeout period:</p>
+                    <ul>
+                        <li>Checks every 5 minutes for expired verifications</li>
+                        <li>Sends DM notification before kick (if enabled)</li>
+                        <li>Creates audit log entry with reason</li>
+                        <li>Dashboard event for staff visibility</li>
+                    </ul>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Localization Support</h3>
+                    <p>Verification messages and dashboard UI support multiple languages:</p>
+                    <ul>
+                        <li>🇬🇧 English (en)</li>
+                        <li>🇪🇸 Spanish (es)</li>
+                        <li>🇩🇪 German (de)</li>
+                        <li>🇫🇷 French (fr)</li>
+                        <li>🇧🇷 Portuguese (pt)</li>
+                    </ul>
+                    <p>Configure server language in Dashboard → Settings → Language</p>
+                </div>
+            </section>
+
+            <!-- Anti-Raid Section -->
+            <section id="anti-raid" class="docs-section">
+                <h2><i class="fas fa-shield-alt"></i> Anti-Raid Protection</h2>
+                
+                <div class="docs-card">
+                    <h3>How Anti-Raid Works</h3>
+                    <p>DarkLock monitors several factors to detect potential raids:</p>
+                    <ul>
+                        <li><strong>Join Rate:</strong> Unusual number of joins in short time</li>
+                        <li><strong>Account Age:</strong> Multiple new accounts joining</li>
+                        <li><strong>Similar Usernames:</strong> Pattern-based usernames</li>
+                        <li><strong>No Avatar:</strong> Default Discord avatars</li>
+                    </ul>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Configuration Options</h3>
+                    <div class="config-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Setting</th>
+                                    <th>Default</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Join Rate Threshold</td>
+                                    <td>10 users/minute</td>
+                                    <td>Triggers raid detection</td>
+                                </tr>
+                                <tr>
+                                    <td>Account Age Minimum</td>
+                                    <td>7 days</td>
+                                    <td>Minimum account age allowed</td>
+                                </tr>
+                                <tr>
+                                    <td>Lockdown Duration</td>
+                                    <td>30 minutes</td>
+                                    <td>How long server stays locked</td>
+                                </tr>
+                                <tr>
+                                    <td>Verification Level</td>
+                                    <td>Medium</td>
+                                    <td>Required verification during raids</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Manual Commands</h3>
+                    <div class="code-block">
+                        <pre><code>/lockdown [duration] [reason]
+/unlock [reason]
+/raid-mode [on/off]</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Commands Section -->
+            <section id="commands" class="docs-section">
+                <h2><i class="fas fa-terminal"></i> Bot Commands</h2>
+                
+                <div class="docs-card">
+                    <h3>Moderation Commands</h3>
+                    <div class="command-list">
+                        <div class="command-item">
+                            <code>/ban [user] [reason] [delete_days]</code>
+                            <p>Ban a user with optional message deletion</p>
+                        </div>
+                        <div class="command-item">
+                            <code>/kick [user] [reason]</code>
+                            <p>Kick a user from the server</p>
+                        </div>
+                        <div class="command-item">
+                            <code>/mute [user] [duration] [reason]</code>
+                            <p>Temporarily mute a user</p>
+                        </div>
+                        <div class="command-item">
+                            <code>/warn [user] [reason]</code>
+                            <p>Issue a warning to a user</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Security Commands</h3>
+                    <div class="command-list">
+                        <div class="command-item">
+                            <code>/security status</code>
+                            <p>View current protection status</p>
+                        </div>
+                        <div class="command-item">
+                            <code>/threats [time_period]</code>
+                            <p>Show recent threat statistics</p>
+                        </div>
+                        <div class="command-item">
+                            <code>/whitelist [action] [user/role]</code>
+                            <p>Manage security exemptions</p>
+                        </div>
+                        <div class="command-item">
+                            <code>/logs [type] [limit]</code>
+                            <p>View security and moderation logs</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Verification Commands</h3>
+                    <div class="command-list">
+                        <div class="command-item">
+                            <code>/verify-status [user]</code>
+                            <p>Check verification status of a user</p>
+                        </div>
+                        <div class="command-item">
+                            <code>/verify-approve [user]</code>
+                            <p>Manually approve a pending user (staff only)</p>
+                        </div>
+                        <div class="command-item">
+                            <code>/verify-reject [user] [reason]</code>
+                            <p>Reject and remove a pending user</p>
+                        </div>
+                        <div class="command-item">
+                            <code>/verify-reset [user]</code>
+                            <p>Reset verification state for retry</p>
+                        </div>
+                    </div>
+                    <div class="warning-box" style="margin-top: 1rem;">
+                        <i class="fas fa-globe"></i>
+                        <p><strong>Web Dashboard Queue:</strong> For bulk management, filtering, and real-time updates, use the Verification Queue in the web dashboard at <code>/verification-queue</code></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Troubleshooting Section -->
+            <section id="troubleshooting" class="docs-section">
+                <h2><i class="fas fa-tools"></i> Troubleshooting</h2>
+                
+                <div class="docs-card">
+                    <h3>Common Issues</h3>
+                    
+                    <div class="faq-item">
+                        <h4>Bot isn't responding to commands</h4>
+                        <div class="faq-answer">
+                            <p>Check the following:</p>
+                            <ul>
+                                <li>Bot has proper permissions</li>
+                                <li>Bot role is positioned correctly</li>
+                                <li>Commands are being used in correct channels</li>
+                                <li>User has permission to use commands</li>
+                            </ul>
+                        </div>
+
+                        <!-- Command Permissions -->
+                        <section id="command-permissions" class="docs-section">
+                            <h2><i class="fas fa-user-shield"></i> Command Permissions</h2>
+
+                            <div class="docs-card">
+                                <p>The dashboard and API expose granular command permission controls so server administrators can decide who can use each slash command. Command permissions are persisted per-guild and can be edited from the web UI under <strong>Server → Command Permissions</strong>.</p>
+                                <h3>API Endpoints</h3>
+                                <div class="code-block">
+                                    <pre><code>GET /api/guilds/:guildId/commands
+                    </div>
+
+                    <div class="faq-item">
+                                </div>
+                                <p>Payload for updating permissions (example):</p>
+                                <div class="code-block">
+                                    <pre><code>{
+                        <h4>False positive spam detection</h4>
+                        <div class="faq-answer">
+                            <p>Adjust sensitivity settings:</p>
+                            <ul>
+                                <li>Increase message rate limits</li>
+                                </div>
+                                <p>Changes made in the dashboard are applied in near real-time and synchronized with the bot via the broadcast API.</p>
+                            </div>
+                        </section>
+                                <li>Add trusted roles to whitelist</li>
+                                <li>Configure channel-specific settings</li>
+                                <li>Review duplicate message threshold</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <h4>Dashboard not loading</h4>
+                        <div class="faq-answer">
+                            <p>Try these solutions:</p>
+                            <ul>
+                                <li>Clear browser cache and cookies</li>
+                                <li>Check Discord OAuth2 permissions</li>
+                                <li>Verify server administrator role</li>
+                                <li>Use incognito/private browsing mode</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="docs-card">
+                    <h3>Getting Help</h3>
+                    <p>If you need additional support:</p>
+                    <div class="support-options">
+                        <a href="#" class="support-option">
+                            <i class="fab fa-discord"></i>
+                            <div>
+                                <h4>Discord Support</h4>
+                                <p>Join our support server for live help</p>
+                            </div>
+                        </a>
+                        <a href="#" class="support-option">
+                            <i class="fas fa-bug"></i>
+                            <div>
+                                <h4>Bug Reports</h4>
+                                <p>Report issues on our GitHub</p>
+                            </div>
+                        </a>
+                        <a href="#" class="support-option">
+                            <i class="fas fa-envelope"></i>
+                            <div>
+                                <h4>Email Support</h4>
+                                <p>Contact us directly via email</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <style>
+        /* Documentation specific styles */
+        body {
+            padding-top: 80px;
+        }
+
+        .docs-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            max-width: 1400px;
+            margin: 0 auto;
+            min-height: calc(100vh - 80px);
+        }
+
+        .docs-sidebar {
+            background: var(--card-bg);
+            border-right: 1px solid var(--border-color);
+            padding: var(--spacing-xl);
+            position: sticky;
+            top: 80px;
+            height: calc(100vh - 80px);
+            overflow-y: auto;
+        }
+
+        .docs-nav h3 {
+            color: var(--accent-cyan);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            margin: var(--spacing-xl) 0 var(--spacing-md) 0;
+            letter-spacing: 1px;
+        }
+
+        .docs-nav h3:first-child {
+            margin-top: 0;
+        }
+
+        .docs-nav ul {
+            list-style: none;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .docs-nav ul li {
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .docs-nav ul li a {
+            display: block;
+            padding: var(--spacing-sm) var(--spacing-md);
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            transition: all 0.3s ease;
+        }
+
+        .docs-nav ul li a:hover {
+            color: var(--text-primary);
+            background: rgba(0, 255, 221, 0.1);
+        }
+
+        .docs-nav ul li a.active {
+            color: var(--accent-cyan);
+            background: rgba(0, 255, 221, 0.1);
+            border-left: 3px solid var(--accent-cyan);
+        }
+
+        .docs-content {
+            padding: var(--spacing-2xl);
+        }
+
+        .docs-header {
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .docs-header h1 {
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .docs-header p {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+        }
+
+        .docs-section {
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .docs-section h2 {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            color: var(--accent-cyan);
+            margin-bottom: var(--spacing-xl);
+            padding-bottom: var(--spacing-md);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .docs-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .docs-card h3 {
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .docs-card h4 {
+            color: var(--accent-cyan);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .code-block {
+            background: var(--primary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            margin: var(--spacing-md) 0;
+            overflow-x: auto;
+        }
+
+        .code-block pre {
+            color: var(--accent-cyan);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .warning-box {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--warning);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin: var(--spacing-md) 0;
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-md);
+        }
+
+        .warning-box i {
+            color: var(--warning);
+            margin-top: 2px;
+        }
+
+        .warning-box p {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .permission-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+            margin: var(--spacing-md) 0;
+        }
+
+        .permission-item {
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+        }
+
+        .permission-item h4 {
+            color: var(--accent-cyan);
+            margin-bottom: var(--spacing-sm);
+            font-size: 0.9rem;
+        }
+
+        .permission-item p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin: 0;
+        }
+
+        .config-table {
+            overflow-x: auto;
+        }
+
+        .config-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .config-table th,
+        .config-table td {
+            padding: var(--spacing-md);
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .config-table th {
+            background: var(--secondary-bg);
+            color: var(--accent-cyan);
+            font-weight: 600;
+        }
+
+        .config-table td {
+            color: var(--text-secondary);
+        }
+
+        .command-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .command-item {
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+        }
+
+        .command-item code {
+            color: var(--accent-cyan);
+            background: var(--primary-bg);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            display: block;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .command-item p {
+            color: var(--text-secondary);
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .faq-item {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .faq-item h4 {
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .faq-answer {
+            background: var(--secondary-bg);
+            border-left: 3px solid var(--accent-cyan);
+            padding: var(--spacing-md);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+        }
+
+        .faq-answer p,
+        .faq-answer ul {
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .faq-answer ul {
+            padding-left: var(--spacing-lg);
+        }
+
+        .support-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+            margin: var(--spacing-md) 0;
+        }
+
+        .support-option {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .support-option:hover {
+            border-color: var(--accent-cyan);
+            color: var(--text-primary);
+        }
+
+        .support-option i {
+            color: var(--accent-cyan);
+            font-size: 1.5rem;
+        }
+
+        .support-option h4 {
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+            font-size: 0.9rem;
+        }
+
+        .support-option p {
+            margin: 0;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .docs-container {
+                grid-template-columns: 1fr;
+            }
+
+            .docs-sidebar {
+                position: static;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .docs-content {
+                padding: var(--spacing-lg);
+            }
+
+            .docs-sidebar {
+                padding: var(--spacing-lg);
+            }
+
+            .config-table {
+                font-size: 0.8rem;
+            }
+
+            .permission-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .support-options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <script src="js/main.js?v=2"></script>
+    <script src="js/global-theme.js"></script>
+</body>
+</html>

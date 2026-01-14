@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
+    <title>Logs & Audit Trail - DarkLock Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <style>
+        /* Page-specific styles */
+        .logs-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: var(--ds-space-md);
+            margin-bottom: var(--ds-space-lg);
+        }
+
+        .log-stat {
+            background: var(--ds-surface-1);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-lg);
+            padding: var(--ds-space-md);
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-md);
+        }
+
+        .log-stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--ds-radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .log-stat-icon.commands { background: var(--ds-info-bg); color: var(--ds-info); }
+        .log-stat-icon.security { background: var(--ds-danger-bg); color: var(--ds-danger); }
+        .log-stat-icon.dashboard { background: var(--ds-success-bg); color: var(--ds-success); }
+        .log-stat-icon.errors { background: var(--ds-warning-bg); color: var(--ds-warning); }
+
+        .log-stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--ds-text-primary);
+        }
+
+        .log-stat-label {
+            font-size: 12px;
+            color: var(--ds-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Tab navigation */
+        .tabs-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--ds-space-lg);
+            flex-wrap: wrap;
+            gap: var(--ds-space-md);
+        }
+
+        .tabs {
+            display: flex;
+            gap: var(--ds-space-xs);
+            background: var(--ds-surface-1);
+            padding: 4px;
+            border-radius: var(--ds-radius-md);
+            border: 1px solid var(--ds-border);
+        }
+
+        .tab {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--ds-text-secondary);
+            background: transparent;
+            border: none;
+            border-radius: var(--ds-radius-sm);
+            cursor: pointer;
+            transition: all var(--ds-transition-fast);
+        }
+
+        .tab:hover {
+            color: var(--ds-text-primary);
+            background: var(--ds-surface-2);
+        }
+
+        .tab.active {
+            color: var(--ds-text-inverse);
+            background: var(--ds-accent-gradient);
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+            font-size: 13px;
+            color: var(--ds-text-secondary);
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--ds-success);
+            animation: pulse-live 2s infinite;
+        }
+
+        .live-dot.disconnected {
+            background: var(--ds-danger);
+            animation: none;
+        }
+
+        @keyframes pulse-live {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            50% { opacity: 0.8; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0); }
+        }
+
+        /* Filters */
+        .filters-card {
+            background: var(--ds-surface-1);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-lg);
+            padding: var(--ds-space-lg);
+            margin-bottom: var(--ds-space-lg);
+        }
+
+        .filters-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--ds-space-md);
+        }
+
+        .filters-title {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ds-text-primary);
+        }
+
+        .filters-title i {
+            color: var(--ds-primary);
+        }
+
+        .filters-toggle {
+            font-size: 13px;
+            color: var(--ds-primary);
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: var(--ds-space-md);
+        }
+
+        .filters-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: var(--ds-space-sm);
+            margin-top: var(--ds-space-md);
+            padding-top: var(--ds-space-md);
+            border-top: 1px solid var(--ds-border-light);
+        }
+
+        /* Table enhancements */
+        .logs-table-wrapper {
+            background: var(--ds-surface-1);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-lg);
+            overflow: hidden;
+        }
+
+        .logs-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .logs-table th {
+            text-align: left;
+            padding: var(--ds-space-md);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--ds-text-muted);
+            background: var(--ds-surface-2);
+            border-bottom: 1px solid var(--ds-border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .logs-table td {
+            padding: var(--ds-space-md);
+            font-size: 13px;
+            color: var(--ds-text-primary);
+            border-bottom: 1px solid var(--ds-border-light);
+            vertical-align: middle;
+        }
+
+        .logs-table tbody tr {
+            transition: background var(--ds-transition-fast);
+        }
+
+        .logs-table tbody tr:hover {
+            background: var(--ds-surface-2);
+        }
+
+        .logs-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Log type badges */
+        .log-type {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: var(--ds-radius-full);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .log-type.command { background: var(--ds-info-bg); color: var(--ds-info); }
+        .log-type.button { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+        .log-type.dashboard { background: var(--ds-success-bg); color: var(--ds-success); }
+        .log-type.security { background: var(--ds-danger-bg); color: var(--ds-danger); }
+        .log-type.error { background: var(--ds-warning-bg); color: var(--ds-warning); }
+        .log-type.internal { background: var(--ds-surface-2); color: var(--ds-text-muted); }
+
+        .log-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .log-status.success { color: var(--ds-success); }
+        .log-status.failure { color: var(--ds-danger); }
+
+        .log-time {
+            font-family: var(--ds-font-mono);
+            font-size: 12px;
+            color: var(--ds-text-muted);
+        }
+
+        .log-user {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+        }
+
+        .log-user-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+        }
+
+        .log-details-btn {
+            padding: 4px 8px;
+            font-size: 12px;
+            color: var(--ds-primary);
+            background: var(--ds-primary-bg);
+            border: none;
+            border-radius: var(--ds-radius-sm);
+            cursor: pointer;
+            transition: all var(--ds-transition-fast);
+        }
+
+        .log-details-btn:hover {
+            background: rgba(0, 212, 255, 0.2);
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--ds-space-md);
+            background: var(--ds-surface-2);
+            border-top: 1px solid var(--ds-border);
+        }
+
+        .pagination-info {
+            font-size: 13px;
+            color: var(--ds-text-muted);
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: var(--ds-space-sm);
+        }
+
+        /* JSON Viewer Modal */
+        .json-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .json-modal.active {
+            display: flex;
+        }
+
+        .json-modal-content {
+            background: var(--ds-surface-1);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-xl);
+            width: 90%;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow: hidden;
+        }
+
+        .json-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--ds-space-md) var(--ds-space-lg);
+            border-bottom: 1px solid var(--ds-border);
+        }
+
+        .json-modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--ds-text-primary);
+        }
+
+        .json-modal-body {
+            padding: var(--ds-space-lg);
+            overflow-y: auto;
+            max-height: calc(80vh - 120px);
+        }
+
+        .json-viewer {
+            background: #0d1117;
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            padding: var(--ds-space-md);
+            font-family: var(--ds-font-mono);
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #e6edf3;
+            overflow-x: auto;
+        }
+
+        .json-key { color: #7ee787; }
+        .json-string { color: #a5d6ff; }
+        .json-number { color: #79c0ff; }
+        .json-boolean { color: #ff7b72; }
+        .json-null { color: #8b949e; }
+    </style>
+</head>
+<body class="ds-page">
+    <div class="ds-container-wide">
+        <!-- Navigation -->
+        <nav class="ds-nav">
+            <a href="/dashboard" class="ds-nav-back">
+                <i class="fas fa-arrow-left"></i>
+                Back to Dashboard
+            </a>
+            <div class="ds-nav-actions">
+                <div class="live-indicator">
+                    <div class="live-dot" id="wsIndicator"></div>
+                    <span id="wsStatus">Live</span>
+                </div>
+                <div id="server-selector-container"></div>
+            </div>
+        </nav>
+
+        <!-- Page Header -->
+        <header class="ds-page-header">
+            <div class="ds-page-header-icon">
+                <i class="fas fa-scroll"></i>
+            </div>
+            <h1 class="ds-page-title">Logs & Audit Trail</h1>
+            <p class="ds-page-subtitle">
+                Monitor bot activity, track commands, and review security events in real-time.
+            </p>
+        </header>
+
+        <!-- Stats Overview -->
+        <div class="logs-stats">
+            <div class="log-stat">
+                <div class="log-stat-icon commands">
+                    <i class="fas fa-terminal"></i>
+                </div>
+                <div>
+                    <div class="log-stat-value" id="statCommands">--</div>
+                    <div class="log-stat-label">Commands</div>
+                </div>
+            </div>
+            <div class="log-stat">
+                <div class="log-stat-icon security">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div>
+                    <div class="log-stat-value" id="statSecurity">--</div>
+                    <div class="log-stat-label">Security</div>
+                </div>
+            </div>
+            <div class="log-stat">
+                <div class="log-stat-icon dashboard">
+                    <i class="fas fa-columns"></i>
+                </div>
+                <div>
+                    <div class="log-stat-value" id="statDashboard">--</div>
+                    <div class="log-stat-label">Dashboard</div>
+                </div>
+            </div>
+            <div class="log-stat">
+                <div class="log-stat-icon errors">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <div class="log-stat-value" id="statErrors">--</div>
+                    <div class="log-stat-label">Errors</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs and Controls -->
+        <div class="tabs-container">
+            <div class="tabs">
+                <button class="tab active" data-tab="bot">
+                    <i class="fas fa-robot"></i> Bot Logs
+                </button>
+                <button class="tab" data-tab="audit">
+                    <i class="fas fa-user-shield"></i> Dashboard Audit
+                </button>
+            </div>
+            <div class="ds-flex ds-gap-sm">
+                <button class="ds-btn ds-btn-secondary ds-btn-sm" onclick="exportLogs()">
+                    <i class="fas fa-download"></i> Export
+                </button>
+                <button class="ds-btn ds-btn-primary ds-btn-sm" onclick="refreshLogs()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-card" id="filtersCard">
+            <div class="filters-header">
+                <div class="filters-title">
+                    <i class="fas fa-filter"></i>
+                    Filters
+                </div>
+                <button class="filters-toggle" onclick="toggleFilters()">
+                    <span id="filterToggleText">Hide</span> <i class="fas fa-chevron-up" id="filterToggleIcon"></i>
+                </button>
+            </div>
+            <div class="filters-grid" id="filtersGrid">
+                <div class="ds-form-group ds-mb-0">
+                    <label class="ds-label">Type</label>
+                    <select class="ds-select" id="filterType">
+                        <option value="">All Types</option>
+                        <option value="command">Command</option>
+                        <option value="button">Button</option>
+                        <option value="dashboard">Dashboard</option>
+                        <option value="security">Security</option>
+                        <option value="error">Error</option>
+                        <option value="internal">Internal</option>
+                    </select>
+                </div>
+                <div class="ds-form-group ds-mb-0">
+                    <label class="ds-label">Guild ID</label>
+                    <input type="text" class="ds-input ds-input-mono" id="filterGuild" placeholder="Enter guild ID">
+                </div>
+                <div class="ds-form-group ds-mb-0">
+                    <label class="ds-label">User ID</label>
+                    <input type="text" class="ds-input ds-input-mono" id="filterUser" placeholder="Enter user ID">
+                </div>
+                <div class="ds-form-group ds-mb-0">
+                    <label class="ds-label">Start Date</label>
+                    <input type="datetime-local" class="ds-input" id="filterStartDate">
+                </div>
+                <div class="ds-form-group ds-mb-0">
+                    <label class="ds-label">End Date</label>
+                    <input type="datetime-local" class="ds-input" id="filterEndDate">
+                </div>
+            </div>
+            <div class="filters-actions" id="filtersActions">
+                <button class="ds-btn ds-btn-ghost ds-btn-sm" onclick="clearFilters()">
+                    <i class="fas fa-times"></i> Clear
+                </button>
+                <button class="ds-btn ds-btn-primary ds-btn-sm" onclick="applyFilters()">
+                    <i class="fas fa-check"></i> Apply Filters
+                </button>
+            </div>
+        </div>
+
+        <!-- Logs Table -->
+        <div class="logs-table-wrapper">
+            <table class="logs-table">
+                <thead>
+                    <tr>
+                        <th style="width: 140px;">Timestamp</th>
+                        <th style="width: 100px;">Type</th>
+                        <th>Action / Command</th>
+                        <th style="width: 160px;">User</th>
+                        <th style="width: 80px;">Status</th>
+                        <th style="width: 80px;">Details</th>
+                    </tr>
+                </thead>
+                <tbody id="logsTableBody">
+                    <tr>
+                        <td colspan="6">
+                            <div class="ds-empty">
+                                <div class="ds-spinner" style="margin: 0 auto;"></div>
+                                <p class="ds-text-muted" style="margin-top: 16px;">Loading logs...</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="pagination" id="pagination" style="display: none;">
+                <div class="pagination-info" id="paginationInfo">Showing 1-50 of 0 entries</div>
+                <div class="pagination-controls">
+                    <button class="ds-btn ds-btn-secondary ds-btn-sm" id="prevBtn" onclick="previousPage()" disabled>
+                        <i class="fas fa-chevron-left"></i> Previous
+                    </button>
+                    <button class="ds-btn ds-btn-secondary ds-btn-sm" id="nextBtn" onclick="nextPage()">
+                        Next <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State (hidden by default) -->
+        <div class="ds-empty" id="emptyState" style="display: none;">
+            <i class="fas fa-inbox ds-empty-icon"></i>
+            <h3 class="ds-empty-title">No logs found</h3>
+            <p class="ds-empty-text">Try adjusting your filters or check back later.</p>
+            <button class="ds-btn ds-btn-secondary" onclick="clearFilters()">
+                <i class="fas fa-filter"></i> Clear Filters
+            </button>
+        </div>
+    </div>
+
+    <!-- JSON Details Modal -->
+    <div class="json-modal" id="jsonModal" onclick="closeModal(event)">
+        <div class="json-modal-content" onclick="event.stopPropagation()">
+            <div class="json-modal-header">
+                <span class="json-modal-title">Log Details</span>
+                <button class="ds-btn ds-btn-ghost ds-btn-icon" onclick="closeJsonModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="json-modal-body">
+                <div class="json-viewer" id="jsonContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/secure-auth.js"></script>
+    <script src="/js/server-selector.js"></script>
+    <script>
+        let currentTab = 'bot';
+        let currentPage = 0;
+        let pageSize = 50;
+        let totalLogs = 0;
+        let filtersExpanded = true;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupTabs();
+            initWebSocket();
+            loadLogs();
+        });
+
+        function setupTabs() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    currentTab = tab.dataset.tab;
+                    currentPage = 0;
+                    loadLogs();
+                });
+            });
+        }
+
+        function initWebSocket() {
+            const wsIndicator = document.getElementById('wsIndicator');
+            const wsStatus = document.getElementById('wsStatus');
+            wsIndicator.classList.add('disconnected');
+            wsStatus.textContent = 'Polling mode';
+        }
+
+        function toggleFilters() {
+            filtersExpanded = !filtersExpanded;
+            const grid = document.getElementById('filtersGrid');
+            const actions = document.getElementById('filtersActions');
+            const toggleText = document.getElementById('filterToggleText');
+            const toggleIcon = document.getElementById('filterToggleIcon');
+            
+            if (filtersExpanded) {
+                grid.style.display = 'grid';
+                actions.style.display = 'flex';
+                toggleText.textContent = 'Hide';
+                toggleIcon.style.transform = 'rotate(0deg)';
+            } else {
+                grid.style.display = 'none';
+                actions.style.display = 'none';
+                toggleText.textContent = 'Show';
+                toggleIcon.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        async function loadLogs() {
+            const tbody = document.getElementById('logsTableBody');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6">
+                        <div style="text-align: center; padding: 40px;">
+                            <div class="ds-spinner" style="margin: 0 auto;"></div>
+                            <p class="ds-text-muted" style="margin-top: 16px;">Loading logs...</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+
+            const params = new URLSearchParams({
+                limit: pageSize,
+                offset: currentPage * pageSize
+            });
+
+            const type = document.getElementById('filterType')?.value;
+            const guild = document.getElementById('filterGuild')?.value;
+            const user = document.getElementById('filterUser')?.value;
+            const startDate = document.getElementById('filterStartDate')?.value;
+            const endDate = document.getElementById('filterEndDate')?.value;
+
+            if (type) params.append('type', type);
+            if (guild) params.append('guildId', guild);
+            if (user) params.append('userId', user);
+            if (startDate) params.append('startDate', new Date(startDate).toISOString());
+            if (endDate) params.append('endDate', new Date(endDate).toISOString());
+
+            const endpoint = currentTab === 'bot' ? '/api/logs/bot' : '/api/logs/audit';
+
+            try {
+                const res = await fetch(`${endpoint}?${params}`, { credentials: 'include' });
+                if (!res.ok) throw new Error('Failed to load logs');
+                
+                const data = await res.json();
+                totalLogs = data.total || 0;
+                renderLogs(data.logs || []);
+                updatePagination();
+                updateStats(data);
+            } catch (error) {
+                console.error('Error loading logs:', error);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6">
+                            <div class="ds-alert ds-alert-danger" style="margin: 16px;">
+                                <i class="fas fa-exclamation-circle ds-alert-icon"></i>
+                                <div class="ds-alert-content">
+                                    <div class="ds-alert-title">Failed to load logs</div>
+                                    <div class="ds-alert-text">${error.message}</div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function renderLogs(logs) {
+            const tbody = document.getElementById('logsTableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            if (logs.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                document.querySelector('.logs-table-wrapper').style.display = 'none';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            document.querySelector('.logs-table-wrapper').style.display = 'block';
+
+            tbody.innerHTML = logs.map(log => {
+                const time = new Date(log.timestamp).toLocaleString();
+                const typeClass = (log.type || 'internal').toLowerCase();
+                const statusClass = log.success !== false ? 'success' : 'failure';
+                const statusIcon = log.success !== false ? 'fa-check-circle' : 'fa-times-circle';
+                const statusText = log.success !== false ? 'Success' : 'Failed';
+
+                return `
+                    <tr>
+                        <td><span class="log-time">${time}</span></td>
+                        <td><span class="log-type ${typeClass}">${log.type || 'Internal'}</span></td>
+                        <td class="ds-truncate" style="max-width: 300px;" title="${escapeHtml(log.action || log.command || '-')}">
+                            ${escapeHtml(log.action || log.command || '-')}
+                        </td>
+                        <td>
+                            <div class="log-user">
+                                ${log.userAvatar ? `<img src="${log.userAvatar}" class="log-user-avatar" alt="">` : ''}
+                                <span class="ds-truncate" style="max-width: 100px;">${escapeHtml(log.username || log.userId || '-')}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="log-status ${statusClass}">
+                                <i class="fas ${statusIcon}"></i>
+                                ${statusText}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="log-details-btn" onclick='showDetails(${JSON.stringify(log).replace(/'/g, "&#39;")})'>
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function updatePagination() {
+            const pagination = document.getElementById('pagination');
+            const info = document.getElementById('paginationInfo');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            if (totalLogs === 0) {
+                pagination.style.display = 'none';
+                return;
+            }
+
+            pagination.style.display = 'flex';
+            const start = currentPage * pageSize + 1;
+            const end = Math.min((currentPage + 1) * pageSize, totalLogs);
+            info.textContent = `Showing ${start}-${end} of ${totalLogs} entries`;
+
+            prevBtn.disabled = currentPage === 0;
+            nextBtn.disabled = end >= totalLogs;
+        }
+
+        function updateStats(data) {
+            if (data.stats) {
+                document.getElementById('statCommands').textContent = data.stats.commands || 0;
+                document.getElementById('statSecurity').textContent = data.stats.security || 0;
+                document.getElementById('statDashboard').textContent = data.stats.dashboard || 0;
+                document.getElementById('statErrors').textContent = data.stats.errors || 0;
+            }
+        }
+
+        function previousPage() {
+            if (currentPage > 0) {
+                currentPage--;
+                loadLogs();
+            }
+        }
+
+        function nextPage() {
+            if ((currentPage + 1) * pageSize < totalLogs) {
+                currentPage++;
+                loadLogs();
+            }
+        }
+
+        function applyFilters() {
+            currentPage = 0;
+            loadLogs();
+        }
+
+        function clearFilters() {
+            document.getElementById('filterType').value = '';
+            document.getElementById('filterGuild').value = '';
+            document.getElementById('filterUser').value = '';
+            document.getElementById('filterStartDate').value = '';
+            document.getElementById('filterEndDate').value = '';
+            currentPage = 0;
+            loadLogs();
+        }
+
+        function refreshLogs() {
+            loadLogs();
+        }
+
+        function exportLogs() {
+            alert('Export feature coming soon');
+        }
+
+        function showDetails(log) {
+            const modal = document.getElementById('jsonModal');
+            const content = document.getElementById('jsonContent');
+            content.innerHTML = syntaxHighlight(JSON.stringify(log, null, 2));
+            modal.classList.add('active');
+        }
+
+        function closeJsonModal() {
+            document.getElementById('jsonModal').classList.remove('active');
+        }
+
+        function closeModal(event) {
+            if (event.target.id === 'jsonModal') {
+                closeJsonModal();
+            }
+        }
+
+        function syntaxHighlight(json) {
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'json-key';
+                    } else {
+                        cls = 'json-string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        // Keyboard shortcut
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeJsonModal();
+            }
+        });
+    </script>
+</body>
+</html>

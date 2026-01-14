@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - DarkLock Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/dashboard-modern.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <link rel="stylesheet" href="/css/settings-panel.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="/js/settings-panel.js"></script>
+    <script src="/js/chart-manager.js"></script>
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="dashboard-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/site/" class="sidebar-brand">
+                    <div class="sidebar-logo">🛡️</div>
+                    <span class="sidebar-title">DarkLock</span>
+                </a>
+            </div>
+
+            <!-- Server Selector -->
+            <div class="server-selector">
+                <div class="server-current" id="serverSelector" onclick="toggleServerDropdown()">
+                    <img src="" alt="Server" class="server-icon" id="currentServerIcon" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                    <div class="server-info">
+                        <div class="server-name" id="currentServerName">Loading...</div>
+                        <div class="server-members" id="currentServerMembers">-- members</div>
+                    </div>
+                    <i class="fas fa-chevron-down server-dropdown-icon" id="serverDropdownIcon"></i>
+                </div>
+                <div class="server-dropdown" id="serverDropdown">
+                    <div class="server-dropdown-header">Select Server</div>
+                    <div class="server-dropdown-list" id="serverList">
+                        <div class="server-dropdown-loading">Loading servers...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <a href="/dashboard" class="nav-item">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Management</div>
+                    <a href="/tickets" class="nav-item">
+                        <i class="fas fa-ticket-alt"></i>
+                        <span>Tickets</span>
+                        <span class="nav-badge" id="openTicketsCount" style="display: none;">0</span>
+                    </a>
+                    <a href="/analytics" class="nav-item active">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Analytics</span>
+                    </a>
+                    <a href="/dashboard/logs" class="nav-item">
+                        <i class="fas fa-scroll"></i>
+                        <span>Logs & Audit</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Security</div>
+                    <a href="/setup/anti-raid" class="nav-item">
+                        <i class="fas fa-users-slash"></i>
+                        <span>Anti-Raid</span>
+                    </a>
+                    <a href="/setup/anti-spam" class="nav-item">
+                        <i class="fas fa-comment-slash"></i>
+                        <span>Anti-Spam</span>
+                    </a>
+                    <a href="/setup/antinuke" class="nav-item">
+                        <i class="fas fa-radiation"></i>
+                        <span>Anti-Nuke</span>
+                    </a>
+                    <a href="/setup/anti-phishing" class="nav-item">
+                        <i class="fas fa-fish"></i>
+                        <span>Anti-Phishing</span>
+                    </a>
+                    <a href="/setup/moderation" class="nav-item">
+                        <i class="fas fa-gavel"></i>
+                        <span>Moderation</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Configuration</div>
+                    <a href="/setup/tickets" class="nav-item">
+                        <i class="fas fa-cog"></i>
+                        <span>Ticket Settings</span>
+                    </a>
+                    <a href="/setup/welcome" class="nav-item">
+                        <i class="fas fa-door-open"></i>
+                        <span>Welcome & Goodbye Messages</span>
+                    </a>
+                    <a href="/setup/verification" class="nav-item">
+                        <i class="fas fa-user-check"></i>
+                        <span>Verification Settings</span>
+                    </a>
+                    <a href="/setup/autorole" class="nav-item">
+                        <i class="fas fa-user-tag"></i>
+                        <span>Auto Role & Reaction Roles</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Tools</div>
+                    <a href="/help" class="nav-item">
+                        <i class="fas fa-book"></i>
+                        <span>Help & Commands</span>
+                    </a>
+                    <a href="/dashboard/console" class="nav-item">
+                        <i class="fas fa-terminal"></i>
+                        <span>Bot Console</span>
+                    </a>
+                    <a href="/access-generator" class="nav-item">
+                        <i class="fas fa-key"></i>
+                        <span>Access Generator</span>
+                    </a>
+                    <a href="/access-share" class="nav-item">
+                        <i class="fas fa-share-alt"></i>
+                        <span>Access Share</span>
+                    </a>
+                </div>
+            </nav>
+
+            <!-- User Block -->
+            <div class="sidebar-user">
+                <div class="user-block">
+                    <img src="" alt="User" class="user-avatar" id="userAvatar">
+                    <div class="user-info">
+                        <div class="user-name" id="userName">Loading...</div>
+                        <div class="user-role" id="userRole">User</div>
+                    </div>
+                    <div class="user-actions">
+                        <button class="user-action-btn" onclick="logout()" title="Logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="dashboard-header">
+                <div class="header-title">
+                    <button class="btn btn-ghost" id="menuToggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1><i class="fas fa-chart-bar"></i> Analytics</h1>
+                </div>
+                <div class="header-actions">
+                    <div class="chart-controls">
+                        <button class="filter-btn active" data-range="7d" onclick="changeTimeRange('7d')">7 Days</button>
+                        <button class="filter-btn" data-range="30d" onclick="changeTimeRange('30d')">30 Days</button>
+                        <button class="filter-btn" data-range="90d" onclick="changeTimeRange('90d')">90 Days</button>
+                    </div>
+                    <button class="btn btn-primary" onclick="refreshAnalytics()">
+                        <i class="fas fa-sync-alt"></i>
+                        Refresh
+                    </button>
+                    <a href="/dashboard" class="btn btn-ghost">
+                        <i class="fas fa-arrow-left"></i>
+                        Dashboard
+                    </a>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div class="page-content" id="analyticsContent">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>Loading analytics...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/secure-auth.js"></script>
+<script>
+        // State
+        let charts = {};
+        let analyticsData = null;
+        let currentTimeRange = '7d';
+
+        // Chart.js defaults
+        Chart.defaults.color = 'rgba(255, 255, 255, 0.7)';
+        Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await SecureAuth.init();
+            await loadUserData();
+            await loadUserServers();
+            await loadServerInfo();
+            await loadAnalytics();
+        });
+
+        // API Helper
+        async function apiFetch(path, opts = {}) {
+            const guildId = localStorage.getItem('selectedGuildId');
+            const headers = {
+                'Content-Type': 'application/json',
+                ...(opts.headers || {})
+            };
+            if (guildId) headers['X-Guild-Id'] = guildId;
+
+            const response = await SecureAuth.fetch(path, {
+                ...opts,
+                headers,
+                credentials: 'include'
+            });
+
+            if (response.status === 401 || response.status === 403) {
+                window.location.href = '/login';
+                throw new Error('Authentication required');
+            }
+
+            return response;
+        }
+
+        // Load user data
+        async function loadUserData() {
+            try {
+                const response = await apiFetch('/api/me');
+                const data = await response.json();
+
+                if (data.user) {
+                    document.getElementById('userName').textContent = data.user.globalName || data.user.username || 'User';
+                    document.getElementById('userRole').textContent = data.user.role || 'User';
+                    
+                    if (data.user.avatar) {
+                        document.getElementById('userAvatar').src = `https://cdn.discordapp.com/avatars/${data.user.userId}/${data.user.avatar}.png?size=64`;
+                    } else {
+                        document.getElementById('userAvatar').src = 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    }
+
+                    if (data.user.currentGuildId) {
+                        localStorage.setItem('selectedGuildId', data.user.currentGuildId);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+
+        // Load server info
+        async function loadServerInfo() {
+            try {
+                const guildId = localStorage.getItem('selectedGuildId');
+                if (!guildId) return;
+
+                const response = await apiFetch(`/api/server-info?guildId=${guildId}`);
+                const serverInfo = await response.json();
+
+                if (serverInfo.name) {
+                    document.getElementById('currentServerName').textContent = serverInfo.name;
+                    document.getElementById('currentServerMembers').textContent = `${formatNumber(serverInfo.memberCount || 0)} members`;
+                    if (serverInfo.icon) {
+                        document.getElementById('currentServerIcon').src = serverInfo.icon;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading server info:', error);
+            }
+        }
+
+        // Load analytics
+        async function loadAnalytics() {
+            try {
+                const days = currentTimeRange === '7d' ? 7 : currentTimeRange === '30d' ? 30 : 90;
+                const guildId = localStorage.getItem('selectedGuildId');
+                const params = new URLSearchParams({ days: days.toString() });
+                if (guildId) params.set('guildId', guildId);
+
+                const response = await apiFetch(`/api/analytics/full?${params.toString()}`);
+                analyticsData = await response.json();
+
+                if (analyticsData.error) {
+                    throw new Error(analyticsData.error);
+                }
+
+                renderAnalytics(analyticsData);
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+                document.getElementById('analyticsContent').innerHTML = `
+                    <div class="error-state">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                        <div style="font-size: 1.25rem; margin-bottom: 0.5rem;">Failed to load analytics</div>
+                        <div style="color: var(--text-muted); margin-bottom: 1.5rem;">${error.message}</div>
+                        <button onclick="refreshAnalytics()" class="btn btn-primary">Try Again</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Render analytics
+        function renderAnalytics(data) {
+            const content = document.getElementById('analyticsContent');
+
+            // Destroy existing charts
+            Object.values(charts).forEach(chart => {
+                if (chart && typeof chart.destroy === 'function') chart.destroy();
+            });
+            charts = {};
+
+            const overview = data.overview || {};
+            const memberActivity = data.memberActivity || [];
+            const commandUsage = data.commandUsage || [];
+            const moderation = data.moderation || {};
+            const hourlyActivity = data.hourlyActivity || [];
+            const topCommands = data.topCommands || [];
+            const securityEvents = data.securityEvents || [];
+
+            content.innerHTML = `
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">??</div>
+                        <div class="stat-value">${formatNumber(overview.totalMembers || 0)}</div>
+                        <div class="stat-label">Total Members</div>
+                        <div class="stat-change ${(overview.joinsToday || 0) > 0 ? 'positive' : 'neutral'}">
+                            <i class="fas fa-arrow-${(overview.joinsToday || 0) > 0 ? 'up' : 'right'}"></i>
+                            ${overview.joinsToday || 0} today
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">??</div>
+                        <div class="stat-value">${formatNumber(overview.totalMessages || 0)}</div>
+                        <div class="stat-label">Messages</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            ${formatNumber(overview.messagesToday || 0)} today
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">?</div>
+                        <div class="stat-value">${formatNumber(overview.totalCommands || 0)}</div>
+                        <div class="stat-label">Commands Used</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            ${formatNumber(overview.commandsToday || 0)} today
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">🛡️</div>
+                        <div class="stat-value">${formatNumber(overview.totalModActions || 0)}</div>
+                        <div class="stat-label">Mod Actions</div>
+                        <div class="stat-change neutral">
+                            <i class="fas fa-minus"></i>
+                            ${overview.modActionsToday || 0} today
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Grid -->
+                <div class="charts-grid">
+                    <!-- Member Activity Chart -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div class="chart-title">
+                                <i class="fas fa-users"></i>
+                                Member Activity
+                            </div>
+                        </div>
+                        <div class="chart-wrapper" id="memberChartWrapper">
+                            ${hasData(memberActivity) ? '<canvas id="memberChart"></canvas>' : renderNoData('member activity')}
+                        </div>
+                    </div>
+
+                    <!-- Command Usage Chart -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div class="chart-title">
+                                <i class="fas fa-terminal"></i>
+                                Command Usage
+                            </div>
+                        </div>
+                        <div class="chart-wrapper" id="commandChartWrapper">
+                            ${hasData(commandUsage) ? '<canvas id="commandChart"></canvas>' : renderNoData('command usage')}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <!-- Moderation Chart -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div class="chart-title">
+                                <i class="fas fa-gavel"></i>
+                                Moderation Actions
+                            </div>
+                        </div>
+                        <div class="chart-wrapper" id="moderationChartWrapper">
+                            ${hasModData(moderation) ? '<canvas id="moderationChart"></canvas>' : renderNoData('moderation actions')}
+                        </div>
+                    </div>
+
+                    <!-- Hourly Activity Chart -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div class="chart-title">
+                                <i class="fas fa-clock"></i>
+                                Hourly Activity
+                            </div>
+                        </div>
+                        <div class="chart-wrapper" id="hourlyChartWrapper">
+                            ${hasData(hourlyActivity) ? '<canvas id="hourlyChart"></canvas>' : renderNoData('hourly activity')}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Commands Table -->
+                <div class="card" style="position: relative;">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-trophy"></i>
+                            Most Used Commands
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Command</th>
+                                    <th>Uses</th>
+                                    <th>Success Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${renderTopCommands(topCommands)}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Security Events Table -->
+                <div class="card" style="position: relative; margin-top: 1.5rem;">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-shield-alt"></i>
+                            Recent Security Events
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>Severity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${renderSecurityEvents(securityEvents)}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            // Initialize charts
+            initCharts(data);
+        }
+
+        // Initialize charts
+        function initCharts(data) {
+            const memberActivity = data.memberActivity || [];
+            const commandUsage = data.commandUsage || [];
+            const moderation = data.moderation || {};
+            const hourlyActivity = data.hourlyActivity || [];
+
+            // Member Activity Chart
+            if (hasData(memberActivity)) {
+                const ctx = document.getElementById('memberChart');
+                if (ctx) {
+                    charts.member = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: memberActivity.map(d => formatChartDate(d.date)),
+                            datasets: [{
+                                label: 'Joins',
+                                data: memberActivity.map(d => d.joins || 0),
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                fill: true,
+                                tension: 0.4
+                            }, {
+                                label: 'Leaves',
+                                data: memberActivity.map(d => d.leaves || 0),
+                                borderColor: '#ef4444',
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                fill: true,
+                                tension: 0.4
+                            }]
+                        },
+                        options: chartOptions()
+                    });
+                }
+            }
+
+            // Command Usage Chart
+            if (hasData(commandUsage)) {
+                const ctx = document.getElementById('commandChart');
+                if (ctx) {
+                    charts.command = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: commandUsage.map(d => formatChartDate(d.date)),
+                            datasets: [{
+                                label: 'Commands',
+                                data: commandUsage.map(d => d.count || 0),
+                                backgroundColor: 'rgba(0, 240, 255, 0.6)',
+                                borderColor: '#00f0ff',
+                                borderWidth: 1,
+                                borderRadius: 4
+                            }]
+                        },
+                        options: chartOptions()
+                    });
+                }
+            }
+
+            // Moderation Chart
+            if (hasModData(moderation)) {
+                const ctx = document.getElementById('moderationChart');
+                if (ctx) {
+                    charts.moderation = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Warns', 'Kicks', 'Bans', 'Timeouts'],
+                            datasets: [{
+                                data: [
+                                    moderation.warns || 0,
+                                    moderation.kicks || 0,
+                                    moderation.bans || 0,
+                                    moderation.timeouts || 0
+                                ],
+                                backgroundColor: ['#f59e0b', '#ec4899', '#ef4444', '#7c3aed'],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: '70%',
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: { padding: 20, usePointStyle: true }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            // Hourly Activity Chart
+            if (hasData(hourlyActivity)) {
+                const ctx = document.getElementById('hourlyChart');
+                if (ctx) {
+                    charts.hourly = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: hourlyActivity.map(d => `${d.hour}:00`),
+                            datasets: [{
+                                label: 'Messages',
+                                data: hourlyActivity.map(d => d.messages || d.count || 0),
+                                backgroundColor: 'rgba(124, 58, 237, 0.6)',
+                                borderColor: '#7c3aed',
+                                borderWidth: 1,
+                                borderRadius: 4
+                            }]
+                        },
+                        options: chartOptions()
+                    });
+                }
+            }
+        }
+
+        // Chart options
+        function chartOptions() {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 20, usePointStyle: true }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            };
+        }
+
+        // Render helpers
+        function hasData(arr) {
+            return Array.isArray(arr) && arr.length > 0;
+        }
+
+        function hasModData(mod) {
+            return mod && (mod.warns || mod.kicks || mod.bans || mod.timeouts);
+        }
+
+        function renderNoData(type) {
+            return `
+                <div class="no-data">
+                    <div class="no-data-icon">??</div>
+                    <div class="no-data-text">No ${type} data</div>
+                    <div class="no-data-hint">Data will appear once activity is recorded</div>
+                </div>
+            `;
+        }
+
+        function renderTopCommands(commands) {
+            if (!commands || commands.length === 0) {
+                return '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">No command data available</td></tr>';
+            }
+
+            return commands.slice(0, 10).map((cmd, i) => `
+                <tr>
+                    <td><span class="badge badge-info">#${i + 1}</span></td>
+                    <td><code style="color: var(--accent-primary);">/${cmd.name || cmd.command}</code></td>
+                    <td>${formatNumber(cmd.uses || cmd.count || 0)}</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="flex: 1; height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden;">
+                                <div style="width: ${cmd.successRate || 100}%; height: 100%; background: var(--success);"></div>
+                            </div>
+                            <span>${cmd.successRate || 100}%</span>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderSecurityEvents(events) {
+            if (!events || events.length === 0) {
+                return '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">No security events recorded</td></tr>';
+            }
+
+            return events.slice(0, 10).map(event => `
+                <tr>
+                    <td>${formatDate(event.timestamp || event.time)}</td>
+                    <td>${event.type || 'Unknown'}</td>
+                    <td>${escapeHtml(event.description || event.message || '-')}</td>
+                    <td><span class="severity-badge severity-${(event.severity || 'low').toLowerCase()}">${event.severity || 'Low'}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // Time range change
+        function changeTimeRange(range) {
+            currentTimeRange = range;
+            
+            document.querySelectorAll('.filter-btn[data-range]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.range === range);
+            });
+
+            document.getElementById('analyticsContent').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>Loading ${range} analytics...</div>
+                </div>
+            `;
+
+            loadAnalytics();
+        }
+
+        // Utility functions
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return 'Unknown';
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+            
+            return date.toLocaleDateString();
+        }
+
+        function formatChartDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        // Fix common mojibake patterns (UTF-8 decoded as Latin-1)
+        function fixMojibake(text) {
+            if (!text || typeof text !== 'string') return text || '';
+            
+            // Common mojibake pattern replacements
+            const mojibakeMap = {
+                'â€™': "'",
+                'â€œ': '"',
+                'â€': '"',
+                'â€"': '—',
+                'â€"': '–',
+                'â€¢': '•',
+                'Ã©': 'é',
+                'Ã¨': 'è',
+                'Ã ': 'à',
+                'Ã¢': 'â',
+                'Ã®': 'î',
+                'Ã´': 'ô',
+                'Ã»': 'û',
+                'Ã§': 'ç',
+                'Ã¼': 'ü',
+                'Ã¶': 'ö',
+                'Ã¤': 'ä',
+                'Ã±': 'ñ',
+                'Â°': '°',
+                'Â´': '´',
+                'Â·': '·'
+            };
+            
+            let fixed = text;
+            for (const [bad, good] of Object.entries(mojibakeMap)) {
+                fixed = fixed.replace(new RegExp(bad, 'g'), good);
+            }
+            
+            return fixed;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = fixMojibake(text) || '';
+            return div.innerHTML;
+        }
+
+        function refreshAnalytics() {
+            document.getElementById('analyticsContent').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>Refreshing analytics...</div>
+                </div>
+            `;
+            loadAnalytics();
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        function logout() {
+            document.cookie = 'dashboardToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            localStorage.removeItem('dashboardToken');
+            localStorage.removeItem('selectedGuildId');
+            window.location.href = '/login';
+        }
+
+        // Server dropdown functions
+        let serverDropdownOpen = false;
+        let userGuilds = [];
+        let currentGuildId = localStorage.getItem('selectedGuildId');
+
+        function toggleServerDropdown() {
+            serverDropdownOpen = !serverDropdownOpen;
+            const dropdown = document.getElementById('serverDropdown');
+            const icon = document.getElementById('serverDropdownIcon');
+            
+            if (serverDropdownOpen) {
+                dropdown.classList.add('open');
+                if (icon) icon.classList.add('rotated');
+            } else {
+                dropdown.classList.remove('open');
+                if (icon) icon.classList.remove('rotated');
+            }
+        }
+
+        function closeServerDropdown() {
+            serverDropdownOpen = false;
+            const dropdown = document.getElementById('serverDropdown');
+            const icon = document.getElementById('serverDropdownIcon');
+            if (dropdown) dropdown.classList.remove('open');
+            if (icon) icon.classList.remove('rotated');
+        }
+
+        async function loadUserServers() {
+            try {
+                const response = await apiFetch('/api/servers/list');
+                const data = await response.json();
+
+                if (data.servers) {
+                    userGuilds = data.servers;
+
+                    const storedGuildId = localStorage.getItem('selectedGuildId');
+                    if (storedGuildId && userGuilds.find(g => g.id === storedGuildId)) {
+                        currentGuildId = storedGuildId;
+                    } else if (userGuilds.length > 0) {
+                        currentGuildId = userGuilds[0].id;
+                        localStorage.setItem('selectedGuildId', currentGuildId);
+                    }
+
+                    updateCurrentServerDisplay();
+                    renderServerDropdown();
+                }
+            } catch (error) {
+                console.error('Error loading user servers:', error);
+            }
+        }
+
+        function updateCurrentServerDisplay() {
+            if (!currentGuildId || userGuilds.length === 0) return;
+
+            const currentGuild = userGuilds.find(g => g.id === currentGuildId);
+            if (currentGuild) {
+                document.getElementById('currentServerName').textContent = currentGuild.name;
+                document.getElementById('currentServerMembers').textContent = formatNumber(currentGuild.memberCount || 0) + ' members';
+                
+                const iconUrl = currentGuild.icon 
+                    ? `https://cdn.discordapp.com/icons/${currentGuild.id}/${currentGuild.icon}.png?size=64`
+                    : 'https://cdn.discordapp.com/embed/avatars/0.png';
+                document.getElementById('currentServerIcon').src = iconUrl;
+            }
+        }
+
+        function renderServerDropdown() {
+            const list = document.getElementById('serverList');
+            if (!list) return;
+            
+            if (userGuilds.length === 0) {
+                list.innerHTML = '<div class="server-dropdown-empty">No servers available</div>';
+                return;
+            }
+
+            list.innerHTML = userGuilds.map(guild => {
+                const iconUrl = guild.icon 
+                    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`
+                    : 'https://cdn.discordapp.com/embed/avatars/0.png';
+                const isActive = guild.id === currentGuildId;
+                const safeName = escapeHtml(guild.name);
+                
+                return `
+                    <div class="server-dropdown-item ${isActive ? 'active' : ''}" onclick="selectServer('${guild.id}')">
+                        <img src="${iconUrl}" alt="${safeName}" class="server-dropdown-img" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+                        <div class="server-dropdown-info">
+                            <div class="server-dropdown-name">${safeName}</div>
+                            <div class="server-dropdown-members">${formatNumber(guild.memberCount || 0)} members</div>
+                        </div>
+                        ${isActive ? '<i class="fas fa-check server-dropdown-check"></i>' : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function selectServer(guildId) {
+            if (guildId === currentGuildId) {
+                closeServerDropdown();
+                return;
+            }
+
+            currentGuildId = guildId;
+            localStorage.setItem('selectedGuildId', guildId);
+            closeServerDropdown();
+            
+            updateCurrentServerDisplay();
+            renderServerDropdown();
+            
+            // Reload analytics for new server
+            refreshAnalytics();
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.server-selector')) {
+                closeServerDropdown();
+            }
+        });
+    </script>
+    
+    <style>
+        /* Server Dropdown Styles */
+        .server-selector { position: relative; }
+        .server-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(18, 23, 39, 0.98);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 12px;
+            margin-top: 8px;
+            padding: 8px;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        .server-dropdown.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .server-dropdown-header {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #8892b0;
+            padding: 8px 12px;
+            letter-spacing: 0.5px;
+        }
+        .server-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .server-dropdown-item:hover {
+            background: rgba(0, 212, 255, 0.1);
+        }
+        .server-dropdown-item.active {
+            background: rgba(0, 212, 255, 0.15);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+        .server-dropdown-item .server-dropdown-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .server-dropdown-info { flex: 1; }
+        .server-dropdown-name {
+            font-weight: 500;
+            font-size: 14px;
+            color: #fff;
+        }
+        .server-dropdown-members {
+            font-size: 11px;
+            color: #8892b0;
+        }
+        .server-dropdown-check {
+            color: #06ffa5;
+            font-size: 14px;
+        }
+        .server-dropdown-empty, .server-dropdown-loading {
+            padding: 20px;
+            text-align: center;
+            color: #8892b0;
+            font-size: 13px;
+        }
+        #serverDropdownIcon.rotated {
+            transform: rotate(180deg);
+        }
+        #serverDropdownIcon {
+            transition: transform 0.2s ease;
+        }
+        .server-current {
+            cursor: pointer;
+        }
+        .server-current:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 10px;
+        }
+    </style>
+</body>
+</html>

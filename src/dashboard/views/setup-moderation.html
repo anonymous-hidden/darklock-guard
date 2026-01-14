@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
+    <title>Moderation Settings - DarkLock Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <style>
+        .setup-page { min-height: 100vh; background: var(--ds-surface-0); }
+
+        .back-button { 
+            display: inline-flex; align-items: center; gap: 8px; 
+            padding: 8px 16px; 
+            background: var(--ds-surface-2); 
+            border: 1px solid var(--ds-border); 
+            border-radius: var(--ds-radius-md); 
+            color: var(--ds-text-primary); 
+            text-decoration: none; 
+            font-size: 14px; 
+            font-weight: 500; 
+            transition: all var(--ds-transition-fast); 
+        }
+        .back-button:hover { 
+            background: var(--ds-surface-3); 
+            border-color: var(--ds-primary); 
+            transform: translateX(-2px); 
+        }
+        .back-button i { font-size: 12px; }
+
+        .setup-nav {
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: var(--ds-space-md) var(--ds-space-xl);
+            background: var(--ds-surface-1);
+            border-bottom: 1px solid var(--ds-border);
+            backdrop-filter: blur(12px);
+        }
+
+        .setup-breadcrumb {
+            display: flex; align-items: center; gap: var(--ds-space-sm);
+            font-size: 14px; color: var(--ds-text-muted);
+        }
+
+        .setup-breadcrumb a { color: var(--ds-text-muted); text-decoration: none; }
+        .setup-breadcrumb a:hover { color: var(--ds-primary); }
+        .setup-breadcrumb-current { color: var(--ds-text-primary); font-weight: 500; }
+
+        .setup-container { max-width: 1000px; margin: 0 auto; padding: var(--ds-space-xl) var(--ds-space-lg); }
+
+        .setup-header { margin-bottom: var(--ds-space-xl); }
+        .setup-header-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 56px; height: 56px;
+            background: var(--ds-primary-bg);
+            border: 1px solid var(--ds-primary-border);
+            border-radius: var(--ds-radius-lg);
+            margin-bottom: var(--ds-space-md);
+        }
+        .setup-header-icon i { font-size: 24px; color: var(--ds-primary); }
+        .setup-header h1 { font-size: 28px; font-weight: 700; color: var(--ds-text-primary); margin: 0 0 var(--ds-space-sm) 0; }
+        .setup-header p { color: var(--ds-text-muted); font-size: 15px; margin: 0; }
+
+        /* Status */
+        .setup-status {
+            display: inline-flex; align-items: center; gap: var(--ds-space-xs);
+            padding: 4px 12px; border-radius: var(--ds-radius-full);
+            font-size: 12px; font-weight: 500;
+        }
+        .setup-status.enabled { background: var(--ds-success-bg); color: var(--ds-success); border: 1px solid var(--ds-success-border); }
+        .setup-status.disabled { background: var(--ds-surface-2); color: var(--ds-text-muted); border: 1px solid var(--ds-border); }
+
+        /* Cards */
+        .setup-card {
+            background: var(--ds-surface-1);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-lg);
+            margin-bottom: var(--ds-space-lg);
+            overflow: hidden;
+        }
+        .setup-card-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: var(--ds-space-lg);
+            border-bottom: 1px solid var(--ds-border);
+            background: var(--ds-surface-2);
+        }
+        .setup-card-title { display: flex; align-items: center; gap: var(--ds-space-sm); }
+        .setup-card-title i { color: var(--ds-primary); font-size: 16px; }
+        .setup-card-title h3 { font-size: 15px; font-weight: 600; color: var(--ds-text-primary); margin: 0; }
+        .setup-card-body { padding: var(--ds-space-lg); }
+        .setup-card.disabled { opacity: 0.5; pointer-events: none; }
+
+        /* Toggle row */
+        .setup-toggle-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: var(--ds-space-md);
+            background: var(--ds-surface-0);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            margin-bottom: var(--ds-space-md);
+        }
+        .setup-toggle-row:last-child { margin-bottom: 0; }
+        .setup-toggle-info h4 { margin: 0 0 4px 0; font-size: 14px; font-weight: 500; color: var(--ds-text-primary); }
+        .setup-toggle-info p { margin: 0; font-size: 13px; color: var(--ds-text-muted); }
+
+        /* Form elements */
+        .setup-form-group { margin-bottom: var(--ds-space-lg); }
+        .setup-form-group:last-child { margin-bottom: 0; }
+        .setup-form-label { display: block; font-size: 14px; font-weight: 500; color: var(--ds-text-primary); margin-bottom: var(--ds-space-xs); }
+        .setup-form-desc { font-size: 13px; color: var(--ds-text-muted); margin-bottom: var(--ds-space-sm); }
+        .setup-form-input, .setup-form-select {
+            width: 100%; padding: 10px 14px;
+            background: var(--ds-surface-0);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            color: var(--ds-text-primary);
+            font-size: 14px;
+            transition: all var(--ds-transition-fast);
+        }
+        .setup-form-input:focus, .setup-form-select:focus {
+            outline: none;
+            border-color: var(--ds-primary);
+            box-shadow: 0 0 0 3px var(--ds-primary-bg);
+        }
+        .setup-form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 10px center;
+            background-repeat: no-repeat;
+            background-size: 20px;
+            padding-right: 40px;
+        }
+        .setup-form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--ds-space-md); }
+        @media (max-width: 640px) { .setup-form-row { grid-template-columns: 1fr; } }
+
+        .input-with-unit { display: flex; align-items: center; gap: var(--ds-space-sm); }
+        .input-with-unit input { flex: 1; }
+        .input-unit { color: var(--ds-text-muted); font-size: 13px; white-space: nowrap; }
+
+        /* Range slider */
+        .range-container { display: flex; align-items: center; gap: var(--ds-space-md); }
+        .range-input { flex: 1; -webkit-appearance: none; height: 6px; background: var(--ds-surface-2); border-radius: 3px; outline: none; }
+        .range-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px; height: 18px;
+            background: var(--ds-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        .range-value {
+            background: var(--ds-primary-bg);
+            color: var(--ds-primary);
+            padding: 4px 12px;
+            border-radius: var(--ds-radius-md);
+            font-size: 13px;
+            font-weight: 600;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        /* Alert */
+        .setup-alert {
+            display: flex; align-items: flex-start; gap: var(--ds-space-md);
+            padding: var(--ds-space-md) var(--ds-space-lg);
+            border-radius: var(--ds-radius-lg);
+            margin-bottom: var(--ds-space-lg);
+        }
+        .setup-alert.warning { background: var(--ds-warning-bg); border: 1px solid var(--ds-warning-border); }
+        .setup-alert-icon { font-size: 18px; }
+        .setup-alert.warning .setup-alert-icon { color: var(--ds-warning); }
+        .setup-alert-content h4 { margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: var(--ds-warning); }
+        .setup-alert-content p { margin: 0; font-size: 13px; color: var(--ds-text-secondary); }
+
+        /* Status message */
+        .setup-status-msg {
+            display: none; padding: var(--ds-space-md);
+            border-radius: var(--ds-radius-md);
+            font-size: 14px; text-align: center;
+            margin-top: var(--ds-space-md);
+        }
+        .setup-status-msg.success { display: block; background: var(--ds-success-bg); border: 1px solid var(--ds-success-border); color: var(--ds-success); }
+        .setup-status-msg.error { display: block; background: var(--ds-danger-bg); border: 1px solid var(--ds-danger-border); color: var(--ds-danger); }
+
+        /* Tabs */
+        .setup-tabs {
+            display: flex; gap: var(--ds-space-xs);
+            padding: var(--ds-space-sm);
+            background: var(--ds-surface-1);
+            border-radius: var(--ds-radius-lg);
+            margin-bottom: var(--ds-space-lg);
+            overflow-x: auto;
+        }
+        .setup-tab {
+            padding: var(--ds-space-sm) var(--ds-space-md);
+            background: transparent;
+            border: none;
+            border-radius: var(--ds-radius-md);
+            color: var(--ds-text-muted);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all var(--ds-transition-fast);
+        }
+        .setup-tab:hover { background: var(--ds-surface-2); color: var(--ds-text-primary); }
+        .setup-tab.active { background: var(--ds-primary-bg); color: var(--ds-primary); }
+        .setup-tab i { margin-right: 6px; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="setup-page">
+    <nav class="setup-nav">
+        <a href="/dashboard" class="back-button">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to Dashboard</span>
+        </a>
+        <div class="setup-breadcrumb">
+            <a href="/dashboard"><i class="fas fa-home"></i></a>
+            <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+            <a href="/dashboard">Dashboard</a>
+            <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+            <span class="setup-breadcrumb-current">Moderation</span>
+        </div>
+        <div class="setup-status disabled" id="featureStatus">
+            <i class="fas fa-circle" style="font-size: 8px;"></i>
+            <span>Disabled</span>
+        </div>
+    </nav>
+
+    <main class="setup-container">
+        <div class="setup-header">
+            <div class="setup-header-icon"><i class="fas fa-gavel"></i></div>
+            <h1>Moderation Settings</h1>
+            <p>Configure auto-moderation systems, content filters, and moderation tools</p>
+        </div>
+
+        <div class="setup-alert warning" id="featureDisabledBanner" style="display: none;">
+            <i class="fas fa-exclamation-triangle setup-alert-icon"></i>
+            <div class="setup-alert-content">
+                <h4>Auto-Moderation is Disabled</h4>
+                <p>Enable the toggle below to activate auto-moderation features.</p>
+            </div>
+        </div>
+
+        <!-- Master Toggle -->
+        <div class="setup-card">
+            <div class="setup-card-header">
+                <div class="setup-card-title"><i class="fas fa-robot"></i><h3>Auto-Moderation System</h3></div>
+            </div>
+            <div class="setup-card-body">
+                <div class="setup-toggle-row">
+                    <div class="setup-toggle-info">
+                        <h4>Enable Auto-Moderation</h4>
+                        <p>Master switch for all automatic moderation features</p>
+                    </div>
+                    <label class="ds-toggle"><input type="checkbox" id="autoModEnabled"><span class="ds-toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="setup-tabs">
+            <button class="setup-tab active" onclick="showTab('xp')"><i class="fas fa-star"></i>XP & Levels</button>
+            <button class="setup-tab" onclick="showTab('timeouts')"><i class="fas fa-clock"></i>Timeouts</button>
+            <button class="setup-tab" onclick="showTab('warnings')"><i class="fas fa-exclamation-triangle"></i>Warnings</button>
+            <button class="setup-tab" onclick="showTab('appeals')"><i class="fas fa-gavel"></i>Appeals</button>
+            <button class="setup-tab" onclick="showTab('filters')"><i class="fas fa-filter"></i>Filters</button>
+            <button class="setup-tab" onclick="showTab('logging')"><i class="fas fa-clipboard-list"></i>Logging</button>
+            <button class="setup-tab" onclick="showTab('settings')"><i class="fas fa-cog"></i>Settings</button>
+            <button class="setup-tab" onclick="showTab('exempt')"><i class="fas fa-user-shield"></i>Exemptions</button>
+        </div>
+
+        <!-- XP & Levels Tab -->
+        <div class="tab-content active" id="tab-xp">
+            <div class="setup-card configuration-section">
+                <div class="setup-card-header">
+                    <div class="setup-card-title"><i class="fas fa-star"></i><h3>XP & Leveling System</h3></div>
+                </div>
+                <div class="setup-card-body">
+                    <div class="setup-toggle-row" style="margin-bottom: var(--ds-space-lg);">
+                        <div class="setup-toggle-info">
+                            <h4>Enable XP System</h4>
+                            <p>Award XP for messages and activity</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="xpEnabled"><span class="ds-toggle-slider"></span></label>
+                    </div>
+
+                    <div class="setup-form-row">
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">XP per Message</label>
+                            <p class="setup-form-desc">Base XP earned per message</p>
+                            <input type="number" class="setup-form-input" id="xpPerMessage" value="15" min="1" max="100">
+                        </div>
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">XP Cooldown (seconds)</label>
+                            <p class="setup-form-desc">Time between XP gains</p>
+                            <input type="number" class="setup-form-input" id="xpCooldown" value="60" min="10" max="300">
+                        </div>
+                    </div>
+
+                    <div class="setup-form-row">
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Level Up Channel</label>
+                            <p class="setup-form-desc">Channel for level up messages</p>
+                            <select class="setup-form-select" id="levelUpChannel">
+                                <option value="">Same Channel</option>
+                                <!-- Channels loaded dynamically -->
+                            </select>
+                        </div>
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">XP Multiplier</label>
+                            <p class="setup-form-desc">Global XP gain multiplier</p>
+                            <input type="number" class="setup-form-input" id="xpMultiplier" value="1" min="0.1" max="5" step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="setup-toggle-row">
+                        <div class="setup-toggle-info">
+                            <h4>Voice XP</h4>
+                            <p>Award XP for time spent in voice channels</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="voiceXpEnabled"><span class="ds-toggle-slider"></span></label>
+                    </div>
+
+                    <div class="setup-form-row">
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Voice XP per Minute</label>
+                            <p class="setup-form-desc">XP earned per minute in voice</p>
+                            <input type="number" class="setup-form-input" id="voiceXpPerMinute" value="5" min="1" max="50">
+                        </div>
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Min Voice Time (seconds)</label>
+                            <p class="setup-form-desc">Minimum time before XP is awarded</p>
+                            <input type="number" class="setup-form-input" id="minVoiceTime" value="60" min="30" max="300">
+                        </div>
+                    </div>
+
+                    <div class="setup-toggle-row">
+                        <div class="setup-toggle-info">
+                            <h4>Level Announcement</h4>
+                            <p>Send message when users level up</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="levelAnnouncement" checked><span class="ds-toggle-slider"></span></label>
+                    </div>
+
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Level Up Message</label>
+                        <p class="setup-form-desc">Custom message ({user} = mention, {level} = new level)</p>
+                        <input type="text" class="setup-form-input" id="levelUpMessage" placeholder="🎉 {user} reached level {level}!">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeouts Tab -->
+        <div class="tab-content" id="tab-timeouts">
+            <div class="setup-card configuration-section">
+                <div class="setup-card-header">
+                    <div class="setup-card-title"><i class="fas fa-clock"></i><h3>Timeout Settings</h3></div>
+                </div>
+                <div class="setup-card-body">
+                    <div class="setup-toggle-row" style="margin-bottom: var(--ds-space-lg);">
+                        <div class="setup-toggle-info">
+                            <h4>Enable Auto-Timeout</h4>
+                            <p>Automatically timeout users for rule violations</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="autoTimeoutEnabled"><span class="ds-toggle-slider"></span></label>
+                    </div>
+
+                    <div class="setup-form-row">
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Default Timeout Duration</label>
+                            <p class="setup-form-desc">Default timeout length in minutes</p>
+                            <input type="number" class="setup-form-input" id="defaultTimeoutDuration" value="60" min="1" max="10080">
+                        </div>
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Max Timeout Duration</label>
+                            <p class="setup-form-desc">Maximum timeout length (minutes)</p>
+                            <input type="number" class="setup-form-input" id="maxTimeoutDuration" value="40320" min="1" max="40320">
+                        </div>
+                    </div>
+
+                    <div class="setup-form-row">
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Spam Timeout</label>
+                            <p class="setup-form-desc">Timeout duration for spam (minutes)</p>
+                            <input type="number" class="setup-form-input" id="spamTimeoutDuration" value="5" min="1" max="1440">
+                        </div>
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Toxicity Timeout</label>
+                            <p class="setup-form-desc">Timeout for toxic behavior (minutes)</p>
+                            <input type="number" class="setup-form-input" id="toxicityTimeoutDuration" value="30" min="1" max="1440">
+                        </div>
+                    </div>
+
+                    <div class="setup-toggle-row">
+                        <div class="setup-toggle-info">
+                            <h4>DM Timeout Notification</h4>
+                            <p>Send DM to user when timed out</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="dmTimeoutNotification" checked><span class="ds-toggle-slider"></span></label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Warnings Tab -->
+        <div class="tab-content" id="tab-warnings">
+            <div class="setup-card configuration-section">
+                <div class="setup-card-header">
+                    <div class="setup-card-title"><i class="fas fa-exclamation-triangle"></i><h3>Warning System</h3></div>
+                </div>
+                <div class="setup-card-body">
+                    <div class="setup-toggle-row" style="margin-bottom: var(--ds-space-lg);">
+                        <div class="setup-toggle-info">
+                            <h4>Enable Warning System</h4>
+                            <p>Track and escalate user violations</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="warningSystemEnabled" checked><span class="ds-toggle-slider"></span></label>
+                    </div>
+
+                    <div class="setup-form-row">
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Warnings Before Timeout</label>
+                            <p class="setup-form-desc">Number of warnings before timeout</p>
+                            <input type="number" class="setup-form-input" id="warningsBeforeTimeout" value="3" min="1" max="10">
+                        </div>
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Warnings Before Kick</label>
+                            <p class="setup-form-desc">Number of warnings before kick</p>
+                            <input type="number" class="setup-form-input" id="warningsBeforeKick" value="5" min="1" max="20">
+                        </div>
+                    </div>
+
+                    <div class="setup-toggle-row">
+                        <div class="setup-toggle-info">
+                            <h4>DM Warning Notification</h4>
+                            <p>Send DM to user when warned</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="dmWarningNotification" checked><span class="ds-toggle-slider"></span></label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Appeals Tab -->
+        <div class="tab-content" id="tab-appeals">
+            <div class="setup-card configuration-section">
+                <div class="setup-card-header">
+                    <div class="setup-card-title"><i class="fas fa-gavel"></i><h3>Ban Appeal System</h3></div>
+                </div>
+                <div class="setup-card-body">
+                    <div class="setup-toggle-row" style="margin-bottom: var(--ds-space-lg);">
+                        <div class="setup-toggle-info">
+                            <h4>Enable Appeal System</h4>
+                            <p>Allow banned users to submit appeals</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="appealSystemEnabled"><span class="ds-toggle-slider"></span></label>
+                    </div>
+
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Appeal Review Channel</label>
+                        <p class="setup-form-desc">Channel where appeal requests are posted for staff review</p>
+                        <input type="text" class="setup-form-input" id="appealReviewChannel" placeholder="Select a channel...">
+                    </div>
+
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Appeal Cooldown (Hours)</label>
+                        <p class="setup-form-desc">Time before a user can submit another appeal</p>
+                        <input type="number" class="setup-form-input" id="appealCooldownHours" value="168" min="24" max="720">
+                        <small style="color: var(--ds-text-muted); display: block; margin-top: 4px;">Default: 168 hours (7 days)</small>
+                    </div>
+
+                    <div class="setup-toggle-row">
+                        <div class="setup-toggle-info">
+                            <h4>Auto-DM Banned Users</h4>
+                            <p>Automatically send appeal instructions when users are banned</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="appealAutoDm" checked><span class="ds-toggle-slider"></span></label>
+                    </div>
+
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Custom Appeal URL</label>
+                        <p class="setup-form-desc">External appeal form link (optional - leave blank to use built-in system)</p>
+                        <input type="url" class="setup-form-input" id="appealUrl" placeholder="https://example.com/appeal">
+                    </div>
+
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Appeal Message Template</label>
+                        <p class="setup-form-desc">Message sent to banned users (use {user}, {server}, {reason})</p>
+                        <textarea class="setup-form-input" id="appealMessageTemplate" rows="4" placeholder="You have been banned from {server}.\n\nReason: {reason}\n\nIf you believe this was a mistake, you can submit an appeal.">You have been banned from {server}.
+
+Reason: {reason}
+
+If you believe this was a mistake, you can submit an appeal.</textarea>
+                    </div>
+
+                    <div class="setup-toggle-row">
+                        <div class="setup-toggle-info">
+                            <h4>Require Appeal Reason</h4>
+                            <p>Users must provide a detailed reason for their appeal</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="appealRequireReason" checked><span class="ds-toggle-slider"></span></label>
+                    </div>
+
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Minimum Appeal Length</label>
+                        <p class="setup-form-desc">Minimum character count for appeal reason</p>
+                        <input type="number" class="setup-form-input" id="appealMinLength" value="50" min="10" max="500">
+                    </div>
+
+                    <div class="alert-info" style="margin-top: var(--ds-space-lg);">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>How Appeals Work:</strong>
+                            <ul style="margin: 8px 0 0 20px;">
+                                <li>Banned users receive a DM with appeal instructions</li>
+                                <li>Appeals are posted to the review channel for staff</li>
+                                <li>Staff can approve, deny, or request more information</li>
+                                <li>Users are notified of the decision via DM</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters Tab -->
+        <div class="tab-content" id="tab-filters">
+            <div class="setup-card configuration-section">
+                <div class="setup-card-header">
+                    <div class="setup-card-title"><i class="fas fa-filter"></i><h3>Content Filters</h3></div>
+                </div>
+                <div class="setup-card-body">
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Caps Lock Limit</label>
+                        <p class="setup-form-desc">Maximum percentage of caps before warning</p>
+                        <div class="range-container">
+                            <input type="range" class="range-input" id="capsPercentage" min="30" max="100" value="70">
+                            <span class="range-value" id="capsValue">70%</span>
+                        </div>
+                    </div>
+
+                    <div class="setup-form-row">
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Emoji Limit</label>
+                            <p class="setup-form-desc">Max emojis per message</p>
+                            <input type="number" class="setup-form-input" id="emojiLimit" value="10" min="3" max="50">
+                        </div>
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Mention Limit</label>
+                            <p class="setup-form-desc">Max mentions per message</p>
+                            <input type="number" class="setup-form-input" id="mentionLimit" value="5" min="1" max="20">
+                        </div>
+                    </div>
+
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Toxicity Threshold</label>
+                        <p class="setup-form-desc">AI toxicity detection sensitivity</p>
+                        <div class="range-container">
+                            <input type="range" class="range-input" id="toxicityThreshold" min="50" max="100" value="80">
+                            <span class="range-value" id="toxicityValue">80%</span>
+                        </div>
+                    </div>
+
+                    <div class="setup-toggle-row">
+                        <div class="setup-toggle-info">
+                            <h4>Detect Duplicate Messages</h4>
+                            <p>Warn users posting the same message repeatedly</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="detectDuplicates" checked><span class="ds-toggle-slider"></span></label>
+                    </div>
+
+                    <div class="setup-toggle-row">
+                        <div class="setup-toggle-info">
+                            <h4>Filter Zalgo Text</h4>
+                            <p>Remove corrupted/glitchy unicode text</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="filterZalgo" checked><span class="ds-toggle-slider"></span></label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Word & Phrase Filter -->
+            <div class="setup-card configuration-section">
+                <div class="setup-card-header">
+                    <div class="setup-card-title"><i class="fas fa-ban"></i><h3>Word & Phrase Filter</h3></div>
+                </div>
+                <div class="setup-card-body">
+                    <div class="setup-toggle-row">
+                        <div class="setup-toggle-info">
+                            <h4>Enable Word Filter</h4>
+                            <p>Automatically filter/block specific words and phrases</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="wordFilterEnabled"><span class="ds-toggle-slider"></span></label>
+                    </div>
+
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Banned Words</label>
+                        <p class="setup-form-desc">Words to block (comma separated). Use * as wildcard.</p>
+                        <textarea class="setup-form-input" id="bannedWords" placeholder="badword, another*, *spam*" style="min-height: 100px; resize: vertical; font-family: 'Courier New', monospace;"></textarea>
+                    </div>
+
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Banned Phrases</label>
+                        <p class="setup-form-desc">Exact phrases to block (one per line)</p>
+                        <textarea class="setup-form-input" id="bannedPhrases" placeholder="free nitro scam&#10;click this link&#10;dm me for prizes" style="min-height: 100px; resize: vertical; font-family: 'Courier New', monospace;"></textarea>
+                    </div>
+
+                    <div class="setup-form-row">
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Word Filter Action</label>
+                            <p class="setup-form-desc">Action when filtered word detected</p>
+                            <select class="setup-form-select" id="wordFilterAction">
+                                <option value="delete">Delete Message</option>
+                                <option value="warn">Delete + Warn User</option>
+                                <option value="mute">Delete + Mute User</option>
+                                <option value="kick">Delete + Kick User</option>
+                            </select>
+                        </div>
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Filter Mode</label>
+                            <p class="setup-form-desc">How strictly to match words</p>
+                            <select class="setup-form-select" id="wordFilterMode">
+                                <option value="exact">Exact Match Only</option>
+                                <option value="contains">Contains Word</option>
+                                <option value="smart">Smart Detection (Bypass Prevention)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="setup-toggle-row">
+                        <div class="setup-toggle-info">
+                            <h4>Filter Display Names</h4>
+                            <p>Also scan usernames and nicknames</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="filterDisplayNames"><span class="ds-toggle-slider"></span></label>
+                    </div>
+
+                    <div class="setup-toggle-row">
+                        <div class="setup-toggle-info">
+                            <h4>Log Filtered Messages</h4>
+                            <p>Send filtered messages to mod log channel</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="logFilteredMessages" checked><span class="ds-toggle-slider"></span></label>
+                    </div>
+
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Custom Filter Message</label>
+                        <p class="setup-form-desc">Custom message shown when a word is filtered (leave blank for default)</p>
+                        <input type="text" class="setup-form-input" id="wordFilterCustomMessage" placeholder="Your message was removed for containing inappropriate content.">
+                    </div>
+
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Whitelisted Channels</label>
+                        <p class="setup-form-desc">Channels where filter is disabled</p>
+                        <input type="hidden" id="wordFilterWhitelistChannels">
+                        <div class="setup-multi-select" id="wordFilterWhitelistChannelsContainer">
+                            <div class="multi-select-loading">Loading channels...</div>
+                        </div>
+                    </div>
+
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Whitelisted Roles</label>
+                        <p class="setup-form-desc">Roles exempt from word filter</p>
+                        <input type="hidden" id="wordFilterWhitelistRoles">
+                        <div class="setup-multi-select" id="wordFilterWhitelistRolesContainer">
+                            <div class="multi-select-loading">Loading roles...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logging Tab -->
+        <div class="tab-content" id="tab-logging">
+            <div class="setup-card configuration-section">
+                <div class="setup-card-header">
+                    <div class="setup-card-title"><i class="fas fa-clipboard-list"></i><h3>Mod Log Settings</h3></div>
+                </div>
+                <div class="setup-card-body">
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Mod Log Channel</label>
+                        <p class="setup-form-desc">Channel to log all moderation actions</p>
+                        <select class="setup-form-select" id="logChannel">
+                            <option value="">Select a channel...</option>
+                        </select>
+                    </div>
+
+                    <div class="setup-toggle-row">
+                        <div class="setup-toggle-info">
+                            <h4>DM User on Warning</h4>
+                            <p>Send a DM when a user receives a warning</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="dmOnWarn" checked><span class="ds-toggle-slider"></span></label>
+                    </div>
+
+                    <div class="setup-toggle-row">
+                        <div class="setup-toggle-info">
+                            <h4>DM User on Kick</h4>
+                            <p>Send a DM when a user is kicked</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="dmOnKick" checked><span class="ds-toggle-slider"></span></label>
+                    </div>
+
+                    <div class="setup-toggle-row">
+                        <div class="setup-toggle-info">
+                            <h4>DM User on Ban</h4>
+                            <p>Send a DM when a user is banned</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="dmOnBan" checked><span class="ds-toggle-slider"></span></label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div class="tab-content" id="tab-settings">
+            <!-- Warning System -->
+            <div class="setup-card configuration-section">
+                <div class="setup-card-header">
+                    <div class="setup-card-title"><i class="fas fa-exclamation-triangle"></i><h3>Warning System</h3></div>
+                </div>
+                <div class="setup-card-body">
+                    <div class="setup-form-row">
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Max Warnings</label>
+                            <p class="setup-form-desc">Warnings before automatic action</p>
+                            <input type="number" class="setup-form-input" id="maxWarnings" value="3" min="1" max="10">
+                        </div>
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Warning Action</label>
+                            <p class="setup-form-desc">Action when max warnings reached</p>
+                            <select class="setup-form-select" id="warningAction">
+                                <option value="none">No Action</option>
+                                <option value="timeout">Timeout (1 hour)</option>
+                                <option value="kick">Kick from Server</option>
+                                <option value="ban">Ban from Server</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Warning Expiry</label>
+                        <p class="setup-form-desc">Days until warnings expire (0 = never)</p>
+                        <input type="number" class="setup-form-input" id="warningExpiry" value="30" min="0" max="365">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Staff Roles -->
+            <div class="setup-card configuration-section">
+                <div class="setup-card-header">
+                    <div class="setup-card-title"><i class="fas fa-user-shield"></i><h3>Staff Roles</h3></div>
+                </div>
+                <div class="setup-card-body">
+                    <div class="setup-form-row">
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Moderator Role</label>
+                            <p class="setup-form-desc">Role with moderator permissions</p>
+                            <select class="setup-form-select" id="modRole">
+                                <option value="">Select a role...</option>
+                            </select>
+                        </div>
+                        <div class="setup-form-group">
+                            <label class="setup-form-label">Admin Role</label>
+                            <p class="setup-form-desc">Role with administrator permissions</p>
+                            <select class="setup-form-select" id="adminRole">
+                                <option value="">Select a role...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="setup-toggle-row">
+                        <div class="setup-toggle-info">
+                            <h4>Exempt Staff from Auto-Mod</h4>
+                            <p>Staff roles bypass auto-moderation filters</p>
+                        </div>
+                        <label class="ds-toggle"><input type="checkbox" id="exemptStaff" checked><span class="ds-toggle-slider"></span></label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exemptions Tab -->
+        <div class="tab-content" id="tab-exempt">
+            <div class="setup-card configuration-section">
+                <div class="setup-card-header">
+                    <div class="setup-card-title"><i class="fas fa-user-shield"></i><h3>Exemptions</h3></div>
+                </div>
+                <div class="setup-card-body">
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Exempt Roles</label>
+                        <p class="setup-form-desc">Roles that bypass auto-moderation</p>
+                        <div class="setup-multi-select" id="exemptRolesContainer">
+                            <div class="setup-multi-loading"><i class="fas fa-spinner fa-spin"></i> Loading roles...</div>
+                        </div>
+                    </div>
+
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Exempt Channels</label>
+                        <p class="setup-form-desc">Channels where auto-mod is disabled</p>
+                        <div class="setup-multi-select" id="exemptChannelsContainer">
+                            <div class="setup-multi-loading"><i class="fas fa-spinner fa-spin"></i> Loading channels...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <div style="display: flex; justify-content: flex-end; gap: var(--ds-space-md); margin-top: var(--ds-space-lg);">
+            <a href="/dashboard" class="ds-btn ds-btn-secondary"><i class="fas fa-times"></i> Cancel</a>
+            <button class="ds-btn ds-btn-primary" id="saveBtn" onclick="saveSettings()"><i class="fas fa-save"></i> Save Settings</button>
+        </div>
+
+        <div class="setup-status-msg" id="statusMsg"></div>
+    </main>
+
+    <script src="/js/secure-auth.js"></script>
+    <script>
+        const guildId = localStorage.getItem('selectedGuildId');
+        if (!guildId) { alert('Please select a server first'); window.location.href = '/dashboard'; }
+
+        // Tab switching
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.setup-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Range sliders
+        document.getElementById('capsPercentage').addEventListener('input', function() {
+            document.getElementById('capsValue').textContent = this.value + '%';
+        });
+        document.getElementById('toxicityThreshold').addEventListener('input', function() {
+            document.getElementById('toxicityValue').textContent = this.value + '%';
+        });
+
+        function updateFeatureState(enabled) {
+            const banner = document.getElementById('featureDisabledBanner');
+            const statusEl = document.getElementById('featureStatus');
+            const configSections = document.querySelectorAll('.configuration-section');
+            
+            if (enabled) {
+                banner.style.display = 'none';
+                statusEl.className = 'setup-status enabled';
+                statusEl.innerHTML = '<i class="fas fa-circle" style="font-size: 8px;"></i><span>Enabled</span>';
+                configSections.forEach(s => s.classList.remove('disabled'));
+            } else {
+                banner.style.display = 'flex';
+                statusEl.className = 'setup-status disabled';
+                statusEl.innerHTML = '<i class="fas fa-circle" style="font-size: 8px;"></i><span>Disabled</span>';
+                configSections.forEach(s => s.classList.add('disabled'));
+            }
+        }
+
+        document.getElementById('autoModEnabled').addEventListener('change', function() {
+            updateFeatureState(this.checked);
+        });
+
+        let channels = [];
+        let roles = [];
+
+        async function loadChannelsAndRoles() {
+            try {
+                const [chRes, roleRes] = await Promise.all([
+                    fetch(`/api/guild/${guildId}/channels`, { credentials: 'include' }),
+                    fetch(`/api/guild/${guildId}/roles`, { credentials: 'include' })
+                ]);
+                
+                const chData = await chRes.json();
+                const roleData = await roleRes.json();
+                
+                channels = (chData.data?.channels || chData.channels || chData || []).filter(ch => ch.type === 0);
+                roles = (roleData.data?.roles || roleData.roles || roleData || []).filter(r => r.name !== '@everyone');
+                
+                // Log channel dropdown
+                const logSelect = document.getElementById('logChannel');
+                channels.forEach(ch => {
+                    const opt = document.createElement('option');
+                    opt.value = ch.id;
+                    opt.textContent = '#' + ch.name;
+                    logSelect.appendChild(opt);
+                });
+
+                // Staff role dropdowns
+                const modRoleSelect = document.getElementById('modRole');
+                const adminRoleSelect = document.getElementById('adminRole');
+                roles.forEach(r => {
+                    const opt1 = document.createElement('option');
+                    opt1.value = r.id;
+                    opt1.textContent = '@' + r.name;
+                    modRoleSelect.appendChild(opt1);
+                    
+                    const opt2 = document.createElement('option');
+                    opt2.value = r.id;
+                    opt2.textContent = '@' + r.name;
+                    adminRoleSelect.appendChild(opt2);
+                });
+
+                renderChannelMultiSelect();
+                renderRoleMultiSelect();
+            } catch (e) { console.error('Failed to load channels/roles:', e); }
+        }
+
+        function renderChannelMultiSelect() {
+            const container = document.getElementById('wordFilterWhitelistChannelsContainer');
+            const selectedIds = (document.getElementById('wordFilterWhitelistChannels').value || '').split(',').filter(Boolean);
+            
+            if (!channels.length) {
+                container.innerHTML = '<div class="multi-select-loading">No text channels found</div>';
+                return;
+            }
+            
+            container.innerHTML = channels.map(ch => {
+                const isSelected = selectedIds.includes(ch.id);
+                return `
+                    <label class="setup-multi-item ${isSelected ? 'selected' : ''}" data-id="${ch.id}">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleItem('wordFilterWhitelistChannels', '${ch.id}', this)">
+                        <span class="setup-multi-name">#${ch.name}</span>
+                        <span class="setup-multi-id">${ch.id}</span>
+                    </label>
+                `;
+            }).join('');
+        }
+        
+        function renderRoleMultiSelect() {
+            const container = document.getElementById('wordFilterWhitelistRolesContainer');
+            const selectedIds = (document.getElementById('wordFilterWhitelistRoles').value || '').split(',').filter(Boolean);
+            
+            if (!roles.length) {
+                container.innerHTML = '<div class="multi-select-loading">No roles found</div>';
+                return;
+            }
+            
+            container.innerHTML = roles.map(r => {
+                const isSelected = selectedIds.includes(r.id);
+                const colorStyle = r.color ? `style="color: #${r.color.toString(16).padStart(6, '0')}"` : '';
+                return `
+                    <label class="setup-multi-item ${isSelected ? 'selected' : ''}" data-id="${r.id}">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleItem('wordFilterWhitelistRoles', '${r.id}', this)">
+                        <span class="setup-multi-name" ${colorStyle}>@${r.name}</span>
+                        <span class="setup-multi-id">${r.id}</span>
+                    </label>
+                `;
+            }).join('');
+        }
+        
+        function toggleItem(inputId, id, checkbox) {
+            const input = document.getElementById(inputId);
+            let ids = (input.value || '').split(',').filter(Boolean);
+            
+            if (checkbox.checked) {
+                if (!ids.includes(id)) ids.push(id);
+            } else {
+                ids = ids.filter(i => i !== id);
+            }
+            
+            input.value = ids.join(',');
+            checkbox.closest('.setup-multi-item').classList.toggle('selected', checkbox.checked);
+        }
+
+        async function loadSettings() {
+            try {
+                const res = await fetch(`/api/guild/${guildId}/settings`, { credentials: 'include' });
+                const response = await res.json();
+                const data = response.data || response;
+                
+                const enabled = data.auto_mod_enabled || false;
+                document.getElementById('autoModEnabled').checked = enabled;
+                
+                // XP & Levels
+                document.getElementById('xpEnabled').checked = data.xp_enabled || false;
+                document.getElementById('xpPerMessage').value = data.xp_per_message || 15;
+                document.getElementById('xpCooldown').value = data.xp_cooldown || 60;
+                document.getElementById('levelUpChannel').value = data.level_up_channel || '';
+                document.getElementById('xpMultiplier').value = data.xp_multiplier || 1;
+                document.getElementById('voiceXpEnabled').checked = data.voice_xp_enabled || false;
+                document.getElementById('voiceXpPerMinute').value = data.voice_xp_per_minute || 5;
+                document.getElementById('minVoiceTime').value = data.min_voice_time || 60;
+                document.getElementById('levelAnnouncement').checked = data.level_announcement !== false;
+                document.getElementById('levelUpMessage').value = data.level_up_message || '';
+                
+                // Timeouts
+                document.getElementById('autoTimeoutEnabled').checked = data.auto_timeout_enabled || false;
+                document.getElementById('defaultTimeoutDuration').value = data.default_timeout_duration || 60;
+                document.getElementById('maxTimeoutDuration').value = data.max_timeout_duration || 40320;
+                document.getElementById('spamTimeoutDuration').value = data.spam_timeout_duration || 5;
+                document.getElementById('toxicityTimeoutDuration').value = data.toxicity_timeout_duration || 30;
+                document.getElementById('dmTimeoutNotification').checked = data.dm_timeout_notification !== false;
+                
+                // Warnings
+                document.getElementById('warningSystemEnabled').checked = data.warning_system_enabled !== false;
+                document.getElementById('warningsBeforeTimeout').value = data.warnings_before_timeout || 3;
+                document.getElementById('warningsBeforeKick').value = data.warnings_before_kick || 5;
+                document.getElementById('dmWarningNotification').checked = data.dm_warning_notification !== false;
+                
+                // Appeals
+                document.getElementById('appealSystemEnabled').checked = data.appeal_system_enabled || false;
+                document.getElementById('appealReviewChannel').value = data.appeal_review_channel || '';
+                document.getElementById('appealCooldownHours').value = data.appeal_cooldown_hours || 168;
+                document.getElementById('appealAutoDm').checked = data.appeal_auto_dm !== false;
+                document.getElementById('appealUrl').value = data.appeal_url || '';
+                document.getElementById('appealMessageTemplate').value = data.appeal_message_template || 'You have been banned from {server}.\n\nReason: {reason}\n\nIf you believe this was a mistake, you can submit an appeal.';
+                document.getElementById('appealRequireReason').checked = data.appeal_require_reason !== false;
+                document.getElementById('appealMinLength').value = data.appeal_min_length || 50;
+                
+                // Filters
+                document.getElementById('capsPercentage').value = data.caps_percentage || 70;
+                document.getElementById('capsValue').textContent = (data.caps_percentage || 70) + '%';
+                document.getElementById('emojiLimit').value = data.emoji_limit || 10;
+                document.getElementById('mentionLimit').value = data.mention_limit || 5;
+                document.getElementById('toxicityThreshold').value = data.toxicity_threshold || 80;
+                document.getElementById('toxicityValue').textContent = (data.toxicity_threshold || 80) + '%';
+                document.getElementById('detectDuplicates').checked = data.detect_duplicates !== false;
+                document.getElementById('filterZalgo').checked = data.filter_zalgo !== false;
+                document.getElementById('filterZalgo').checked = data.filter_zalgo !== false;
+                
+                // Word filter settings
+                document.getElementById('wordFilterEnabled').checked = data.word_filter_enabled || false;
+                document.getElementById('bannedWords').value = data.banned_words || '';
+                document.getElementById('bannedPhrases').value = data.banned_phrases || '';
+                document.getElementById('wordFilterAction').value = data.word_filter_action || 'delete';
+                document.getElementById('wordFilterMode').value = data.word_filter_mode || 'contains';
+                document.getElementById('filterDisplayNames').checked = data.filter_display_names || false;
+                document.getElementById('logFilteredMessages').checked = data.log_filtered_messages !== false;
+                document.getElementById('wordFilterCustomMessage').value = data.word_filter_custom_message || '';
+                document.getElementById('wordFilterWhitelistChannels').value = data.word_filter_whitelist_channels || '';
+                document.getElementById('wordFilterWhitelistRoles').value = data.word_filter_whitelist_roles || '';
+                
+                // Re-render multi-selects with loaded values
+                renderChannelMultiSelect();
+                renderRoleMultiSelect();
+                
+                document.getElementById('logChannel').value = data.mod_log_channel || '';
+                document.getElementById('dmOnWarn').checked = data.dm_on_warn !== false;
+                document.getElementById('dmOnKick').checked = data.dm_on_kick !== false;
+                document.getElementById('dmOnBan').checked = data.dm_on_ban !== false;
+                
+                // Warning system
+                document.getElementById('maxWarnings').value = data.max_warnings || 3;
+                document.getElementById('warningAction').value = data.warning_action || 'timeout';
+                document.getElementById('warningExpiry').value = data.warning_expiry_days || 30;
+                
+                // Staff roles
+                document.getElementById('modRole').value = data.mod_role_id || '';
+                document.getElementById('adminRole').value = data.admin_role_id || '';
+                document.getElementById('exemptStaff').checked = data.exempt_staff_automod !== false;
+                
+                updateFeatureState(enabled);
+            } catch (e) { console.error('Failed to load settings:', e); }
+        }
+
+        async function saveSettings() {
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            
+            try {
+                const settings = {
+                    auto_mod_enabled: document.getElementById('autoModEnabled').checked,
+                    
+                    // XP & Levels
+                    xp_enabled: document.getElementById('xpEnabled').checked,
+                    xp_per_message: parseInt(document.getElementById('xpPerMessage').value),
+                    xp_cooldown: parseInt(document.getElementById('xpCooldown').value),
+                    level_up_channel: document.getElementById('levelUpChannel').value,
+                    xp_multiplier: parseFloat(document.getElementById('xpMultiplier').value),
+                    voice_xp_enabled: document.getElementById('voiceXpEnabled').checked,
+                    voice_xp_per_minute: parseInt(document.getElementById('voiceXpPerMinute').value),
+                    min_voice_time: parseInt(document.getElementById('minVoiceTime').value),
+                    level_announcement: document.getElementById('levelAnnouncement').checked,
+                    level_up_message: document.getElementById('levelUpMessage').value,
+                    
+                    // Timeouts
+                    auto_timeout_enabled: document.getElementById('autoTimeoutEnabled').checked,
+                    default_timeout_duration: parseInt(document.getElementById('defaultTimeoutDuration').value),
+                    max_timeout_duration: parseInt(document.getElementById('maxTimeoutDuration').value),
+                    spam_timeout_duration: parseInt(document.getElementById('spamTimeoutDuration').value),
+                    toxicity_timeout_duration: parseInt(document.getElementById('toxicityTimeoutDuration').value),
+                    dm_timeout_notification: document.getElementById('dmTimeoutNotification').checked,
+                    
+                    // Warnings
+                    warning_system_enabled: document.getElementById('warningSystemEnabled').checked,
+                    warnings_before_timeout: parseInt(document.getElementById('warningsBeforeTimeout').value),
+                    warnings_before_kick: parseInt(document.getElementById('warningsBeforeKick').value),
+                    dm_warning_notification: document.getElementById('dmWarningNotification').checked,
+                    
+                    // Appeals
+                    appeal_system_enabled: document.getElementById('appealSystemEnabled').checked,
+                    appeal_review_channel: document.getElementById('appealReviewChannel').value,
+                    appeal_cooldown_hours: parseInt(document.getElementById('appealCooldownHours').value),
+                    appeal_auto_dm: document.getElementById('appealAutoDm').checked,
+                    appeal_url: document.getElementById('appealUrl').value,
+                    appeal_message_template: document.getElementById('appealMessageTemplate').value,
+                    appeal_require_reason: document.getElementById('appealRequireReason').checked,
+                    appeal_min_length: parseInt(document.getElementById('appealMinLength').value),
+                    
+                    // Filters
+                    caps_percentage: parseInt(document.getElementById('capsPercentage').value),
+                    emoji_limit: parseInt(document.getElementById('emojiLimit').value),
+                    mention_limit: parseInt(document.getElementById('mentionLimit').value),
+                    toxicity_threshold: parseInt(document.getElementById('toxicityThreshold').value),
+                    detect_duplicates: document.getElementById('detectDuplicates').checked,
+                    filter_zalgo: document.getElementById('filterZalgo').checked,
+                    
+                    // Word Filter settings
+                    word_filter_enabled: document.getElementById('wordFilterEnabled').checked,
+                    banned_words: document.getElementById('bannedWords').value,
+                    banned_phrases: document.getElementById('bannedPhrases').value,
+                    word_filter_action: document.getElementById('wordFilterAction').value,
+                    word_filter_mode: document.getElementById('wordFilterMode').value,
+                    filter_display_names: document.getElementById('filterDisplayNames').checked,
+                    log_filtered_messages: document.getElementById('logFilteredMessages').checked,
+                    word_filter_custom_message: document.getElementById('wordFilterCustomMessage').value,
+                    word_filter_whitelist_channels: document.getElementById('wordFilterWhitelistChannels').value,
+                    word_filter_whitelist_roles: document.getElementById('wordFilterWhitelistRoles').value,
+                    
+                    mod_log_channel: document.getElementById('logChannel').value,
+                    dm_on_warn: document.getElementById('dmOnWarn').checked,
+                    dm_on_kick: document.getElementById('dmOnKick').checked,
+                    dm_on_ban: document.getElementById('dmOnBan').checked,
+                    
+                    // Warning system
+                    max_warnings: parseInt(document.getElementById('maxWarnings').value),
+                    warning_action: document.getElementById('warningAction').value,
+                    warning_expiry_days: parseInt(document.getElementById('warningExpiry').value),
+                    
+                    // Staff roles
+                    mod_role_id: document.getElementById('modRole').value,
+                    admin_role_id: document.getElementById('adminRole').value,
+                    exempt_staff_automod: document.getElementById('exemptStaff').checked
+                };
+
+                const res = await SecureAuth.fetch(`/api/guild/${guildId}/settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(settings)
+                });
+                
+                const response = await res.json();
+                if (res.ok && response.success !== false) {
+                    showStatus('success', 'Settings saved successfully!');
+                } else {
+                    throw new Error(response.error || 'Failed to save');
+                }
+            } catch (e) {
+                showStatus('error', e.message || 'Failed to save settings');
+            }
+            
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Save Settings';
+        }
+
+        function showStatus(type, message) {
+            const msg = document.getElementById('statusMsg');
+            msg.className = 'setup-status-msg ' + type;
+            msg.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
+            if (type === 'success') setTimeout(() => msg.className = 'setup-status-msg', 4000);
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadChannelsAndRoles();
+            await loadSettings();
+        });
+    </script>
+</body>
+</html>
