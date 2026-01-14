@@ -32,44 +32,20 @@
         "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src": "'self' https://fonts.gstatic.com",
         "img-src": "'self' data:",
-        "connect-src": "'self'"
+        "connect-src": "'self' https://darklock.net"
       },
       "freezePrototype": true,
       "dangerousDisableAssetCspModification": false
     }
   },
   "plugins": {
-    "dialog": {
-      "all": false,
-      "open": true,
-      "save": true,
-      "message": true,
-      "ask": true
-    },
-    "fs": {
-      "all": false,
-      "readFile": true,
-      "writeFile": false,
-      "readDir": true,
-      "copyFile": false,
-      "createDir": false,
-      "removeDir": false,
-      "removeFile": false,
-      "renameFile": false,
-      "exists": true,
-      "scope": {
-        "allow": ["$APPDATA/**", "$HOME/**", "$RESOURCE/**"],
-        "deny": ["$APPDATA/secrets/**"]
-      }
-    },
-    "notification": {
-      "all": true
-    },
-    "shell": {
-      "all": false,
-      "execute": false,
-      "sidecar": false,
-      "open": false
+    "updater": {
+      "active": true,
+      "dialog": true,
+      "pubkey": "",
+      "endpoints": [
+        "https://darklock.net/platform/api/updates/{{target}}/{{current_version}}"
+      ]
     }
   },
   "bundle": {

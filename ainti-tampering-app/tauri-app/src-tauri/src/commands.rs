@@ -44,7 +44,7 @@ pub struct UserInfo {
 pub async fn login(email: String, password: String, app: AppHandle) -> std::result::Result<LoginResponse, String> {
     // Send login request to darklock.net platform
     let api_url = std::env::var("DARKLOCK_API_URL")
-        .unwrap_or_else(|_| "http://localhost:3002".to_string());
+        .unwrap_or_else(|_| "https://darklock.net".to_string());
     let login_url = format!("{}/platform/auth/api/login", api_url);
     
     let client = reqwest::Client::new();
@@ -58,10 +58,12 @@ pub async fn login(email: String, password: String, app: AppHandle) -> std::resu
         .await
         .map_err(|e| format!("Network error: {}", e))?;
 
-    if response.status().is_success() {
+    let status = response.status();
+    
+    if status.is_success() {
         let login_data: serde_json::Value = response.json()
             .await
-            .map_err(|e| format!("Parse error: {}", e))?;
+            .map_err(|e| format!("Failed to parse server response: {}", e))?;
 
         if let Some(token) = login_data["token"].as_str() {
             // Store token securely
@@ -85,9 +87,18 @@ pub async fn login(email: String, password: String, app: AppHandle) -> std::resu
         }
     }
 
+    // Handle error responses
+    let error_msg = if status.as_u16() == 401 {
+        "Invalid email or password".to_string()
+    } else if status.as_u16() >= 500 {
+        "Server error. Please try again later.".to_string()
+    } else {
+        format!("Login failed with status: {}", status)
+    };
+
     Ok(LoginResponse {
         success: false,
-        error: Some("Invalid email or password".to_string()),
+        error: Some(error_msg),
         user: None,
     })
 }

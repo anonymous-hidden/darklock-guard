@@ -219,6 +219,16 @@ export class SettingsView {
         <p class="text-sm text-darklock-text-secondary mb-4">
           Advanced file integrity monitoring and tamper detection for security-critical systems.
         </p>
+        
+        <!-- Update Check Button -->
+        <button 
+          id="checkUpdateBtn"
+          class="btn btn-secondary w-full mb-4"
+        >
+          ${icon('refresh', 'w-4 h-4')}
+          <span>Check for Updates</span>
+        </button>
+        
         <div class="space-y-2 text-sm">
           <div class="flex items-center justify-between py-2 border-t border-darklock-border">
             <span class="text-darklock-text-muted">Platform</span>

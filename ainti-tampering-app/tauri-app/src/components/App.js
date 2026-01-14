@@ -92,6 +92,12 @@ export class App {
         this.handleToggle(key);
       });
     });
+    
+    // Update check button
+    const updateBtn = document.getElementById('checkUpdateBtn');
+    if (updateBtn) {
+      updateBtn.addEventListener('click', () => this.checkForUpdates());
+    }
   }
 
   async handleAction(action, data) {
@@ -181,5 +187,41 @@ export class App {
     
     // Persist to backend
     this.api.updateSettings(settings).catch(console.error);
+  }
+
+  async checkForUpdates() {
+    const updateBtn = document.getElementById('checkUpdateBtn');
+    if (!updateBtn) return;
+    
+    const originalHTML = updateBtn.innerHTML;
+    updateBtn.disabled = true;
+    updateBtn.innerHTML = '<span class="loading-spinner"></span><span>Checking...</span>';
+    
+    try {
+      const { check } = await import('@tauri-apps/plugin-updater');
+      const { relaunch } = await import('@tauri-apps/plugin-process');
+      
+      const update = await check();
+      
+      if (update?.available) {
+        const yes = confirm(
+          `Update available: ${update.version}\n\n${update.body}\n\nWould you like to download and install it now?`
+        );
+        
+        if (yes) {
+          updateBtn.innerHTML = '<span class="loading-spinner"></span><span>Downloading...</span>';
+          await update.downloadAndInstall();
+          await relaunch();
+        }
+      } else {
+        alert('You are already using the latest version!');
+      }
+    } catch (error) {
+      console.error('Update check failed:', error);
+      alert(`Failed to check for updates: ${error.message || error}`);
+    } finally {
+      updateBtn.disabled = false;
+      updateBtn.innerHTML = originalHTML;
+    }
   }
 }
