@@ -107,6 +107,12 @@ export class App {
       case 'scan':
         await this.runScan();
         break;
+      case 'scan-path':
+        await this.scanPath(data.pathId);
+        break;
+      case 'view-tree':
+        await this.viewFileTree(data.pathId);
+        break;
       case 'add-path':
         await this.addProtectedPath();
         break;
@@ -116,8 +122,14 @@ export class App {
       case 'export-report':
         await this.exportReport();
         break;
+      case 'export-events':
+        await this.exportEvents();
+        break;
       case 'verify-chain':
         await this.verifyEventChain();
+        break;
+      case 'logout':
+        await this.logout();
         break;
       default:
         console.warn('Unknown action:', action);
@@ -174,8 +186,64 @@ export class App {
     try {
       const result = await this.api.verifyEventChain();
       this.store.setState({ eventChainValid: result.valid });
+      
+      if (result.valid) {
+        alert('✓ Event chain integrity verified - All events are authentic');
+      } else {
+        alert('⚠ Event chain integrity check FAILED - Tampering detected!');
+      }
     } catch (error) {
       console.error('Failed to verify event chain:', error);
+      alert('Failed to verify event chain: ' + error);
+    }
+  }
+
+  async scanPath(pathId) {
+    if (!pathId) return;
+    
+    try {
+      const result = await this.api.scanPath(pathId);
+      const paths = await this.api.getProtectedPaths();
+      this.store.setState({ protectedPaths: paths });
+      
+      alert(`Scan completed for path:\nVerified: ${result.verified}\nModified: ${result.modified}`);
+    } catch (error) {
+      console.error('Failed to scan path:', error);
+      alert('Failed to scan path: ' + error);
+    }
+  }
+
+  async viewFileTree(pathId) {
+    if (!pathId) return;
+    
+    try {
+      const tree = await this.api.getFileTree(pathId);
+      console.log('File tree:', tree);
+      // TODO: Show file tree in a modal or separate view
+      alert('File tree view - Coming soon!\nCheck console for tree data.');
+    } catch (error) {
+      console.error('Failed to get file tree:', error);
+      alert('Failed to load file tree: ' + error);
+    }
+  }
+
+  async exportEvents() {
+    try {
+      await this.api.exportReport('json');
+      alert('Events exported successfully!');
+    } catch (error) {
+      console.error('Failed to export events:', error);
+      alert('Failed to export events: ' + error);
+    }
+  }
+
+  async logout() {
+    try {
+      await this.api.logout();
+      window.location.href = 'login.html';
+    } catch (error) {
+      console.error('Logout failed:', error);
+      alert('Failed to logout: ' + error);
     }
   }
 

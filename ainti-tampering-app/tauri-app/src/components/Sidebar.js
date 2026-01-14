@@ -43,8 +43,17 @@ export class Sidebar {
         </nav>
 
         <!-- Status Footer -->
-        <div class="p-4 border-t border-darklock-border">
+        <div class="p-4 border-t border-darklock-border space-y-3">
           ${this.renderStatusIndicator(state)}
+          
+          <!-- Logout Button -->
+          <button 
+            data-action="logout" 
+            class="w-full btn-secondary flex items-center justify-center gap-2 text-sm py-2"
+          >
+            ${icon('logOut', 'w-4 h-4')}
+            <span>Logout</span>
+          </button>
         </div>
       </aside>
     `;

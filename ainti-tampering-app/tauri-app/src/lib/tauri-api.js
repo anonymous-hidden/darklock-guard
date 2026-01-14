@@ -193,4 +193,13 @@ export class TauriAPI {
   async exportReport(format = 'json') {
     return this._invoke('export_report', { format });
   }
+
+  // ========== Authentication ==========
+
+  /**
+   * Logout user
+   */
+  async logout() {
+    return this._invoke('logout');
+  }
 }
