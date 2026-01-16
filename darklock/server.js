@@ -773,9 +773,11 @@ class DarklockPlatform {
         existingApp.use('/platform/auth', authRoutes);
         
         // Admin auth routes (/signin, /signout, /admin)
+        console.log('[Darklock Platform] Registering admin auth routes at /');
         existingApp.use('/', adminAuthRoutes);
         
         // Admin API routes (protected)
+        console.log('[Darklock Platform] Registering admin API routes at /admin/api');
         existingApp.use('/admin/api', adminApiRoutes);
         
         // Admin dashboard (protected) - Full dashboard

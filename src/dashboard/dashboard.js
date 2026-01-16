@@ -2003,12 +2003,20 @@ The DarkLock Team`
             console.error('[Dashboard] ⚠️ Failed to mount Darklock Platform:', err);
         }
 
-        // 404 handler (MUST be last, but exclude admin routes)
-        this.app.use((req, res, next) => {
-            // Let admin routes through
-            if (req.path.startsWith('/signin') || req.path.startsWith('/admin') || req.path.startsWith('/signout')) {
-                return next();
+        // 404 handler (MUST be last) - only for non-Darklock routes
+        this.app.use((req, res) => {
+            // Check if this looks like a Darklock/admin route
+            const isDarklockRoute = req.path.startsWith('/signin') || 
+                                   req.path.startsWith('/signout') || 
+                                   req.path.startsWith('/admin') || 
+                                   req.path.startsWith('/platform') || 
+                                   req.path.startsWith('/api/public');
+            
+            if (isDarklockRoute) {
+                console.log(`[Dashboard] 404 for Darklock route: ${req.method} ${req.path}`);
+                // This means the route wasn't registered - log it
             }
+            
             res.status(404).json({ error: 'Not found' });
         });
 
