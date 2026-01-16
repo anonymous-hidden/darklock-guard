@@ -467,7 +467,22 @@ class DarklockPlatform {
         existingApp.use('/platform/downloads', express.static(path.join(__dirname, 'downloads')));
         
         // Avatars folder for user avatars
-        const avatformat = req.query.format || 'exe';
+        const avatarsPath = path.join(process.env.DATA_PATH || path.join(__dirname, 'data'), 'avatars');
+        existingApp.use('/platform/avatars', express.static(avatarsPath));
+        
+        // Main homepage
+        existingApp.get('/platform', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/home.html'));
+        });
+        
+        // Darklock Guard - Download page
+        existingApp.get('/platform/download/darklock-guard', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/download-page.html'));
+        });
+        
+        // Darklock Guard - Actual installer download
+        existingApp.get('/platform/api/download/darklock-guard-installer', (req, res) => {
+            const format = req.query.format || 'exe';
             const fs = require('fs');
             
             // Check downloads folder first (committed installers)
@@ -555,22 +570,7 @@ class DarklockPlatform {
                 console.error(`[Darklock] Error reading downloads folder:`, err.message);
             }
             
-            // None existh = path.join(__dirname, '../ainti-tampering-app/tauri-app/src-tauri/target/debug/darklock-guard.exe');
-            const fs = require('fs');
-            
-            // Check for release installer first
-            if (fs.existsSync(installerPath)) {
-                console.log(`[Darklock] Installer downloaded by IP: ${req.ip}`);
-                return res.download(installerPath, 'DarklockGuard-Setup.msi');
-            }
-            
-            // Fallback to debug executable if release not built yet
-            if (fs.existsSync(debugExePath)) {
-                console.log(`[Darklock] Debug executable downloaded by IP: ${req.ip}`);
-                return res.download(debugExePath, 'darklock-guard.exe');
-            }
-            
-            // Neither exists
+            // None exist
             return res.status(503).send(`
                 <html>
                     <head>
