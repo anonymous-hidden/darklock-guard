@@ -85,22 +85,35 @@ export class EventsView {
     return `
       <div class="flex items-center gap-4">
         <div class="flex items-center gap-2 bg-darklock-bg-secondary rounded-lg p-1">
-          <button class="px-3 py-1.5 rounded-md bg-darklock-bg-active text-darklock-text-primary text-sm font-medium">
+          <button 
+            data-filter="all" 
+            class="event-filter-btn px-3 py-1.5 rounded-md bg-darklock-bg-active text-darklock-text-primary text-sm font-medium"
+          >
             All Events
           </button>
-          <button class="px-3 py-1.5 rounded-md text-darklock-text-secondary hover:text-darklock-text-primary text-sm">
+          <button 
+            data-filter="scans" 
+            class="event-filter-btn px-3 py-1.5 rounded-md text-darklock-text-secondary hover:text-darklock-text-primary text-sm"
+          >
             Scans
           </button>
-          <button class="px-3 py-1.5 rounded-md text-darklock-text-secondary hover:text-darklock-text-primary text-sm">
+          <button 
+            data-filter="modifications" 
+            class="event-filter-btn px-3 py-1.5 rounded-md text-darklock-text-secondary hover:text-darklock-text-primary text-sm"
+          >
             Modifications
           </button>
-          <button class="px-3 py-1.5 rounded-md text-darklock-text-secondary hover:text-darklock-text-primary text-sm">
+          <button 
+            data-filter="alerts" 
+            class="event-filter-btn px-3 py-1.5 rounded-md text-darklock-text-secondary hover:text-darklock-text-primary text-sm"
+          >
             Alerts
           </button>
         </div>
         <div class="flex-1"></div>
         <div class="relative">
           <input 
+            id="eventSearchInput"
             type="text" 
             placeholder="Search events..." 
             class="input pl-10 w-64"

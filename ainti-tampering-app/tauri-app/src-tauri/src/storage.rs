@@ -18,6 +18,7 @@ use crate::crypto::{SigningKeyPair, hash_file, merkle_root};
 
 /// Protected path entry
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProtectedPath {
     pub id: String,
     pub path: String,

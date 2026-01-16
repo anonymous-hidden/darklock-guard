@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+=- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -56,6 +56,105 @@
             color: #a8b2d1;
             line-height: 1.6;
             margin-bottom: 30px;
+        }
+
+        .download-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .download-card {
+            background: rgba(10, 14, 39, 0.6);
+            border: 1px solid rgba(124, 77, 255, 0.3);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .download-card:hover {
+            border-color: rgba(124, 77, 255, 0.6);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(124, 77, 255, 0.2);
+        }
+
+        .platform-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 16px;
+            color: #7c4dff;
+        }
+
+        .platform-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .platform-desc {
+            font-size: 13px;
+            color: #a8b2d1;
+            margin-bottom: 20px;
+        }
+
+        .installer-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .installer-btn {
+            display: block;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #7c4dff, #00d4ff);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .installer-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(124, 77, 255, 0.4);
+        }
+
+        .installer-btn.secondary {
+            background: rgba(124, 77, 255, 0.2);
+            border: 1px solid rgba(124, 77, 255, 0.4);
+        }
+
+        .installer-btn.secondary:hover {
+            background: rgba(124, 77, 255, 0.3);
+        }
+
+        .installer-format {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .coming-soon {
+            background: rgba(255, 152, 0, 0.1);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .coming-soon-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(255, 152, 0, 0.2);
+            border-radius: 12px;
+            font-size: 11px;
+            color: #ffa726;
+            margin-top: 12px;
         }
 
         .features {
@@ -139,7 +238,7 @@
         <div class="version">Version 1.0.0</div>
 
         <p class="description">
-            Advanced file integrity monitoring and tamper detection for Windows. 
+            Advanced file integrity monitoring and tamper detection. 
             Protect your critical files with real-time monitoring, automatic restoration, 
             and encrypted backups.
         </p>
@@ -171,13 +270,53 @@
             </div>
         </div>
 
-        <a href="/platform/api/download/darklock-guard-installer" class="download-btn">
-            Download for Windows
-        </a>
+        <div class="download-options">
+            <!-- Windows -->
+            <div class="download-card">
+                <svg class="platform-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+                </svg>
+                <div class="platform-name">Windows</div>
+                <div class="platform-desc">Windows 10/11 (64-bit)</div>
+                <div class="installer-options">
+                    <a href="/platform/api/download/darklock-guard-installer?format=exe" class="installer-btn">
+                        Download Setup (.exe)
+                        <div class="installer-format">Recommended</div>
+                    </a>
+                    <a href="/platform/api/download/darklock-guard-installer?format=msi" class="installer-btn secondary">
+                        Download MSI
+                        <div class="installer-format">Alternative installer</div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Linux -->
+            <div class="download-card">
+                <svg class="platform-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.84-.41 1.738-.41 2.655 0 .87.527 2.23 1.065 2.877.521.623 1.303.952 2.145.952.84 0 1.608-.329 2.131-.952.539-.647 1.064-2.006 1.064-2.877 0-.917-.132-1.815-.41-2.655-.589-1.771-1.831-3.47-2.715-4.521-.75-1.067-.975-1.928-1.05-3.02-.066-1.491 1.055-5.965-3.17-6.298-.165-.013-.325-.021-.48-.021zm-2.658 16.156c-1.108 0-1.95.701-1.95 1.699 0 .998.842 1.7 1.95 1.7 1.109 0 1.952-.702 1.952-1.7 0-.998-.843-1.699-1.952-1.699zm5.171 0c-1.108 0-1.95.701-1.95 1.699 0 .998.842 1.7 1.95 1.7 1.109 0 1.952-.702 1.952-1.7 0-.998-.843-1.699-1.952-1.699z"/>
+                </svg>
+                <div class="platform-name">Linux</div>
+                <div class="platform-desc">Ubuntu, Debian, Fedora</div>
+                <div class="installer-options">
+                    <a href="/platform/api/download/darklock-guard-installer?format=deb" class="installer-btn">
+                        Download .deb
+                        <div class="installer-format">Debian/Ubuntu</div>
+                    </a>
+                    <a href="/platform/api/download/darklock-guard-installer?format=rpm" class="installer-btn secondary">
+                        Download .rpm
+                        <div class="installer-format">Fedora/RHEL</div>
+                    </a>
+                    <a href="/platform/api/download/darklock-guard-installer?format=tar" class="installer-btn secondary">
+                        Download .tar.gz
+                        <div class="installer-format">Portable Archive</div>
+                    </a>
+                </div>
+            </div>
+        </div>
 
         <div class="system-requirements">
             <strong>System Requirements:</strong><br>
-            Windows 10/11 (64-bit) • 100 MB disk space
+            100 MB disk space • Internet connection for updates
         </div>
 
         <a href="/platform" class="back-link">← Back to Platform</a>

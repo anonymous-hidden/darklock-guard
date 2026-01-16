@@ -19,7 +19,7 @@ const CRITICAL_HASHES = {
     'file-protection/agent/validator.js': '832fc82fe3a4d0c777f51f5a413198ee3f2709fd9a1d5b6c575c28136ebdf67d',
     'file-protection/agent/baseline-manager.js': 'a86c1e22a7ee3bb99f2a374ab6f4ecb9ca31c906e17d12285b1ab82c92278a41',
     'file-protection/agent/response-handler.js': 'f4061527f5e62087f7d0e4e2c77e0c0b2ea93de8917ae780053f7c94b41c8ba5',
-    'file-protection/agent/constants.js': '8ffcde524879a87f516afe2e009695011280e3355b90626e15becb1db28a7bc8'
+    'file-protection/agent/constants.js': 'fbd542244a24c092face3a3951629eeb4650a7dde7bc23b4c1cec79c38f87f1e'
 };
 
 const hashFileSync = (filePath) => {
@@ -259,6 +259,9 @@ class SecurityBot {
             this.database = new Database();
             await this.database.initialize();
             this.database.attachBot(this);
+            
+            // Give database time to fully initialize
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             // Initialize logger with database reference
             this.logger = new Logger(this);
@@ -2421,15 +2424,27 @@ class SecurityBot {
     }
 
     async shutdown() {
-        this.logger.info('🔄 Shutting down bot...');
+        if (this.logger && typeof this.logger.info === 'function') {
+            this.logger.info('🔄 Shutting down bot...');
+        } else {
+            console.log('🔄 Shutting down bot...');
+        }
 
         if (this.dashboard && this.dashboard.server) {
             try {
                 this.dashboard.server.close(() => {
-                    this.logger.info('Dashboard shutdown complete');
+                    if (this.logger && typeof this.logger.info === 'function') {
+                        this.logger.info('Dashboard shutdown complete');
+                    } else {
+                        console.log('Dashboard shutdown complete');
+                    }
                 });
             } catch (error) {
-                this.logger.warn('Dashboard shutdown error:', error.message);
+                if (this.logger && typeof this.logger.warn === 'function') {
+                    this.logger.warn('Dashboard shutdown error:', error.message);
+                } else {
+                    console.warn('Dashboard shutdown error:', error.message);
+                }
             }
         }
 
@@ -2438,7 +2453,12 @@ class SecurityBot {
         }
 
         this.client.destroy();
-        this.logger.info('✅ Bot shutdown complete');
+        
+        if (this.logger && typeof this.logger.info === 'function') {
+            this.logger.info('✅ Bot shutdown complete');
+        } else {
+            console.log('✅ Bot shutdown complete');
+        }
     }
 
     formatWelcomeMessage(messageTemplate, member) {

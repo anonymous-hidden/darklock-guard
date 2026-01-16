@@ -7,6 +7,7 @@ export class FilesView {
   constructor({ store, api }) {
     this.store = store;
     this.api = api;
+    this.isTauri = api.ready;
   }
 
   render() {
@@ -21,7 +22,7 @@ export class FilesView {
             <h2 class="text-2xl font-bold text-darklock-text-primary">Protected Files</h2>
             <p class="text-darklock-text-secondary mt-1">Browse and manage protected directories</p>
           </div>
-          <button data-action="add-path" class="btn btn-primary flex items-center gap-2">
+          <button data-action="add-path" class="btn btn-primary flex items-center gap-2" ${!this.isTauri ? 'disabled title="File system access is only available in the desktop app"' : ''}>
             ${icon('plus')}
             <span>Add Path</span>
           </button>
@@ -44,10 +45,11 @@ export class FilesView {
             Add directories to protect and monitor their file integrity. 
             Any unauthorized modifications will be detected and logged.
           </p>
-          <button data-action="add-path" class="btn btn-primary">
+          <button data-action="add-path" class="btn btn-primary" ${!this.isTauri ? 'disabled title="File system access is only available in the desktop app"' : ''}>
             ${icon('plus', 'inline mr-2')}
             Add Your First Path
           </button>
+          ${!this.isTauri ? '<p class="text-darklock-text-muted text-sm mt-4">💡 Download the desktop app to add and monitor protected paths</p>' : ''}
         </div>
       </div>
     `;

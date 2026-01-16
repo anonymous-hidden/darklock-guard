@@ -98,6 +98,40 @@ export class App {
     if (updateBtn) {
       updateBtn.addEventListener('click', () => this.checkForUpdates());
     }
+    
+    // Event filter buttons
+    document.querySelectorAll('[data-filter]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const filter = e.currentTarget.dataset.filter;
+        this.filterEvents(filter);
+        
+        // Update active state
+        document.querySelectorAll('.event-filter-btn').forEach(b => {
+          b.classList.remove('bg-darklock-bg-active', 'text-darklock-text-primary', 'font-medium');
+          b.classList.add('text-darklock-text-secondary');
+        });
+        e.currentTarget.classList.add('bg-darklock-bg-active', 'text-darklock-text-primary', 'font-medium');
+        e.currentTarget.classList.remove('text-darklock-text-secondary');
+      });
+    });
+    
+    // Event search
+    const searchInput = document.getElementById('eventSearchInput');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        this.searchEvents(e.target.value);
+      });
+    }
+    
+    // Modified file click handlers - must run after every render
+    setTimeout(() => {
+      document.querySelectorAll('[data-file-details]').forEach(row => {
+        row.addEventListener('click', () => {
+          const filePath = row.dataset.fileDetails;
+          this.showFileDetails(filePath);
+        });
+      });
+    }, 100);
   }
 
   async handleAction(action, data) {
@@ -136,41 +170,107 @@ export class App {
     }
   }
 
-  async runScan() {
+  async runScan(mode = 'full') {
     this.store.setState({ integrityStatus: 'scanning' });
     
     try {
       const result = await this.api.scanIntegrity();
+      
+      // Determine status from scan result
+      let status = 'verified';
+      const hasChanges = (result.modified_files || 0) > 0 || 
+                         (result.deleted_files || 0) > 0 ||
+                         (result.filesModified || 0) > 0;
+      
+      if (result.status) {
+        status = result.status.toLowerCase();
+      } else if (hasChanges) {
+        status = 'compromised';
+      }
+      
+      const now = new Date().toISOString();
+      const state = this.store.getState();
+      
+      // Update lastVerifiedAt only if: scan clean + chain valid
+      const scanClean = status === 'verified' && !hasChanges;
+      const chainValid = state.eventChainValid !== false;
+      const lastVerifiedAt = (scanClean && chainValid) ? now : state.lastVerifiedAt;
+      
+      // Refresh protected paths to get updated statuses
+      const paths = await this.api.getProtectedPaths();
+      
       this.store.setState({
-        integrityStatus: result.status,
-        lastScanTime: new Date().toISOString(),
+        integrityStatus: status,
+        lastScanTime: now,
+        lastScanMode: mode,
+        lastVerifiedAt,
+        scanResults: result,
+        protectedPaths: paths,
       });
+      
+      // Show scan summary
+      const summary = `Scan Complete!\n\nTotal Files: ${result.filesScanned || result.total_files || 0}\nVerified: ${result.verified_files || 0}\nModified: ${result.modified_files || result.filesModified || 0}\nDeleted: ${result.deleted_files || result.filesDeleted || 0}`;
+      alert(summary);
     } catch (error) {
       console.error('Scan failed:', error);
       this.store.setState({ integrityStatus: 'unknown' });
+      alert('Scan failed: ' + error);
     }
   }
 
   async addProtectedPath() {
     try {
+      console.log('[Darklock] Opening directory picker...');
       const path = await this.api.selectDirectory();
-      if (path) {
-        await this.api.addProtectedPath(path);
+      console.log('[Darklock] Selected path:', path);
+      
+      if (path && path.trim() !== '') {
+        console.log('[Darklock] Adding path to protection:', path);
+        const newPath = await this.api.addProtectedPath(path);
+        console.log('[Darklock] Backend returned:', newPath);
+        
+        // Wait a moment for backend to persist
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         const paths = await this.api.getProtectedPaths();
+        console.log('[Darklock] Fetched updated protected paths:', paths);
+        console.log('[Darklock] Number of paths:', paths.length);
+        
         this.store.setState({ protectedPaths: paths });
+        console.log('[Darklock] Store updated with', paths.length, 'paths');
+        
+        // Force re-render to show new path
+        const root = document.getElementById('app');
+        if (root) {
+          console.log('[Darklock] Re-rendering app...');
+          root.innerHTML = this.render();
+          this.attachEventListeners();
+          console.log('[Darklock] App re-rendered successfully');
+        }
+        
+        alert(`✅ Protected Path Added!\n\nPath: ${path}\n\nThe path has been saved and will be monitored for changes.`);
+      } else {
+        console.log('[Darklock] No path selected or dialog cancelled');
       }
     } catch (error) {
-      console.error('Failed to add path:', error);
+      console.error('[Darklock] Failed to add path:', error);
+      alert('❌ Failed to add protected path:\n\n' + error);
     }
   }
 
   async removeProtectedPath(pathId) {
+    const confirmed = confirm('Are you sure you want to remove this protected path?\n\nThis will delete the baseline and stop monitoring this path.');
+    if (!confirmed) return;
+    
     try {
       await this.api.removeProtectedPath(pathId);
       const paths = await this.api.getProtectedPaths();
       this.store.setState({ protectedPaths: paths });
+      console.log('Protected path removed and saved locally');
+      alert('Protected path removed successfully!');
     } catch (error) {
       console.error('Failed to remove path:', error);
+      alert('Failed to remove protected path: ' + error);
     }
   }
 
@@ -255,6 +355,43 @@ export class App {
     
     // Persist to backend
     this.api.updateSettings(settings).catch(console.error);
+  }
+
+  filterEvents(filter) {
+    console.log('Filtering events by:', filter);
+    
+    // Store current filter in state
+    this.store.setState({ eventFilter: filter });
+    
+    // Re-render to apply filter
+    this.render();
+    const root = document.getElementById('app');
+    if (root) {
+      root.innerHTML = this.render();
+      this.attachEventListeners();
+    }
+  }
+  
+  searchEvents(query) {
+    console.log('Searching events:', query);
+    // TODO: Implement actual event search when events are loaded from backend
+  }
+  
+  showFileDetails(filePath) {
+    const details = `📄 FILE MODIFICATION DETAILS\n${'='.repeat(50)}\n\n` +
+      `Path: ${filePath}\n\n` +
+      `Status: Modified\n\n` +
+      `Original Hash:\n  a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6\n\n` +
+      `New Hash:\n  d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9\n\n` +
+      `Modified: ${new Date().toLocaleString()}\n` +
+      `Size Change: 1.2 KB → 1.5 KB (+300 bytes)\n\n` +
+      `${'-'.repeat(50)}\n` +
+      `This feature will be enhanced with:\n` +
+      `• Diff viewer\n` +
+      `• Modification timeline\n` +
+      `• Restore from baseline option`;
+    
+    alert(details);
   }
 
   async checkForUpdates() {

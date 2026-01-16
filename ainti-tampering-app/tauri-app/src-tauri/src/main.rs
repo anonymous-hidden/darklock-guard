@@ -16,6 +16,7 @@ mod storage;
 mod event_chain;
 mod crypto;
 mod error;
+mod protection;
 
 use commands::{
     initialize, get_protected_paths, add_protected_path, remove_protected_path,
@@ -25,6 +26,14 @@ use commands::{
     select_directory, export_report,
     login, check_login, logout,
     SharedState,
+};
+use protection::commands::{
+    protection_add_path, protection_remove_path, protection_get_paths,
+    protection_get_path_summary, protection_scan_path, protection_scan_all,
+    protection_accept_changes, protection_get_diffs, protection_verify_chain,
+    protection_get_events, protection_get_status, protection_reset_baseline,
+    protection_clear_events, protection_export_public_key, protection_is_chain_valid,
+    init_protection_state,
 };
 use storage::AppState;
 use event_chain::{EventChain, EventType, EventSeverity};
@@ -39,6 +48,10 @@ fn main() {
     let signing_key = app_state.signing_key().cloned();
     
     let state: SharedState = Arc::new(RwLock::new(app_state));
+    
+    // Initialize protection state (new EDR-lite system)
+    let protection_state = init_protection_state()
+        .expect("Failed to initialize protection system");
 
     // Log application start
     if let Ok(mut chain) = EventChain::new(&data_dir, max_events) {
@@ -58,6 +71,7 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(state)
+        .manage(protection_state)
         .invoke_handler(tauri::generate_handler![
             // Authentication
             login,
@@ -67,18 +81,18 @@ fn main() {
             // Initialization
             initialize,
             
-            // Protected paths
+            // Protected paths (legacy)
             get_protected_paths,
             add_protected_path,
             remove_protected_path,
             
-            // Integrity scanning
+            // Integrity scanning (legacy)
             scan_integrity,
             scan_path,
             get_file_tree,
             verify_file,
             
-            // Event chain
+            // Event chain (legacy)
             get_events,
             verify_event_chain,
             
@@ -89,6 +103,23 @@ fn main() {
             // File operations
             select_directory,
             export_report,
+            
+            // === New Protection System (EDR-lite) ===
+            protection_add_path,
+            protection_remove_path,
+            protection_get_paths,
+            protection_get_path_summary,
+            protection_scan_path,
+            protection_scan_all,
+            protection_accept_changes,
+            protection_get_diffs,
+            protection_verify_chain,
+            protection_get_events,
+            protection_get_status,
+            protection_reset_baseline,
+            protection_clear_events,
+            protection_export_public_key,
+            protection_is_chain_valid,
         ])
         .run(tauri::generate_context!())
         .expect("Error running Darklock Guard");

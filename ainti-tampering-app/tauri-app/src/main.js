@@ -16,10 +16,13 @@ const store = new Store({
   protectedPaths: [],
   integrityStatus: 'unknown', // 'verified' | 'compromised' | 'unknown'
   lastScanTime: null,
+  lastScanMode: null, // 'quick' | 'full' | 'paranoid'
+  lastVerifiedAt: null, // Only set when: scan clean + chain valid
   
   // Event chain state
   events: [],
   eventChainValid: true,
+  eventFilter: 'all', // 'all' | 'scans' | 'modifications' | 'alerts'
   
   // Settings
   settings: {
@@ -63,6 +66,28 @@ async function init() {
     });
     
     console.log('[Darklock Guard] Initialized successfully');
+    
+    // Auto-refresh status on launch if we have protected paths
+    if (initData.protectedPaths && initData.protectedPaths.length > 0) {
+      console.log('[Darklock Guard] Running startup integrity check...');
+      store.setState({ integrityStatus: 'scanning' });
+      
+      try {
+        const statusResult = await api.refreshStatus();
+        console.log('[Darklock Guard] Status refresh complete:', statusResult);
+        
+        store.setState({
+          integrityStatus: statusResult.status || 'unknown',
+          lastScanTime: statusResult.lastScanTime || store.state.lastScanTime,
+        });
+        
+        console.log('[Darklock Guard] Status updated to:', statusResult.status);
+      } catch (statusError) {
+        console.warn('[Darklock Guard] Startup status check failed:', statusError);
+        // Don't fail initialization, just keep unknown status
+        store.setState({ integrityStatus: 'unknown' });
+      }
+    }
   } catch (error) {
     console.error('[Darklock Guard] Initialization failed:', error);
     store.setState({

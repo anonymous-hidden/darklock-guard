@@ -222,4 +222,123 @@ router.get('/api/apps', requireAuth, (req, res) => {
     }
 });
 
+// ============================================================================
+// DEVICE STATUS API (Receives data FROM Darklock Guard desktop app)
+// ============================================================================
+
+/**
+ * GET /api/devices/status
+ * Returns status of all connected Darklock Guard instances
+ * 
+ * ARCHITECTURE NOTE:
+ * - Data is PUSHED by the desktop app to this server
+ * - This endpoint only READS stored device reports
+ * - No file access or security operations happen here
+ */
+router.get('/api/devices/status', requireAuth, async (req, res) => {
+    try {
+        const devicesFile = path.join(DATA_DIR, 'device-status.json');
+        const deviceData = await safeReadJSON(devicesFile, { devices: [], events: [], lastSync: null });
+        
+        // Filter devices for this user only
+        const userDevices = (deviceData.devices || []).filter(d => d.userId === req.user.userId);
+        const userEvents = (deviceData.events || []).filter(e => e.userId === req.user.userId).slice(0, 50);
+        
+        res.json({
+            success: true,
+            devices: userDevices,
+            events: userEvents,
+            lastSync: deviceData.lastSync
+        });
+    } catch (err) {
+        console.error('[Darklock Dashboard] Device status error:', err);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to load device status'
+        });
+    }
+});
+
+/**
+ * POST /api/devices/sync
+ * Receives status updates FROM Darklock Guard desktop app
+ * 
+ * ARCHITECTURE NOTE:
+ * - The desktop app calls this endpoint to PUSH its status
+ * - This is the ONLY way device data gets to the website
+ * - The website cannot pull or request scans
+ * 
+ * Expected payload from desktop app:
+ * {
+ *   deviceId: string,
+ *   deviceName: string,
+ *   status: 'secure' | 'changed' | 'compromised' | 'offline',
+ *   paths: { verified: number, changed: number, error: number },
+ *   totalFiles: number,
+ *   lastVerified: ISO timestamp,
+ *   appVersion: string,
+ *   events: [{ timestamp, type, message, severity }]
+ * }
+ */
+router.post('/api/devices/sync', requireAuth, async (req, res) => {
+    try {
+        const { deviceId, deviceName, status, paths, totalFiles, lastVerified, appVersion, events } = req.body;
+        
+        if (!deviceId) {
+            return res.status(400).json({ success: false, error: 'Device ID required' });
+        }
+        
+        const devicesFile = path.join(DATA_DIR, 'device-status.json');
+        const deviceData = await safeReadJSON(devicesFile, { devices: [], events: [] });
+        
+        // Find or create device entry
+        const deviceIndex = deviceData.devices.findIndex(d => d.deviceId === deviceId && d.userId === req.user.userId);
+        const deviceEntry = {
+            deviceId,
+            userId: req.user.userId,
+            name: deviceName || 'Unknown Device',
+            status: status || 'offline',
+            paths: paths || { verified: 0, changed: 0, error: 0 },
+            totalFiles: totalFiles || 0,
+            lastVerified: lastVerified || null,
+            lastSync: new Date().toISOString(),
+            appVersion: appVersion || 'Unknown'
+        };
+        
+        if (deviceIndex >= 0) {
+            deviceData.devices[deviceIndex] = deviceEntry;
+        } else {
+            deviceData.devices.push(deviceEntry);
+        }
+        
+        // Append events (from app)
+        if (events && Array.isArray(events)) {
+            const newEvents = events.map(e => ({
+                ...e,
+                userId: req.user.userId,
+                deviceId,
+                receivedAt: new Date().toISOString()
+            }));
+            deviceData.events = [...newEvents, ...deviceData.events].slice(0, 500); // Keep last 500 events
+        }
+        
+        deviceData.lastSync = new Date().toISOString();
+        
+        // Save
+        const { atomicWriteJSON } = require('../utils/security');
+        await atomicWriteJSON(devicesFile, deviceData);
+        
+        res.json({
+            success: true,
+            message: 'Device status synced'
+        });
+    } catch (err) {
+        console.error('[Darklock Dashboard] Device sync error:', err);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to sync device status'
+        });
+    }
+});
+
 module.exports = { router, requireAuth };

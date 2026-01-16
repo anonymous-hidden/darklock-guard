@@ -178,16 +178,35 @@ pub async fn add_protected_path(
     path: String,
     state: State<'_, SharedState>,
 ) -> std::result::Result<crate::storage::ProtectedPath, String> {
+    println!("[Darklock] add_protected_path called with: {}", path);
+    
     // Validate path
     if path.is_empty() {
+        println!("[Darklock] Error: Path is empty");
         return Err("Path cannot be empty".to_string());
     }
     
+    // Trim any whitespace
+    let path = path.trim().to_string();
+    println!("[Darklock] Trimmed path: {}", path);
+    
+    // Check if path exists
+    if !std::path::Path::new(&path).exists() {
+        println!("[Darklock] Error: Path does not exist: {}", path);
+        return Err(format!("Path does not exist: {}", path));
+    }
+    
     let mut state = state.write();
+    println!("[Darklock] State lock acquired");
     
     // Add path
     let protected_path = state.add_protected_path(path.clone())
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            println!("[Darklock] Error adding path: {}", e);
+            e.to_string()
+        })?;
+    
+    println!("[Darklock] Path added successfully, ID: {}", protected_path.id);
     
     // Log event
     let mut chain = EventChain::new(state.data_dir(), state.settings.max_event_history)
@@ -567,12 +586,26 @@ pub async fn update_settings(
 /// Open directory selection dialog
 #[tauri::command]
 pub async fn select_directory(app: AppHandle) -> std::result::Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    
     let result = app.dialog()
         .file()
         .set_title("Select Directory to Protect")
         .blocking_pick_folder();
     
-    Ok(result.map(|p| p.to_string()))
+    match result {
+        Some(path) => {
+            // Convert FilePath to String - get the path as PathBuf first
+            let path_buf = path.as_path().ok_or_else(|| "Invalid path".to_string())?;
+            let path_str = path_buf.to_string_lossy().to_string();
+            println!("[Darklock] Directory selected: {}", path_str);
+            Ok(Some(path_str))
+        }
+        None => {
+            println!("[Darklock] Directory selection cancelled");
+            Ok(None)
+        }
+    }
 }
 
 /// Export integrity report

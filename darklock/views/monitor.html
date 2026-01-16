@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Darklock Guard - Web Monitor</title>
+    <title>Darklock Guard - Device Monitor</title>
     <link rel="stylesheet" href="/platform/static/css/dashboard.css">
     <style>
         .monitor-container {
@@ -32,6 +32,37 @@
             margin: 0;
             color: #a8b2d1;
             font-size: 14px;
+        }
+
+        .architecture-notice {
+            background: rgba(124, 77, 255, 0.1);
+            border: 1px solid rgba(124, 77, 255, 0.3);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .architecture-notice svg {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            color: #7c4dff;
+        }
+
+        .architecture-notice-content h4 {
+            margin: 0 0 6px 0;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .architecture-notice-content p {
+            margin: 0;
+            color: #a8b2d1;
+            font-size: 13px;
+            line-height: 1.5;
         }
 
         .status-grid {
@@ -65,8 +96,9 @@
         .status-value.success { color: #4caf50; }
         .status-value.warning { color: #ff9800; }
         .status-value.danger { color: #f44336; }
+        .status-value.offline { color: #666; }
 
-        .protected-files-list {
+        .device-status-card {
             background: rgba(26, 31, 58, 0.95);
             border: 1px solid rgba(124, 77, 255, 0.3);
             border-radius: 12px;
@@ -74,59 +106,97 @@
             margin-bottom: 30px;
         }
 
-        .protected-files-list h2 {
+        .device-status-card h2 {
             margin: 0 0 20px 0;
             font-size: 20px;
             color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .file-item {
+        .device-item {
             background: rgba(10, 14, 39, 0.6);
             border: 1px solid rgba(124, 77, 255, 0.2);
             border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .device-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            margin-bottom: 15px;
         }
 
-        .file-info {
-            flex: 1;
-        }
-
-        .file-path {
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-            color: #fff;
-            margin-bottom: 5px;
-        }
-
-        .file-meta {
-            font-size: 12px;
-            color: #a8b2d1;
-        }
-
-        .file-status {
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
+        .device-name {
+            font-size: 16px;
             font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .file-status.protected {
+        .device-status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .device-status-badge.secure {
             background: rgba(76, 175, 80, 0.2);
             color: #4caf50;
         }
 
-        .file-status.modified {
+        .device-status-badge.changed {
             background: rgba(255, 152, 0, 0.2);
             color: #ff9800;
         }
 
-        .file-status.deleted {
+        .device-status-badge.compromised {
             background: rgba(244, 67, 54, 0.2);
             color: #f44336;
+        }
+
+        .device-status-badge.offline {
+            background: rgba(102, 102, 102, 0.2);
+            color: #888;
+        }
+
+        .device-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .device-stat {
+            text-align: center;
+        }
+
+        .device-stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .device-stat-label {
+            font-size: 11px;
+            color: #a8b2d1;
+            text-transform: uppercase;
+        }
+
+        .device-meta {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+            color: #a8b2d1;
+            border-top: 1px solid rgba(124, 77, 255, 0.2);
+            padding-top: 15px;
         }
 
         .activity-log {
@@ -178,10 +248,23 @@
             opacity: 0.5;
         }
 
-        .refresh-btn {
+        .empty-state h3 {
+            color: #fff;
+            margin: 0 0 10px 0;
+        }
+
+        .empty-state p {
+            margin: 0 0 20px 0;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        .download-btn {
             background: linear-gradient(135deg, #7c4dff, #00d4ff);
             border: none;
-            padding: 10px 20px;
+            padding: 12px 24px;
             border-radius: 6px;
             color: #fff;
             font-weight: 600;
@@ -189,153 +272,244 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 20px;
+            text-decoration: none;
         }
 
-        .refresh-btn:hover {
+        .download-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(124, 77, 255, 0.4);
         }
 
-        .loading-spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+        .source-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 12px;
+            font-size: 11px;
+            color: #00d4ff;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .last-sync {
+            font-size: 12px;
+            color: #a8b2d1;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
     <div class="monitor-container">
         <div class="monitor-header">
-            <h1>Darklock Guard - Web Monitor</h1>
-            <p>Real-time monitoring of protected files (read-only view)</p>
+            <h1>Darklock Guard - Device Monitor</h1>
+            <p>View protection status from your connected devices (read-only)</p>
         </div>
 
-        <button class="refresh-btn" onclick="refreshData()">
-            <span id="refreshIcon">↻</span>
-            Refresh Data
-        </button>
-
-        <div class="status-grid">
-            <div class="status-card">
-                <h3>Protected Files</h3>
-                <div class="status-value" id="totalFiles">-</div>
-            </div>
-            <div class="status-card">
-                <h3>Intact</h3>
-                <div class="status-value success" id="intactFiles">-</div>
-            </div>
-            <div class="status-card">
-                <h3>Modified</h3>
-                <div class="status-value warning" id="modifiedFiles">-</div>
-            </div>
-            <div class="status-card">
-                <h3>Deleted</h3>
-                <div class="status-value danger" id="deletedFiles">-</div>
+        <!-- Architecture Notice -->
+        <div class="architecture-notice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 16v-4"/>
+                <path d="M12 8h.01"/>
+            </svg>
+            <div class="architecture-notice-content">
+                <h4>Security Architecture</h4>
+                <p>
+                    All file protection, scanning, and integrity verification happens <strong>locally on your device</strong> via Darklock Guard.
+                    This web dashboard only displays status reports pushed from the app. 
+                    The website cannot access, scan, or modify your files.
+                </p>
             </div>
         </div>
 
-        <div class="protected-files-list">
-            <h2>Protected Files</h2>
-            <div id="filesList">
+        <!-- Device Status -->
+        <div class="device-status-card">
+            <h2>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+                Connected Devices
+            </h2>
+            
+            <div id="devicesList">
+                <!-- Populated by app sync or shows empty state -->
+            </div>
+        </div>
+
+        <!-- Activity Log (from app) -->
+        <div class="activity-log">
+            <h2>
+                Activity Log 
+                <span class="source-badge">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    From Darklock Guard
+                </span>
+            </h2>
+            <div id="activityLog">
+                <!-- Populated by app sync -->
+            </div>
+            <div class="last-sync" id="lastSyncTime">Waiting for device sync...</div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Device Monitor - Read-Only View
+         * 
+         * ARCHITECTURE:
+         * - This page ONLY displays data pushed FROM the desktop app
+         * - No file operations happen on the web
+         * - Data source: App → API → This page
+         * - The app is the source of truth
+         */
+
+        // Check for connected devices
+        async function loadDeviceStatus() {
+            try {
+                const response = await fetch('/platform/api/devices/status', {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    renderDevices(data.devices || []);
+                    renderActivityLog(data.events || []);
+                    updateLastSync(data.lastSync);
+                } else {
+                    renderEmptyState();
+                }
+            } catch (err) {
+                console.error('Failed to load device status:', err);
+                renderEmptyState();
+            }
+        }
+
+        function renderDevices(devices) {
+            const container = document.getElementById('devicesList');
+            
+            if (!devices || devices.length === 0) {
+                renderEmptyState();
+                return;
+            }
+
+            container.innerHTML = devices.map(device => `
+                <div class="device-item">
+                    <div class="device-header">
+                        <div class="device-name">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                <line x1="8" y1="21" x2="16" y2="21"/>
+                                <line x1="12" y1="17" x2="12" y2="21"/>
+                            </svg>
+                            ${escapeHtml(device.name || 'Unknown Device')}
+                        </div>
+                        <span class="device-status-badge ${device.status}">${device.status.toUpperCase()}</span>
+                    </div>
+                    <div class="device-stats">
+                        <div class="device-stat">
+                            <div class="device-stat-value">${device.paths?.verified || 0}</div>
+                            <div class="device-stat-label">Verified</div>
+                        </div>
+                        <div class="device-stat">
+                            <div class="device-stat-value">${device.paths?.changed || 0}</div>
+                            <div class="device-stat-label">Changed</div>
+                        </div>
+                        <div class="device-stat">
+                            <div class="device-stat-value">${device.paths?.error || 0}</div>
+                            <div class="device-stat-label">Error</div>
+                        </div>
+                        <div class="device-stat">
+                            <div class="device-stat-value">${device.totalFiles || 0}</div>
+                            <div class="device-stat-label">Files</div>
+                        </div>
+                    </div>
+                    <div class="device-meta">
+                        <span>Last verified: ${device.lastVerified || 'Never'}</span>
+                        <span>Last sync: ${device.lastSync || 'Never'}</span>
+                        <span>App version: ${device.appVersion || 'Unknown'}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderEmptyState() {
+            document.getElementById('devicesList').innerHTML = `
                 <div class="empty-state">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                     </svg>
-                    <p>No desktop app data available.<br>Install and run Darklock Guard to see protected files.</p>
+                    <h3>No Devices Connected</h3>
+                    <p>
+                        Install Darklock Guard on your computer to enable file integrity protection.
+                        This dashboard will display status reports once the app is connected.
+                    </p>
+                    <a href="/platform/download" class="download-btn">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Download Darklock Guard
+                    </a>
                 </div>
-            </div>
-        </div>
+            `;
 
-        <div class="activity-log">
-            <h2>Recent Activity</h2>
-            <div id="activityLog">
+            document.getElementById('activityLog').innerHTML = `
                 <div class="empty-state">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
                         <path d="M12 6v6l4 2"/>
                     </svg>
-                    <p>No activity logs available yet.</p>
+                    <p>Activity logs will appear here once a device is connected.</p>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // Mock data for demonstration
-        // In production, this would fetch from the desktop app's API or database
-        function refreshData() {
-            const refreshIcon = document.getElementById('refreshIcon');
-            refreshIcon.innerHTML = '<span class="loading-spinner"></span>';
-
-            // Simulate API call
-            setTimeout(() => {
-                updateStats();
-                updateFilesList();
-                updateActivityLog();
-                refreshIcon.innerHTML = '↻';
-            }, 1000);
+            `;
         }
 
-        function updateStats() {
-            document.getElementById('totalFiles').textContent = '12';
-            document.getElementById('intactFiles').textContent = '10';
-            document.getElementById('modifiedFiles').textContent = '2';
-            document.getElementById('deletedFiles').textContent = '0';
-        }
-
-        function updateFilesList() {
-            const mockFiles = [
-                { path: 'C:\\Program Files\\MyApp\\config.json', status: 'protected', lastCheck: '2 minutes ago' },
-                { path: 'C:\\Program Files\\MyApp\\database.sqlite', status: 'protected', lastCheck: '2 minutes ago' },
-                { path: 'C:\\Windows\\System32\\important.dll', status: 'modified', lastCheck: '5 minutes ago' },
-                { path: 'D:\\Projects\\secret.key', status: 'protected', lastCheck: '10 minutes ago' },
-            ];
-
-            const filesList = document.getElementById('filesList');
-            filesList.innerHTML = mockFiles.map(file => `
-                <div class="file-item">
-                    <div class="file-info">
-                        <div class="file-path">${file.path}</div>
-                        <div class="file-meta">Last checked: ${file.lastCheck}</div>
+        function renderActivityLog(events) {
+            const container = document.getElementById('activityLog');
+            
+            if (!events || events.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p>No recent activity from connected devices.</p>
                     </div>
-                    <div class="file-status ${file.status}">${file.status.toUpperCase()}</div>
+                `;
+                return;
+            }
+
+            container.innerHTML = events.map(event => `
+                <div class="log-entry ${event.severity || ''}">
+                    <div class="log-time">${event.timestamp || ''}</div>
+                    <div class="log-message">${escapeHtml(event.message || '')}</div>
                 </div>
             `).join('');
         }
 
-        function updateActivityLog() {
-            const mockLogs = [
-                { time: '2 minutes ago', message: 'Integrity scan completed - All files intact', type: 'success' },
-                { time: '5 minutes ago', message: 'File modification detected: important.dll', type: 'warning' },
-                { time: '10 minutes ago', message: 'Backup created successfully', type: 'success' },
-                { time: '15 minutes ago', message: 'Started monitoring 12 protected files', type: '' },
-            ];
-
-            const activityLog = document.getElementById('activityLog');
-            activityLog.innerHTML = mockLogs.map(log => `
-                <div class="log-entry ${log.type}">
-                    <div class="log-time">${log.time}</div>
-                    <div class="log-message">${log.message}</div>
-                </div>
-            `).join('');
+        function updateLastSync(timestamp) {
+            const el = document.getElementById('lastSyncTime');
+            if (timestamp) {
+                el.textContent = `Last sync: ${new Date(timestamp).toLocaleString()}`;
+            } else {
+                el.textContent = 'Waiting for device sync...';
+            }
         }
 
-        // Initialize with mock data
-        updateStats();
-        updateFilesList();
-        updateActivityLog();
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
 
-        // Auto-refresh every 30 seconds
-        setInterval(refreshData, 30000);
+        // Initialize
+        loadDeviceStatus();
+
+        // Poll for updates every 30 seconds
+        setInterval(loadDeviceStatus, 30000);
     </script>
 </body>
 </html>

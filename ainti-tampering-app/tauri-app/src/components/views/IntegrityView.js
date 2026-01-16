@@ -241,7 +241,11 @@ export class IntegrityView {
             </thead>
             <tbody>
               ${modifiedFiles.map(file => `
-                <tr>
+                <tr 
+                  class="cursor-pointer hover:bg-darklock-bg-hover transition-colors" 
+                  data-file-details="${file.path}"
+                  title="Click to view modification details"
+                >
                   <td>
                     <div class="flex items-center gap-2">
                       ${icon('file', 'w-4 h-4 text-darklock-text-muted')}

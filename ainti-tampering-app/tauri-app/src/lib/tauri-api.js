@@ -79,6 +79,22 @@ export class TauriAPI {
           { name: 'Cargo.toml', type: 'file', hash: 'g7h8i9...', status: 'verified' },
         ],
       },
+      // Protection system mocks
+      'protection_get_status': 'verified',
+      'protection_scan_all': [
+        {
+          scanId: 'mock-scan-1',
+          pathId: '1',
+          status: 'verified',
+          totals: { totalFiles: 156, verifiedFiles: 156, modifiedFiles: 0, deletedFiles: 0, newFiles: 0, durationMs: 1200 },
+          durationMs: 1200,
+        },
+      ],
+      'protection_get_paths': [
+        { id: '1', path: 'C:\\Projects\\MyApp', displayName: 'My App', fileCount: 156, status: 'verified' },
+        { id: '2', path: 'C:\\Config\\Sensitive', displayName: 'Sensitive Config', fileCount: 23, status: 'verified' },
+      ],
+      'protection_is_chain_valid': true,
     };
 
     return Promise.resolve(mocks[cmd] || null);
@@ -201,5 +217,146 @@ export class TauriAPI {
    */
   async logout() {
     return this._invoke('logout');
+  }
+
+  // ========== Protection System (EDR-lite) ==========
+
+  /**
+   * Get overall protection status
+   * Returns: 'secure' | 'compromised' | 'unknown' | 'scanning'
+   */
+  async getProtectionStatus() {
+    return this._invoke('protection_get_status');
+  }
+
+  /**
+   * Run quick scan on all protected paths to update status
+   * @param {string} mode - 'quick' | 'full' | 'paranoid' (default: 'quick')
+   */
+  async quickScan(mode = 'quick') {
+    return this._invoke('protection_scan_all', { mode });
+  }
+
+  /**
+   * Get all protected paths from the new protection system
+   */
+  async getProtectionPaths() {
+    return this._invoke('protection_get_paths');
+  }
+
+  /**
+   * Check if the event chain is valid
+   */
+  async isChainValid() {
+    return this._invoke('protection_is_chain_valid');
+  }
+
+  /**
+   * Refresh status by running a quick scan on all paths
+   * This is used on app launch to update the integrity status
+   */
+  async refreshStatus() {
+    try {
+      // First get current status
+      const status = await this.getProtectionStatus();
+      
+      // If we have protected paths, run a quick scan to update status
+      const paths = await this.getProtectedPaths();
+      if (paths && paths.length > 0) {
+        // Run quick scan to verify integrity
+        const results = await this.scanIntegrity();
+        return {
+          status: results.status || status,
+          lastScanTime: new Date().toISOString(),
+          scanned: true,
+          results
+        };
+      }
+      
+      return {
+        status: status || 'unknown',
+        lastScanTime: null,
+        scanned: false
+      };
+    } catch (error) {
+      console.warn('[TauriAPI] refreshStatus failed:', error);
+      return {
+        status: 'unknown',
+        lastScanTime: null,
+        scanned: false,
+        error: error.message || error
+      };
+    }
+  }
+
+  // ========== Cloud Sync (App → Website) ==========
+
+  /**
+   * Sync device status to Darklock Platform website
+   * 
+   * ARCHITECTURE:
+   * - This PUSHES status FROM the app TO the website
+   * - The website cannot pull or request data
+   * - The app is the source of truth for all security decisions
+   * 
+   * @param {Object} authToken - User's auth token from login
+   * @param {Object} status - Current device status to sync
+   */
+  async syncToCloud(authToken, status) {
+    if (!authToken) {
+      console.warn('[TauriAPI] Cannot sync to cloud: no auth token');
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    const apiUrl = window.__DARKLOCK_API_URL__ || 'https://darklock.net';
+    
+    try {
+      const response = await fetch(`${apiUrl}/platform/api/devices/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          deviceId: status.deviceId || await this.getDeviceId(),
+          deviceName: status.deviceName || 'Darklock Guard',
+          status: status.globalStatus || 'unknown',
+          paths: status.pathHealth || { verified: 0, changed: 0, error: 0 },
+          totalFiles: status.totalFiles || 0,
+          lastVerified: status.lastVerifiedAt,
+          appVersion: '1.0.0',
+          events: status.recentEvents || []
+        })
+      });
+
+      if (response.ok) {
+        console.log('[TauriAPI] Status synced to cloud');
+        return { success: true };
+      } else {
+        const err = await response.text();
+        console.warn('[TauriAPI] Cloud sync failed:', err);
+        return { success: false, error: err };
+      }
+    } catch (error) {
+      console.error('[TauriAPI] Cloud sync error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get or generate a unique device ID
+   */
+  async getDeviceId() {
+    try {
+      return await this._invoke('get_device_id');
+    } catch {
+      // Fallback: use stored ID or generate new one
+      let deviceId = localStorage.getItem('darklock_device_id');
+      if (!deviceId) {
+        deviceId = 'device_' + crypto.randomUUID();
+        localStorage.setItem('darklock_device_id', deviceId);
+      }
+      return deviceId;
+    }
   }
 }

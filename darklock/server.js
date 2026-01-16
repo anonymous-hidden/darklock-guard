@@ -189,25 +189,62 @@ class DarklockPlatform {
             res.sendFile(path.join(__dirname, 'views/download-page.html'));
         });
         
-        // Darklock Guard - Actual installer download
+        // Darklock Guard - Actual installer download (NSIS - works without code signing)
         this.app.get('/platform/api/download/darklock-guard-installer', (req, res) => {
-            const installerPath = path.join(__dirname, '../ainti-tampering-app/tauri-app/src-tauri/target/release/bundle/msi/darklock-guard_1.0.0_x64_en-US.msi');
-            const debugExePath = path.join(__dirname, '../ainti-tampering-app/tauri-app/src-tauri/target/debug/darklock-guard.exe');
+            const format = req.query.format || 'exe';
+            const nsisPath = path.join(__dirname, 'downloads/darklock-guard-setup.exe');
+            const msiPath = path.join(__dirname, 'downloads/darklock-guard-setup.msi');
+            const debPath = path.join(__dirname, 'downloads/darklock-guard_1.0.0_amd64.deb');
+            const rpmPath = path.join(__dirname, 'downloads/darklock-guard-1.0.0-1.x86_64.rpm');
+            const tarPath = path.join(__dirname, 'downloads/darklock-guard-linux-x64.tar.gz');
+            const portablePath = path.join(__dirname, 'downloads/darklock-guard-portable.exe');
             const fs = require('fs');
             
-            // Check for release installer first
-            if (fs.existsSync(installerPath)) {
-                console.log(`[Darklock] Installer downloaded by IP: ${req.ip}`);
-                return res.download(installerPath, 'DarklockGuard-Setup.msi');
+            // Handle format-specific downloads
+            if (format === 'exe' && fs.existsSync(nsisPath)) {
+                console.log(`[Darklock] NSIS installer (.exe) downloaded by IP: ${req.ip}`);
+                return res.download(nsisPath, 'DarklockGuard-Setup.exe');
             }
             
-            // Fallback to debug executable if release not built yet
-            if (fs.existsSync(debugExePath)) {
-                console.log(`[Darklock] Debug executable downloaded by IP: ${req.ip}`);
-                return res.download(debugExePath, 'darklock-guard.exe');
+            if (format === 'msi' && fs.existsSync(msiPath)) {
+                console.log(`[Darklock] MSI installer downloaded by IP: ${req.ip}`);
+                return res.download(msiPath, 'DarklockGuard-Setup.msi');
             }
             
-            // Neither exists
+            if (format === 'deb' && fs.existsSync(debPath)) {
+                console.log(`[Darklock] Debian package (.deb) downloaded by IP: ${req.ip}`);
+                return res.download(debPath, 'darklock-guard_1.0.0_amd64.deb');
+            }
+            
+            if (format === 'rpm' && fs.existsSync(rpmPath)) {
+                console.log(`[Darklock] RPM package (.rpm) downloaded by IP: ${req.ip}`);
+                return res.download(rpmPath, 'darklock-guard-1.0.0-1.x86_64.rpm');
+            }
+            
+            if (format === 'tar' && fs.existsSync(tarPath)) {
+                console.log(`[Darklock] Tar.gz archive downloaded by IP: ${req.ip}`);
+                return res.download(tarPath, 'darklock-guard-linux-x64.tar.gz');
+            }
+            
+            // Fallback behavior for legacy requests
+            if (fs.existsSync(nsisPath)) {
+                console.log(`[Darklock] NSIS installer (fallback) downloaded by IP: ${req.ip}`);
+                return res.download(nsisPath, 'DarklockGuard-Setup.exe');
+            }
+            
+            // Fallback to MSI
+            if (fs.existsSync(msiPath)) {
+                console.log(`[Darklock] MSI installer (fallback) downloaded by IP: ${req.ip}`);
+                return res.download(msiPath, 'DarklockGuard-Setup.msi');
+            }
+            
+            // Fallback to portable exe
+            if (fs.existsSync(portablePath)) {
+                console.log(`[Darklock] Portable exe downloaded by IP: ${req.ip}`);
+                return res.download(portablePath, 'DarklockGuard.exe');
+            }
+            
+            // None exist
             return res.status(503).send(`
                 <html>
                     <head>
@@ -228,6 +265,33 @@ class DarklockPlatform {
                     </body>
                 </html>
             `);
+        });
+        
+        // Darklock Guard - Update endpoint for Tauri updater
+        this.app.get('/platform/api/updates/:target/:version', (req, res) => {
+            const { target, version } = req.params;
+            const currentVersion = version;
+            const latestVersion = '1.0.0'; // TODO: Read from package.json or config
+            
+            // If already on latest version
+            if (currentVersion === latestVersion) {
+                return res.status(204).send();
+            }
+            
+            // Prepare update manifest
+            const updateManifest = {
+                version: latestVersion,
+                notes: "New features and bug fixes",
+                pub_date: new Date().toISOString(),
+                platforms: {
+                    "windows-x86_64": {
+                        signature: "",
+                        url: `https://darklock.net/platform/api/download/darklock-guard-installer`
+                    }
+                }
+            };
+            
+            res.json(updateManifest);
         });
         
         // Darklock Guard - Launch desktop app (requires authentication) - DEPRECATED
