@@ -1,11 +1,11 @@
 {
-  "generated": "2026-01-16T19:46:49.384Z",
+  "generated": "2026-01-16T19:48:30.517Z",
   "version": "1.0.0",
   "fileCount": 215,
   "hashes": {
     "D:\\discord bot\\src\\bot.js": "6efe6640a987de60dcb79f61806a173bb64049c45eaabd9445e64b36ba1f91a3",
     "D:\\discord bot\\src\\database\\database.js": "2b2c0eaafce534b7fc7761557461ad29af8503cf038825882ea7dc9d51e5bbe6",
-    "D:\\discord bot\\src\\dashboard\\dashboard.js": "50bf9b34bef4c76542ad8e507d91e1e2475d4f8c47c276faed292e5c55ca7ee6",
+    "D:\\discord bot\\src\\dashboard\\dashboard.js": "fa5584f4d192de75f56b7679cfd56e844395a413052de138ebc0aad5ac429a4c",
     "D:\\discord bot\\config.json": "22d660750cb4e250ab0f74fc4c077dc002ea0ecf3acc6d83bab04f0d2368e4ae",
     "D:\\discord bot\\file-protection\\agent\\anomaly-ai.js": "c4b837c52f62996390c402711263a468ccbbfa2162bfa875a725de4ef081fa4e",
     "D:\\discord bot\\file-protection\\agent\\baseline-generator.js": "76e415027ecc7342071fe6b2e8daf54191af216cf77f8f7b40e080dfe883a74a",
@@ -219,5 +219,5 @@
     "D:\\discord bot\\darklock\\views\\terms.html": "823c2df4ebed6ae6b082428e808bb21ed00f2d48922ad99c8eb5e05a208a6d3f",
     "D:\\discord bot\\ainti-tampering-app\\tauri-app\\src\\styles\\main.css": "01b6e8694ed0bee91f02ec817a34d51e678fef655e673919450856c7cca83986"
   },
-  "signature": "a08b149bfcef6a534d0e3b32654eededca65e07c9d6d50cb6474daeeec010cb5"
+  "signature": "58be0a8622e54c9cdf8c414af61569033fd6f058f3f9fb4fff4bef8bec8c83f7"
 }
