@@ -945,19 +945,20 @@ The DarkLock Team`
             res.sendFile(path.join(__dirname, 'views/login.html'));
         });
 
-        // Admin dashboard - PROTECTED - ONLY accessible via username/password login
-        this.app.get('/admin', this.authenticateTokenHTML.bind(this), this.requirePasswordAuth.bind(this), (req, res) => {
+        // Bot Admin dashboard - PROTECTED - ONLY accessible via username/password login
+        // RENAMED from /admin to /bot-admin to avoid conflict with Darklock admin system
+        this.app.get('/bot-admin', this.authenticateTokenHTML.bind(this), this.requirePasswordAuth.bind(this), (req, res) => {
             // ONLY username/password authenticated users - OAuth users blocked
             res.sendFile(path.join(__dirname, 'views/admin-dashboard.html'));
         });
 
-        // Admin 2FA settings page - PROTECTED - ONLY accessible via username/password login
-        this.app.get('/admin/2fa', this.authenticateTokenHTML.bind(this), this.requirePasswordAuth.bind(this), (req, res) => {
+        // Bot Admin 2FA settings page - PROTECTED - ONLY accessible via username/password login
+        this.app.get('/bot-admin/2fa', this.authenticateTokenHTML.bind(this), this.requirePasswordAuth.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/admin-2fa.html'));
         });
 
-        // Admin User Management page - PROTECTED - ONLY accessible via username/password login
-        this.app.get('/admin/users', this.authenticateTokenHTML.bind(this), this.requirePasswordAuth.bind(this), (req, res) => {
+        // Bot Admin User Management page - PROTECTED - ONLY accessible via username/password login
+        this.app.get('/bot-admin/users', this.authenticateTokenHTML.bind(this), this.requirePasswordAuth.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/admin-users.html'));
         });
 
@@ -967,12 +968,12 @@ The DarkLock Team`
         });
 
         // Owner Settings page - PROTECTED (Owner only)
-        this.app.get('/admin/settings', this.authenticateTokenHTML.bind(this), (req, res) => {
+        this.app.get('/bot-admin/settings', this.authenticateTokenHTML.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/owner-settings.html'));
         });
 
         // Theme Manager page - PROTECTED (Owner only)
-        this.app.get('/admin/theme', this.authenticateTokenHTML.bind(this), (req, res) => {
+        this.app.get('/bot-admin/theme', this.authenticateTokenHTML.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/theme-manager.html'));
         });
 
