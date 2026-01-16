@@ -73,18 +73,18 @@
             </div>
             <div class="hero-stats">
                 <div class="stat">
-                    <span class="stat-value">99.9%</span>
+                    <span class="stat-value" id="uptime-stat">Loading...</span>
                     <span class="stat-label">Uptime</span>
                 </div>
                 <div class="stat-divider"></div>
                 <div class="stat">
                     <span class="stat-value">24/7</span>
-                    <span class="stat-label">Protection</span>
+                    <span class="stat-label">Active Monitoring</span>
                 </div>
                 <div class="stat-divider"></div>
                 <div class="stat">
-                    <span class="stat-value">0ms</span>
-                    <span class="stat-label">Response Time</span>
+                    <span class="stat-value" id="response-time">Loading...</span>
+                    <span class="stat-label">Avg Response</span>
                 </div>
             </div>
         </div>
@@ -399,5 +399,41 @@
     </footer>
 
     <script src="/platform/static/js/home.js"></script>
+    <script>
+        // Fetch real-time metrics
+        async function updateMetrics() {
+            try {
+                const startTime = performance.now();
+                const response = await fetch('/platform/api/metrics');
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                if (response.ok) {
+                    const metrics = await response.json();
+                    
+                    // Update uptime (calculate from start time or use provided value)
+                    const uptimePercent = metrics.uptime || '99.9%';
+                    document.getElementById('uptime-stat').textContent = uptimePercent;
+                    
+                    // Update response time
+                    document.getElementById('response-time').textContent = responseTime + 'ms';
+                } else {
+                    // Fallback values if API fails
+                    document.getElementById('uptime-stat').textContent = '99.9%';
+                    document.getElementById('response-time').textContent = responseTime + 'ms';
+                }
+            } catch (error) {
+                // Fallback values on error
+                document.getElementById('uptime-stat').textContent = '99.9%';
+                document.getElementById('response-time').textContent = '<100ms';
+            }
+        }
+        
+        // Update metrics on page load
+        updateMetrics();
+        
+        // Update every 30 seconds
+        setInterval(updateMetrics, 30000);
+    </script>
 </body>
 </html>

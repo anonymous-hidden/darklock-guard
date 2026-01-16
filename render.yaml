@@ -11,6 +11,12 @@ services:
     healthCheckPath: /health
     autoDeploy: true  # Auto-deploy on git push
     
+    # Persistent disk for databases (survives deploys)
+    disk:
+      name: data-disk
+      mountPath: /data
+      sizeGB: 1  # 1GB free tier
+    
     # Environment Variables
     envVars:
       - key: NODE_ENV
@@ -30,10 +36,13 @@ services:
       
       # Database Configuration
       - key: DB_PATH
-        value: ./data/
+        value: /data/
       
       - key: DB_NAME
         value: security_bot.db
+      
+      - key: DARKLOCK_DB_PATH
+        value: /data/darklock.db
       
       # Discord Configuration (Add these in Render Dashboard)
       - key: DISCORD_TOKEN

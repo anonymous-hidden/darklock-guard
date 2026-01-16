@@ -1,403 +1,267 @@
-"""Dependency Resolution
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Changelog | Darklock Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/platform/static/css/main.css">
+    <style>
+        .changelog-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+            min-height: calc(100vh - 200px);
+        }
 
-The dependency resolution in pip is performed as follows:
+        .changelog-header {
+            text-align: center;
+            padding: 4rem 0 3rem;
+        }
 
-for top-level requirements:
-    a. only one spec allowed per project, regardless of conflicts or not.
-       otherwise a "double requirement" exception is raised
-    b. they override sub-dependency requirements.
-for sub-dependencies
-    a. "first found, wins" (where the order is breadth first)
-"""
+        .changelog-header h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #7c4dff 0%, #00bcd4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
-from __future__ import annotations
+        .changelog-header p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
 
-import logging
-import sys
-from collections import defaultdict
-from collections.abc import Iterable
-from itertools import chain
-from typing import Optional
+        .version-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
 
-from pip._vendor.packaging import specifiers
-from pip._vendor.packaging.requirements import Requirement
+        .version-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
 
-from pip._internal.cache import WheelCache
-from pip._internal.exceptions import (
-    BestVersionAlreadyInstalled,
-    DistributionNotFound,
-    HashError,
-    HashErrors,
-    InstallationError,
-    NoneMetadataError,
-    UnsupportedPythonVersion,
-)
-from pip._internal.index.package_finder import PackageFinder
-from pip._internal.metadata import BaseDistribution
-from pip._internal.models.link import Link
-from pip._internal.models.wheel import Wheel
-from pip._internal.operations.prepare import RequirementPreparer
-from pip._internal.req.req_install import (
-    InstallRequirement,
-    check_invalid_constraint_type,
-)
-from pip._internal.req.req_set import RequirementSet
-from pip._internal.resolution.base import BaseResolver, InstallRequirementProvider
-from pip._internal.utils import compatibility_tags
-from pip._internal.utils.compatibility_tags import get_supported
-from pip._internal.utils.direct_url_helpers import direct_url_from_link
-from pip._internal.utils.logging import indent_log
-from pip._internal.utils.misc import normalize_version_info
-from pip._internal.utils.packaging import check_requires_python
+        .version-number {
+            font-size: 1.75rem;
+            font-weight: 600;
+        }
 
-logger = logging.getLogger(__name__)
+        .version-date {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
 
-DiscoveredDependencies = defaultdict[Optional[str], list[InstallRequirement]]
+        .version-badge {
+            background: linear-gradient(135deg, #7c4dff 0%, #00bcd4 100%);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
 
+        .changelog-category {
+            margin-bottom: 1.5rem;
+        }
 
-def _check_dist_requires_python(
-    dist: BaseDistribution,
-    version_info: tuple[int, int, int],
-    ignore_requires_python: bool = False,
-) -> None:
-    """
-    Check whether the given Python version is compatible with a distribution's
-    "Requires-Python" value.
+        .changelog-category h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
 
-    :param version_info: A 3-tuple of ints representing the Python
-        major-minor-micro version to check.
-    :param ignore_requires_python: Whether to ignore the "Requires-Python"
-        value if the given Python version isn't compatible.
+        .changelog-category ul {
+            list-style: none;
+            padding: 0;
+        }
 
-    :raises UnsupportedPythonVersion: When the given Python version isn't
-        compatible.
-    """
-    # This idiosyncratically converts the SpecifierSet to str and let
-    # check_requires_python then parse it again into SpecifierSet. But this
-    # is the legacy resolver so I'm just not going to bother refactoring.
-    try:
-        requires_python = str(dist.requires_python)
-    except FileNotFoundError as e:
-        raise NoneMetadataError(dist, str(e))
-    try:
-        is_compatible = check_requires_python(
-            requires_python,
-            version_info=version_info,
-        )
-    except specifiers.InvalidSpecifier as exc:
-        logger.warning(
-            "Package %r has an invalid Requires-Python: %s", dist.raw_name, exc
-        )
-        return
+        .changelog-category li {
+            padding: 0.5rem 0 0.5rem 1.5rem;
+            position: relative;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
 
-    if is_compatible:
-        return
+        .changelog-category li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: bold;
+        }
 
-    version = ".".join(map(str, version_info))
-    if ignore_requires_python:
-        logger.debug(
-            "Ignoring failed Requires-Python check for package %r: %s not in %r",
-            dist.raw_name,
-            version,
-            requires_python,
-        )
-        return
+        .coming-soon {
+            background: linear-gradient(135deg, rgba(124, 77, 255, 0.1) 0%, rgba(0, 188, 212, 0.1) 100%);
+            border: 1px solid rgba(124, 77, 255, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+        }
 
-    raise UnsupportedPythonVersion(
-        f"Package {dist.raw_name!r} requires a different Python: "
-        f"{version} not in {requires_python!r}"
-    )
+        .coming-soon h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
 
+        .coming-soon ul {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
 
-class Resolver(BaseResolver):
-    """Resolves which packages need to be installed/uninstalled to perform \
-    the requested operation without breaking the requirements of any package.
-    """
+        .coming-soon li {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="/platform" class="nav-brand">
+                <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <path d="M9 12l2 2 4-4"/>
+                </svg>
+                <span class="brand-text">Darklock</span>
+            </a>
+            <div class="nav-links">
+                <a href="/platform" class="nav-link">Home</a>
+                <a href="/platform/docs" class="nav-link">Documentation</a>
+                <a href="/platform/status" class="nav-link">Status</a>
+                <a href="/platform/auth/login" class="btn btn-primary btn-sm">Sign In</a>
+            </div>
+        </div>
+    </nav>
 
-    _allowed_strategies = {"eager", "only-if-needed", "to-satisfy-only"}
+    <div class="changelog-container">
+        <div class="changelog-header">
+            <h1>📋 Changelog</h1>
+            <p>Stay updated with the latest features and improvements</p>
+        </div>
 
-    def __init__(
-        self,
-        preparer: RequirementPreparer,
-        finder: PackageFinder,
-        wheel_cache: WheelCache | None,
-        make_install_req: InstallRequirementProvider,
-        use_user_site: bool,
-        ignore_dependencies: bool,
-        ignore_installed: bool,
-        ignore_requires_python: bool,
-        force_reinstall: bool,
-        upgrade_strategy: str,
-        py_version_info: tuple[int, ...] | None = None,
-    ) -> None:
-        super().__init__()
-        assert upgrade_strategy in self._allowed_strategies
+        <!-- Version 1.0.0 -->
+        <div class="version-section">
+            <div class="version-header">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                        <span class="version-number">Version 1.0.0</span>
+                        <span class="version-badge">Latest</span>
+                    </div>
+                    <span class="version-date">Released January 2026</span>
+                </div>
+            </div>
 
-        if py_version_info is None:
-            py_version_info = sys.version_info[:3]
-        else:
-            py_version_info = normalize_version_info(py_version_info)
+            <div class="changelog-category">
+                <h3>🎉 Initial Platform Release</h3>
+                <ul>
+                    <li>Complete platform launch with full authentication system</li>
+                    <li>User registration and login with secure JWT-based authentication</li>
+                    <li>Persistent database storage with SQLite for reliable data management</li>
+                </ul>
+            </div>
 
-        self._py_version_info = py_version_info
+            <div class="changelog-category">
+                <h3>🛡️ Security Features</h3>
+                <ul>
+                    <li>Industry-standard password hashing with bcrypt</li>
+                    <li>HttpOnly cookie implementation for secure session management</li>
+                    <li>Rate limiting to prevent abuse and brute-force attacks</li>
+                    <li>Comprehensive security headers for enhanced protection</li>
+                    <li>HTTPS enforcement in production environments</li>
+                </ul>
+            </div>
 
-        self.preparer = preparer
-        self.finder = finder
-        self.wheel_cache = wheel_cache
+            <div class="changelog-category">
+                <h3>💻 Darklock Guard Desktop Application</h3>
+                <ul>
+                    <li>Real-time file integrity monitoring system</li>
+                    <li>Tamper detection and alerting capabilities</li>
+                    <li>Cross-platform support (Windows, macOS, Linux)</li>
+                    <li>Automatic backup and restoration features</li>
+                    <li>Integration with platform API for centralized management</li>
+                </ul>
+            </div>
 
-        self.upgrade_strategy = upgrade_strategy
-        self.force_reinstall = force_reinstall
-        self.ignore_dependencies = ignore_dependencies
-        self.ignore_installed = ignore_installed
-        self.ignore_requires_python = ignore_requires_python
-        self.use_user_site = use_user_site
-        self._make_install_req = make_install_req
+            <div class="changelog-category">
+                <h3>📊 Dashboard Interface</h3>
+                <ul>
+                    <li>Intuitive web-based dashboard for platform management</li>
+                    <li>User profile and account settings management</li>
+                    <li>Real-time security status monitoring</li>
+                    <li>Activity logs and audit trails</li>
+                    <li>Responsive design for desktop and mobile devices</li>
+                </ul>
+            </div>
 
-        self._discovered_dependencies: DiscoveredDependencies = defaultdict(list)
+            <div class="changelog-category">
+                <h3>📚 API & Documentation</h3>
+                <ul>
+                    <li>RESTful API with comprehensive endpoint coverage</li>
+                    <li>Complete API documentation with examples</li>
+                    <li>Authentication endpoints for user management</li>
+                    <li>Download endpoints for Darklock Guard installer</li>
+                    <li>System status and health check endpoints</li>
+                </ul>
+            </div>
 
-    def resolve(
-        self, root_reqs: list[InstallRequirement], check_supported_wheels: bool
-    ) -> RequirementSet:
-        """Resolve what operations need to be done
+            <div class="changelog-category">
+                <h3>⚙️ Infrastructure</h3>
+                <ul>
+                    <li>Persistent database storage on disk (no in-memory limitations)</li>
+                    <li>Automated backup system for data protection</li>
+                    <li>Performance optimization for high-traffic scenarios</li>
+                    <li>Error logging and monitoring capabilities</li>
+                    <li>Production-ready deployment configuration</li>
+                </ul>
+            </div>
+        </div>
 
-        As a side-effect of this method, the packages (and their dependencies)
-        are downloaded, unpacked and prepared for installation. This
-        preparation is done by ``pip.operations.prepare``.
+        <!-- Coming Soon -->
+        <div class="coming-soon">
+            <h2>🚀 Coming Soon</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
+                We're constantly working on new features to make Darklock even better
+            </p>
+            <ul>
+                <li>🔐 Two-Factor Authentication (2FA)</li>
+                <li>📱 Mobile Applications (iOS & Android)</li>
+                <li>📈 Advanced Monitoring & Analytics</li>
+                <li>🔌 Enhanced API Capabilities</li>
+                <li>🌐 Multi-language Support</li>
+                <li>🤝 Team Collaboration Features</li>
+            </ul>
+        </div>
+    </div>
 
-        Once PyPI has static dependency metadata available, it would be
-        possible to move the preparation to become a step separated from
-        dependency resolution.
-        """
-        requirement_set = RequirementSet(check_supported_wheels=check_supported_wheels)
-        for req in root_reqs:
-            if req.constraint:
-                check_invalid_constraint_type(req)
-            self._add_requirement_to_set(requirement_set, req)
-
-        # Actually prepare the files, and collect any exceptions. Most hash
-        # exceptions cannot be checked ahead of time, because
-        # _populate_link() needs to be called before we can make decisions
-        # based on link type.
-        discovered_reqs: list[InstallRequirement] = []
-        hash_errors = HashErrors()
-        for req in chain(requirement_set.all_requirements, discovered_reqs):
-            try:
-                discovered_reqs.extend(self._resolve_one(requirement_set, req))
-            except HashError as exc:
-                exc.req = req
-                hash_errors.append(exc)
-
-        if hash_errors:
-            raise hash_errors
-
-        return requirement_set
-
-    def _add_requirement_to_set(
-        self,
-        requirement_set: RequirementSet,
-        install_req: InstallRequirement,
-        parent_req_name: str | None = None,
-        extras_requested: Iterable[str] | None = None,
-    ) -> tuple[list[InstallRequirement], InstallRequirement | None]:
-        """Add install_req as a requirement to install.
-
-        :param parent_req_name: The name of the requirement that needed this
-            added. The name is used because when multiple unnamed requirements
-            resolve to the same name, we could otherwise end up with dependency
-            links that point outside the Requirements set. parent_req must
-            already be added. Note that None implies that this is a user
-            supplied requirement, vs an inferred one.
-        :param extras_requested: an iterable of extras used to evaluate the
-            environment markers.
-        :return: Additional requirements to scan. That is either [] if
-            the requirement is not applicable, or [install_req] if the
-            requirement is applicable and has just been added.
-        """
-        # If the markers do not match, ignore this requirement.
-        if not install_req.match_markers(extras_requested):
-            logger.info(
-                "Ignoring %s: markers '%s' don't match your environment",
-                install_req.name,
-                install_req.markers,
-            )
-            return [], None
-
-        # If the wheel is not supported, raise an error.
-        # Should check this after filtering out based on environment markers to
-        # allow specifying different wheels based on the environment/OS, in a
-        # single requirements file.
-        if install_req.link and install_req.link.is_wheel:
-            wheel = Wheel(install_req.link.filename)
-            tags = compatibility_tags.get_supported()
-            if requirement_set.check_supported_wheels and not wheel.supported(tags):
-                raise InstallationError(
-                    f"{wheel.filename} is not a supported wheel on this platform."
-                )
-
-        # This next bit is really a sanity check.
-        assert (
-            not install_req.user_supplied or parent_req_name is None
-        ), "a user supplied req shouldn't have a parent"
-
-        # Unnamed requirements are scanned again and the requirement won't be
-        # added as a dependency until after scanning.
-        if not install_req.name:
-            requirement_set.add_unnamed_requirement(install_req)
-            return [install_req], None
-
-        try:
-            existing_req: InstallRequirement | None = requirement_set.get_requirement(
-                install_req.name
-            )
-        except KeyError:
-            existing_req = None
-
-        has_conflicting_requirement = (
-            parent_req_name is None
-            and existing_req
-            and not existing_req.constraint
-            and existing_req.extras == install_req.extras
-            and existing_req.req
-            and install_req.req
-            and existing_req.req.specifier != install_req.req.specifier
-        )
-        if has_conflicting_requirement:
-            raise InstallationError(
-                f"Double requirement given: {install_req} "
-                f"(already in {existing_req}, name={install_req.name!r})"
-            )
-
-        # When no existing requirement exists, add the requirement as a
-        # dependency and it will be scanned again after.
-        if not existing_req:
-            requirement_set.add_named_requirement(install_req)
-            # We'd want to rescan this requirement later
-            return [install_req], install_req
-
-        # Assume there's no need to scan, and that we've already
-        # encountered this for scanning.
-        if install_req.constraint or not existing_req.constraint:
-            return [], existing_req
-
-        does_not_satisfy_constraint = install_req.link and not (
-            existing_req.link and install_req.link.path == existing_req.link.path
-        )
-        if does_not_satisfy_constraint:
-            raise InstallationError(
-                f"Could not satisfy constraints for '{install_req.name}': "
-                "installation from path or url cannot be "
-                "constrained to a version"
-            )
-        # If we're now installing a constraint, mark the existing
-        # object for real installation.
-        existing_req.constraint = False
-        # If we're now installing a user supplied requirement,
-        # mark the existing object as such.
-        if install_req.user_supplied:
-            existing_req.user_supplied = True
-        existing_req.extras = tuple(
-            sorted(set(existing_req.extras) | set(install_req.extras))
-        )
-        logger.debug(
-            "Setting %s extras to: %s",
-            existing_req,
-            existing_req.extras,
-        )
-        # Return the existing requirement for addition to the parent and
-        # scanning again.
-        return [existing_req], existing_req
-
-    def _is_upgrade_allowed(self, req: InstallRequirement) -> bool:
-        if self.upgrade_strategy == "to-satisfy-only":
-            return False
-        elif self.upgrade_strategy == "eager":
-            return True
-        else:
-            assert self.upgrade_strategy == "only-if-needed"
-            return req.user_supplied or req.constraint
-
-    def _set_req_to_reinstall(self, req: InstallRequirement) -> None:
-        """
-        Set a requirement to be installed.
-        """
-        # Don't uninstall the conflict if doing a user install and the
-        # conflict is not a user install.
-        assert req.satisfied_by is not None
-        if not self.use_user_site or req.satisfied_by.in_usersite:
-            req.should_reinstall = True
-        req.satisfied_by = None
-
-    def _check_skip_installed(self, req_to_install: InstallRequirement) -> str | None:
-        """Check if req_to_install should be skipped.
-
-        This will check if the req is installed, and whether we should upgrade
-        or reinstall it, taking into account all the relevant user options.
-
-        After calling this req_to_install will only have satisfied_by set to
-        None if the req_to_install is to be upgraded/reinstalled etc. Any
-        other value will be a dist recording the current thing installed that
-        satisfies the requirement.
-
-        Note that for vcs urls and the like we can't assess skipping in this
-        routine - we simply identify that we need to pull the thing down,
-        then later on it is pulled down and introspected to assess upgrade/
-        reinstalls etc.
-
-        :return: A text reason for why it was skipped, or None.
-        """
-        if self.ignore_installed:
-            return None
-
-        req_to_install.check_if_exists(self.use_user_site)
-        if not req_to_install.satisfied_by:
-            return None
-
-        if self.force_reinstall:
-            self._set_req_to_reinstall(req_to_install)
-            return None
-
-        if not self._is_upgrade_allowed(req_to_install):
-            if self.upgrade_strategy == "only-if-needed":
-                return "already satisfied, skipping upgrade"
-            return "already satisfied"
-
-        # Check for the possibility of an upgrade.  For link-based
-        # requirements we have to pull the tree down and inspect to assess
-        # the version #, so it's handled way down.
-        if not req_to_install.link:
-            try:
-                self.finder.find_requirement(req_to_install, upgrade=True)
-            except BestVersionAlreadyInstalled:
-                # Then the best version is installed.
-                return "already up-to-date"
-            except DistributionNotFound:
-                # No distribution found, so we squash the error.  It will
-                # be raised later when we re-try later to do the install.
-                # Why don't we just raise here?
-                pass
-
-        self._set_req_to_reinstall(req_to_install)
-        return None
-
-    def _find_requirement_link(self, req: InstallRequirement) -> Link | None:
-        upgrade = self._is_upgrade_allowed(req)
-        best_candidate = self.finder.find_requirement(req, upgrade)
-        if not best_candidate:
-            return None
-
-        # Log a warning per PEP 592 if necessary before returning.
-        link = best_candidate.link
-        if link.is_yanked:
-            reason = link.yanked_reason or "<none given>"
-            msg = (
-                # Mark this as a unicode string to prevent
-                # "UnicodeEncodeError: 'ascii' codec can't encode character"
-                # in Python 2 when the reason contains non-ascii characters.
-                "The candidate selected for download or install is a "
-                f"yanked version: {best_candidate}\n"
-                f"Reason for being yanked: {reason}"
-            )
-            logger.warning(msg)
-
-        return link
-
-    def _populate_li
+    <footer style="text-align: center; padding: 2rem; color: var(--text-secondary); border-top: 1px solid var(--border-color);">
+        <p>&copy; 2026 Darklock. All rights reserved.</p>
+    </footer>
+</body>
+</html>
