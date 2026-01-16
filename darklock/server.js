@@ -493,8 +493,8 @@ class DarklockPlatform {
         // Admin auth routes (/signin, /signout)
         this.app.use('/', adminAuthRoutes);
         
-        // Admin API routes (protected)
-        this.app.use('/admin/api', adminApiRoutes);
+        // Admin API routes (protected) - Note: Frontend uses /api/admin/*
+        this.app.use('/api/admin', adminApiRoutes);
         
         // Admin dashboard (protected) - Full dashboard
         this.app.get('/admin', requireAdminAuth, (req, res) => {
@@ -506,8 +506,8 @@ class DarklockPlatform {
             res.redirect('/admin');
         });
         
-        // Admin API - Dashboard data (protected) - LEGACY - now use /admin/api/dashboard
-        this.app.get('/admin/api/legacy/dashboard', requireAdminAuth, async (req, res) => {
+        // Admin API - Dashboard data (protected) - LEGACY - now use /api/admin/dashboard
+        this.app.get('/api/admin/legacy/dashboard', requireAdminAuth, async (req, res) => {
             try {
                 const today = new Date().toISOString().split('T')[0];
                 
@@ -782,9 +782,9 @@ class DarklockPlatform {
         console.log('[Darklock Platform] Registering admin auth routes at /');
         existingApp.use('/', adminAuthRoutes);
         
-        // Admin API routes (protected)
-        console.log('[Darklock Platform] Registering admin API routes at /admin/api');
-        existingApp.use('/admin/api', adminApiRoutes);
+        // Admin API routes (protected) - Frontend uses /api/admin/*
+        console.log('[Darklock Platform] Registering admin API routes at /api/admin');
+        existingApp.use('/api/admin', adminApiRoutes);
         
         // Admin dashboard (protected) - Full dashboard
         existingApp.get('/admin', requireAdminAuth, (req, res) => {

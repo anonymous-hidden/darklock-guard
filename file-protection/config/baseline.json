@@ -1,5 +1,5 @@
 {
-  "generated": "2026-01-16T19:57:16.339Z",
+  "generated": "2026-01-16T20:00:01.927Z",
   "version": "1.0.0",
   "fileCount": 215,
   "hashes": {
@@ -19,7 +19,7 @@
     "D:\\discord bot\\file-protection\\agent\\validator.js": "832fc82fe3a4d0c777f51f5a413198ee3f2709fd9a1d5b6c575c28136ebdf67d",
     "D:\\discord bot\\file-protection\\agent\\watcher.js": "4aa10a7fddd0f5197913dbc20e5c6d89662b4233bb15c4bd551ba8aaaa15a879",
     "D:\\discord bot\\file-protection\\index.js": "0923df633b7e5779749fb1bb13c4c685d6eb61601743df3c7cc3b9d012788668",
-    "D:\\discord bot\\darklock\\server.js": "78807d778be9fbe0ae335108f1d7d816f8f88c0960e217c97648e98a95cc5f9e",
+    "D:\\discord bot\\darklock\\server.js": "8af865da59a5fa9c94e806b156dad9bc2f1841272f6ee30dba7fbade1dde8f53",
     "D:\\discord bot\\darklock\\integration.js": "13077ebc260d987767f60c9876f9b841fe8b519f2edeb045c870cf820a4f20bc",
     "D:\\discord bot\\darklock\\start.js": "ca438628f412800c28b75b798cac600a4864874b26974d4bb74b7a98626f79c6",
     "D:\\discord bot\\darklock\\data\\darklock.db": "713335996c2cff2c101251f57b599932d2fe0af6c19d223cbaf3262b93d36f6b",
@@ -219,5 +219,5 @@
     "D:\\discord bot\\darklock\\views\\terms.html": "823c2df4ebed6ae6b082428e808bb21ed00f2d48922ad99c8eb5e05a208a6d3f",
     "D:\\discord bot\\ainti-tampering-app\\tauri-app\\src\\styles\\main.css": "01b6e8694ed0bee91f02ec817a34d51e678fef655e673919450856c7cca83986"
   },
-  "signature": "add008c945ec8d14e919b23652e224a7f310b839031633c2b4e8a294afcc08d7"
+  "signature": "962d94fe78437574a8c54a91a7897a79fcbcc4aaac5e5e3e653d162c8f6577d1"
 }
