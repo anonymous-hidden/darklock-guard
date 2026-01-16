@@ -2003,8 +2003,12 @@ The DarkLock Team`
             console.error('[Dashboard] ⚠️ Failed to mount Darklock Platform:', err);
         }
 
-        // 404 handler (MUST be last)
-        this.app.use('*', (req, res) => {
+        // 404 handler (MUST be last, but exclude admin routes)
+        this.app.use((req, res, next) => {
+            // Let admin routes through
+            if (req.path.startsWith('/signin') || req.path.startsWith('/admin') || req.path.startsWith('/signout')) {
+                return next();
+            }
             res.status(404).json({ error: 'Not found' });
         });
 
