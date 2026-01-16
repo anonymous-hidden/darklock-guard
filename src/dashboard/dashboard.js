@@ -1994,14 +1994,9 @@ The DarkLock Team`
             res.sendFile(path.join(__dirname, '../website/register.html'));
         });
 
-        // Mount Darklock Platform (MUST be before 404 handler)
-        try {
-            const darklock = new DarklockPlatform();
-            darklock.mountOn(this.app);
-            console.log('[Dashboard] ✅ Darklock Platform mounted at /platform');
-        } catch (err) {
-            console.error('[Dashboard] ⚠️ Failed to mount Darklock Platform:', err);
-        }
+        // Mount Darklock Platform - REMOVED: Now mounted in bot.js to ensure proper await
+        // The async mountOn() call must be awaited to initialize admin tables before routes
+        // See bot.js line ~875 for the actual mounting
 
         // 404 handler (MUST be last) - only for non-Darklock routes
         this.app.use((req, res) => {
