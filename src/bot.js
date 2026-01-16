@@ -877,6 +877,12 @@ class SecurityBot {
                     this.logger.info(`   - Homepage: http://localhost:${port}/platform`);
                     this.logger.info(`   - Darklock Guard: http://localhost:${port}/platform/download/darklock-guard-installer`);
                     this.logger.info(`   - Web Monitor: http://localhost:${port}/platform/monitor/darklock-guard`);
+                    
+                    // Register 404 handler AFTER Darklock routes are mounted
+                    this.dashboard.app.use((req, res) => {
+                        res.status(404).json({ error: 'Not found' });
+                    });
+                    
                 } catch (error) {
                     this.logger.error('❌ Failed to mount Darklock Platform:', error);
                 }

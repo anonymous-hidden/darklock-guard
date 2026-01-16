@@ -1994,26 +1994,8 @@ The DarkLock Team`
             res.sendFile(path.join(__dirname, '../website/register.html'));
         });
 
-        // Mount Darklock Platform - REMOVED: Now mounted in bot.js to ensure proper await
-        // The async mountOn() call must be awaited to initialize admin tables before routes
-        // See bot.js line ~875 for the actual mounting
-
-        // 404 handler (MUST be last) - only for non-Darklock routes
-        this.app.use((req, res) => {
-            // Check if this looks like a Darklock/admin route
-            const isDarklockRoute = req.path.startsWith('/signin') || 
-                                   req.path.startsWith('/signout') || 
-                                   req.path.startsWith('/admin') || 
-                                   req.path.startsWith('/platform') || 
-                                   req.path.startsWith('/api/public');
-            
-            if (isDarklockRoute) {
-                console.log(`[Dashboard] 404 for Darklock route: ${req.method} ${req.path}`);
-                // This means the route wasn't registered - log it
-            }
-            
-            res.status(404).json({ error: 'Not found' });
-        });
+        // 404 handler - MOVED to bot.js after mountOn() completes
+        // This ensures Darklock routes are registered before the catch-all 404
 
         // Error handler
         this.app.use((err, req, res, next) => {

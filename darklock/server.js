@@ -569,13 +569,19 @@ class DarklockPlatform {
      * Mount platform routes on existing Express app
      * This allows Darklock to coexist with the Discord bot dashboard
      */
-    mountOn(existingApp) {
+    async mountOn(existingApp) {
         console.log('[Darklock Platform] Mounting on existing Express app...');
         
-        // Initialize database before mounting routes
-        db.initialize().catch(err => {
+        // Initialize database and admin tables before mounting routes
+        try {
+            await db.initialize();
+            await initializeAdminTables();
+            await initializeAdminSchema();
+            await initializeDefaultAdmins();
+            console.log('[Darklock Platform] ✅ Database and admin tables initialized');
+        } catch (err) {
             console.error('[Darklock Platform] Database initialization failed:', err);
-        });
+        }
         
         // Static files
         existingApp.use('/platform/static', express.static(path.join(__dirname, 'public')));
