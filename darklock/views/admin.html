@@ -8,21 +8,27 @@
     <style>
         :root {
             --bg-primary: #09090b;
-            --bg-secondary: #18181b;
-            --bg-card: #27272a;
-            --bg-hover: #3f3f46;
-            --border: #3f3f46;
-            --border-light: #52525b;
+            --bg-secondary: #0f0f12;
+            --bg-card: #18181b;
+            --bg-card-hover: #1f1f23;
+            --bg-input: #27272a;
+            --border: #27272a;
+            --border-light: #3f3f46;
             --text-primary: #fafafa;
             --text-secondary: #a1a1aa;
             --text-muted: #71717a;
             --accent: #6366f1;
             --accent-hover: #818cf8;
+            --accent-muted: rgba(99, 102, 241, 0.1);
             --success: #22c55e;
+            --success-muted: rgba(34, 197, 94, 0.1);
             --warning: #f59e0b;
+            --warning-muted: rgba(245, 158, 11, 0.1);
             --error: #ef4444;
+            --error-muted: rgba(239, 68, 68, 0.1);
             --info: #3b82f6;
             --sidebar-width: 260px;
+            --header-height: 64px;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -53,13 +59,39 @@
         .sidebar-header {
             padding: 1.25rem;
             border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #818cf8);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
         }
 
         .sidebar-header h1 {
-            font-size: 1.125rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .sidebar-header span {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            background: var(--bg-card);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: auto;
         }
 
         .sidebar-nav {
@@ -68,17 +100,15 @@
             overflow-y: auto;
         }
 
-        .nav-section {
-            margin-bottom: 1.5rem;
-        }
+        .nav-section { margin-bottom: 1.5rem; }
 
         .nav-section-title {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             text-transform: uppercase;
             color: var(--text-muted);
             padding: 0.5rem 0.75rem;
             font-weight: 600;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.1em;
         }
 
         .nav-item {
@@ -86,17 +116,19 @@
             align-items: center;
             gap: 0.75rem;
             padding: 0.625rem 0.75rem;
-            border-radius: 6px;
+            border-radius: 8px;
             color: var(--text-secondary);
             text-decoration: none;
             font-size: 0.875rem;
             cursor: pointer;
             transition: all 0.15s;
+            margin-bottom: 2px;
         }
 
-        .nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
         .nav-item.active { background: var(--accent); color: white; }
-        .nav-item .icon { font-size: 1rem; width: 20px; text-align: center; }
+        .nav-item .icon { font-size: 1.125rem; width: 24px; text-align: center; opacity: 0.8; }
+        .nav-item.active .icon { opacity: 1; }
 
         .sidebar-footer {
             padding: 1rem;
@@ -107,14 +139,19 @@
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            margin-bottom: 0.75rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
         }
+
+        .admin-info:hover { background: var(--bg-card); }
 
         .admin-avatar {
             width: 36px;
             height: 36px;
+            background: linear-gradient(135deg, var(--accent), var(--success));
             border-radius: 50%;
-            background: var(--accent);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -123,21 +160,8 @@
         }
 
         .admin-details { flex: 1; min-width: 0; }
-        .admin-email { font-size: 0.8rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .admin-role { font-size: 0.7rem; text-transform: uppercase; color: var(--accent); font-weight: 600; }
-
-        .btn-signout {
-            width: 100%;
-            padding: 0.5rem;
-            background: transparent;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-        .btn-signout:hover { background: var(--error); border-color: var(--error); color: white; }
+        .admin-name { font-size: 0.875rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .admin-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
 
         /* Main Content */
         .main {
@@ -147,44 +171,70 @@
             flex-direction: column;
         }
 
-        .topbar {
+        /* Header */
+        .header {
+            height: var(--header-height);
             background: var(--bg-secondary);
             border-bottom: 1px solid var(--border);
-            padding: 1rem 1.5rem;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
             position: sticky;
             top: 0;
             z-index: 50;
         }
 
-        .page-title { font-size: 1.25rem; font-weight: 600; }
+        .header-left { display: flex; align-items: center; gap: 1rem; }
+        .page-title { font-size: 1.125rem; font-weight: 600; }
+        .header-right { display: flex; align-items: center; gap: 1rem; }
 
-        .content {
-            flex: 1;
-            padding: 1.5rem;
-            overflow-y: auto;
-        }
-
-        /* Cards & Panels */
-        .card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-        }
-
-        .card-header {
-            padding: 1rem 1.25rem;
-            border-bottom: 1px solid var(--border);
+        .server-time {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            align-items: flex-end;
+            font-variant-numeric: tabular-nums;
         }
 
-        .card-title { font-size: 0.95rem; font-weight: 600; }
-        .card-body { padding: 1.25rem; }
+        .server-time .time { font-size: 1.25rem; font-weight: 600; color: var(--accent); }
+        .server-time .date { font-size: 0.7rem; color: var(--text-muted); }
+
+        .header-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-danger { background: var(--error-muted); color: var(--error); border: 1px solid transparent; }
+        .btn-danger:hover { background: var(--error); color: white; }
+        .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+        .btn-ghost:hover { background: var(--bg-card); color: var(--text-primary); }
+
+        /* Content */
+        .content { flex: 1; padding: 1.5rem; overflow-y: auto; }
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+        .card-title { font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); }
 
         /* Stats Grid */
         .stats-grid {
@@ -195,188 +245,242 @@
         }
 
         .stat-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1.25rem;
-        }
-
-        .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; }
-        .stat-value { font-size: 1.75rem; font-weight: 700; }
-        .stat-card.warning .stat-value { color: var(--warning); }
-        .stat-card.error .stat-value { color: var(--error); }
-        .stat-card.success .stat-value { color: var(--success); }
-
-        /* Tables */
-        .table-container { overflow-x: auto; }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.875rem;
-        }
-
-        th, td {
-            padding: 0.75rem 1rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-
-        th {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            font-weight: 500;
             background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: all 0.2s;
         }
 
-        tr:hover { background: var(--bg-card); }
+        .stat-card:hover { border-color: var(--border-light); transform: translateY(-2px); }
 
-        /* Badges */
-        .badge {
-            display: inline-block;
-            padding: 0.2rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            text-transform: uppercase;
+        .stat-card .icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
         }
 
-        .badge-info { background: rgba(59, 130, 246, 0.2); color: var(--info); }
-        .badge-warning { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
-        .badge-critical { background: rgba(239, 68, 68, 0.2); color: var(--error); }
-        .badge-success { background: rgba(34, 197, 94, 0.2); color: var(--success); }
-        .badge-online { background: rgba(34, 197, 94, 0.2); color: var(--success); }
-        .badge-degraded { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
-        .badge-offline { background: rgba(239, 68, 68, 0.2); color: var(--error); }
-        .badge-maintenance { background: rgba(99, 102, 241, 0.2); color: var(--accent); }
+        .stat-card .icon.blue { background: var(--accent-muted); color: var(--accent); }
+        .stat-card .icon.green { background: var(--success-muted); color: var(--success); }
+        .stat-card .icon.yellow { background: var(--warning-muted); color: var(--warning); }
+        .stat-card .icon.red { background: var(--error-muted); color: var(--error); }
 
-        /* Forms */
-        .form-group { margin-bottom: 1rem; }
-        .form-label { display: block; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.375rem; font-weight: 500; }
-        
+        .stat-card .value { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+        .stat-card .label { font-size: 0.8rem; color: var(--text-muted); }
+
+        /* Services Status */
+        .services-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+        .service-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background: var(--bg-primary);
+            border-radius: 8px;
+        }
+
+        .service-name { font-size: 0.875rem; font-weight: 500; }
+
+        .service-status { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 500; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-online { background: var(--success); }
+        .status-degraded { background: var(--warning); }
+        .status-offline { background: var(--error); }
+        .status-maintenance { background: var(--info); }
+
+        /* Activity Feed */
+        .activity-feed { display: flex; flex-direction: column; gap: 0.5rem; }
+
+        .activity-item {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            font-size: 0.8rem;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .activity-content { flex: 1; }
+        .activity-text { color: var(--text-secondary); }
+        .activity-text strong { color: var(--text-primary); }
+        .activity-time { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        /* Form Styles */
+        .form-group { margin-bottom: 1.25rem; }
+        .form-label { display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-secondary); }
+
         .form-input, .form-select, .form-textarea {
             width: 100%;
             padding: 0.625rem 0.875rem;
-            background: var(--bg-primary);
+            background: var(--bg-input);
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: 8px;
             color: var(--text-primary);
             font-size: 0.875rem;
+            transition: border-color 0.15s;
         }
 
-        .form-input:focus, .form-select:focus, .form-textarea:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        .form-textarea { min-height: 120px; resize: vertical; font-family: inherit; }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        /* Buttons */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.15s;
-            border: none;
-        }
-
-        .btn-primary { background: var(--accent); color: white; }
-        .btn-primary:hover { background: var(--accent-hover); }
-        .btn-secondary { background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border); }
-        .btn-secondary:hover { background: var(--bg-hover); color: var(--text-primary); }
-        .btn-danger { background: var(--error); color: white; }
-        .btn-danger:hover { background: #dc2626; }
-        .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.75rem; }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--accent); }
+        .form-textarea { min-height: 100px; resize: vertical; }
+        .form-hint { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.375rem; }
 
         /* Toggle Switch */
-        .toggle {
-            position: relative;
-            display: inline-block;
-            width: 44px;
-            height: 24px;
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.875rem 1rem;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
         }
 
+        .toggle-info { flex: 1; }
+        .toggle-label { font-size: 0.875rem; font-weight: 500; }
+        .toggle-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.125rem; }
+
+        .toggle { position: relative; width: 44px; height: 24px; }
         .toggle input { opacity: 0; width: 0; height: 0; }
 
         .toggle-slider {
             position: absolute;
             cursor: pointer;
             inset: 0;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
+            background: var(--border);
             border-radius: 24px;
             transition: 0.2s;
         }
 
-        .toggle-slider:before {
+        .toggle-slider::before {
+            content: '';
             position: absolute;
-            content: "";
-            height: 18px;
             width: 18px;
-            left: 2px;
-            bottom: 2px;
-            background: var(--text-muted);
+            height: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
             border-radius: 50%;
             transition: 0.2s;
         }
 
-        .toggle input:checked + .toggle-slider { background: var(--accent); border-color: var(--accent); }
-        .toggle input:checked + .toggle-slider:before { transform: translateX(20px); background: white; }
+        .toggle input:checked + .toggle-slider { background: var(--accent); }
+        .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+        /* Tables */
+        .table-container { overflow-x: auto; }
+        .table { width: 100%; border-collapse: collapse; }
+
+        .table th, .table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table th {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            background: var(--bg-primary);
+        }
+
+        .table td { font-size: 0.875rem; }
+        .table tbody tr:hover { background: var(--bg-card-hover); }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .badge-success { background: var(--success-muted); color: var(--success); }
+        .badge-warning { background: var(--warning-muted); color: var(--warning); }
+        .badge-error { background: var(--error-muted); color: var(--error); }
+        .badge-info { background: var(--accent-muted); color: var(--accent); }
 
         /* Modal */
         .modal-overlay {
             position: fixed;
             inset: 0;
             background: rgba(0, 0, 0, 0.7);
-            display: none;
+            display: flex;
             align-items: center;
             justify-content: center;
             z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
         }
 
-        .modal-overlay.active { display: flex; }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
 
         .modal {
-            background: var(--bg-secondary);
+            background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 16px;
             width: 100%;
-            max-width: 500px;
+            max-width: 480px;
             max-height: 90vh;
             overflow-y: auto;
+            transform: scale(0.95);
+            transition: transform 0.2s;
         }
 
+        .modal-overlay.active .modal { transform: scale(1); }
+
         .modal-header {
-            padding: 1rem 1.25rem;
+            padding: 1.25rem;
             border-bottom: 1px solid var(--border);
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
         }
 
         .modal-title { font-size: 1rem; font-weight: 600; }
-        .modal-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.25rem; }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.25rem;
+            padding: 0.25rem;
+        }
+
+        .modal-close:hover { color: var(--text-primary); }
         .modal-body { padding: 1.25rem; }
-        .modal-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.75rem; }
 
-        /* Sections - hidden by default */
-        .section { display: none; }
-        .section.active { display: block; }
+        .modal-footer {
+            padding: 1.25rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
 
-        /* Toast notifications */
+        /* Toast Notifications */
         .toast-container {
             position: fixed;
             top: 1rem;
@@ -388,90 +492,77 @@
         }
 
         .toast {
-            padding: 0.875rem 1rem;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.875rem;
+            border-radius: 10px;
+            padding: 0.875rem 1.25rem;
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            animation: slideIn 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease;
+            max-width: 360px;
         }
-
-        .toast.success { border-color: var(--success); }
-        .toast.error { border-color: var(--error); }
 
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
 
-        /* Status indicator */
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 0.5rem;
-        }
+        .toast.success { border-left: 3px solid var(--success); }
+        .toast.error { border-left: 3px solid var(--error); }
+        .toast.warning { border-left: 3px solid var(--warning); }
 
-        .status-dot.online { background: var(--success); }
-        .status-dot.degraded { background: var(--warning); }
-        .status-dot.offline { background: var(--error); }
-        .status-dot.maintenance { background: var(--accent); }
+        .toast-icon { font-size: 1.125rem; }
+        .toast-message { font-size: 0.875rem; flex: 1; }
 
-        /* Audit log details */
-        .audit-changes {
-            font-size: 0.75rem;
-            background: var(--bg-primary);
-            padding: 0.5rem;
-            border-radius: 4px;
-            margin-top: 0.5rem;
-        }
+        /* Grid layouts */
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+        @media (max-width: 1024px) { .grid-2 { grid-template-columns: 1fr; } }
 
-        .audit-old { color: var(--error); }
-        .audit-new { color: var(--success); }
-
-        /* Kill switch highlight */
-        .kill-switch { border-left: 3px solid var(--error); }
-
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-muted);
-        }
-
-        .empty-state .icon { font-size: 2rem; margin-bottom: 1rem; }
-
-        /* Loading */
-        .loading {
+        /* Maintenance Banner */
+        .maintenance-banner {
+            background: linear-gradient(135deg, var(--warning-muted), rgba(245, 158, 11, 0.05));
+            border: 1px solid var(--warning);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
             display: flex;
             align-items: center;
-            justify-content: center;
-            padding: 2rem;
-            color: var(--text-muted);
+            gap: 1rem;
         }
 
+        .maintenance-banner.hidden { display: none; }
+        .maintenance-banner .icon { font-size: 1.5rem; }
+        .maintenance-banner .content { flex: 1; }
+        .maintenance-banner .title { font-weight: 600; color: var(--warning); }
+        .maintenance-banner .desc { font-size: 0.8rem; color: var(--text-secondary); }
+
+        /* Loading States */
+        .loading { display: flex; align-items: center; justify-content: center; padding: 2rem; color: var(--text-muted); }
+
         .spinner {
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             border: 2px solid var(--border);
             border-top-color: var(--accent);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
-            margin-right: 0.5rem;
+            margin-right: 0.75rem;
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* Section Headers */
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+        .section-title { font-size: 1.25rem; font-weight: 600; }
+        .section-desc { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; }
+
         /* Responsive */
         @media (max-width: 768px) {
-            .sidebar { transform: translateX(-100%); }
-            .sidebar.open { transform: translateX(0); }
+            .sidebar { display: none; }
             .main { margin-left: 0; }
-            .stats-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
@@ -480,9 +571,13 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h1>🔐 Darklock Admin</h1>
+                <div class="logo">
+                    <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+                </div>
+                <h1>Darklock</h1>
+                <span>Admin</span>
             </div>
-            
+
             <nav class="sidebar-nav">
                 <div class="nav-section">
                     <div class="nav-section-title">Overview</div>
@@ -490,1081 +585,929 @@
                         <span class="icon">📊</span> Dashboard
                     </a>
                 </div>
-                
+
                 <div class="nav-section">
                     <div class="nav-section-title">Platform</div>
                     <a class="nav-item" data-section="announcements">
                         <span class="icon">📢</span> Announcements
                     </a>
-                    <a class="nav-item" data-section="status">
-                        <span class="icon">🔔</span> Service Status
-                    </a>
-                    <a class="nav-item" data-section="settings">
-                        <span class="icon">⚙️</span> Settings
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Development</div>
-                    <a class="nav-item" data-section="flags">
-                        <span class="icon">🚩</span> Feature Flags
-                    </a>
-                    <a class="nav-item" data-section="content">
-                        <span class="icon">📝</span> Content
+                    <a class="nav-item" data-section="services">
+                        <span class="icon">🔌</span> Service Status
                     </a>
                     <a class="nav-item" data-section="changelogs">
                         <span class="icon">📋</span> Changelogs
                     </a>
                 </div>
-                
+
                 <div class="nav-section">
-                    <div class="nav-section-title">Security</div>
+                    <div class="nav-section-title">Configuration</div>
+                    <a class="nav-item" data-section="settings">
+                        <span class="icon">⚙️</span> Platform Settings
+                    </a>
+                    <a class="nav-item" data-section="security">
+                        <span class="icon">🔐</span> Security
+                    </a>
+                    <a class="nav-item" data-section="maintenance">
+                        <span class="icon">🔧</span> Maintenance
+                    </a>
+                    <a class="nav-item" data-section="features">
+                        <span class="icon">🚀</span> Feature Flags
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">System</div>
+                    <a class="nav-item" data-section="admins">
+                        <span class="icon">👥</span> Admin Users
+                    </a>
                     <a class="nav-item" data-section="audit">
-                        <span class="icon">🔍</span> Audit Logs
+                        <span class="icon">📜</span> Audit Logs
+                    </a>
+                    <a class="nav-item" data-section="system">
+                        <span class="icon">🖥️</span> System Info
                     </a>
                 </div>
             </nav>
-            
+
             <div class="sidebar-footer">
-                <div class="admin-info">
+                <div class="admin-info" id="adminInfo">
                     <div class="admin-avatar" id="adminAvatar">A</div>
                     <div class="admin-details">
-                        <div class="admin-email" id="adminEmail">admin@example.com</div>
-                        <div class="admin-role" id="adminRole">Admin</div>
+                        <div class="admin-name" id="adminName">Admin</div>
+                        <div class="admin-role" id="adminRole">Owner</div>
                     </div>
                 </div>
-                <button class="btn-signout" id="signoutBtn">Sign Out</button>
             </div>
         </aside>
 
         <!-- Main Content -->
         <main class="main">
-            <div class="topbar">
-                <h2 class="page-title" id="pageTitle">Dashboard</h2>
-                <div id="maintenanceBadge" style="display: none;">
-                    <span class="badge badge-warning">🔧 Maintenance Mode</span>
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <h2 class="page-title" id="pageTitle">Dashboard</h2>
                 </div>
-            </div>
+                <div class="header-right">
+                    <div class="server-time">
+                        <div class="time" id="serverTime">--:--:--</div>
+                        <div class="date" id="serverDate">Loading...</div>
+                    </div>
+                    <button class="header-btn btn-danger" onclick="signOut()">
+                        <span>🚪</span> Sign Out
+                    </button>
+                </div>
+            </header>
 
+            <!-- Content Area -->
             <div class="content">
                 <!-- Dashboard Section -->
-                <div class="section active" id="section-dashboard">
+                <section class="section active" id="section-dashboard">
+                    <div class="maintenance-banner hidden" id="maintenanceBanner">
+                        <span class="icon">⚠️</span>
+                        <div class="content">
+                            <div class="title">Maintenance Mode Active</div>
+                            <div class="desc">The platform is currently in maintenance mode. Visitors see the maintenance page.</div>
+                        </div>
+                        <button class="header-btn btn-ghost" onclick="goToSection('maintenance')">Configure</button>
+                    </div>
+
                     <div class="stats-grid" id="statsGrid">
-                        <div class="loading"><div class="spinner"></div> Loading...</div>
-                    </div>
-                    
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Service Status</h3>
+                        <div class="stat-card">
+                            <div class="icon blue">👥</div>
+                            <div class="value" id="statAdmins">-</div>
+                            <div class="label">Active Admins</div>
                         </div>
-                        <div class="card-body" id="dashboardServices">
-                            <div class="loading"><div class="spinner"></div> Loading...</div>
+                        <div class="stat-card">
+                            <div class="icon green">📢</div>
+                            <div class="value" id="statAnnouncements">-</div>
+                            <div class="label">Active Announcements</div>
                         </div>
-                    </div>
-                    
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Recent Activity</h3>
+                        <div class="stat-card">
+                            <div class="icon yellow">🚀</div>
+                            <div class="value" id="statFeatures">-</div>
+                            <div class="label">Enabled Features</div>
                         </div>
-                        <div class="table-container">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Action</th>
-                                        <th>Resource</th>
-                                        <th>Admin</th>
-                                        <th>Time</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="recentActivity">
-                                    <tr><td colspan="4" class="loading"><div class="spinner"></div> Loading...</td></tr>
-                                </tbody>
-                            </table>
+                        <div class="stat-card">
+                            <div class="icon red">📝</div>
+                            <div class="value" id="statActions">-</div>
+                            <div class="label">Actions Today</div>
                         </div>
                     </div>
-                </div>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Service Status</h3>
+                                <button class="header-btn btn-ghost" onclick="goToSection('services')">Manage</button>
+                            </div>
+                            <div class="services-list" id="servicesList">
+                                <div class="loading"><div class="spinner"></div> Loading services...</div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Recent Activity</h3>
+                                <button class="header-btn btn-ghost" onclick="goToSection('audit')">View All</button>
+                            </div>
+                            <div class="activity-feed" id="activityFeed">
+                                <div class="loading"><div class="spinner"></div> Loading activity...</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
                 <!-- Announcements Section -->
-                <div class="section" id="section-announcements">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Announcements</h3>
-                            <button class="btn btn-primary btn-sm" onclick="openAnnouncementModal()">+ New Announcement</button>
+                <section class="section" id="section-announcements">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Announcements</h2>
+                            <p class="section-desc">Create and manage platform-wide announcements</p>
                         </div>
+                        <button class="header-btn btn-primary" onclick="showModal('announcement')">
+                            <span>➕</span> New Announcement
+                        </button>
+                    </div>
+                    <div class="card">
                         <div class="table-container">
-                            <table>
+                            <table class="table" id="announcementsTable">
                                 <thead>
                                     <tr>
-                                        <th>Type</th>
                                         <th>Title</th>
-                                        <th>Scope</th>
-                                        <th>Active</th>
-                                        <th>Schedule</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody id="announcementsTable">
-                                    <tr><td colspan="6" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                <tbody id="announcementsList">
+                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                </div>
+                </section>
 
                 <!-- Service Status Section -->
-                <div class="section" id="section-status">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Service Status</h3>
-                            <button class="btn btn-primary btn-sm" onclick="openServiceModal()">+ Add Service</button>
+                <section class="section" id="section-services">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Service Status</h2>
+                            <p class="section-desc">Monitor and update service health status</p>
                         </div>
-                        <div class="table-container">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Service</th>
-                                        <th>Status</th>
-                                        <th>Message</th>
-                                        <th>Visible</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="servicesTable">
-                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
-                                </tbody>
-                            </table>
+                        <button class="header-btn btn-primary" onclick="showModal('service')">
+                            <span>➕</span> Add Service
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div id="servicesGrid" class="services-list">
+                            <div class="loading"><div class="spinner"></div> Loading services...</div>
                         </div>
                     </div>
-                </div>
+                </section>
 
                 <!-- Platform Settings Section -->
-                <div class="section" id="section-settings">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Platform Settings</h3>
-                        </div>
-                        <div class="card-body" id="settingsContainer">
-                            <div class="loading"><div class="spinner"></div> Loading...</div>
+                <section class="section" id="section-settings">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Platform Settings</h2>
+                            <p class="section-desc">Configure global platform behavior</p>
                         </div>
                     </div>
-                </div>
+                    <div class="card">
+                        <div id="settingsList">
+                            <div class="loading"><div class="spinner"></div> Loading settings...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Security Settings Section -->
+                <section class="section" id="section-security">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Security Settings</h2>
+                            <p class="section-desc">Configure authentication and access controls</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <form id="securityForm">
+                            <div class="form-group">
+                                <label class="form-label">Session Timeout</label>
+                                <select class="form-select" id="sessionTimeout">
+                                    <option value="1800">30 minutes</option>
+                                    <option value="3600">1 hour</option>
+                                    <option value="14400">4 hours</option>
+                                    <option value="86400">24 hours</option>
+                                </select>
+                                <p class="form-hint">How long before inactive sessions expire</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Max Login Attempts</label>
+                                <select class="form-select" id="maxLoginAttempts">
+                                    <option value="3">3 attempts</option>
+                                    <option value="5">5 attempts</option>
+                                    <option value="10">10 attempts</option>
+                                </select>
+                                <p class="form-hint">Failed attempts before account lockout</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Lockout Duration</label>
+                                <select class="form-select" id="lockoutDuration">
+                                    <option value="300">5 minutes</option>
+                                    <option value="900">15 minutes</option>
+                                    <option value="1800">30 minutes</option>
+                                    <option value="3600">1 hour</option>
+                                </select>
+                                <p class="form-hint">How long accounts stay locked after too many failed attempts</p>
+                            </div>
+
+                            <div class="toggle-group">
+                                <div class="toggle-info">
+                                    <div class="toggle-label">Require 2FA for Admins</div>
+                                    <div class="toggle-desc">Force all admins to use two-factor authentication</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" id="require2fa">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">IP Whitelist (Admin Access)</label>
+                                <textarea class="form-textarea" id="ipWhitelist" placeholder="Enter IP addresses, one per line&#10;Leave empty to allow all"></textarea>
+                                <p class="form-hint">Only these IPs can access the admin panel. Leave empty to allow all.</p>
+                            </div>
+
+                            <button type="submit" class="header-btn btn-primary">Save Security Settings</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- Maintenance Section -->
+                <section class="section" id="section-maintenance">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Maintenance Mode</h2>
+                            <p class="section-desc">Enable maintenance mode to show a maintenance page to visitors</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <form id="maintenanceForm">
+                            <div class="toggle-group" style="margin-bottom: 1.5rem;">
+                                <div class="toggle-info">
+                                    <div class="toggle-label">Enable Maintenance Mode</div>
+                                    <div class="toggle-desc">Visitors will see a maintenance page instead of the platform</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" id="maintenanceEnabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Maintenance Message</label>
+                                <textarea class="form-textarea" id="maintenanceMessage" placeholder="We're performing scheduled maintenance..."></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Estimated End Time</label>
+                                <input type="datetime-local" class="form-input" id="maintenanceEndTime">
+                                <p class="form-hint">Visitors will see a countdown to this time</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Allowed IPs (Bypass Maintenance)</label>
+                                <textarea class="form-textarea" id="maintenanceAllowedIps" placeholder="Enter IP addresses that can bypass maintenance, one per line"></textarea>
+                                <p class="form-hint">These IPs can still access the platform during maintenance</p>
+                            </div>
+
+                            <button type="submit" class="header-btn btn-primary">Save Maintenance Settings</button>
+                        </form>
+                    </div>
+                </section>
 
                 <!-- Feature Flags Section -->
-                <div class="section" id="section-flags">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Feature Flags</h3>
-                            <button class="btn btn-primary btn-sm" onclick="openFlagModal()">+ New Flag</button>
+                <section class="section" id="section-features">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Feature Flags</h2>
+                            <p class="section-desc">Toggle features without deploying code</p>
                         </div>
-                        <div class="table-container">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Flag</th>
-                                        <th>Key</th>
-                                        <th>Status</th>
-                                        <th>Rollout</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="flagsTable">
-                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
-                                </tbody>
-                            </table>
+                        <button class="header-btn btn-primary" onclick="showModal('feature')">
+                            <span>➕</span> New Feature Flag
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div id="featuresList">
+                            <div class="loading"><div class="spinner"></div> Loading feature flags...</div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Content Blocks Section -->
-                <div class="section" id="section-content">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Content Blocks</h3>
-                            <button class="btn btn-primary btn-sm" onclick="openContentModal()">+ New Block</button>
-                        </div>
-                        <div class="table-container">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Key</th>
-                                        <th>Title</th>
-                                        <th>Page</th>
-                                        <th>Active</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="contentTable">
-                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+                </section>
 
                 <!-- Changelogs Section -->
-                <div class="section" id="section-changelogs">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Changelogs</h3>
-                            <button class="btn btn-primary btn-sm" onclick="openChangelogModal()">+ New Changelog</button>
+                <section class="section" id="section-changelogs">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Changelogs</h2>
+                            <p class="section-desc">Document platform updates and releases</p>
                         </div>
+                        <button class="header-btn btn-primary" onclick="showModal('changelog')">
+                            <span>➕</span> New Changelog
+                        </button>
+                    </div>
+                    <div class="card">
                         <div class="table-container">
-                            <table>
+                            <table class="table">
                                 <thead>
                                     <tr>
                                         <th>Version</th>
                                         <th>Title</th>
                                         <th>Type</th>
-                                        <th>Published</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody id="changelogsTable">
-                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Audit Logs Section -->
-                <div class="section" id="section-audit">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Audit Logs</h3>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <select class="form-select" id="auditFilter" style="width: auto; padding: 0.375rem 0.75rem; font-size: 0.8rem;">
-                                    <option value="">All Actions</option>
-                                    <option value="CREATE">Create</option>
-                                    <option value="UPDATE">Update</option>
-                                    <option value="DELETE">Delete</option>
-                                </select>
-                                <button class="btn btn-secondary btn-sm" onclick="loadAuditLogs()">Refresh</button>
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Action</th>
-                                        <th>Resource</th>
-                                        <th>Admin</th>
-                                        <th>Changes</th>
-                                        <th>IP</th>
-                                        <th>Time</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="auditTable">
+                                <tbody id="changelogsList">
                                     <tr><td colspan="6" class="loading"><div class="spinner"></div> Loading...</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                </div>
+                </section>
+
+                <!-- Admin Users Section -->
+                <section class="section" id="section-admins">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Admin Users</h2>
+                            <p class="section-desc">Manage administrator accounts</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th>Last Login</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminsList">
+                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Audit Logs Section -->
+                <section class="section" id="section-audit">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Audit Logs</h2>
+                            <p class="section-desc">Track all administrative actions</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Admin</th>
+                                        <th>Action</th>
+                                        <th>Resource</th>
+                                        <th>IP Address</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="auditList">
+                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- System Info Section -->
+                <section class="section" id="section-system">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">System Information</h2>
+                            <p class="section-desc">Server status and diagnostics</p>
+                        </div>
+                        <button class="header-btn btn-ghost" onclick="loadSystemInfo()">
+                            <span>🔄</span> Refresh
+                        </button>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="icon blue">⏱️</div>
+                            <div class="value" id="sysUptime">-</div>
+                            <div class="label">Server Uptime</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="icon green">💾</div>
+                            <div class="value" id="sysMemory">-</div>
+                            <div class="label">Memory Usage</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="icon yellow">📦</div>
+                            <div class="value" id="sysNode">-</div>
+                            <div class="label">Node.js Version</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="icon red">🖥️</div>
+                            <div class="value" id="sysPlatform">-</div>
+                            <div class="label">Platform</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Quick Actions</h3>
+                        </div>
+                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                            <button class="header-btn btn-ghost" onclick="clearSessions()">🗑️ Clear Sessions</button>
+                            <button class="header-btn btn-danger" onclick="toggleEmergencyLockdown()">🚨 Emergency Lockdown</button>
+                        </div>
+                    </div>
+                </section>
             </div>
         </main>
-    </div>
-
-    <!-- Modal Template -->
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title" id="modalTitle">Modal</h3>
-                <button class="modal-close" onclick="closeModal()">×</button>
-            </div>
-            <div class="modal-body" id="modalBody"></div>
-            <div class="modal-footer" id="modalFooter">
-                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                <button class="btn btn-primary" id="modalSubmit">Save</button>
-            </div>
-        </div>
     </div>
 
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
+    <!-- Modal Overlay -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Modal</h3>
+                <button class="modal-close" onclick="hideModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer" id="modalFooter">
+                <button class="header-btn btn-ghost" onclick="hideModal()">Cancel</button>
+                <button class="header-btn btn-primary" id="modalSubmit">Save</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // ====================================================================
-        // STATE
-        // ====================================================================
-        let adminData = { id: '', email: '', role: '' };
+        let currentAdmin = null;
         let currentSection = 'dashboard';
 
-        // ====================================================================
-        // UTILITIES
-        // ====================================================================
-        async function api(endpoint, method = 'GET', body = null) {
-            const opts = {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin'
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboard();
+            startClock();
+            setupNavigation();
+        });
+
+        function setupNavigation() {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const section = item.dataset.section;
+                    if (section) goToSection(section);
+                });
+            });
+        }
+
+        function goToSection(section) {
+            currentSection = section;
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.section === section);
+            });
+            document.querySelectorAll('.section').forEach(s => {
+                s.classList.toggle('active', s.id === `section-${section}`);
+            });
+
+            const titles = {
+                dashboard: 'Dashboard', announcements: 'Announcements', services: 'Service Status',
+                changelogs: 'Changelogs', settings: 'Platform Settings', security: 'Security Settings',
+                maintenance: 'Maintenance Mode', features: 'Feature Flags', admins: 'Admin Users',
+                audit: 'Audit Logs', system: 'System Information'
             };
-            if (body) opts.body = JSON.stringify(body);
-            
-            const res = await fetch(`/api/admin${endpoint}`, opts);
-            const data = await res.json();
-            
-            if (!res.ok) {
-                if (res.status === 401) {
-                    window.location.href = '/signin';
-                    return;
-                }
-                throw new Error(data.error || 'Request failed');
+            document.getElementById('pageTitle').textContent = titles[section] || section;
+            loadSectionData(section);
+        }
+
+        async function loadSectionData(section) {
+            switch(section) {
+                case 'dashboard': await loadDashboard(); break;
+                case 'announcements': await loadAnnouncements(); break;
+                case 'services': await loadServices(); break;
+                case 'settings': await loadSettings(); break;
+                case 'security': await loadSecuritySettings(); break;
+                case 'maintenance': await loadMaintenance(); break;
+                case 'features': await loadFeatures(); break;
+                case 'changelogs': await loadChangelogs(); break;
+                case 'admins': await loadAdmins(); break;
+                case 'audit': await loadAuditLogs(); break;
+                case 'system': await loadSystemInfo(); break;
             }
-            return data;
+        }
+
+        async function api(endpoint, options = {}) {
+            try {
+                const res = await fetch(`/api/admin${endpoint}`, {
+                    ...options,
+                    headers: { 'Content-Type': 'application/json', ...options.headers },
+                    credentials: 'same-origin'
+                });
+                if (res.status === 401) { window.location.href = '/signin'; return null; }
+                const data = await res.json();
+                if (!data.success && data.error) toast(data.error, 'error');
+                return data;
+            } catch (err) {
+                console.error('API error:', err);
+                toast('Connection error', 'error');
+                return null;
+            }
+        }
+
+        function startClock() {
+            function update() {
+                const now = new Date();
+                document.getElementById('serverTime').textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+                document.getElementById('serverDate').textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+            }
+            update();
+            setInterval(update, 1000);
+        }
+
+        async function loadDashboard() {
+            const data = await api('/dashboard');
+            if (!data) return;
+
+            currentAdmin = data.admin;
+            document.getElementById('adminName').textContent = data.admin.email.split('@')[0];
+            document.getElementById('adminRole').textContent = data.admin.role;
+            document.getElementById('adminAvatar').textContent = data.admin.email[0].toUpperCase();
+
+            document.getElementById('statAdmins').textContent = data.stats.totalAdmins;
+            document.getElementById('statAnnouncements').textContent = data.stats.activeAnnouncements;
+            document.getElementById('statFeatures').textContent = data.stats.enabledFlags;
+            document.getElementById('statActions').textContent = data.stats.actionsToday;
+
+            document.getElementById('maintenanceBanner').classList.toggle('hidden', !data.stats.maintenanceMode);
+
+            const servicesList = document.getElementById('servicesList');
+            if (data.services?.length) {
+                servicesList.innerHTML = data.services.map(s => `
+                    <div class="service-item">
+                        <span class="service-name">${s.display_name}</span>
+                        <span class="service-status">
+                            <span class="status-dot status-${s.status}"></span>
+                            ${s.status.charAt(0).toUpperCase() + s.status.slice(1)}
+                        </span>
+                    </div>
+                `).join('');
+            } else {
+                servicesList.innerHTML = '<p style="color: var(--text-muted); padding: 1rem; text-align: center;">No services configured</p>';
+            }
+
+            const activityFeed = document.getElementById('activityFeed');
+            if (data.recentAudit?.length) {
+                activityFeed.innerHTML = data.recentAudit.slice(0, 5).map(a => `
+                    <div class="activity-item">
+                        <div class="activity-icon" style="background: var(--accent-muted); color: var(--accent);">📝</div>
+                        <div class="activity-content">
+                            <div class="activity-text"><strong>${a.admin_email || 'System'}</strong> ${a.action.toLowerCase()} ${a.resource_type}</div>
+                            <div class="activity-time">${timeAgo(a.created_at)}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                activityFeed.innerHTML = '<p style="color: var(--text-muted); padding: 1rem; text-align: center;">No recent activity</p>';
+            }
+        }
+
+        async function loadAnnouncements() {
+            const data = await api('/announcements');
+            if (!data) return;
+            const list = document.getElementById('announcementsList');
+            if (data.announcements?.length) {
+                list.innerHTML = data.announcements.map(a => `
+                    <tr>
+                        <td><strong>${escapeHtml(a.title)}</strong></td>
+                        <td><span class="badge badge-${a.type === 'critical' ? 'error' : a.type === 'warning' ? 'warning' : 'info'}">${a.type}</span></td>
+                        <td><span class="badge ${a.is_active ? 'badge-success' : 'badge-warning'}">${a.is_active ? 'Active' : 'Inactive'}</span></td>
+                        <td>${formatDate(a.created_at)}</td>
+                        <td>
+                            <button class="header-btn btn-ghost" onclick="toggleAnnouncement('${a.id}', ${a.is_active ? 0 : 1})">${a.is_active ? 'Disable' : 'Enable'}</button>
+                            <button class="header-btn btn-ghost" onclick="deleteAnnouncement('${a.id}')" style="color: var(--error);">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                list.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No announcements</td></tr>';
+            }
+        }
+
+        async function toggleAnnouncement(id, active) {
+            const data = await api(`/announcements/${id}`, { method: 'PUT', body: JSON.stringify({ is_active: active }) });
+            if (data?.success) { toast('Announcement updated', 'success'); loadAnnouncements(); }
+        }
+
+        async function deleteAnnouncement(id) {
+            if (!confirm('Delete this announcement?')) return;
+            const data = await api(`/announcements/${id}`, { method: 'DELETE' });
+            if (data?.success) { toast('Announcement deleted', 'success'); loadAnnouncements(); }
+        }
+
+        async function loadServices() {
+            const data = await api('/service-status');
+            if (!data) return;
+            const grid = document.getElementById('servicesGrid');
+            if (data.services?.length) {
+                grid.innerHTML = data.services.map(s => `
+                    <div class="service-item" style="padding: 1rem;">
+                        <div style="flex: 1;">
+                            <div class="service-name">${escapeHtml(s.display_name)}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">${s.service_name}</div>
+                        </div>
+                        <select onchange="updateServiceStatus('${s.id}', this.value)" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 0.375rem 0.5rem; color: var(--text-primary); font-size: 0.8rem;">
+                            <option value="online" ${s.status === 'online' ? 'selected' : ''}>🟢 Online</option>
+                            <option value="degraded" ${s.status === 'degraded' ? 'selected' : ''}>🟡 Degraded</option>
+                            <option value="offline" ${s.status === 'offline' ? 'selected' : ''}>🔴 Offline</option>
+                            <option value="maintenance" ${s.status === 'maintenance' ? 'selected' : ''}>🔵 Maintenance</option>
+                        </select>
+                    </div>
+                `).join('');
+            } else {
+                grid.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No services configured</p>';
+            }
+        }
+
+        async function updateServiceStatus(id, status) {
+            const data = await api(`/service-status/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+            if (data?.success) toast('Service status updated', 'success');
+        }
+
+        async function loadSettings() {
+            const data = await api('/platform-settings');
+            if (!data) return;
+            const list = document.getElementById('settingsList');
+            if (data.settings?.length) {
+                list.innerHTML = data.settings.map(s => `
+                    <div class="toggle-group">
+                        <div class="toggle-info">
+                            <div class="toggle-label">${s.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+                            <div class="toggle-desc">${s.description || s.key}</div>
+                        </div>
+                        ${s.value_type === 'boolean' ? `
+                            <label class="toggle">
+                                <input type="checkbox" ${s.value === 'true' ? 'checked' : ''} onchange="updateSetting('${s.key}', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        ` : `
+                            <input type="text" class="form-input" value="${escapeHtml(s.value)}" style="width: 200px;" onchange="updateSetting('${s.key}', this.value)">
+                        `}
+                    </div>
+                `).join('');
+            } else {
+                list.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No settings found</p>';
+            }
+        }
+
+        async function updateSetting(key, value) {
+            const data = await api(`/platform-settings/${key}`, { method: 'PUT', body: JSON.stringify({ value: String(value) }) });
+            if (data?.success) toast('Setting updated', 'success');
+        }
+
+        async function loadSecuritySettings() {
+            const data = await api('/security-settings');
+            if (!data) return;
+            document.getElementById('sessionTimeout').value = data.settings.session_timeout || 3600;
+            document.getElementById('maxLoginAttempts').value = data.settings.max_login_attempts || 5;
+            document.getElementById('lockoutDuration').value = data.settings.lockout_duration || 900;
+            document.getElementById('require2fa').checked = data.settings.require_2fa || false;
+            document.getElementById('ipWhitelist').value = data.settings.ip_whitelist || '';
+        }
+
+        document.getElementById('securityForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = await api('/security-settings', {
+                method: 'POST',
+                body: JSON.stringify({
+                    session_timeout: parseInt(document.getElementById('sessionTimeout').value),
+                    max_login_attempts: parseInt(document.getElementById('maxLoginAttempts').value),
+                    lockout_duration: parseInt(document.getElementById('lockoutDuration').value),
+                    require_2fa: document.getElementById('require2fa').checked,
+                    ip_whitelist: document.getElementById('ipWhitelist').value
+                })
+            });
+            if (data?.success) toast('Security settings saved', 'success');
+        });
+
+        async function loadMaintenance() {
+            const data = await api('/maintenance');
+            if (!data) return;
+            document.getElementById('maintenanceEnabled').checked = data.maintenance.enabled || false;
+            document.getElementById('maintenanceMessage').value = data.maintenance.message || '';
+            if (data.maintenance.endTime) document.getElementById('maintenanceEndTime').value = data.maintenance.endTime.slice(0, 16);
+            document.getElementById('maintenanceAllowedIps').value = (data.maintenance.allowedIps || []).join('\n');
+        }
+
+        document.getElementById('maintenanceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = await api('/maintenance', {
+                method: 'POST',
+                body: JSON.stringify({
+                    enabled: document.getElementById('maintenanceEnabled').checked,
+                    message: document.getElementById('maintenanceMessage').value,
+                    endTime: document.getElementById('maintenanceEndTime').value || null,
+                    allowedIps: document.getElementById('maintenanceAllowedIps').value.split('\n').filter(ip => ip.trim())
+                })
+            });
+            if (data?.success) { toast('Maintenance settings saved', 'success'); loadDashboard(); }
+        });
+
+        async function loadFeatures() {
+            const data = await api('/feature-flags');
+            if (!data) return;
+            const list = document.getElementById('featuresList');
+            if (data.flags?.length) {
+                list.innerHTML = data.flags.map(f => `
+                    <div class="toggle-group" style="${f.is_kill_switch ? 'border: 1px solid var(--error); border-radius: 8px;' : ''}">
+                        <div class="toggle-info">
+                            <div class="toggle-label">${f.is_kill_switch ? '🚨 ' : ''}${escapeHtml(f.name)} <span class="badge badge-info" style="margin-left: 0.5rem; font-size: 0.6rem;">${f.key}</span></div>
+                            <div class="toggle-desc">${escapeHtml(f.description || 'No description')}</div>
+                        </div>
+                        <label class="toggle">
+                            <input type="checkbox" ${f.is_enabled ? 'checked' : ''} onchange="updateFeature('${f.id}', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                `).join('');
+            } else {
+                list.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No feature flags</p>';
+            }
+        }
+
+        async function updateFeature(id, enabled) {
+            const data = await api(`/feature-flags/${id}`, { method: 'PUT', body: JSON.stringify({ is_enabled: enabled }) });
+            if (data?.success) toast('Feature flag updated', 'success');
+        }
+
+        async function loadChangelogs() {
+            const data = await api('/changelogs');
+            if (!data) return;
+            const list = document.getElementById('changelogsList');
+            if (data.changelogs?.length) {
+                list.innerHTML = data.changelogs.map(c => `
+                    <tr>
+                        <td><code style="background: var(--bg-input); padding: 0.25rem 0.5rem; border-radius: 4px;">${escapeHtml(c.version)}</code></td>
+                        <td><strong>${escapeHtml(c.title)}</strong></td>
+                        <td><span class="badge badge-${c.release_type === 'major' ? 'error' : c.release_type === 'minor' ? 'warning' : 'info'}">${c.release_type}</span></td>
+                        <td><span class="badge ${c.is_published ? 'badge-success' : 'badge-warning'}">${c.is_published ? 'Published' : 'Draft'}</span></td>
+                        <td>${formatDate(c.created_at)}</td>
+                        <td><button class="header-btn btn-ghost" onclick="toggleChangelog('${c.id}', ${c.is_published ? 0 : 1})">${c.is_published ? 'Unpublish' : 'Publish'}</button></td>
+                    </tr>
+                `).join('');
+            } else {
+                list.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No changelogs</td></tr>';
+            }
+        }
+
+        async function toggleChangelog(id, publish) {
+            const data = await api(`/changelogs/${id}`, { method: 'PUT', body: JSON.stringify({ is_published: publish }) });
+            if (data?.success) { toast('Changelog updated', 'success'); loadChangelogs(); }
+        }
+
+        async function loadAdmins() {
+            const data = await api('/admins');
+            if (!data) return;
+            const list = document.getElementById('adminsList');
+            if (data.admins?.length) {
+                list.innerHTML = data.admins.map(a => `
+                    <tr>
+                        <td><strong>${escapeHtml(a.email)}</strong></td>
+                        <td><span class="badge badge-${a.role === 'owner' ? 'error' : a.role === 'admin' ? 'warning' : 'info'}">${a.role}</span></td>
+                        <td><span class="badge ${a.active ? 'badge-success' : 'badge-error'}">${a.active ? 'Active' : 'Inactive'}</span></td>
+                        <td>${a.last_login ? timeAgo(a.last_login) : 'Never'}</td>
+                        <td>-</td>
+                    </tr>
+                `).join('');
+            } else {
+                list.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No admins found</td></tr>';
+            }
+        }
+
+        async function loadAuditLogs() {
+            const data = await api('/audit-logs?limit=50');
+            if (!data) return;
+            const list = document.getElementById('auditList');
+            if (data.logs?.length) {
+                list.innerHTML = data.logs.map(l => `
+                    <tr>
+                        <td style="white-space: nowrap;">${formatDateTime(l.created_at)}</td>
+                        <td>${escapeHtml(l.admin_email || 'System')}</td>
+                        <td><span class="badge badge-info">${l.action}</span></td>
+                        <td>${l.resource_type} ${l.resource_id ? `<code style="font-size: 0.7rem;">${l.resource_id.substring(0, 8)}</code>` : ''}</td>
+                        <td style="font-family: monospace; font-size: 0.75rem;">${l.ip_address || '-'}</td>
+                    </tr>
+                `).join('');
+            } else {
+                list.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No audit logs</td></tr>';
+            }
+        }
+
+        async function loadSystemInfo() {
+            const data = await api('/system-info');
+            if (!data) return;
+            document.getElementById('sysUptime').textContent = formatUptime(data.system.uptime);
+            document.getElementById('sysMemory').textContent = `${data.system.memoryUsage.used}MB`;
+            document.getElementById('sysNode').textContent = data.system.nodeVersion;
+            document.getElementById('sysPlatform').textContent = `${data.system.platform} (${data.system.arch})`;
+        }
+
+        async function clearSessions() {
+            if (!confirm('Clear all admin sessions? Everyone will need to log in again.')) return;
+            const data = await api('/quick-action/clear-sessions', { method: 'POST' });
+            if (data?.success) toast(data.message, 'success');
+        }
+
+        async function toggleEmergencyLockdown() {
+            if (!confirm('⚠️ EMERGENCY LOCKDOWN will disable all non-essential features. Continue?')) return;
+            const data = await api('/quick-action/emergency-lockdown', { method: 'POST', body: JSON.stringify({ enable: true }) });
+            if (data?.success) { toast(data.message, 'warning'); loadFeatures(); }
+        }
+
+        function showModal(type) {
+            const overlay = document.getElementById('modalOverlay');
+            const title = document.getElementById('modalTitle');
+            const body = document.getElementById('modalBody');
+            const submit = document.getElementById('modalSubmit');
+
+            if (type === 'announcement') {
+                title.textContent = 'New Announcement';
+                body.innerHTML = `
+                    <div class="form-group"><label class="form-label">Title</label><input type="text" class="form-input" id="modalAnnouncementTitle" required></div>
+                    <div class="form-group"><label class="form-label">Content</label><textarea class="form-textarea" id="modalAnnouncementContent" required></textarea></div>
+                    <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="modalAnnouncementType"><option value="info">Info</option><option value="warning">Warning</option><option value="critical">Critical</option></select></div>
+                `;
+                submit.onclick = createAnnouncement;
+            } else if (type === 'feature') {
+                title.textContent = 'New Feature Flag';
+                body.innerHTML = `
+                    <div class="form-group"><label class="form-label">Key</label><input type="text" class="form-input" id="modalFeatureKey" placeholder="feature_name" required><p class="form-hint">Lowercase letters, numbers, and underscores only</p></div>
+                    <div class="form-group"><label class="form-label">Name</label><input type="text" class="form-input" id="modalFeatureName" required></div>
+                    <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="modalFeatureDesc"></textarea></div>
+                `;
+                submit.onclick = createFeature;
+            } else if (type === 'changelog') {
+                title.textContent = 'New Changelog';
+                body.innerHTML = `
+                    <div class="form-group"><label class="form-label">Version</label><input type="text" class="form-input" id="modalChangelogVersion" placeholder="1.2.3" required></div>
+                    <div class="form-group"><label class="form-label">Title</label><input type="text" class="form-input" id="modalChangelogTitle" required></div>
+                    <div class="form-group"><label class="form-label">Release Type</label><select class="form-select" id="modalChangelogType"><option value="patch">Patch</option><option value="minor">Minor</option><option value="major">Major</option><option value="hotfix">Hotfix</option></select></div>
+                    <div class="form-group"><label class="form-label">Content (Markdown)</label><textarea class="form-textarea" id="modalChangelogContent" style="min-height: 150px;" required></textarea></div>
+                `;
+                submit.onclick = createChangelog;
+            }
+            overlay.classList.add('active');
+        }
+
+        function hideModal() { document.getElementById('modalOverlay').classList.remove('active'); }
+
+        async function createAnnouncement() {
+            const data = await api('/announcements', { method: 'POST', body: JSON.stringify({ title: document.getElementById('modalAnnouncementTitle').value, content: document.getElementById('modalAnnouncementContent').value, type: document.getElementById('modalAnnouncementType').value }) });
+            if (data?.success) { toast('Announcement created', 'success'); hideModal(); loadAnnouncements(); }
+        }
+
+        async function createFeature() {
+            const data = await api('/feature-flags', { method: 'POST', body: JSON.stringify({ key: document.getElementById('modalFeatureKey').value, name: document.getElementById('modalFeatureName').value, description: document.getElementById('modalFeatureDesc').value }) });
+            if (data?.success) { toast('Feature flag created', 'success'); hideModal(); loadFeatures(); }
+        }
+
+        async function createChangelog() {
+            const data = await api('/changelogs', { method: 'POST', body: JSON.stringify({ version: document.getElementById('modalChangelogVersion').value, title: document.getElementById('modalChangelogTitle').value, release_type: document.getElementById('modalChangelogType').value, content: document.getElementById('modalChangelogContent').value }) });
+            if (data?.success) { toast('Changelog created', 'success'); hideModal(); loadChangelogs(); }
         }
 
         function toast(message, type = 'success') {
             const container = document.getElementById('toastContainer');
             const t = document.createElement('div');
             t.className = `toast ${type}`;
-            t.innerHTML = `${type === 'success' ? '✓' : '✗'} ${message}`;
+            t.innerHTML = `<span class="toast-icon">${type === 'success' ? '✓' : type === 'error' ? '✕' : '⚠'}</span><span class="toast-message">${escapeHtml(message)}</span>`;
             container.appendChild(t);
             setTimeout(() => t.remove(), 4000);
         }
 
-        function formatDate(dateStr) {
-            if (!dateStr) return '-';
-            return new Date(dateStr).toLocaleString();
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        }
-
-        // ====================================================================
-        // NAVIGATION
-        // ====================================================================
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const section = item.dataset.section;
-                if (!section) return;
-                
-                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-                item.classList.add('active');
-                
-                document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-                document.getElementById(`section-${section}`).classList.add('active');
-                
-                document.getElementById('pageTitle').textContent = item.textContent.trim();
-                currentSection = section;
-                
-                loadSectionData(section);
-            });
-        });
-
-        function loadSectionData(section) {
-            switch (section) {
-                case 'dashboard': loadDashboard(); break;
-                case 'announcements': loadAnnouncements(); break;
-                case 'status': loadServices(); break;
-                case 'settings': loadSettings(); break;
-                case 'flags': loadFlags(); break;
-                case 'content': loadContent(); break;
-                case 'changelogs': loadChangelogs(); break;
-                case 'audit': loadAuditLogs(); break;
-            }
-        }
-
-        // ====================================================================
-        // DASHBOARD
-        // ====================================================================
-        async function loadDashboard() {
-            try {
-                const data = await api('/dashboard');
-                adminData = data.admin;
-                
-                // Update admin info in sidebar
-                document.getElementById('adminEmail').textContent = data.admin.email;
-                document.getElementById('adminRole').textContent = data.admin.role;
-                document.getElementById('adminAvatar').textContent = data.admin.email[0].toUpperCase();
-                
-                // Maintenance badge
-                document.getElementById('maintenanceBadge').style.display = 
-                    data.stats.maintenanceMode ? 'block' : 'none';
-                
-                // Stats
-                document.getElementById('statsGrid').innerHTML = `
-                    <div class="stat-card">
-                        <div class="stat-label">Active Announcements</div>
-                        <div class="stat-value">${data.stats.activeAnnouncements}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Enabled Flags</div>
-                        <div class="stat-value">${data.stats.enabledFlags}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Total Admins</div>
-                        <div class="stat-value">${data.stats.totalAdmins}</div>
-                    </div>
-                    <div class="stat-card ${data.stats.maintenanceMode ? 'warning' : ''}">
-                        <div class="stat-label">Actions Today</div>
-                        <div class="stat-value">${data.stats.actionsToday}</div>
-                    </div>
-                `;
-                
-                // Services
-                document.getElementById('dashboardServices').innerHTML = data.services.map(s => `
-                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
-                        <span><span class="status-dot ${s.status}"></span>${escapeHtml(s.display_name)}</span>
-                        <span class="badge badge-${s.status}">${s.status}</span>
-                    </div>
-                `).join('');
-                
-                // Recent activity
-                document.getElementById('recentActivity').innerHTML = data.recentAudit.map(log => `
-                    <tr>
-                        <td><span class="badge badge-info">${escapeHtml(log.action)}</span></td>
-                        <td>${escapeHtml(log.resource_type)}</td>
-                        <td>${escapeHtml(log.admin_email)}</td>
-                        <td>${formatDate(log.created_at)}</td>
-                    </tr>
-                `).join('') || '<tr><td colspan="4" class="empty-state">No recent activity</td></tr>';
-                
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        // ====================================================================
-        // ANNOUNCEMENTS
-        // ====================================================================
-        async function loadAnnouncements() {
-            try {
-                const data = await api('/announcements');
-                document.getElementById('announcementsTable').innerHTML = data.announcements.map(a => `
-                    <tr>
-                        <td><span class="badge badge-${a.type}">${a.type}</span></td>
-                        <td>${escapeHtml(a.title)}</td>
-                        <td>${escapeHtml(a.scope)}</td>
-                        <td>
-                            <label class="toggle">
-                                <input type="checkbox" ${a.is_active ? 'checked' : ''} onchange="toggleAnnouncement('${a.id}', this.checked)">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </td>
-                        <td>${a.start_at ? formatDate(a.start_at) : 'Always'}</td>
-                        <td>
-                            <button class="btn btn-secondary btn-sm" onclick='editAnnouncement(${JSON.stringify(a)})'>Edit</button>
-                            <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement('${a.id}')">Delete</button>
-                        </td>
-                    </tr>
-                `).join('') || '<tr><td colspan="6" class="empty-state">No announcements</td></tr>';
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        async function toggleAnnouncement(id, isActive) {
-            try {
-                await api(`/announcements/${id}`, 'PUT', { is_active: isActive ? 1 : 0 });
-                toast('Announcement updated');
-            } catch (err) {
-                toast(err.message, 'error');
-                loadAnnouncements();
-            }
-        }
-
-        async function deleteAnnouncement(id) {
-            if (!confirm('Delete this announcement?')) return;
-            try {
-                await api(`/announcements/${id}`, 'DELETE');
-                toast('Announcement deleted');
-                loadAnnouncements();
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        function openAnnouncementModal(existing = null) {
-            document.getElementById('modalTitle').textContent = existing ? 'Edit Announcement' : 'New Announcement';
-            document.getElementById('modalBody').innerHTML = `
-                <div class="form-group">
-                    <label class="form-label">Title</label>
-                    <input type="text" class="form-input" id="annTitle" value="${escapeHtml(existing?.title || '')}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Content (Markdown supported)</label>
-                    <textarea class="form-textarea" id="annContent">${escapeHtml(existing?.content || '')}</textarea>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Type</label>
-                        <select class="form-select" id="annType">
-                            <option value="info" ${existing?.type === 'info' ? 'selected' : ''}>Info</option>
-                            <option value="warning" ${existing?.type === 'warning' ? 'selected' : ''}>Warning</option>
-                            <option value="critical" ${existing?.type === 'critical' ? 'selected' : ''}>Critical</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Scope</label>
-                        <select class="form-select" id="annScope">
-                            <option value="global" ${existing?.scope === 'global' ? 'selected' : ''}>Global</option>
-                            <option value="dashboard" ${existing?.scope === 'dashboard' ? 'selected' : ''}>Dashboard</option>
-                            <option value="api" ${existing?.scope === 'api' ? 'selected' : ''}>API</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Start Date (optional)</label>
-                        <input type="datetime-local" class="form-input" id="annStart" value="${existing?.start_at?.slice(0, 16) || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">End Date (optional)</label>
-                        <input type="datetime-local" class="form-input" id="annEnd" value="${existing?.end_at?.slice(0, 16) || ''}">
-                    </div>
-                </div>
-            `;
-            document.getElementById('modalSubmit').onclick = () => saveAnnouncement(existing?.id);
-            document.getElementById('modalOverlay').classList.add('active');
-        }
-
-        function editAnnouncement(a) {
-            openAnnouncementModal(a);
-        }
-
-        async function saveAnnouncement(id) {
-            const data = {
-                title: document.getElementById('annTitle').value,
-                content: document.getElementById('annContent').value,
-                type: document.getElementById('annType').value,
-                scope: document.getElementById('annScope').value,
-                start_at: document.getElementById('annStart').value || null,
-                end_at: document.getElementById('annEnd').value || null
-            };
-            
-            try {
-                if (id) {
-                    await api(`/announcements/${id}`, 'PUT', data);
-                } else {
-                    await api('/announcements', 'POST', data);
-                }
-                toast('Announcement saved');
-                closeModal();
-                loadAnnouncements();
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        // ====================================================================
-        // SERVICE STATUS
-        // ====================================================================
-        async function loadServices() {
-            try {
-                const data = await api('/service-status');
-                document.getElementById('servicesTable').innerHTML = data.services.map(s => `
-                    <tr>
-                        <td><span class="status-dot ${s.status}"></span>${escapeHtml(s.display_name)}</td>
-                        <td>
-                            <select class="form-select" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.8rem;"
-                                    onchange="updateServiceStatus('${s.id}', this.value)">
-                                <option value="online" ${s.status === 'online' ? 'selected' : ''}>Online</option>
-                                <option value="degraded" ${s.status === 'degraded' ? 'selected' : ''}>Degraded</option>
-                                <option value="offline" ${s.status === 'offline' ? 'selected' : ''}>Offline</option>
-                                <option value="maintenance" ${s.status === 'maintenance' ? 'selected' : ''}>Maintenance</option>
-                            </select>
-                        </td>
-                        <td>
-                            <input type="text" class="form-input" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;"
-                                   value="${escapeHtml(s.status_message || '')}" 
-                                   onblur="updateServiceMessage('${s.id}', this.value)"
-                                   placeholder="Status message...">
-                        </td>
-                        <td>
-                            <label class="toggle">
-                                <input type="checkbox" ${s.is_visible ? 'checked' : ''} onchange="updateServiceVisibility('${s.id}', this.checked)">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </td>
-                        <td>${escapeHtml(s.service_name)}</td>
-                    </tr>
-                `).join('');
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        async function updateServiceStatus(id, status) {
-            try {
-                await api(`/service-status/${id}`, 'PUT', { status });
-                toast('Status updated');
-            } catch (err) {
-                toast(err.message, 'error');
-                loadServices();
-            }
-        }
-
-        async function updateServiceMessage(id, message) {
-            try {
-                await api(`/service-status/${id}`, 'PUT', { status_message: message });
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        async function updateServiceVisibility(id, visible) {
-            try {
-                await api(`/service-status/${id}`, 'PUT', { is_visible: visible ? 1 : 0 });
-                toast('Visibility updated');
-            } catch (err) {
-                toast(err.message, 'error');
-                loadServices();
-            }
-        }
-
-        function openServiceModal() {
-            document.getElementById('modalTitle').textContent = 'Add Service';
-            document.getElementById('modalBody').innerHTML = `
-                <div class="form-group">
-                    <label class="form-label">Service Name (key)</label>
-                    <input type="text" class="form-input" id="serviceName" placeholder="e.g. email_service">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Display Name</label>
-                    <input type="text" class="form-input" id="serviceDisplay" placeholder="e.g. Email Service">
-                </div>
-            `;
-            document.getElementById('modalSubmit').onclick = saveService;
-            document.getElementById('modalOverlay').classList.add('active');
-        }
-
-        async function saveService() {
-            try {
-                await api('/service-status', 'POST', {
-                    service_name: document.getElementById('serviceName').value,
-                    display_name: document.getElementById('serviceDisplay').value
-                });
-                toast('Service added');
-                closeModal();
-                loadServices();
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        // ====================================================================
-        // PLATFORM SETTINGS
-        // ====================================================================
-        async function loadSettings() {
-            try {
-                const data = await api('/platform-settings');
-                document.getElementById('settingsContainer').innerHTML = data.settings.map(s => `
-                    <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
-                        <div>
-                            <div style="font-weight: 500;">${escapeHtml(s.key)}</div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">${escapeHtml(s.description || '')}</div>
-                        </div>
-                        <div style="min-width: 200px;">
-                            ${s.value_type === 'boolean' ? `
-                                <label class="toggle">
-                                    <input type="checkbox" ${s.value === 'true' ? 'checked' : ''} 
-                                           onchange="updateSetting('${s.key}', this.checked ? 'true' : 'false')">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            ` : `
-                                <input type="text" class="form-input" value="${escapeHtml(s.value)}"
-                                       onblur="updateSetting('${s.key}', this.value)" style="text-align: right;">
-                            `}
-                        </div>
-                    </div>
-                `).join('');
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        async function updateSetting(key, value) {
-            try {
-                await api(`/platform-settings/${key}`, 'PUT', { value });
-                toast('Setting updated');
-                if (key === 'maintenance_mode') {
-                    document.getElementById('maintenanceBadge').style.display = value === 'true' ? 'block' : 'none';
-                }
-            } catch (err) {
-                toast(err.message, 'error');
-                loadSettings();
-            }
-        }
-
-        // ====================================================================
-        // FEATURE FLAGS
-        // ====================================================================
-        async function loadFlags() {
-            try {
-                const data = await api('/feature-flags');
-                document.getElementById('flagsTable').innerHTML = data.flags.map(f => `
-                    <tr class="${f.is_kill_switch ? 'kill-switch' : ''}">
-                        <td>
-                            ${f.is_kill_switch ? '🚨 ' : ''}${escapeHtml(f.name)}
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(f.description || '')}</div>
-                        </td>
-                        <td><code style="background: var(--bg-primary); padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.8rem;">${escapeHtml(f.key)}</code></td>
-                        <td>
-                            <label class="toggle">
-                                <input type="checkbox" ${f.is_enabled ? 'checked' : ''} onchange="toggleFlag('${f.id}', this.checked)">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </td>
-                        <td>${f.rollout_percentage}%</td>
-                        <td>
-                            <button class="btn btn-secondary btn-sm" onclick='editFlag(${JSON.stringify(f)})'>Edit</button>
-                            ${adminData.role === 'owner' ? `<button class="btn btn-danger btn-sm" onclick="deleteFlag('${f.id}')">Delete</button>` : ''}
-                        </td>
-                    </tr>
-                `).join('') || '<tr><td colspan="5" class="empty-state">No feature flags</td></tr>';
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        async function toggleFlag(id, enabled) {
-            try {
-                await api(`/feature-flags/${id}`, 'PUT', { is_enabled: enabled });
-                toast('Feature flag updated');
-            } catch (err) {
-                toast(err.message, 'error');
-                loadFlags();
-            }
-        }
-
-        async function deleteFlag(id) {
-            if (!confirm('Delete this feature flag?')) return;
-            try {
-                await api(`/feature-flags/${id}`, 'DELETE');
-                toast('Feature flag deleted');
-                loadFlags();
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        function openFlagModal(existing = null) {
-            document.getElementById('modalTitle').textContent = existing ? 'Edit Feature Flag' : 'New Feature Flag';
-            document.getElementById('modalBody').innerHTML = `
-                <div class="form-group">
-                    <label class="form-label">Key (lowercase, underscores)</label>
-                    <input type="text" class="form-input" id="flagKey" value="${escapeHtml(existing?.key || '')}" ${existing ? 'disabled' : ''}>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Name</label>
-                    <input type="text" class="form-input" id="flagName" value="${escapeHtml(existing?.name || '')}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <input type="text" class="form-input" id="flagDesc" value="${escapeHtml(existing?.description || '')}">
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Rollout %</label>
-                        <input type="number" class="form-input" id="flagRollout" min="0" max="100" value="${existing?.rollout_percentage || 100}">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Kill Switch</label>
-                        <label class="toggle" style="margin-top: 0.5rem;">
-                            <input type="checkbox" id="flagKill" ${existing?.is_kill_switch ? 'checked' : ''} ${existing ? 'disabled' : ''}>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                </div>
-            `;
-            document.getElementById('modalSubmit').onclick = () => saveFlag(existing?.id);
-            document.getElementById('modalOverlay').classList.add('active');
-        }
-
-        function editFlag(f) {
-            openFlagModal(f);
-        }
-
-        async function saveFlag(id) {
-            const data = {
-                key: document.getElementById('flagKey').value,
-                name: document.getElementById('flagName').value,
-                description: document.getElementById('flagDesc').value,
-                rollout_percentage: parseInt(document.getElementById('flagRollout').value),
-                is_kill_switch: document.getElementById('flagKill').checked
-            };
-            
-            try {
-                if (id) {
-                    await api(`/feature-flags/${id}`, 'PUT', data);
-                } else {
-                    await api('/feature-flags', 'POST', data);
-                }
-                toast('Feature flag saved');
-                closeModal();
-                loadFlags();
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        // ====================================================================
-        // CONTENT BLOCKS
-        // ====================================================================
-        async function loadContent() {
-            try {
-                const data = await api('/content-blocks');
-                document.getElementById('contentTable').innerHTML = data.blocks.map(b => `
-                    <tr>
-                        <td><code style="background: var(--bg-primary); padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.8rem;">${escapeHtml(b.block_key)}</code></td>
-                        <td>${escapeHtml(b.title || '-')}</td>
-                        <td>${escapeHtml(b.page)}</td>
-                        <td>
-                            <label class="toggle">
-                                <input type="checkbox" ${b.is_active ? 'checked' : ''} onchange="toggleContent('${b.id}', this.checked)">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </td>
-                        <td>
-                            <button class="btn btn-secondary btn-sm" onclick='editContent(${JSON.stringify(b)})'>Edit</button>
-                        </td>
-                    </tr>
-                `).join('') || '<tr><td colspan="5" class="empty-state">No content blocks</td></tr>';
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        async function toggleContent(id, active) {
-            try {
-                await api(`/content-blocks/${id}`, 'PUT', { is_active: active ? 1 : 0 });
-                toast('Content block updated');
-            } catch (err) {
-                toast(err.message, 'error');
-                loadContent();
-            }
-        }
-
-        function openContentModal(existing = null) {
-            document.getElementById('modalTitle').textContent = existing ? 'Edit Content Block' : 'New Content Block';
-            document.getElementById('modalBody').innerHTML = `
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Block Key</label>
-                        <input type="text" class="form-input" id="contentKey" value="${escapeHtml(existing?.block_key || '')}" ${existing ? 'disabled' : ''}>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Page</label>
-                        <select class="form-select" id="contentPage">
-                            <option value="home" ${existing?.page === 'home' ? 'selected' : ''}>Home</option>
-                            <option value="about" ${existing?.page === 'about' ? 'selected' : ''}>About</option>
-                            <option value="pricing" ${existing?.page === 'pricing' ? 'selected' : ''}>Pricing</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Title</label>
-                    <input type="text" class="form-input" id="contentTitle" value="${escapeHtml(existing?.title || '')}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Content (Markdown)</label>
-                    <textarea class="form-textarea" id="contentBody" style="min-height: 200px;">${escapeHtml(existing?.content || '')}</textarea>
-                </div>
-            `;
-            document.getElementById('modalSubmit').onclick = () => saveContent(existing?.id);
-            document.getElementById('modalOverlay').classList.add('active');
-        }
-
-        function editContent(b) {
-            openContentModal(b);
-        }
-
-        async function saveContent(id) {
-            const data = {
-                block_key: document.getElementById('contentKey').value,
-                page: document.getElementById('contentPage').value,
-                title: document.getElementById('contentTitle').value,
-                content: document.getElementById('contentBody').value
-            };
-            
-            try {
-                if (id) {
-                    await api(`/content-blocks/${id}`, 'PUT', data);
-                } else {
-                    await api('/content-blocks', 'POST', data);
-                }
-                toast('Content block saved');
-                closeModal();
-                loadContent();
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        // ====================================================================
-        // CHANGELOGS
-        // ====================================================================
-        async function loadChangelogs() {
-            try {
-                const data = await api('/changelogs');
-                document.getElementById('changelogsTable').innerHTML = data.changelogs.map(c => `
-                    <tr>
-                        <td><strong>${escapeHtml(c.version)}</strong></td>
-                        <td>${escapeHtml(c.title)}</td>
-                        <td><span class="badge badge-info">${escapeHtml(c.release_type || 'minor')}</span></td>
-                        <td>
-                            <label class="toggle">
-                                <input type="checkbox" ${c.is_published ? 'checked' : ''} onchange="toggleChangelog('${c.id}', this.checked)">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </td>
-                        <td>
-                            <button class="btn btn-secondary btn-sm" onclick='editChangelog(${JSON.stringify(c)})'>Edit</button>
-                            <button class="btn btn-danger btn-sm" onclick="deleteChangelog('${c.id}')">Delete</button>
-                        </td>
-                    </tr>
-                `).join('') || '<tr><td colspan="5" class="empty-state">No changelogs</td></tr>';
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        async function toggleChangelog(id, published) {
-            try {
-                await api(`/changelogs/${id}`, 'PUT', { is_published: published });
-                toast('Changelog updated');
-            } catch (err) {
-                toast(err.message, 'error');
-                loadChangelogs();
-            }
-        }
-
-        async function deleteChangelog(id) {
-            if (!confirm('Delete this changelog?')) return;
-            try {
-                await api(`/changelogs/${id}`, 'DELETE');
-                toast('Changelog deleted');
-                loadChangelogs();
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        function openChangelogModal(existing = null) {
-            document.getElementById('modalTitle').textContent = existing ? 'Edit Changelog' : 'New Changelog';
-            document.getElementById('modalBody').innerHTML = `
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Version</label>
-                        <input type="text" class="form-input" id="changeVersion" value="${escapeHtml(existing?.version || '')}" placeholder="e.g. 1.2.0">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Release Type</label>
-                        <select class="form-select" id="changeType">
-                            <option value="major" ${existing?.release_type === 'major' ? 'selected' : ''}>Major</option>
-                            <option value="minor" ${existing?.release_type === 'minor' ? 'selected' : ''}>Minor</option>
-                            <option value="patch" ${existing?.release_type === 'patch' ? 'selected' : ''}>Patch</option>
-                            <option value="hotfix" ${existing?.release_type === 'hotfix' ? 'selected' : ''}>Hotfix</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Title</label>
-                    <input type="text" class="form-input" id="changeTitle" value="${escapeHtml(existing?.title || '')}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Content (Markdown)</label>
-                    <textarea class="form-textarea" id="changeContent" style="min-height: 200px;">${escapeHtml(existing?.content || '')}</textarea>
-                </div>
-            `;
-            document.getElementById('modalSubmit').onclick = () => saveChangelog(existing?.id);
-            document.getElementById('modalOverlay').classList.add('active');
-        }
-
-        function editChangelog(c) {
-            openChangelogModal(c);
-        }
-
-        async function saveChangelog(id) {
-            const data = {
-                version: document.getElementById('changeVersion').value,
-                release_type: document.getElementById('changeType').value,
-                title: document.getElementById('changeTitle').value,
-                content: document.getElementById('changeContent').value
-            };
-            
-            try {
-                if (id) {
-                    await api(`/changelogs/${id}`, 'PUT', data);
-                } else {
-                    await api('/changelogs', 'POST', data);
-                }
-                toast('Changelog saved');
-                closeModal();
-                loadChangelogs();
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        // ====================================================================
-        // AUDIT LOGS
-        // ====================================================================
-        async function loadAuditLogs() {
-            try {
-                const filter = document.getElementById('auditFilter').value;
-                const params = filter ? `?action=${filter}` : '';
-                const data = await api(`/audit-logs${params}`);
-                
-                document.getElementById('auditTable').innerHTML = data.logs.map(log => {
-                    let changes = '';
-                    if (log.old_value || log.new_value) {
-                        try {
-                            const oldVal = log.old_value ? JSON.parse(log.old_value) : null;
-                            const newVal = log.new_value ? JSON.parse(log.new_value) : null;
-                            changes = `<div class="audit-changes">
-                                ${oldVal ? `<div class="audit-old">- ${JSON.stringify(oldVal)}</div>` : ''}
-                                ${newVal ? `<div class="audit-new">+ ${JSON.stringify(newVal)}</div>` : ''}
-                            </div>`;
-                        } catch (e) {
-                            changes = '-';
-                        }
-                    }
-                    
-                    return `
-                        <tr>
-                            <td><span class="badge badge-info">${escapeHtml(log.action)}</span></td>
-                            <td>${escapeHtml(log.resource_type)}${log.resource_id ? ` (${log.resource_id.substring(0, 8)}...)` : ''}</td>
-                            <td>${escapeHtml(log.admin_email)}</td>
-                            <td>${changes || '-'}</td>
-                            <td style="font-size: 0.75rem;">${escapeHtml(log.ip_address)}</td>
-                            <td style="font-size: 0.75rem;">${formatDate(log.created_at)}</td>
-                        </tr>
-                    `;
-                }).join('') || '<tr><td colspan="6" class="empty-state">No audit logs</td></tr>';
-            } catch (err) {
-                toast(err.message, 'error');
-            }
-        }
-
-        // ====================================================================
-        // MODAL
-        // ====================================================================
-        function closeModal() {
-            document.getElementById('modalOverlay').classList.remove('active');
-        }
-
-        document.getElementById('modalOverlay').addEventListener('click', (e) => {
-            if (e.target === document.getElementById('modalOverlay')) closeModal();
-        });
-
-        // ====================================================================
-        // SIGNOUT
-        // ====================================================================
-        document.getElementById('signoutBtn').addEventListener('click', async () => {
-            try {
-                await fetch('/signout', { method: 'POST', credentials: 'same-origin' });
-            } catch (e) {}
-            window.location.href = '/signin';
-        });
-
-        // ====================================================================
-        // INIT
-        // ====================================================================
-        loadDashboard();
+        function escapeHtml(str) { if (!str) return ''; return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+        function formatDate(iso) { if (!iso) return '-'; return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+        function formatDateTime(iso) { if (!iso) return '-'; return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+        function timeAgo(iso) { const s = Math.floor((new Date() - new Date(iso)) / 1000); if (s < 60) return 'just now'; if (s < 3600) return `${Math.floor(s / 60)}m ago`; if (s < 86400) return `${Math.floor(s / 3600)}h ago`; return `${Math.floor(s / 86400)}d ago`; }
+        function formatUptime(s) { const d = Math.floor(s / 86400); const h = Math.floor((s % 86400) / 3600); const m = Math.floor((s % 3600) / 60); if (d > 0) return `${d}d ${h}h`; if (h > 0) return `${h}h ${m}m`; return `${m}m`; }
+        async function signOut() { await fetch('/signout', { method: 'POST', credentials: 'same-origin' }); window.location.href = '/signin'; }
     </script>
 </body>
 </html>

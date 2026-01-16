@@ -741,4 +741,237 @@ router.get('/admins', requireRole('owner'), async (req, res) => {
     }
 });
 
+// ============================================================================
+// SERVER TIME
+// ============================================================================
+
+router.get('/server-time', (req, res) => {
+    const now = new Date();
+    res.json({
+        success: true,
+        time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
+        date: now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        iso: now.toISOString(),
+        uptime: process.uptime()
+    });
+});
+
+// ============================================================================
+// SYSTEM INFO
+// ============================================================================
+
+router.get('/system-info', requireRole('owner', 'admin'), async (req, res) => {
+    try {
+        const os = require('os');
+        const memUsage = process.memoryUsage();
+        
+        // Database stats
+        const [adminsCount, announcementsCount, flagsCount, logsCount] = await Promise.all([
+            db.get(`SELECT COUNT(*) as count FROM admins`),
+            db.get(`SELECT COUNT(*) as count FROM announcements`),
+            db.get(`SELECT COUNT(*) as count FROM feature_flags`),
+            db.get(`SELECT COUNT(*) as count FROM admin_audit_logs`)
+        ]);
+
+        res.json({
+            success: true,
+            system: {
+                nodeVersion: process.version,
+                platform: os.platform(),
+                arch: os.arch(),
+                uptime: process.uptime(),
+                memoryUsage: {
+                    used: Math.round(memUsage.heapUsed / 1024 / 1024),
+                    total: Math.round(memUsage.heapTotal / 1024 / 1024),
+                    rss: Math.round(memUsage.rss / 1024 / 1024)
+                },
+                cpuUsage: process.cpuUsage(),
+                pid: process.pid
+            },
+            database: {
+                admins: adminsCount?.count || 0,
+                announcements: announcementsCount?.count || 0,
+                featureFlags: flagsCount?.count || 0,
+                auditLogs: logsCount?.count || 0
+            }
+        });
+    } catch (err) {
+        console.error('[Admin API] System info error:', err);
+        res.status(500).json({ success: false, error: 'Failed to get system info' });
+    }
+});
+
+// ============================================================================
+// MAINTENANCE MODE
+// ============================================================================
+
+router.get('/maintenance', async (req, res) => {
+    try {
+        const [enabled, message, endTime, allowedIps] = await Promise.all([
+            db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_mode'`),
+            db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_message'`),
+            db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_end_time'`),
+            db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_allowed_ips'`)
+        ]);
+
+        res.json({
+            success: true,
+            maintenance: {
+                enabled: enabled?.value === 'true',
+                message: message?.value || '',
+                endTime: endTime?.value || null,
+                allowedIps: allowedIps?.value ? allowedIps.value.split(',').filter(ip => ip.trim()) : []
+            }
+        });
+    } catch (err) {
+        console.error('[Admin API] Get maintenance error:', err);
+        res.status(500).json({ success: false, error: 'Failed to get maintenance settings' });
+    }
+});
+
+router.post('/maintenance', requireRole('owner', 'admin'), async (req, res) => {
+    try {
+        const { enabled, message, endTime, allowedIps } = req.body;
+        const now = new Date().toISOString();
+
+        // Upsert settings
+        const settings = [
+            ['maintenance_mode', enabled ? 'true' : 'false'],
+            ['maintenance_message', message || ''],
+            ['maintenance_end_time', endTime || ''],
+            ['maintenance_allowed_ips', (allowedIps || []).join(',')]
+        ];
+
+        for (const [key, value] of settings) {
+            const existing = await db.get(`SELECT key FROM platform_settings WHERE key = ?`, [key]);
+            if (existing) {
+                await db.run(`UPDATE platform_settings SET value = ?, updated_by = ?, updated_at = ? WHERE key = ?`,
+                    [value, req.admin.id, now, key]);
+            } else {
+                await db.run(`INSERT INTO platform_settings (key, value, value_type, updated_by, updated_at) VALUES (?, ?, 'string', ?, ?)`,
+                    [key, value, req.admin.id, now]);
+            }
+        }
+
+        await auditLog(req, enabled ? 'ENABLE' : 'DISABLE', 'maintenance_mode', 'system', null, { enabled, message });
+
+        res.json({ success: true, message: `Maintenance mode ${enabled ? 'enabled' : 'disabled'}` });
+    } catch (err) {
+        console.error('[Admin API] Update maintenance error:', err);
+        res.status(500).json({ success: false, error: 'Failed to update maintenance settings' });
+    }
+});
+
+// ============================================================================
+// SECURITY SETTINGS
+// ============================================================================
+
+router.get('/security-settings', requireRole('owner', 'admin'), async (req, res) => {
+    try {
+        const [sessionTimeout, maxLoginAttempts, lockoutDuration, require2fa, ipWhitelist] = await Promise.all([
+            db.get(`SELECT value FROM platform_settings WHERE key = 'session_timeout'`),
+            db.get(`SELECT value FROM platform_settings WHERE key = 'max_login_attempts'`),
+            db.get(`SELECT value FROM platform_settings WHERE key = 'lockout_duration'`),
+            db.get(`SELECT value FROM platform_settings WHERE key = 'require_2fa'`),
+            db.get(`SELECT value FROM platform_settings WHERE key = 'admin_ip_whitelist'`)
+        ]);
+
+        res.json({
+            success: true,
+            settings: {
+                session_timeout: parseInt(sessionTimeout?.value) || 3600,
+                max_login_attempts: parseInt(maxLoginAttempts?.value) || 5,
+                lockout_duration: parseInt(lockoutDuration?.value) || 900,
+                require_2fa: require2fa?.value === 'true',
+                ip_whitelist: ipWhitelist?.value || ''
+            }
+        });
+    } catch (err) {
+        console.error('[Admin API] Get security settings error:', err);
+        res.status(500).json({ success: false, error: 'Failed to get security settings' });
+    }
+});
+
+router.post('/security-settings', requireRole('owner'), async (req, res) => {
+    try {
+        const { session_timeout, max_login_attempts, lockout_duration, require_2fa, ip_whitelist } = req.body;
+        const now = new Date().toISOString();
+
+        const settings = [
+            ['session_timeout', String(session_timeout || 3600)],
+            ['max_login_attempts', String(max_login_attempts || 5)],
+            ['lockout_duration', String(lockout_duration || 900)],
+            ['require_2fa', require_2fa ? 'true' : 'false'],
+            ['admin_ip_whitelist', ip_whitelist || '']
+        ];
+
+        for (const [key, value] of settings) {
+            const existing = await db.get(`SELECT key FROM platform_settings WHERE key = ?`, [key]);
+            if (existing) {
+                await db.run(`UPDATE platform_settings SET value = ?, updated_by = ?, updated_at = ? WHERE key = ?`,
+                    [value, req.admin.id, now, key]);
+            } else {
+                await db.run(`INSERT INTO platform_settings (key, value, value_type, updated_by, updated_at) VALUES (?, ?, 'string', ?, ?)`,
+                    [key, value, req.admin.id, now]);
+            }
+        }
+
+        await auditLog(req, 'UPDATE', 'security_settings', 'system', null, req.body);
+
+        res.json({ success: true, message: 'Security settings updated' });
+    } catch (err) {
+        console.error('[Admin API] Update security settings error:', err);
+        res.status(500).json({ success: false, error: 'Failed to update security settings' });
+    }
+});
+
+// ============================================================================
+// QUICK ACTIONS
+// ============================================================================
+
+router.post('/quick-action/clear-sessions', requireRole('owner'), async (req, res) => {
+    try {
+        // Clear all admin sessions by invalidating tokens (reset all last_login)
+        await db.run(`UPDATE admins SET last_login = NULL WHERE id != ?`, [req.admin.id]);
+        
+        await auditLog(req, 'CLEAR_SESSIONS', 'system', 'all', null, { excludedAdmin: req.admin.email });
+
+        res.json({ success: true, message: 'All admin sessions cleared (except yours)' });
+    } catch (err) {
+        console.error('[Admin API] Clear sessions error:', err);
+        res.status(500).json({ success: false, error: 'Failed to clear sessions' });
+    }
+});
+
+router.post('/quick-action/emergency-lockdown', requireRole('owner'), async (req, res) => {
+    try {
+        const { enable } = req.body;
+        const now = new Date().toISOString();
+
+        // Enable/toggle emergency lockdown feature flag
+        const existing = await db.get(`SELECT * FROM feature_flags WHERE key = 'emergency_lockdown'`);
+        
+        if (existing) {
+            await db.run(`UPDATE feature_flags SET is_enabled = ?, updated_at = ? WHERE key = 'emergency_lockdown'`,
+                [enable ? 1 : 0, now]);
+        } else {
+            await db.run(`
+                INSERT INTO feature_flags (id, key, name, description, is_enabled, is_kill_switch, created_by, created_at, updated_at)
+                VALUES (?, 'emergency_lockdown', 'Emergency Lockdown', 'Disables all non-essential features', ?, 1, ?, ?, ?)
+            `, [generateId(), enable ? 1 : 0, req.admin.id, now, now]);
+        }
+
+        await auditLog(req, enable ? 'ENABLE' : 'DISABLE', 'emergency_lockdown', 'system', null, { enable });
+
+        res.json({ 
+            success: true, 
+            message: enable ? '🚨 Emergency lockdown ENABLED' : 'Emergency lockdown disabled' 
+        });
+    } catch (err) {
+        console.error('[Admin API] Emergency lockdown error:', err);
+        res.status(500).json({ success: false, error: 'Failed to toggle emergency lockdown' });
+    }
+});
+
 module.exports = router;

@@ -173,6 +173,63 @@ class DarklockPlatform {
             }
             next();
         });
+        
+        // Maintenance mode middleware - redirects visitors to maintenance page
+        this.app.use(async (req, res, next) => {
+            // Skip maintenance check for:
+            // - Static files
+            // - API endpoints (they return JSON errors instead)
+            // - Admin routes (admins can still access)
+            // - The maintenance page itself
+            // - Health check
+            const skipPaths = [
+                '/platform/static',
+                '/api/',
+                '/admin',
+                '/signin',
+                '/signout',
+                '/maintenance',
+                '/platform/api/health'
+            ];
+            
+            if (skipPaths.some(p => req.path.startsWith(p))) {
+                return next();
+            }
+            
+            try {
+                const maintenanceSetting = await db.get(`
+                    SELECT value FROM platform_settings WHERE key = 'maintenance_mode'
+                `);
+                
+                if (maintenanceSetting?.value === 'true') {
+                    // Check if IP is allowed to bypass maintenance
+                    const allowedIpsSetting = await db.get(`
+                        SELECT value FROM platform_settings WHERE key = 'maintenance_allowed_ips'
+                    `);
+                    
+                    const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+                                     req.headers['x-real-ip'] ||
+                                     req.ip;
+                    
+                    const allowedIps = allowedIpsSetting?.value ? 
+                        allowedIpsSetting.value.split(',').map(ip => ip.trim()).filter(ip => ip) : [];
+                    
+                    // Allow localhost always for development
+                    const bypassIps = ['127.0.0.1', '::1', 'localhost', ...allowedIps];
+                    
+                    if (!bypassIps.some(ip => clientIP.includes(ip))) {
+                        // Redirect to maintenance page
+                        return res.redirect('/maintenance');
+                    }
+                }
+                
+                next();
+            } catch (err) {
+                // If database check fails, allow access (fail open for availability)
+                console.error('[Maintenance Check] Error:', err.message);
+                next();
+            }
+        });
     }
     
     /**
@@ -433,6 +490,36 @@ class DarklockPlatform {
             }
         });
         
+        // Public Maintenance API - for maintenance page countdown
+        this.app.get('/api/public/maintenance-status', async (req, res) => {
+            try {
+                const [enabled, message, endTime] = await Promise.all([
+                    db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_mode'`),
+                    db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_message'`),
+                    db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_end_time'`)
+                ]);
+                
+                res.json({
+                    success: true,
+                    maintenance: {
+                        enabled: enabled?.value === 'true',
+                        message: message?.value || 'We\'re performing scheduled maintenance. Please check back soon.',
+                        endTime: endTime?.value || null
+                    }
+                });
+            } catch (err) {
+                console.error('[Public API] Maintenance status error:', err);
+                res.json({
+                    success: true,
+                    maintenance: {
+                        enabled: false,
+                        message: '',
+                        endTime: null
+                    }
+                });
+            }
+        });
+        
         // Documentation page
         this.app.get('/platform/docs', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/docs.html'));
@@ -441,6 +528,11 @@ class DarklockPlatform {
         // System Status page
         this.app.get('/platform/status', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/status.html'));
+        });
+        
+        // Maintenance page (public)
+        this.app.get('/maintenance', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/maintenance.html'));
         });
         
         // Changelog page
