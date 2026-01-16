@@ -192,13 +192,18 @@ class DarklockPlatform {
         // Darklock Guard - Actual installer download (NSIS - works without code signing)
         this.app.get('/platform/api/download/darklock-guard-installer', (req, res) => {
             const format = req.query.format || 'exe';
+            const fs = require('fs');
+            
+            // Check downloads folder first (committed installers)
             const nsisPath = path.join(__dirname, 'downloads/darklock-guard-setup.exe');
             const msiPath = path.join(__dirname, 'downloads/darklock-guard-setup.msi');
+            const msiPath2 = path.join(__dirname, 'downloads/darklock-guard-installer.msi');
             const debPath = path.join(__dirname, 'downloads/darklock-guard_1.0.0_amd64.deb');
             const rpmPath = path.join(__dirname, 'downloads/darklock-guard-1.0.0-1.x86_64.rpm');
             const tarPath = path.join(__dirname, 'downloads/darklock-guard-linux-x64.tar.gz');
             const portablePath = path.join(__dirname, 'downloads/darklock-guard-portable.exe');
-            const fs = require('fs');
+            
+            console.log(`[Darklock] Download request for format: ${format} from IP: ${req.ip}`);
             
             // Handle format-specific downloads
             if (format === 'exe' && fs.existsSync(nsisPath)) {
@@ -238,10 +243,25 @@ class DarklockPlatform {
                 return res.download(msiPath, 'DarklockGuard-Setup.msi');
             }
             
+            // Try alternate MSI name
+            if (fs.existsSync(msiPath2)) {
+                console.log(`[Darklock] MSI installer (alt name) downloaded by IP: ${req.ip}`);
+                return res.download(msiPath2, 'DarklockGuard-Setup.msi');
+            }
+            
             // Fallback to portable exe
             if (fs.existsSync(portablePath)) {
                 console.log(`[Darklock] Portable exe downloaded by IP: ${req.ip}`);
                 return res.download(portablePath, 'DarklockGuard.exe');
+            }
+            
+            // Log available files for debugging
+            try {
+                const downloadsPath = path.join(__dirname, 'downloads');
+                const files = fs.existsSync(downloadsPath) ? fs.readdirSync(downloadsPath) : [];
+                console.error(`[Darklock] No installer found! Downloads folder content:`, files);
+            } catch (err) {
+                console.error(`[Darklock] Error reading downloads folder:`, err.message);
             }
             
             // None exist
@@ -447,23 +467,95 @@ class DarklockPlatform {
         existingApp.use('/platform/downloads', express.static(path.join(__dirname, 'downloads')));
         
         // Avatars folder for user avatars
-        const avatarsPath = path.join(process.env.DATA_PATH || path.join(__dirname, 'data'), 'avatars');
-        existingApp.use('/platform/avatars', express.static(avatarsPath));
-        
-        // Main homepage
-        existingApp.get('/platform', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/home.html'));
-        });
-        
-        // Darklock Guard - Download page
-        existingApp.get('/platform/download/darklock-guard', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/download-page.html'));
-        });
-        
-        // Darklock Guard - Actual installer download
-        existingApp.get('/platform/api/download/darklock-guard-installer', (req, res) => {
-            const installerPath = path.join(__dirname, '../ainti-tampering-app/tauri-app/src-tauri/target/release/bundle/msi/darklock-guard_1.0.0_x64_en-US.msi');
+        const avatformat = req.query.format || 'exe';
+            const fs = require('fs');
+            
+            // Check downloads folder first (committed installers)
+            const nsisPath = path.join(__dirname, 'downloads/darklock-guard-setup.exe');
+            const msiPath = path.join(__dirname, 'downloads/darklock-guard-setup.msi');
+            const msiPath2 = path.join(__dirname, 'downloads/darklock-guard-installer.msi');
+            const debPath = path.join(__dirname, 'downloads/darklock-guard_1.0.0_amd64.deb');
+            const rpmPath = path.join(__dirname, 'downloads/darklock-guard-1.0.0-1.x86_64.rpm');
+            const tarPath = path.join(__dirname, 'downloads/darklock-guard-linux-x64.tar.gz');
+            const portablePath = path.join(__dirname, 'downloads/darklock-guard-portable.exe');
+            
+            console.log(`[Darklock] Download request for format: ${format} from IP: ${req.ip}`);
+            
+            // Handle format-specific downloads
+            if (format === 'exe' && fs.existsSync(nsisPath)) {
+                console.log(`[Darklock] NSIS installer (.exe) downloaded by IP: ${req.ip}`);
+                return res.download(nsisPath, 'DarklockGuard-Setup.exe');
+            }
+            
+            if (format === 'msi' && (fs.existsSync(msiPath) || fs.existsSync(msiPath2))) {
+                const selectedPath = fs.existsSync(msiPath) ? msiPath : msiPath2;
+                console.log(`[Darklock] MSI installer downloaded by IP: ${req.ip}`);
+                return res.download(selectedPath, 'DarklockGuard-Setup.msi');
+            }
+            
+            if (format === 'deb' && fs.existsSync(debPath)) {
+                console.log(`[Darklock] Debian package (.deb) downloaded by IP: ${req.ip}`);
+                return res.download(debPath, 'darklock-guard_1.0.0_amd64.deb');
+            }
+            
+            if (format === 'rpm' && fs.existsSync(rpmPath)) {
+                console.log(`[Darklock] RPM package (.rpm) downloaded by IP: ${req.ip}`);
+                return res.download(rpmPath, 'darklock-guard-1.0.0-1.x86_64.rpm');
+            }
+            
+            if (format === 'tar' && fs.existsSync(tarPath)) {
+                console.log(`[Darklock] Tar.gz archive downloaded by IP: ${req.ip}`);
+                return res.download(tarPath, 'darklock-guard-linux-x64.tar.gz');
+            }
+            
+            // Fallback behavior for legacy requests
+            if (fs.existsSync(nsisPath)) {
+                console.log(`[Darklock] NSIS installer (fallback) downloaded by IP: ${req.ip}`);
+                return res.download(nsisPath, 'DarklockGuard-Setup.exe');
+            }
+            
+            // Fallback to MSI
+            if (fs.existsSync(msiPath)) {
+                console.log(`[Darklock] MSI installer (fallback) downloaded by IP: ${req.ip}`);
+                return res.download(msiPath, 'DarklockGuard-Setup.msi');
+            }
+            
+            // Try alternate MSI name
+            if (fs.existsSync(msiPath2)) {
+                console.log(`[Darklock] MSI installer (alt name) downloaded by IP: ${req.ip}`);
+                return res.download(msiPath2, 'DarklockGuard-Setup.msi');
+            }
+            
+            // Fallback to portable exe
+            if (fs.existsSync(portablePath)) {
+                console.log(`[Darklock] Portable exe downloaded by IP: ${req.ip}`);
+                return res.download(portablePath, 'DarklockGuard.exe');
+            }
+            
+            // Check build folder as last resort
+            const buildInstallerPath = path.join(__dirname, '../ainti-tampering-app/tauri-app/src-tauri/target/release/bundle/msi/darklock-guard_1.0.0_x64_en-US.msi');
             const debugExePath = path.join(__dirname, '../ainti-tampering-app/tauri-app/src-tauri/target/debug/darklock-guard.exe');
+            
+            if (fs.existsSync(buildInstallerPath)) {
+                console.log(`[Darklock] Build installer downloaded by IP: ${req.ip}`);
+                return res.download(buildInstallerPath, 'DarklockGuard-Setup.msi');
+            }
+            
+            if (fs.existsSync(debugExePath)) {
+                console.log(`[Darklock] Debug executable downloaded by IP: ${req.ip}`);
+                return res.download(debugExePath, 'darklock-guard.exe');
+            }
+            
+            // Log available files for debugging
+            try {
+                const downloadsPath = path.join(__dirname, 'downloads');
+                const files = fs.existsSync(downloadsPath) ? fs.readdirSync(downloadsPath) : [];
+                console.error(`[Darklock] No installer found! Downloads folder content:`, files);
+            } catch (err) {
+                console.error(`[Darklock] Error reading downloads folder:`, err.message);
+            }
+            
+            // None existh = path.join(__dirname, '../ainti-tampering-app/tauri-app/src-tauri/target/debug/darklock-guard.exe');
             const fs = require('fs');
             
             // Check for release installer first

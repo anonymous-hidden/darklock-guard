@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/bot.js",
     "build": "echo 'no build required'",
-    "postinstall": "node file-protection/agent/baseline-generator.js",
+    "postinstall": "node file-protection/agent/baseline-generator.js && node darklock/check-downloads.js",
     "dev": "nodemon src/bot.js",
     "setup": "node setup.js",
     "fix-encoding": "node fix-all-mojibake.cjs",
