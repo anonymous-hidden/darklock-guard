@@ -731,7 +731,7 @@ router.get('/audit-logs', async (req, res) => {
 router.get('/admins', requireRole('owner'), async (req, res) => {
     try {
         const admins = await db.all(`
-            SELECT id, email, username, role, display_name, created_at, last_login, active
+            SELECT id, email, role, created_at, last_login, active
             FROM admins ORDER BY created_at
         `);
         res.json({ success: true, admins });

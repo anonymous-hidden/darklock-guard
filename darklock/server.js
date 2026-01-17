@@ -58,7 +58,8 @@ class DarklockPlatform {
             contentSecurityPolicy: {
                 directives: {
                     defaultSrc: ["'self'"],
-                    scriptSrc: ["'self'", "'unsafe-inline'"], // Needed for inline handlers
+                    scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-hashes'"], // Needed for inline handlers
+                    scriptSrcAttr: ["'unsafe-inline'", "'unsafe-hashes'"], // Allow inline event handlers (onclick, etc.)
                     styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
                     fontSrc: ["'self'", "https://fonts.gstatic.com"],
                     imgSrc: ["'self'", "data:", "https:"],
