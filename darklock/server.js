@@ -772,6 +772,22 @@ class DarklockPlatform {
         // Auth routes
         existingApp.use('/platform/auth', authRoutes);
         
+        // Admin auth routes (/signin, /signout, /admin)
+        existingApp.use('/', adminAuthRoutes);
+        
+        // Admin API routes (protected)
+        existingApp.use('/admin/api', adminApiRoutes);
+        
+        // Admin dashboard (protected) - Full dashboard
+        existingApp.get('/admin', requireAdminAuth, (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/admin.html'));
+        });
+        
+        // Admin dashboard legacy route
+        existingApp.get('/admin/dashboard', requireAdminAuth, (req, res) => {
+            res.redirect('/admin');
+        });
+        
         // Dashboard routes (Darklock dashboard, not the bot dashboard)
         existingApp.use('/platform/dashboard', dashboardRoutes);
         
@@ -780,6 +796,8 @@ class DarklockPlatform {
         
         console.log('[Darklock Platform] Routes mounted successfully');
         console.log('[Darklock Platform] Homepage: /platform');
+        console.log('[Darklock Platform] Admin Login: /signin');
+        console.log('[Darklock Platform] Admin Dashboard: /admin');
         console.log('[Darklock Platform] Darklock Guard: /platform/launch/darklock-guard (auth required)');
         console.log('[Darklock Platform] Documentation: /platform/docs');
         console.log('[Darklock Platform] System Status: /platform/status');
