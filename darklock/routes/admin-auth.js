@@ -26,13 +26,16 @@ const db = require('../utils/database');
 // ENVIRONMENT VALIDATION - Fail hard if secrets are missing
 // ============================================================================
 
-const JWT_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET;
-const BCRYPT_ROUNDS = 12; // Minimum 12 rounds for admin passwords
-
-if (!JWT_SECRET) {
-    console.error('[FATAL] ADMIN_JWT_SECRET or JWT_SECRET environment variable is required');
-    process.exit(1);
+function getJWTSecret() {
+    const secret = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET;
+    if (!secret) {
+        console.error('[FATAL] ADMIN_JWT_SECRET or JWT_SECRET environment variable is required');
+        process.exit(1);
+    }
+    return secret;
 }
+
+const BCRYPT_ROUNDS = 12; // Minimum 12 rounds for admin passwords
 
 // ============================================================================
 // RATE LIMITING - Prevent brute force attacks
@@ -43,13 +46,7 @@ const signinLimiter = rateLimit({
     max: 5, // 5 attempts per window
     message: { success: false, error: 'Too many login attempts. Please try again later.' },
     standardHeaders: true,
-    legacyHeaders: false,
-    // Use IP + email combo to prevent distributed attacks
-    keyGenerator: (req) => {
-        const ip = req.ip || req.connection.remoteAddress;
-        const email = req.body?.email?.toLowerCase() || 'unknown';
-        return `${ip}:${email}`;
-    }
+    legacyHeaders: false
 });
 
 // ============================================================================
@@ -230,7 +227,7 @@ function generateAdminToken(admin) {
             role: admin.role,
             type: 'admin' // Distinguishes from regular user tokens
         },
-        JWT_SECRET,
+        getJWTSecret(),
         { expiresIn: '1h' }
     );
 }
@@ -240,7 +237,7 @@ function generateAdminToken(admin) {
  */
 function verifyAdminToken(token) {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, getJWTSecret());
         
         // Ensure this is an admin token, not a regular user token
         if (decoded.type !== 'admin') {
