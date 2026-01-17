@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <title>Admin Dashboard - Darklock</title>
+    <title>Owner Dashboard - Darklock</title>
     <style>
         :root {
             --bg-primary: #09090b;
@@ -575,7 +575,7 @@
                     <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
                 </div>
                 <h1>Darklock</h1>
-                <span>Admin</span>
+                <span>Owner</span>
             </div>
 
             <nav class="sidebar-nav">
@@ -616,9 +616,19 @@
                 </div>
 
                 <div class="nav-section">
+                    <div class="nav-section-title">My Account</div>
+                    <a class="nav-item" data-section="account">
+                        <span class="icon">👤</span> Account Settings
+                    </a>
+                    <a class="nav-item" data-section="sessions">
+                        <span class="icon">🔑</span> Active Sessions
+                    </a>
+                </div>
+
+                <div class="nav-section">
                     <div class="nav-section-title">System</div>
                     <a class="nav-item" data-section="admins">
-                        <span class="icon">👥</span> Admin Users
+                        <span class="icon">👥</span> Manage Admins
                     </a>
                     <a class="nav-item" data-section="audit">
                         <span class="icon">📜</span> Audit Logs
@@ -938,13 +948,131 @@
                     </div>
                 </section>
 
+                <!-- Account Settings Section -->
+                <section class="section" id="section-account">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Account Settings</h2>
+                            <p class="section-desc">Manage your owner account and security</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Profile Information</h3>
+                            </div>
+                            <form id="profileForm">
+                                <div class="form-group">
+                                    <label class="form-label">Email Address</label>
+                                    <input type="email" class="form-input" id="accountEmail" disabled>
+                                    <p class="form-hint">Contact support to change your email</p>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Display Name</label>
+                                    <input type="text" class="form-input" id="accountDisplayName" placeholder="Your name">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Role</label>
+                                    <input type="text" class="form-input" id="accountRole" disabled>
+                                </div>
+                                <button type="submit" class="header-btn btn-primary">Save Profile</button>
+                            </form>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Change Password</h3>
+                            </div>
+                            <form id="passwordForm">
+                                <div class="form-group">
+                                    <label class="form-label">Current Password</label>
+                                    <input type="password" class="form-input" id="currentPassword" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">New Password</label>
+                                    <input type="password" class="form-input" id="newPassword" required minlength="12">
+                                    <p class="form-hint">Minimum 12 characters</p>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Confirm New Password</label>
+                                    <input type="password" class="form-input" id="confirmPassword" required>
+                                </div>
+                                <button type="submit" class="header-btn btn-primary">Update Password</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 1rem;">
+                        <div class="card-header">
+                            <h3 class="card-title">Two-Factor Authentication</h3>
+                        </div>
+                        <div id="twoFactorStatus">
+                            <div class="toggle-group">
+                                <div class="toggle-info">
+                                    <div class="toggle-label">2FA Status</div>
+                                    <div class="toggle-desc" id="twoFactorDesc">Loading...</div>
+                                </div>
+                                <button class="header-btn btn-primary" id="toggle2FABtn" onclick="toggle2FA()">Enable 2FA</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 1rem; border-color: var(--error);">
+                        <div class="card-header">
+                            <h3 class="card-title" style="color: var(--error);">⚠️ Danger Zone</h3>
+                        </div>
+                        <div class="toggle-group">
+                            <div class="toggle-info">
+                                <div class="toggle-label">Sign Out All Devices</div>
+                                <div class="toggle-desc">This will invalidate all sessions except the current one</div>
+                            </div>
+                            <button class="header-btn btn-danger" onclick="signOutAllDevices()">Sign Out All</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Active Sessions Section -->
+                <section class="section" id="section-sessions">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Active Sessions</h2>
+                            <p class="section-desc">View and manage your active login sessions</p>
+                        </div>
+                        <button class="header-btn btn-ghost" onclick="loadSessions()">
+                            <span>🔄</span> Refresh
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Device / Browser</th>
+                                        <th>IP Address</th>
+                                        <th>Location</th>
+                                        <th>Last Active</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sessionsList">
+                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Admin Users Section -->
                 <section class="section" id="section-admins">
                     <div class="section-header">
                         <div>
-                            <h2 class="section-title">Admin Users</h2>
-                            <p class="section-desc">Manage administrator accounts</p>
+                            <h2 class="section-title">Manage Admins</h2>
+                            <p class="section-desc">Add, edit, or remove administrator accounts</p>
                         </div>
+                        <button class="header-btn btn-primary" onclick="showModal('admin')">
+                            <span>➕</span> Add Admin
+                        </button>
                     </div>
                     <div class="card">
                         <div class="table-container">
@@ -1093,8 +1221,9 @@
             const titles = {
                 dashboard: 'Dashboard', announcements: 'Announcements', services: 'Service Status',
                 changelogs: 'Changelogs', settings: 'Platform Settings', security: 'Security Settings',
-                maintenance: 'Maintenance Mode', features: 'Feature Flags', admins: 'Admin Users',
-                audit: 'Audit Logs', system: 'System Information'
+                maintenance: 'Maintenance Mode', features: 'Feature Flags', admins: 'Manage Admins',
+                audit: 'Audit Logs', system: 'System Information', account: 'Account Settings',
+                sessions: 'Active Sessions'
             };
             document.getElementById('pageTitle').textContent = titles[section] || section;
             loadSectionData(section);
@@ -1113,6 +1242,8 @@
                 case 'admins': await loadAdmins(); break;
                 case 'audit': await loadAuditLogs(); break;
                 case 'system': await loadSystemInfo(); break;
+                case 'account': await loadAccountSettings(); break;
+                case 'sessions': await loadSessions(); break;
             }
         }
 
@@ -1404,12 +1535,15 @@
             const list = document.getElementById('adminsList');
             if (data.admins?.length) {
                 list.innerHTML = data.admins.map(a => `
-                    <tr>
-                        <td><strong>${escapeHtml(a.email)}</strong></td>
+                    <tr${a.id === currentAdmin?.id ? ' style="background: var(--accent-muted);"' : ''}>
+                        <td><strong>${escapeHtml(a.email)}</strong>${a.id === currentAdmin?.id ? ' <span class="badge badge-info">You</span>' : ''}</td>
                         <td><span class="badge badge-${a.role === 'owner' ? 'error' : a.role === 'admin' ? 'warning' : 'info'}">${a.role}</span></td>
                         <td><span class="badge ${a.active ? 'badge-success' : 'badge-error'}">${a.active ? 'Active' : 'Inactive'}</span></td>
                         <td>${a.last_login ? timeAgo(a.last_login) : 'Never'}</td>
-                        <td>-</td>
+                        <td>${a.role !== 'owner' && a.id !== currentAdmin?.id ? `
+                            <button class="header-btn btn-ghost" onclick="toggleAdminStatus('${a.id}', ${a.active ? 0 : 1})">${a.active ? 'Disable' : 'Enable'}</button>
+                            <button class="header-btn btn-ghost" onclick="deleteAdmin('${a.id}')" style="color: var(--error);">Delete</button>
+                        ` : '-'}</td>
                     </tr>
                 `).join('');
             } else {
@@ -1488,6 +1622,14 @@
                     <div class="form-group"><label class="form-label">Content (Markdown)</label><textarea class="form-textarea" id="modalChangelogContent" style="min-height: 150px;" required></textarea></div>
                 `;
                 submit.onclick = createChangelog;
+            } else if (type === 'admin') {
+                title.textContent = 'Add New Admin';
+                body.innerHTML = `
+                    <div class="form-group"><label class="form-label">Email Address</label><input type="email" class="form-input" id="modalAdminEmail" required></div>
+                    <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-input" id="modalAdminPassword" required minlength="12"><p class="form-hint">Minimum 12 characters</p></div>
+                    <div class="form-group"><label class="form-label">Role</label><select class="form-select" id="modalAdminRole"><option value="admin">Admin</option><option value="editor">Editor</option></select><p class="form-hint">Only owners can create other owners</p></div>
+                `;
+                submit.onclick = createAdmin;
             }
             overlay.classList.add('active');
         }
@@ -1509,11 +1651,113 @@
             if (data?.success) { toast('Changelog created', 'success'); hideModal(); loadChangelogs(); }
         }
 
+        async function createAdmin() {
+            const email = document.getElementById('modalAdminEmail').value;
+            const password = document.getElementById('modalAdminPassword').value;
+            const role = document.getElementById('modalAdminRole').value;
+            if (password.length < 12) { toast('Password must be at least 12 characters', 'error'); return; }
+            const data = await api('/admins', { method: 'POST', body: JSON.stringify({ email, password, role }) });
+            if (data?.success) { toast('Admin created successfully', 'success'); hideModal(); loadAdmins(); }
+        }
+
+        // Account Settings Functions
+        async function loadAccountSettings() {
+            if (!currentAdmin) return;
+            document.getElementById('accountEmail').value = currentAdmin.email;
+            document.getElementById('accountRole').value = currentAdmin.role.charAt(0).toUpperCase() + currentAdmin.role.slice(1);
+            
+            // Load 2FA status
+            const data = await api('/account/2fa-status');
+            if (data) {
+                const enabled = data.enabled;
+                document.getElementById('twoFactorDesc').textContent = enabled ? '2FA is enabled on your account' : '2FA is not enabled - your account is less secure';
+                document.getElementById('toggle2FABtn').textContent = enabled ? 'Disable 2FA' : 'Enable 2FA';
+                document.getElementById('toggle2FABtn').className = `header-btn ${enabled ? 'btn-danger' : 'btn-primary'}`;
+            }
+        }
+
+        document.getElementById('profileForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const displayName = document.getElementById('accountDisplayName').value;
+            const data = await api('/account/profile', { method: 'PUT', body: JSON.stringify({ display_name: displayName }) });
+            if (data?.success) toast('Profile updated', 'success');
+        });
+
+        document.getElementById('passwordForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword !== confirmPassword) { toast('Passwords do not match', 'error'); return; }
+            if (newPassword.length < 12) { toast('Password must be at least 12 characters', 'error'); return; }
+            
+            const data = await api('/account/password', { method: 'PUT', body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }) });
+            if (data?.success) { 
+                toast('Password updated successfully', 'success'); 
+                document.getElementById('passwordForm').reset();
+            }
+        });
+
+        async function toggle2FA() {
+            const data = await api('/account/2fa-status');
+            if (data?.enabled) {
+                if (!confirm('Are you sure you want to disable 2FA? This will make your account less secure.')) return;
+                const result = await api('/account/2fa/disable', { method: 'POST' });
+                if (result?.success) { toast('2FA disabled', 'warning'); loadAccountSettings(); }
+            } else {
+                toast('2FA setup coming soon', 'info');
+            }
+        }
+
+        async function signOutAllDevices() {
+            if (!confirm('Sign out all devices? You will need to sign in again on all devices.')) return;
+            const data = await api('/account/signout-all', { method: 'POST' });
+            if (data?.success) { toast('All devices signed out', 'success'); window.location.href = '/signin'; }
+        }
+
+        // Sessions Functions
+        async function loadSessions() {
+            const data = await api('/account/sessions');
+            const list = document.getElementById('sessionsList');
+            if (data?.sessions?.length) {
+                list.innerHTML = data.sessions.map(s => `
+                    <tr${s.current ? ' style="background: var(--accent-muted);"' : ''}>
+                        <td><strong>${escapeHtml(s.device || 'Unknown Device')}</strong>${s.current ? ' <span class="badge badge-success">Current</span>' : ''}</td>
+                        <td style="font-family: monospace;">${escapeHtml(s.ip_address)}</td>
+                        <td>${escapeHtml(s.location || 'Unknown')}</td>
+                        <td>${timeAgo(s.last_active)}</td>
+                        <td>${!s.current ? `<button class="header-btn btn-ghost" onclick="revokeSession('${s.id}')" style="color: var(--error);">Revoke</button>` : '-'}</td>
+                    </tr>
+                `).join('');
+            } else {
+                list.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No active sessions</td></tr>';
+            }
+        }
+
+        async function revokeSession(sessionId) {
+            if (!confirm('Revoke this session?')) return;
+            const data = await api(`/account/sessions/${sessionId}`, { method: 'DELETE' });
+            if (data?.success) { toast('Session revoked', 'success'); loadSessions(); }
+        }
+
+        // Admin Management Functions
+        async function toggleAdminStatus(id, active) {
+            const data = await api(`/admins/${id}`, { method: 'PUT', body: JSON.stringify({ active }) });
+            if (data?.success) { toast(`Admin ${active ? 'activated' : 'deactivated'}`, 'success'); loadAdmins(); }
+        }
+
+        async function deleteAdmin(id) {
+            if (!confirm('Delete this admin account? This cannot be undone.')) return;
+            const data = await api(`/admins/${id}`, { method: 'DELETE' });
+            if (data?.success) { toast('Admin deleted', 'success'); loadAdmins(); }
+        }
+
         function toast(message, type = 'success') {
             const container = document.getElementById('toastContainer');
             const t = document.createElement('div');
             t.className = `toast ${type}`;
-            t.innerHTML = `<span class="toast-icon">${type === 'success' ? '✓' : type === 'error' ? '✕' : '⚠'}</span><span class="toast-message">${escapeHtml(message)}</span>`;
+            t.innerHTML = `<span class="toast-icon">${type === 'success' ? '✓' : type === 'error' ? '✕' : type === 'info' ? 'ℹ' : '⚠'}</span><span class="toast-message">${escapeHtml(message)}</span>`;
             container.appendChild(t);
             setTimeout(() => t.remove(), 4000);
         }

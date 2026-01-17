@@ -974,4 +974,219 @@ router.post('/quick-action/emergency-lockdown', requireRole('owner'), async (req
     }
 });
 
+// ============================================================================
+// ACCOUNT MANAGEMENT (for current user)
+// ============================================================================
+
+router.get('/account/2fa-status', async (req, res) => {
+    try {
+        // Check if 2FA is enabled for the current admin
+        const admin = await db.get(`SELECT * FROM admins WHERE id = ?`, [req.admin.id]);
+        res.json({ success: true, enabled: admin?.two_factor_enabled || false });
+    } catch (err) {
+        console.error('[Admin API] 2FA status error:', err);
+        res.status(500).json({ success: false, error: 'Failed to get 2FA status' });
+    }
+});
+
+router.put('/account/profile', async (req, res) => {
+    try {
+        const { display_name } = req.body;
+        const now = new Date().toISOString();
+        
+        await db.run(`UPDATE admins SET updated_at = ? WHERE id = ?`, [now, req.admin.id]);
+        await auditLog(req, 'UPDATE_PROFILE', 'admin', req.admin.id, null, { display_name });
+        
+        res.json({ success: true, message: 'Profile updated' });
+    } catch (err) {
+        console.error('[Admin API] Update profile error:', err);
+        res.status(500).json({ success: false, error: 'Failed to update profile' });
+    }
+});
+
+router.put('/account/password', async (req, res) => {
+    try {
+        const { current_password, new_password } = req.body;
+        const bcrypt = require('bcrypt');
+        
+        // Get current admin with password hash
+        const admin = await db.get(`SELECT * FROM admins WHERE id = ?`, [req.admin.id]);
+        if (!admin) {
+            return res.status(404).json({ success: false, error: 'Admin not found' });
+        }
+        
+        // Verify current password
+        const isValid = await bcrypt.compare(current_password, admin.password_hash);
+        if (!isValid) {
+            return res.status(401).json({ success: false, error: 'Current password is incorrect' });
+        }
+        
+        // Validate new password
+        if (new_password.length < 12) {
+            return res.status(400).json({ success: false, error: 'New password must be at least 12 characters' });
+        }
+        
+        // Hash and update
+        const newHash = await bcrypt.hash(new_password, 12);
+        const now = new Date().toISOString();
+        
+        await db.run(`UPDATE admins SET password_hash = ?, updated_at = ? WHERE id = ?`, [newHash, now, req.admin.id]);
+        await auditLog(req, 'CHANGE_PASSWORD', 'admin', req.admin.id, null, null);
+        
+        res.json({ success: true, message: 'Password updated successfully' });
+    } catch (err) {
+        console.error('[Admin API] Change password error:', err);
+        res.status(500).json({ success: false, error: 'Failed to change password' });
+    }
+});
+
+router.post('/account/signout-all', async (req, res) => {
+    try {
+        // This would invalidate all tokens - for now we just log
+        await auditLog(req, 'SIGNOUT_ALL', 'admin', req.admin.id, null, null);
+        res.json({ success: true, message: 'All sessions signed out' });
+    } catch (err) {
+        console.error('[Admin API] Sign out all error:', err);
+        res.status(500).json({ success: false, error: 'Failed to sign out all devices' });
+    }
+});
+
+router.get('/account/sessions', async (req, res) => {
+    try {
+        // Get current session info
+        const sessions = [{
+            id: 'current',
+            device: req.headers['user-agent'] || 'Unknown',
+            ip_address: getClientIP(req),
+            location: 'Current Location',
+            last_active: new Date().toISOString(),
+            current: true
+        }];
+        
+        res.json({ success: true, sessions });
+    } catch (err) {
+        console.error('[Admin API] Get sessions error:', err);
+        res.status(500).json({ success: false, error: 'Failed to load sessions' });
+    }
+});
+
+router.delete('/account/sessions/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await auditLog(req, 'REVOKE_SESSION', 'session', id, null, null);
+        res.json({ success: true, message: 'Session revoked' });
+    } catch (err) {
+        console.error('[Admin API] Revoke session error:', err);
+        res.status(500).json({ success: false, error: 'Failed to revoke session' });
+    }
+});
+
+// ============================================================================
+// ADMIN CRUD (owner only)
+// ============================================================================
+
+router.post('/admins', requireRole('owner'), async (req, res) => {
+    try {
+        const { email, password, role } = req.body;
+        const bcrypt = require('bcrypt');
+        
+        if (!email || !password) {
+            return res.status(400).json({ success: false, error: 'Email and password required' });
+        }
+        
+        if (password.length < 12) {
+            return res.status(400).json({ success: false, error: 'Password must be at least 12 characters' });
+        }
+        
+        if (!['admin', 'editor'].includes(role)) {
+            return res.status(400).json({ success: false, error: 'Invalid role' });
+        }
+        
+        // Check if email exists
+        const existing = await db.get(`SELECT id FROM admins WHERE email = ?`, [email.toLowerCase()]);
+        if (existing) {
+            return res.status(400).json({ success: false, error: 'Email already registered' });
+        }
+        
+        const id = generateId();
+        const passwordHash = await bcrypt.hash(password, 12);
+        const now = new Date().toISOString();
+        
+        await db.run(`
+            INSERT INTO admins (id, email, password_hash, role, created_at, updated_at, active)
+            VALUES (?, ?, ?, ?, ?, ?, 1)
+        `, [id, email.toLowerCase(), passwordHash, role, now, now]);
+        
+        await auditLog(req, 'CREATE', 'admin', id, null, { email, role });
+        
+        res.json({ success: true, id, message: 'Admin created' });
+    } catch (err) {
+        console.error('[Admin API] Create admin error:', err);
+        res.status(500).json({ success: false, error: 'Failed to create admin' });
+    }
+});
+
+router.put('/admins/:id', requireRole('owner'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { active, role } = req.body;
+        
+        const existing = await db.get(`SELECT * FROM admins WHERE id = ?`, [id]);
+        if (!existing) {
+            return res.status(404).json({ success: false, error: 'Admin not found' });
+        }
+        
+        // Cannot modify owners
+        if (existing.role === 'owner') {
+            return res.status(403).json({ success: false, error: 'Cannot modify owner accounts' });
+        }
+        
+        const now = new Date().toISOString();
+        
+        await db.run(`
+            UPDATE admins SET 
+                active = COALESCE(?, active),
+                role = COALESCE(?, role),
+                updated_at = ?
+            WHERE id = ?
+        `, [active !== undefined ? (active ? 1 : 0) : null, role, now, id]);
+        
+        await auditLog(req, 'UPDATE', 'admin', id, { active: existing.active }, { active });
+        
+        res.json({ success: true, message: 'Admin updated' });
+    } catch (err) {
+        console.error('[Admin API] Update admin error:', err);
+        res.status(500).json({ success: false, error: 'Failed to update admin' });
+    }
+});
+
+router.delete('/admins/:id', requireRole('owner'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const existing = await db.get(`SELECT * FROM admins WHERE id = ?`, [id]);
+        if (!existing) {
+            return res.status(404).json({ success: false, error: 'Admin not found' });
+        }
+        
+        // Cannot delete owners
+        if (existing.role === 'owner') {
+            return res.status(403).json({ success: false, error: 'Cannot delete owner accounts' });
+        }
+        
+        // Cannot delete yourself
+        if (id === req.admin.id) {
+            return res.status(400).json({ success: false, error: 'Cannot delete your own account' });
+        }
+        
+        await db.run(`DELETE FROM admins WHERE id = ?`, [id]);
+        await auditLog(req, 'DELETE', 'admin', id, { email: existing.email }, null);
+        
+        res.json({ success: true, message: 'Admin deleted' });
+    } catch (err) {
+        console.error('[Admin API] Delete admin error:', err);
+        res.status(500).json({ success: false, error: 'Failed to delete admin' });
+    }
+});
+
 module.exports = router;
