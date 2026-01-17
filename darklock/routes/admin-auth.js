@@ -260,7 +260,14 @@ async function requireAdminAuth(req, res, next) {
     const token = req.cookies?.admin_token;
 
     if (!token) {
-        console.log('[Admin Auth] No admin_token cookie found. Cookies:', Object.keys(req.cookies || {}));
+        console.log('[Admin Auth] No admin_token cookie found');
+        console.log('[Admin Auth] Headers:', {
+            cookie: req.headers.cookie,
+            host: req.headers.host,
+            'x-forwarded-proto': req.headers['x-forwarded-proto'],
+            secure: req.secure
+        });
+        console.log('[Admin Auth] All cookies:', req.cookies);
         // Redirect to signin for page requests, 401 for API
         if (req.accepts('html')) {
             return res.redirect('/signin');
@@ -273,9 +280,10 @@ async function requireAdminAuth(req, res, next) {
     if (!decoded) {
         console.log('[Admin Auth] Invalid or expired token');
         // Clear invalid cookie
+        const isProduction = process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https';
         res.clearCookie('admin_token', {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: isProduction,
             sameSite: 'lax',
             path: '/'
         });
@@ -290,9 +298,10 @@ async function requireAdminAuth(req, res, next) {
     const admin = await getAdminById(decoded.adminId);
     if (!admin) {
         console.log('[Admin Auth] Admin not found:', decoded.adminId);
+        const isProduction = process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https';
         res.clearCookie('admin_token', {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: isProduction,
             sameSite: 'lax',
             path: '/'
         });
@@ -394,13 +403,18 @@ router.post('/signin', signinLimiter, async (req, res) => {
         const token = generateAdminToken(admin);
 
         // Set httpOnly secure cookie
-        res.cookie('admin_token', token, {
+        const isProduction = process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https';
+        const cookieOptions = {
             httpOnly: true, // Prevents XSS access to cookie
-            secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+            secure: isProduction, // HTTPS only in production
             sameSite: 'lax', // Use 'lax' to allow cookies in same-site navigations and API calls
             maxAge: 60 * 60 * 1000, // 1 hour (matches JWT expiry)
             path: '/'
-        });
+        };
+        
+        res.cookie('admin_token', token, cookieOptions);
+        
+        console.log('[Admin Auth] Set cookie with options:', { ...cookieOptions, token: token.substring(0, 20) + '...' });
 
         // Log successful login
         await logAdminAudit('LOGIN_SUCCESS', admin.id, { ip }, req);
@@ -437,9 +451,10 @@ router.post('/signout', async (req, res) => {
     }
 
     // Clear the cookie
+    const isProduction = process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https';
     res.clearCookie('admin_token', {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isProduction,
         sameSite: 'lax',
         path: '/'
     });
