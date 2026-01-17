@@ -1,5 +1,5 @@
 {
-  "generated": "2026-01-17T06:00:37.688Z",
+  "generated": "2026-01-17T06:07:38.677Z",
   "version": "1.0.0",
   "fileCount": 216,
   "hashes": {
@@ -76,8 +76,8 @@
     "D:\\discord bot\\src\\core\\canonical-systems.js": "d3cbf619d7d44564ba8200a7411ad4334977b7e9dd4c7fee488e6fc807f1dc9b",
     "D:\\discord bot\\src\\core\\command-allowlist.js": "370768cd4e0898822bd30168743c417fd75e19fd864435439c259d8234395fa4",
     "D:\\discord bot\\src\\core\\eventLoader.js": "bcf2eed71b0dcebed26a4ff0ff932d2935047f8cdd072c70bf3a3ad14e613e11",
-    "D:\\discord bot\\package.json": "a4084f60ff632f59b379e7945a8d653a22858ef64aa4d37f6d5ab57bf318a617",
-    "D:\\discord bot\\package-lock.json": "766e009cebaabc6e613d695494ea9a961aac897127855ea40db91dac34dc582e",
+    "D:\\discord bot\\package.json": "1d3f495e80c8da63634367bea20727b5db567ee6fe649295e477aa20eff90603",
+    "D:\\discord bot\\package-lock.json": "1045bf334335bcaaf66238aa1c25b7eb9db292b53da02ab91eaa7b823880e102",
     "D:\\discord bot\\data\\ranks.json": "a6d7a2d1a6381e405f2ccf695c334471365298639c4b83b2ab0d740c1b8370d5",
     "D:\\discord bot\\data\\file-integrity.json": "354a179bb8913d57abc1d0a7b71af139d97a7344ebb4aa3106227004a2f9d119",
     "D:\\discord bot\\darklock\\routes\\admin-api.js": "d712a3412abe4f2e64e8272ce91028a8d9e5e34b2ae42d4d1647c96d45036493",
@@ -220,5 +220,5 @@
     "D:\\discord bot\\darklock\\views\\terms.html": "823c2df4ebed6ae6b082428e808bb21ed00f2d48922ad99c8eb5e05a208a6d3f",
     "D:\\discord bot\\ainti-tampering-app\\tauri-app\\src\\styles\\main.css": "01b6e8694ed0bee91f02ec817a34d51e678fef655e673919450856c7cca83986"
   },
-  "signature": "f8cd64e99bad34b3f76701457a0e8d56e1bc640d7320ef91ebe40e5047fb777d"
+  "signature": "3d3999f07d13000a0c0f7f49bb148d795ea1372ca7c77833a4b41204c5e01b7c"
 }
