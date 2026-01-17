@@ -304,8 +304,12 @@ router.post('/signup', rateLimitMiddleware('signup'), async (req, res) => {
         const allUsers = await db.getAllUsers();
         const isFirstUser = allUsers.length === 0;
         
+        // Generate unique user ID
+        const userId = generateJti();
+        
         // Create new user in database
         const newUser = await db.createUser({
+            id: userId,
             username: username.trim(),
             email: email.toLowerCase().trim(),
             password: hashedPassword,
