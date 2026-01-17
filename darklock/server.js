@@ -24,6 +24,11 @@ const db = require('./utils/database');
 const authRoutes = require('./routes/auth');
 const { router: dashboardRoutes, requireAuth } = require('./routes/dashboard');
 const profileRoutes = require('./routes/profile');
+const { 
+    router: adminAuthRoutes, 
+    initializeAdminTables, 
+    requireAdminAuth 
+} = require('./routes/admin-auth');
 
 class DarklockPlatform {
     constructor(options = {}) {
@@ -431,6 +436,56 @@ class DarklockPlatform {
         // Auth routes
         this.app.use('/platform/auth', authRoutes);
         
+        // Admin auth routes (/signin, /signout)
+        this.app.use('/', adminAuthRoutes);
+        
+        // Admin dashboard (protected)
+        this.app.get('/admin/dashboard', requireAdminAuth, (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/admin-dashboard.html'));
+        });
+        
+        // Admin API - Dashboard data (protected)
+        this.app.get('/admin/api/dashboard', requireAdminAuth, async (req, res) => {
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                
+                // Get stats from audit log
+                const loginsToday = await db.get(`
+                    SELECT COUNT(*) as count FROM admin_audit_log 
+                    WHERE event_type = 'LOGIN_SUCCESS' AND created_at >= ?
+                `, [today]) || { count: 0 };
+                
+                const failedToday = await db.get(`
+                    SELECT COUNT(*) as count FROM admin_audit_log 
+                    WHERE event_type = 'LOGIN_FAILED' AND created_at >= ?
+                `, [today]) || { count: 0 };
+                
+                const activeAdmins = await db.get(`
+                    SELECT COUNT(*) as count FROM admins WHERE active = 1
+                `) || { count: 0 };
+                
+                // Get recent audit logs
+                const auditLog = await db.all(`
+                    SELECT * FROM admin_audit_log 
+                    ORDER BY created_at DESC LIMIT 20
+                `) || [];
+                
+                res.json({
+                    success: true,
+                    admin: req.admin,
+                    stats: {
+                        loginsToday: loginsToday.count,
+                        failedToday: failedToday.count,
+                        activeAdmins: activeAdmins.count
+                    },
+                    auditLog
+                });
+            } catch (err) {
+                console.error('[Admin API] Dashboard error:', err);
+                res.status(500).json({ success: false, error: 'Failed to load dashboard data' });
+            }
+        });
+        
         // Dashboard routes
         this.app.use('/platform/dashboard', dashboardRoutes);
         
@@ -685,6 +740,10 @@ class DarklockPlatform {
                 // Initialize database before starting server
                 console.log('[Darklock Platform] Initializing database...');
                 await db.initialize();
+                
+                // Initialize admin authentication tables
+                console.log('[Darklock Platform] Initializing admin auth...');
+                await initializeAdminTables();
                 
                 // Run session cleanup on startup
                 await db.cleanupExpiredSessions();
