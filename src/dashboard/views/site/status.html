@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Status - DarkLock Security</title>
+    <meta name="description" content="Check the current operational status of all DarkLock services.">
+    <link rel="stylesheet" href="/css/style.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <script src="/js/global-theme.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .status-overall {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: var(--space-2xl);
+            text-align: center;
+            margin-bottom: var(--space-2xl);
+        }
+        
+        .status-overall.operational {
+            border-color: var(--success);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+        }
+        
+        .status-overall .status-icon {
+            font-size: 4rem;
+            margin-bottom: var(--space-lg);
+        }
+        
+        .status-overall.operational .status-icon {
+            color: var(--success);
+        }
+        
+        .status-overall h2 {
+            font-size: 1.5rem;
+            margin-bottom: var(--space-sm);
+        }
+        
+        .status-overall p {
+            color: var(--text-secondary);
+        }
+        
+        .status-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            margin-bottom: var(--space-md);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .status-card .service-info {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+        
+        .status-card .service-icon {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            font-size: 1.25rem;
+            color: var(--accent-primary);
+        }
+        
+        .status-card .service-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .status-card .service-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-full);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .status-badge.operational {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+        
+        .status-badge.degraded {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+        
+        .status-badge.down {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+        }
+        
+        .uptime-bar {
+            display: flex;
+            gap: 2px;
+            margin-top: var(--space-lg);
+        }
+        
+        .uptime-bar .day {
+            flex: 1;
+            height: 30px;
+            border-radius: 2px;
+            position: relative;
+            cursor: pointer;
+            transition: var(--transition-base);
+        }
+        
+        .uptime-bar .day:hover {
+            transform: scaleY(1.2);
+        }
+        
+        .uptime-bar .day.up {
+            background: var(--success);
+        }
+        
+        .uptime-bar .day.partial {
+            background: var(--warning);
+        }
+        
+        .uptime-bar .day.down {
+            background: var(--error);
+        }
+        
+        .uptime-legend {
+            display: flex;
+            justify-content: space-between;
+            margin-top: var(--space-sm);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        
+        .incident-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            margin-bottom: var(--space-md);
+        }
+        
+        .incident-card .incident-date {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: var(--space-sm);
+        }
+        
+        .incident-card h4 {
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+        }
+        
+        .incident-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/site/" class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <span class="brand-text">DarkLock</span>
+            </a>
+            
+            <div class="nav-menu" id="navMenu">
+                <a href="/site/features" class="nav-link">Features</a>
+                <a href="/site/security" class="nav-link">Security</a>
+                <a href="/site/pricing" class="nav-link">Pricing</a>
+                <a href="/site/documentation" class="nav-link">Docs</a>
+                <a href="/site/status" class="nav-link active">Status</a>
+                <a href="/platform" class="nav-link">Platform</a>
+            </div>
+            
+            <div class="nav-actions">
+                <a href="/dashboard" class="btn btn-ghost">
+                    <i class="fas fa-rocket"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    <span>Add to Discord</span>
+                </a>
+            </div>
+            
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="page-header" style="padding: calc(100px + var(--space-3xl)) 0 var(--space-2xl);">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge"><i class="fas fa-signal"></i> Status</span>
+                <h1 class="section-title">System Status</h1>
+                <p class="section-subtitle">Real-time operational status of all DarkLock services</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Status Content -->
+    <section style="padding: 0 0 var(--space-4xl);">
+        <div class="container" style="max-width: 900px;">
+            <!-- Overall Status -->
+            <div class="status-overall operational">
+                <div class="status-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h2>All Systems Operational</h2>
+                <p>All services are running normally. Last updated: <span id="last-updated">Just now</span></p>
+            </div>
+
+            <!-- Services -->
+            <div class="section-header" style="margin-bottom: var(--space-lg);">
+                <h2 class="section-title" style="font-size: 1.5rem;">Services</h2>
+            </div>
+
+            <div class="status-card">
+                <div class="service-info">
+                    <div class="service-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div>
+                        <div class="service-name">Discord Bot</div>
+                        <div class="service-desc">Main bot service and commands</div>
+                    </div>
+                </div>
+                <span class="status-badge operational">
+                    <i class="fas fa-check-circle"></i> Operational
+                </span>
+            </div>
+
+            <div class="status-card">
+                <div class="service-info">
+                    <div class="service-icon">
+                        <i class="fas fa-gauge-high"></i>
+                    </div>
+                    <div>
+                        <div class="service-name">Dashboard</div>
+                        <div class="service-desc">Web dashboard and API</div>
+                    </div>
+                </div>
+                <span class="status-badge operational">
+                    <i class="fas fa-check-circle"></i> Operational
+                </span>
+            </div>
+
+            <div class="status-card">
+                <div class="service-info">
+                    <div class="service-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div>
+                        <div class="service-name">Database</div>
+                        <div class="service-desc">Data storage and retrieval</div>
+                    </div>
+                </div>
+                <span class="status-badge operational">
+                    <i class="fas fa-check-circle"></i> Operational
+                </span>
+            </div>
+
+            <div class="status-card">
+                <div class="service-info">
+                    <div class="service-icon">
+                        <i class="fas fa-shield-halved"></i>
+                    </div>
+                    <div>
+                        <div class="service-name">Security Services</div>
+                        <div class="service-desc">Threat detection and protection</div>
+                    </div>
+                </div>
+                <span class="status-badge operational">
+                    <i class="fas fa-check-circle"></i> Operational
+                </span>
+            </div>
+
+            <div class="status-card">
+                <div class="service-info">
+                    <div class="service-icon">
+                        <i class="fas fa-link"></i>
+                    </div>
+                    <div>
+                        <div class="service-name">API Services</div>
+                        <div class="service-desc">External API integrations</div>
+                    </div>
+                </div>
+                <span class="status-badge operational">
+                    <i class="fas fa-check-circle"></i> Operational
+                </span>
+            </div>
+
+            <!-- Uptime -->
+            <div class="section-header" style="margin: var(--space-2xl) 0 var(--space-lg);">
+                <h2 class="section-title" style="font-size: 1.5rem;">90-Day Uptime</h2>
+            </div>
+
+            <div class="feature-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+                    <span style="color: var(--text-secondary);">Overall Uptime</span>
+                    <span style="color: var(--success); font-weight: 600;">99.98%</span>
+                </div>
+                <div class="uptime-bar">
+                    <!-- Generate 90 days -->
+                    <div class="day up" title="Jan 15 - Operational"></div>
+                    <div class="day up" title="Jan 14 - Operational"></div>
+                    <div class="day up" title="Jan 13 - Operational"></div>
+                    <div class="day up" title="Jan 12 - Operational"></div>
+                    <div class="day up" title="Jan 11 - Operational"></div>
+                    <div class="day up" title="Jan 10 - Operational"></div>
+                    <div class="day up" title="Jan 9 - Operational"></div>
+                    <div class="day up" title="Jan 8 - Operational"></div>
+                    <div class="day up" title="Jan 7 - Operational"></div>
+                    <div class="day up" title="Jan 6 - Operational"></div>
+                    <div class="day up" title="Jan 5 - Operational"></div>
+                    <div class="day up" title="Jan 4 - Operational"></div>
+                    <div class="day partial" title="Jan 3 - Partial Outage"></div>
+                    <div class="day up" title="Jan 2 - Operational"></div>
+                    <div class="day up" title="Jan 1 - Operational"></div>
+                    <div class="day up" title="Dec 31 - Operational"></div>
+                    <div class="day up" title="Dec 30 - Operational"></div>
+                    <div class="day up" title="Dec 29 - Operational"></div>
+                    <div class="day up" title="Dec 28 - Operational"></div>
+                    <div class="day up" title="Dec 27 - Operational"></div>
+                    <div class="day up" title="Dec 26 - Operational"></div>
+                    <div class="day up" title="Dec 25 - Operational"></div>
+                    <div class="day up" title="Dec 24 - Operational"></div>
+                    <div class="day up" title="Dec 23 - Operational"></div>
+                    <div class="day up" title="Dec 22 - Operational"></div>
+                    <div class="day up" title="Dec 21 - Operational"></div>
+                    <div class="day up" title="Dec 20 - Operational"></div>
+                    <div class="day up" title="Dec 19 - Operational"></div>
+                    <div class="day up" title="Dec 18 - Operational"></div>
+                    <div class="day up" title="Dec 17 - Operational"></div>
+                </div>
+                <div class="uptime-legend">
+                    <span>30 days ago</span>
+                    <span>Today</span>
+                </div>
+            </div>
+
+            <!-- Recent Incidents -->
+            <div class="section-header" style="margin: var(--space-2xl) 0 var(--space-lg);">
+                <h2 class="section-title" style="font-size: 1.5rem;">Recent Incidents</h2>
+            </div>
+
+            <div class="incident-card">
+                <div class="incident-date">January 3, 2026</div>
+                <h4><span style="color: var(--warning);">●</span> Brief API Degradation</h4>
+                <p>Some users experienced slower response times due to increased load. Issue was resolved within 15 minutes.</p>
+            </div>
+
+            <div class="incident-card">
+                <div class="incident-date">December 15, 2025</div>
+                <h4><span style="color: var(--success);">●</span> Scheduled Maintenance</h4>
+                <p>Planned maintenance to upgrade database infrastructure. No unexpected downtime occurred.</p>
+            </div>
+
+            <div style="text-align: center; margin-top: var(--space-2xl);">
+                <p style="color: var(--text-muted);">Subscribe to status updates</p>
+                <a href="https://discord.gg/r8dvnad9c9" target="_blank" class="btn btn-outline" style="margin-top: var(--space-md);">
+                    <i class="fab fa-discord"></i>
+                    <span>Join Discord for Updates</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="/site/" class="brand-link">
+                        <div class="brand-icon">
+                            <i class="fas fa-shield-halved"></i>
+                        </div>
+                        <span>DarkLock</span>
+                    </a>
+                    <p>Enterprise-grade security for Discord communities of all sizes.</p>
+                    <div class="social-links">
+                        <a href="https://discord.gg/r8dvnad9c9" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
+                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                        <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="/site/features">Features</a></li>
+                        <li><a href="/site/pricing">Pricing</a></li>
+                        <li><a href="/dashboard">Dashboard</a></li>
+                        <li><a href="/site/add-bot">Add Bot</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="/site/documentation">Documentation</a></li>
+                        <li><a href="/site/status">Status</a></li>
+                        <li><a href="/site/bug-reports">Bug Reports</a></li>
+                        <li><a href="/site/support">Support</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="/site/privacy">Privacy Policy</a></li>
+                        <li><a href="/site/terms">Terms of Service</a></li>
+                        <li><a href="/site/security">Security</a></li>
+                        <li><a href="/site/sitemap">Sitemap</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 DarkLock. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+    <script>
+        // Update timestamp
+        function updateTimestamp() {
+            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        }
+        updateTimestamp();
+        setInterval(updateTimestamp, 60000);
+    </script>
+</body>
+</html>

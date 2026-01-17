@@ -608,30 +608,20 @@
                 </div>
 
                 <!-- Quick Actions -->
-                <div class="card">
+                <div class="card quick-actions-card">
                     <div class="card-header">
                         <div class="card-title">
                             <i class="fas fa-bolt"></i>
                             Quick Actions
                         </div>
-                        <button class="btn btn-icon" onclick="openQuickActionsSettings()" title="Customize Quick Actions">
-                            <i class="fas fa-plus"></i>
+                        <button class="quick-actions-customize-btn" onclick="openQuickActionsSettings()" title="Customize Quick Actions">
+                            <i class="fas fa-sliders-h"></i>
+                            <span>Customize</span>
                         </button>
                     </div>
                     <div class="card-body">
-                        <div id="quickActionsContainer" style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                            <a href="/tickets" class="btn btn-primary" data-action="tickets">
-                                <i class="fas fa-ticket-alt"></i>
-                                View Tickets
-                            </a>
-                            <a href="/analytics" class="btn btn-secondary" data-action="analytics">
-                                <i class="fas fa-chart-bar"></i>
-                                Full Analytics
-                            </a>
-                            <a href="/setup/security" class="btn btn-secondary" data-action="security">
-                                <i class="fas fa-cog"></i>
-                                Security Settings
-                            </a>
+                        <div id="quickActionsContainer" class="quick-actions-grid-display">
+                            <!-- Quick actions will be rendered here -->
                         </div>
                     </div>
                 </div>
@@ -966,17 +956,18 @@
 
         // Quick Actions Management
         const availableActions = [
-            { id: 'tickets', name: 'View Tickets', icon: 'ticket-alt', url: '/tickets', color: 'primary' },
-            { id: 'analytics', name: 'Full Analytics', icon: 'chart-bar', url: '/analytics', color: 'secondary' },
-            { id: 'security', name: 'Security Settings', icon: 'cog', url: '/setup/security', color: 'secondary' },
-            { id: 'users', name: 'User Management', icon: 'users', url: '/dashboard/users', color: 'secondary' },
-            { id: 'logs', name: 'View Logs', icon: 'scroll', url: '/dashboard/logs', color: 'secondary' },
-            { id: 'antinuke', name: 'Anti-Nuke', icon: 'radiation', url: '/setup/antinuke', color: 'danger' },
-            { id: 'antiraid', name: 'Anti-Raid', icon: 'users-slash', url: '/setup/anti-raid', color: 'warning' },
-            { id: 'antispam', name: 'Anti-Spam', icon: 'comment-slash', url: '/setup/anti-spam', color: 'info' },
-            { id: 'moderation', name: 'Moderation', icon: 'gavel', url: '/setup/moderation', color: 'secondary' },
-            { id: 'backup', name: 'Server Backup', icon: 'database', url: '/setup/backup', color: 'success' },
-            { id: 'invite', name: 'Invite Bot', icon: 'robot', url: '/invite', color: 'secondary' }
+            { id: 'tickets', name: 'View Tickets', icon: 'ticket-alt', url: '/tickets', gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', iconBg: 'rgba(102, 126, 234, 0.2)' },
+            { id: 'analytics', name: 'Analytics', icon: 'chart-line', url: '/analytics', gradient: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', iconBg: 'rgba(17, 153, 142, 0.2)' },
+            { id: 'security', name: 'Security', icon: 'shield-alt', url: '/setup/security', gradient: 'linear-gradient(135deg, #00d4ff 0%, #0099ff 100%)', iconBg: 'rgba(0, 212, 255, 0.2)' },
+            { id: 'users', name: 'Users', icon: 'users-cog', url: '/dashboard/users', gradient: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)', iconBg: 'rgba(168, 85, 247, 0.2)' },
+            { id: 'logs', name: 'Audit Logs', icon: 'file-alt', url: '/dashboard/logs', gradient: 'linear-gradient(135deg, #64748b 0%, #475569 100%)', iconBg: 'rgba(100, 116, 139, 0.2)' },
+            { id: 'antinuke', name: 'Anti-Nuke', icon: 'radiation', url: '/setup/antinuke', gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', iconBg: 'rgba(239, 68, 68, 0.2)' },
+            { id: 'antiraid', name: 'Anti-Raid', icon: 'user-shield', url: '/setup/anti-raid', gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', iconBg: 'rgba(245, 158, 11, 0.2)' },
+            { id: 'antispam', name: 'Anti-Spam', icon: 'comment-slash', url: '/setup/anti-spam', gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', iconBg: 'rgba(6, 182, 212, 0.2)' },
+            { id: 'moderation', name: 'Moderation', icon: 'gavel', url: '/setup/moderation', gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', iconBg: 'rgba(139, 92, 246, 0.2)' },
+            { id: 'backup', name: 'Backup', icon: 'database', url: '/setup/backup', gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', iconBg: 'rgba(16, 185, 129, 0.2)' },
+            { id: 'welcome', name: 'Welcome', icon: 'door-open', url: '/setup/welcome', gradient: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)', iconBg: 'rgba(236, 72, 153, 0.2)' },
+            { id: 'invite', name: 'Invite Bot', icon: 'paper-plane', url: '/invite', gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', iconBg: 'rgba(59, 130, 246, 0.2)' }
         ];
 
         function loadQuickActions() {
@@ -1001,13 +992,30 @@
             if (!container) return;
 
             const activeActions = loadQuickActions();
+            
+            if (activeActions.length === 0) {
+                container.innerHTML = `
+                    <div class="quick-actions-empty">
+                        <i class="fas fa-plus-circle"></i>
+                        <p>No quick actions configured</p>
+                        <button class="btn btn-primary btn-sm" onclick="openQuickActionsSettings()">
+                            Add Actions
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
             container.innerHTML = activeActions.map(actionId => {
                 const action = availableActions.find(a => a.id === actionId);
                 if (!action) return '';
                 return `
-                    <a href="${action.url}" class="btn btn-${action.color}" data-action="${action.id}">
-                        <i class="fas fa-${action.icon}"></i>
-                        ${action.name}
+                    <a href="${action.url}" class="quick-action-tile" data-action="${action.id}">
+                        <div class="quick-action-icon" style="background: ${action.iconBg};">
+                            <i class="fas fa-${action.icon}" style="background: ${action.gradient}; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></i>
+                        </div>
+                        <span class="quick-action-name">${action.name}</span>
+                        <i class="fas fa-chevron-right quick-action-arrow"></i>
                     </a>
                 `;
             }).join('');
@@ -1017,37 +1025,52 @@
             const activeActions = loadQuickActions();
             const modalHTML = `
                 <div class="modal-overlay" id="quickActionsModal" onclick="closeQuickActionsSettings(event)">
-                    <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 600px;">
+                    <div class="modal-content quick-actions-modal" onclick="event.stopPropagation()">
                         <div class="modal-header">
-                            <h2><i class="fas fa-bolt"></i> Customize Quick Actions</h2>
-                            <button class="modal-close" onclick="closeQuickActionsSettings()">&times;</button>
+                            <div class="modal-title-group">
+                                <div class="modal-icon">
+                                    <i class="fas fa-bolt"></i>
+                                </div>
+                                <div>
+                                    <h2>Customize Quick Actions</h2>
+                                    <p class="modal-subtitle">Select up to 6 actions for quick access</p>
+                                </div>
+                            </div>
+                            <button class="modal-close" onclick="closeQuickActionsSettings()">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
                         <div class="modal-body">
-                            <p style="margin-bottom: 1rem; color: var(--text-secondary);">
-                                Select up to 6 quick actions to display on your dashboard
-                            </p>
-                            <div class="quick-actions-grid">
+                            <div class="quick-actions-selection-grid">
                                 ${availableActions.map(action => `
-                                    <label class="quick-action-option">
+                                    <label class="quick-action-select-card ${activeActions.includes(action.id) ? 'selected' : ''}">
                                         <input type="checkbox" 
                                                value="${action.id}" 
                                                ${activeActions.includes(action.id) ? 'checked' : ''}
                                                onchange="toggleQuickAction(this)">
-                                        <span class="quick-action-label">
-                                            <i class="fas fa-${action.icon}"></i>
-                                            ${action.name}
-                                        </span>
+                                        <div class="quick-action-select-icon" style="background: ${action.iconBg};">
+                                            <i class="fas fa-${action.icon}" style="background: ${action.gradient}; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></i>
+                                        </div>
+                                        <span class="quick-action-select-name">${action.name}</span>
+                                        <div class="quick-action-check">
+                                            <i class="fas fa-check"></i>
+                                        </div>
                                     </label>
                                 `).join('')}
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button class="btn btn-secondary" onclick="resetQuickActions()">
-                                <i class="fas fa-undo"></i> Reset to Default
-                            </button>
-                            <button class="btn btn-primary" onclick="closeQuickActionsSettings()">
-                                <i class="fas fa-check"></i> Done
-                            </button>
+                            <div class="modal-footer-info">
+                                <span class="actions-count"><span id="selectedCount">${activeActions.length}</span>/6 selected</span>
+                            </div>
+                            <div class="modal-footer-buttons">
+                                <button class="btn btn-ghost" onclick="resetQuickActions()">
+                                    <i class="fas fa-undo"></i> Reset
+                                </button>
+                                <button class="btn btn-primary" onclick="closeQuickActionsSettings()">
+                                    <i class="fas fa-check"></i> Done
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1072,19 +1095,45 @@
 
         function toggleQuickAction(checkbox) {
             let activeActions = loadQuickActions();
+            const card = checkbox.closest('.quick-action-select-card');
             
             if (checkbox.checked) {
                 if (activeActions.length >= 6) {
                     checkbox.checked = false;
-                    alert('You can only have up to 6 quick actions');
+                    showToast('Maximum 6 quick actions allowed', 'warning');
                     return;
                 }
                 activeActions.push(checkbox.value);
+                card.classList.add('selected');
             } else {
                 activeActions = activeActions.filter(id => id !== checkbox.value);
+                card.classList.remove('selected');
             }
             
+            // Update count display
+            const countEl = document.getElementById('selectedCount');
+            if (countEl) countEl.textContent = activeActions.length;
+            
             saveQuickActions(activeActions);
+        }
+        
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast-notification');
+            if (existing) existing.remove();
+            
+            const toast = document.createElement('div');
+            toast.className = `toast-notification toast-${type}`;
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
         function resetQuickActions() {
@@ -1102,167 +1151,472 @@
     </script>
 
     <style>
-        /* Quick Actions Settings Modal */
+        /* ========== Quick Actions Card ========== */
+        .quick-actions-card {
+            background: linear-gradient(135deg, rgba(26, 31, 54, 0.95) 0%, rgba(15, 18, 35, 0.98) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .quick-actions-card .card-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        
+        .quick-actions-card .card-title i {
+            color: #f59e0b;
+        }
+        
+        .quick-actions-customize-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: var(--text-secondary, #8892b0);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .quick-actions-customize-btn:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: rgba(0, 212, 255, 0.3);
+            color: #00d4ff;
+            transform: translateY(-1px);
+        }
+        
+        .quick-actions-customize-btn i {
+            font-size: 0.85rem;
+        }
+        
+        /* Quick Actions Grid Display */
+        .quick-actions-grid-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 1rem;
+        }
+        
+        .quick-action-tile {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+            padding: 1rem 1.25rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary, #fff);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .quick-action-tile::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+        
+        .quick-action-tile:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.12);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .quick-action-tile:hover::before {
+            opacity: 1;
+        }
+        
+        .quick-action-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .quick-action-icon i {
+            font-size: 1.1rem;
+        }
+        
+        .quick-action-name {
+            font-weight: 500;
+            font-size: 0.9rem;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .quick-action-arrow {
+            font-size: 0.7rem;
+            color: var(--text-muted, #5a6a8a);
+            opacity: 0;
+            transform: translateX(-5px);
+            transition: all 0.25s ease;
+        }
+        
+        .quick-action-tile:hover .quick-action-arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        .quick-actions-empty {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 2rem;
+            color: var(--text-muted, #5a6a8a);
+            text-align: center;
+        }
+        
+        .quick-actions-empty i {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        
+        .quick-actions-empty p {
+            margin-bottom: 1rem;
+        }
+        
+        /* ========== Modal Styles ========== */
         .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(8px);
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(12px);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 10000;
             opacity: 0;
             transition: opacity 0.3s ease;
+            padding: 1rem;
         }
-
+        
         .modal-overlay.active {
             opacity: 1;
         }
-
-        .modal-content {
-            background: var(--card-bg, #1a1f36);
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-            max-height: 90vh;
+        
+        .quick-actions-modal {
+            background: linear-gradient(180deg, #1e2340 0%, #151929 100%);
+            border-radius: 20px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
+            max-height: 85vh;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            width: 90%;
-            transform: scale(0.9);
-            transition: transform 0.3s ease;
+            width: 100%;
+            max-width: 700px;
+            transform: scale(0.95) translateY(20px);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-
-        .modal-overlay.active .modal-content {
-            transform: scale(1);
+        
+        .modal-overlay.active .quick-actions-modal {
+            transform: scale(1) translateY(0);
         }
-
+        
         .modal-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
             display: flex;
             align-items: center;
             justify-content: space-between;
+            background: rgba(255, 255, 255, 0.02);
         }
-
-        .modal-header h2 {
-            margin: 0;
-            font-size: 1.25rem;
-            color: var(--text-primary, #fff);
+        
+        .modal-title-group {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 1rem;
         }
-
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: var(--text-secondary, #8892b0);
-            cursor: pointer;
-            padding: 0;
-            width: 30px;
-            height: 30px;
+        
+        .modal-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(245, 158, 11, 0.05) 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 6px;
-            transition: all 0.2s;
         }
-
-        .modal-close:hover {
-            background: rgba(255, 255, 255, 0.1);
+        
+        .modal-icon i {
+            font-size: 1.25rem;
+            background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
             color: var(--text-primary, #fff);
         }
-
+        
+        .modal-subtitle {
+            margin: 0.25rem 0 0;
+            font-size: 0.85rem;
+            color: var(--text-muted, #5a6a8a);
+        }
+        
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-muted, #5a6a8a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .modal-close:hover {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+        
         .modal-body {
-            padding: 1.5rem;
+            padding: 1.5rem 2rem;
             overflow-y: auto;
             flex: 1;
         }
-
-        .modal-footer {
-            padding: 1rem 1.5rem;
-            border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-            display: flex;
-            gap: 1rem;
-            justify-content: flex-end;
-        }
-
-        .quick-actions-grid {
+        
+        .quick-actions-selection-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 0.75rem;
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            gap: 0.875rem;
         }
-
-        .quick-action-option {
+        
+        .quick-action-select-card {
+            position: relative;
             display: flex;
+            flex-direction: column;
             align-items: center;
             gap: 0.75rem;
-            padding: 1rem;
-            background: var(--input-bg, rgba(255, 255, 255, 0.05));
-            border: 2px solid transparent;
-            border-radius: 8px;
+            padding: 1.25rem 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid rgba(255, 255, 255, 0.06);
+            border-radius: 14px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
-
-        .quick-action-option:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: var(--accent-primary, #00d4ff);
+        
+        .quick-action-select-card input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
         }
-
-        .quick-action-option input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
+        
+        .quick-action-select-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.12);
+            transform: translateY(-2px);
         }
-
-        .quick-action-option input[type="checkbox"]:checked + .quick-action-label {
-            color: var(--accent-primary, #00d4ff);
+        
+        .quick-action-select-card.selected {
+            background: rgba(0, 212, 255, 0.08);
+            border-color: rgba(0, 212, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
         }
-
-        .quick-action-label {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-weight: 500;
-            color: var(--text-primary, #fff);
-            transition: color 0.2s;
-        }
-
-        .btn-icon {
-            background: none;
-            border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
-            color: var(--text-secondary, #8892b0);
-            padding: 0.5rem;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
+        
+        .quick-action-select-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 32px;
-            height: 32px;
+            transition: transform 0.25s ease;
         }
-
-        .btn-icon:hover {
-            background: var(--accent-primary, #00d4ff);
-            border-color: var(--accent-primary, #00d4ff);
-            color: #fff;
+        
+        .quick-action-select-card:hover .quick-action-select-icon {
             transform: scale(1.05);
         }
-
+        
+        .quick-action-select-icon i {
+            font-size: 1.35rem;
+        }
+        
+        .quick-action-select-name {
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text-primary, #fff);
+            text-align: center;
+        }
+        
+        .quick-action-check {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            background: rgba(0, 212, 255, 0);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .quick-action-check i {
+            font-size: 0.65rem;
+            color: #fff;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.2s ease;
+        }
+        
+        .quick-action-select-card.selected .quick-action-check {
+            background: #00d4ff;
+            border-color: #00d4ff;
+        }
+        
+        .quick-action-select-card.selected .quick-action-check i {
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        .modal-footer {
+            padding: 1.25rem 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .modal-footer-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .actions-count {
+            font-size: 0.85rem;
+            color: var(--text-muted, #5a6a8a);
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+        }
+        
+        .actions-count span {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+        
+        .modal-footer-buttons {
+            display: flex;
+            gap: 0.75rem;
+        }
+        
+        .btn-ghost {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary, #8892b0);
+            padding: 0.6rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: var(--text-primary, #fff);
+        }
+        
+        /* Toast Notification */
+        .toast-notification {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #1e2340;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+            z-index: 10001;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .toast-notification.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        
+        .toast-warning {
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+        
+        .toast-warning i {
+            color: #f59e0b;
+        }
+        
         .card-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
+        
+        /* Responsive */
+        @media (max-width: 640px) {
+            .quick-actions-grid-display {
+                grid-template-columns: 1fr;
+            }
+            
+            .quick-actions-selection-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .quick-actions-modal {
+                max-height: 95vh;
+            }
+            
+            .modal-header, .modal-body, .modal-footer {
+                padding-left: 1.25rem;
+                padding-right: 1.25rem;
+            }
+            
+            .quick-actions-customize-btn span {
+                display: none;
+            }
+        }
     </style>
-    </script>
 </body>
 
 </html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing - DarkLock Security</title>
+    <meta name="description" content="Choose the perfect DarkLock plan for your Discord server. Free and premium options available.">
+    <link rel="stylesheet" href="/css/style.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <script src="/js/global-theme.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/site/" class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <span class="brand-text">DarkLock</span>
+            </a>
+            
+            <div class="nav-menu" id="navMenu">
+                <a href="/site/features" class="nav-link">Features</a>
+                <a href="/site/security" class="nav-link">Security</a>
+                <a href="/site/pricing" class="nav-link active">Pricing</a>
+                <a href="/site/documentation" class="nav-link">Docs</a>
+                <a href="/site/status" class="nav-link">Status</a>
+                <a href="/platform" class="nav-link">Platform</a>
+            </div>
+            
+            <div class="nav-actions">
+                <a href="/dashboard" class="btn btn-ghost">
+                    <i class="fas fa-rocket"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    <span>Add to Discord</span>
+                </a>
+            </div>
+            
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="page-header" style="padding: calc(100px + var(--space-3xl)) 0 var(--space-2xl);">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Pricing</span>
+                <h1 class="section-title">Simple, Transparent Pricing</h1>
+                <p class="section-subtitle">Choose the plan that's right for your community</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="pricing-section">
+        <div class="container">
+            <div class="pricing-grid">
+                <!-- Free Plan -->
+                <div class="pricing-card">
+                    <div class="plan-header">
+                        <h3 class="plan-name">Free</h3>
+                        <div class="plan-price">
+                            <span class="price">$0</span>
+                            <span class="period">/month</span>
+                        </div>
+                        <p class="plan-description">Perfect for small communities getting started</p>
+                    </div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> Anti-spam protection</li>
+                        <li><i class="fas fa-check"></i> Anti-raid detection</li>
+                        <li><i class="fas fa-check"></i> Basic moderation tools</li>
+                        <li><i class="fas fa-check"></i> Welcome messages</li>
+                        <li><i class="fas fa-check"></i> Auto-roles</li>
+                        <li><i class="fas fa-check"></i> 7-day audit logs</li>
+                        <li class="disabled"><i class="fas fa-times"></i> Custom branding</li>
+                        <li class="disabled"><i class="fas fa-times"></i> Priority support</li>
+                        <li class="disabled"><i class="fas fa-times"></i> Advanced analytics</li>
+                    </ul>
+                    <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-outline btn-block">Get Started Free</a>
+                </div>
+                
+                <!-- Pro Plan -->
+                <div class="pricing-card featured">
+                    <div class="popular-badge">Most Popular</div>
+                    <div class="plan-header">
+                        <h3 class="plan-name">Pro</h3>
+                        <div class="plan-price">
+                            <span class="price">$4.99</span>
+                            <span class="period">/month</span>
+                        </div>
+                        <p class="plan-description">For growing communities that need more</p>
+                    </div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> Everything in Free</li>
+                        <li><i class="fas fa-check"></i> Anti-nuke protection</li>
+                        <li><i class="fas fa-check"></i> Advanced anti-phishing</li>
+                        <li><i class="fas fa-check"></i> Custom welcome images</li>
+                        <li><i class="fas fa-check"></i> XP & leveling system</li>
+                        <li><i class="fas fa-check"></i> 30-day audit logs</li>
+                        <li><i class="fas fa-check"></i> Scheduled backups</li>
+                        <li><i class="fas fa-check"></i> Priority support</li>
+                        <li class="disabled"><i class="fas fa-times"></i> Custom branding</li>
+                    </ul>
+                    <a href="/dashboard" class="btn btn-primary btn-block">Upgrade to Pro</a>
+                </div>
+                
+                <!-- Enterprise Plan -->
+                <div class="pricing-card">
+                    <div class="plan-header">
+                        <h3 class="plan-name">Enterprise</h3>
+                        <div class="plan-price">
+                            <span class="price">$14.99</span>
+                            <span class="period">/month</span>
+                        </div>
+                        <p class="plan-description">For large communities with advanced needs</p>
+                    </div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check"></i> Everything in Pro</li>
+                        <li><i class="fas fa-check"></i> Custom branding</li>
+                        <li><i class="fas fa-check"></i> Unlimited audit logs</li>
+                        <li><i class="fas fa-check"></i> API access</li>
+                        <li><i class="fas fa-check"></i> Dedicated support</li>
+                        <li><i class="fas fa-check"></i> Custom integrations</li>
+                        <li><i class="fas fa-check"></i> SLA guarantee</li>
+                        <li><i class="fas fa-check"></i> Multiple servers</li>
+                        <li><i class="fas fa-check"></i> White-label options</li>
+                    </ul>
+                    <a href="https://discord.gg/r8dvnad9c9" class="btn btn-outline btn-block">Contact Sales</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section" style="padding: var(--space-4xl) 0;">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">FAQ</span>
+                <h2 class="section-title">Frequently Asked Questions</h2>
+            </div>
+            
+            <div class="faq-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: var(--space-lg); max-width: 1000px; margin: 0 auto;">
+                <div class="feature-card">
+                    <h4 style="color: var(--accent-primary); margin-bottom: var(--space-sm);">Can I try Pro features for free?</h4>
+                    <p style="color: var(--text-secondary);">Yes! We offer a 7-day free trial of Pro features for new users. No credit card required.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4 style="color: var(--accent-primary); margin-bottom: var(--space-sm);">How do I upgrade my plan?</h4>
+                    <p style="color: var(--text-secondary);">You can upgrade directly from the dashboard or by using a Pro activation code in your server.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4 style="color: var(--accent-primary); margin-bottom: var(--space-sm);">What payment methods are accepted?</h4>
+                    <p style="color: var(--text-secondary);">We accept all major credit cards, PayPal, and cryptocurrency through our secure payment system.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4 style="color: var(--accent-primary); margin-bottom: var(--space-sm);">Can I cancel anytime?</h4>
+                    <p style="color: var(--text-secondary);">Absolutely! You can cancel your subscription at any time. Your features will remain active until the end of your billing period.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Start Protecting Your Server Today</h2>
+                <p>Join thousands of communities using DarkLock for free.</p>
+                <div class="cta-buttons">
+                    <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus"></i>
+                        <span>Add to Discord Free</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="/site/" class="brand-link">
+                        <div class="brand-icon">
+                            <i class="fas fa-shield-halved"></i>
+                        </div>
+                        <span>DarkLock</span>
+                    </a>
+                    <p>Enterprise-grade security for Discord communities of all sizes.</p>
+                    <div class="social-links">
+                        <a href="https://discord.gg/r8dvnad9c9" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
+                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                        <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="/site/features">Features</a></li>
+                        <li><a href="/site/pricing">Pricing</a></li>
+                        <li><a href="/dashboard">Dashboard</a></li>
+                        <li><a href="/site/add-bot">Add Bot</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="/site/documentation">Documentation</a></li>
+                        <li><a href="/site/status">Status</a></li>
+                        <li><a href="/site/bug-reports">Bug Reports</a></li>
+                        <li><a href="/site/support">Support</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="/site/privacy">Privacy Policy</a></li>
+                        <li><a href="/site/terms">Terms of Service</a></li>
+                        <li><a href="/site/security">Security</a></li>
+                        <li><a href="/site/sitemap">Sitemap</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 DarkLock. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>

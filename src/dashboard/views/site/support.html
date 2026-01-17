@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support - DarkLock Security</title>
+    <meta name="description" content="Get help with DarkLock. Find answers to common questions and contact our support team.">
+    <link rel="stylesheet" href="/css/style.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <script src="/js/global-theme.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .support-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--space-lg);
+            margin-bottom: var(--space-3xl);
+        }
+        
+        .support-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            text-align: center;
+            transition: var(--transition-base);
+        }
+        
+        .support-card:hover {
+            border-color: var(--accent-primary);
+            transform: translateY(-4px);
+        }
+        
+        .support-card .card-icon {
+            width: 64px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-gradient);
+            border-radius: var(--radius-lg);
+            margin: 0 auto var(--space-lg);
+            font-size: 1.5rem;
+            color: var(--bg-primary);
+        }
+        
+        .support-card h3 {
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+        }
+        
+        .support-card p {
+            color: var(--text-secondary);
+            margin-bottom: var(--space-lg);
+            font-size: 0.9rem;
+        }
+        
+        .faq-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--space-md);
+            overflow: hidden;
+        }
+        
+        .faq-question {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-lg);
+            cursor: pointer;
+            transition: var(--transition-base);
+        }
+        
+        .faq-question:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .faq-question h4 {
+            color: var(--text-primary);
+            font-weight: 500;
+            margin: 0;
+        }
+        
+        .faq-question i {
+            color: var(--accent-primary);
+            transition: var(--transition-base);
+        }
+        
+        .faq-item.open .faq-question i {
+            transform: rotate(180deg);
+        }
+        
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .faq-item.open .faq-answer {
+            max-height: 500px;
+        }
+        
+        .faq-answer-content {
+            padding: 0 var(--space-lg) var(--space-lg);
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/site/" class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <span class="brand-text">DarkLock</span>
+            </a>
+            
+            <div class="nav-menu" id="navMenu">
+                <a href="/site/features" class="nav-link">Features</a>
+                <a href="/site/security" class="nav-link">Security</a>
+                <a href="/site/pricing" class="nav-link">Pricing</a>
+                <a href="/site/documentation" class="nav-link">Docs</a>
+                <a href="/site/status" class="nav-link">Status</a>
+                <a href="/platform" class="nav-link">Platform</a>
+            </div>
+            
+            <div class="nav-actions">
+                <a href="/dashboard" class="btn btn-ghost">
+                    <i class="fas fa-rocket"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    <span>Add to Discord</span>
+                </a>
+            </div>
+            
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="page-header" style="padding: calc(100px + var(--space-3xl)) 0 var(--space-2xl);">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge"><i class="fas fa-headset"></i> Support</span>
+                <h1 class="section-title">How Can We Help?</h1>
+                <p class="section-subtitle">Find answers, get help, and connect with our community</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Support Options -->
+    <section style="padding: 0 0 var(--space-2xl);">
+        <div class="container">
+            <div class="support-options">
+                <div class="support-card">
+                    <div class="card-icon">
+                        <i class="fab fa-discord"></i>
+                    </div>
+                    <h3>Discord Server</h3>
+                    <p>Join our community for real-time support and chat with other users.</p>
+                    <a href="https://discord.gg/r8dvnad9c9" target="_blank" class="btn btn-primary btn-block">
+                        Join Server
+                    </a>
+                </div>
+                
+                <div class="support-card">
+                    <div class="card-icon">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <h3>Documentation</h3>
+                    <p>Browse our comprehensive guides and tutorials to learn DarkLock.</p>
+                    <a href="/site/documentation" class="btn btn-outline btn-block">
+                        Read Docs
+                    </a>
+                </div>
+                
+                <div class="support-card">
+                    <div class="card-icon">
+                        <i class="fas fa-bug"></i>
+                    </div>
+                    <h3>Bug Reports</h3>
+                    <p>Found a bug? Report it to help us improve DarkLock.</p>
+                    <a href="/site/bug-reports" class="btn btn-outline btn-block">
+                        Report Bug
+                    </a>
+                </div>
+                
+                <div class="support-card">
+                    <div class="card-icon">
+                        <i class="fas fa-signal"></i>
+                    </div>
+                    <h3>System Status</h3>
+                    <p>Check if there are any ongoing issues affecting services.</p>
+                    <a href="/site/status" class="btn btn-outline btn-block">
+                        View Status
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section style="padding: 0 0 var(--space-4xl);">
+        <div class="container" style="max-width: 900px;">
+            <div class="section-header" style="margin-bottom: var(--space-2xl);">
+                <span class="section-badge">FAQ</span>
+                <h2 class="section-title">Frequently Asked Questions</h2>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h4>How do I add DarkLock to my server?</h4>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Click the "Add to Discord" button on our website or use the <a href="/site/add-bot" style="color: var(--accent-primary);">invite link</a>. Select your server from the dropdown, authorize the required permissions, and you're done! Run <code>/setup</code> in your server to configure DarkLock.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h4>What permissions does DarkLock need?</h4>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        DarkLock requires Administrator permission to function properly. This allows the bot to manage channels, roles, bans, messages, and access audit logs for security features. DarkLock only uses permissions when necessary for its security and moderation features.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h4>Is DarkLock free to use?</h4>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Yes! DarkLock offers a free tier with essential security features including anti-spam, anti-raid, basic moderation, and more. Premium plans are available for advanced features like anti-nuke protection, custom branding, and priority support.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h4>How do I configure DarkLock settings?</h4>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        You can configure DarkLock in two ways: 1) Use slash commands directly in Discord (e.g., <code>/settings</code>, <code>/anti-spam settings</code>), or 2) Use the web dashboard at <a href="/dashboard" style="color: var(--accent-primary);">dashboard</a> for a visual interface with all settings.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h4>Why isn't DarkLock responding to commands?</h4>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        First, check if DarkLock is online by checking its status in the member list. Make sure DarkLock has permission to read and send messages in the channel. Also ensure you're using slash commands (type "/" to see available commands). If issues persist, try re-inviting the bot with the proper permissions.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h4>How do I set up anti-raid protection?</h4>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Use the <code>/anti-raid enable</code> command to enable anti-raid protection. You can then configure the sensitivity and actions with <code>/anti-raid settings</code>. The bot will automatically detect suspicious join patterns and take action based on your settings.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h4>Can I whitelist users from security features?</h4>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        Yes! You can whitelist trusted users and roles for most security features. For example, <code>/antinuke whitelist @user</code> will exempt a user from anti-nuke protection. Similar options are available for other features in their respective settings.
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h4>How do I contact support?</h4>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        The best way to get support is to join our <a href="https://discord.gg/r8dvnad9c9" target="_blank" style="color: var(--accent-primary);">Discord support server</a>. Our team and community members are active there to help with any questions or issues.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Still Need Help?</h2>
+                <p>Our support team is ready to assist you.</p>
+                <div class="cta-buttons">
+                    <a href="https://discord.gg/r8dvnad9c9" target="_blank" class="btn btn-primary btn-lg">
+                        <i class="fab fa-discord"></i>
+                        <span>Join Support Server</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="/site/" class="brand-link">
+                        <div class="brand-icon">
+                            <i class="fas fa-shield-halved"></i>
+                        </div>
+                        <span>DarkLock</span>
+                    </a>
+                    <p>Enterprise-grade security for Discord communities of all sizes.</p>
+                    <div class="social-links">
+                        <a href="https://discord.gg/r8dvnad9c9" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
+                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                        <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="/site/features">Features</a></li>
+                        <li><a href="/site/pricing">Pricing</a></li>
+                        <li><a href="/dashboard">Dashboard</a></li>
+                        <li><a href="/site/add-bot">Add Bot</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="/site/documentation">Documentation</a></li>
+                        <li><a href="/site/status">Status</a></li>
+                        <li><a href="/site/bug-reports">Bug Reports</a></li>
+                        <li><a href="/site/support">Support</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="/site/privacy">Privacy Policy</a></li>
+                        <li><a href="/site/terms">Terms of Service</a></li>
+                        <li><a href="/site/security">Security</a></li>
+                        <li><a href="/site/sitemap">Sitemap</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 DarkLock. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+    <script>
+        function toggleFaq(element) {
+            const item = element.parentElement;
+            item.classList.toggle('open');
+        }
+    </script>
+</body>
+</html>

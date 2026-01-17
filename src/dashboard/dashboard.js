@@ -740,6 +740,59 @@ The DarkLock Team`
             res.sendFile(path.join(__dirname, 'views/landing.html'));
         });
 
+        // Public site pages - NO AUTHENTICATION REQUIRED
+        this.app.get('/site', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/index.html'));
+        });
+
+        this.app.get('/site/', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/index.html'));
+        });
+
+        this.app.get('/site/features', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/features.html'));
+        });
+
+        this.app.get('/site/pricing', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/pricing.html'));
+        });
+
+        this.app.get('/site/add-bot', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/add-bot.html'));
+        });
+
+        this.app.get('/site/documentation', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/documentation.html'));
+        });
+
+        this.app.get('/site/status', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/status.html'));
+        });
+
+        this.app.get('/site/bug-reports', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/bug-reports.html'));
+        });
+
+        this.app.get('/site/support', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/support.html'));
+        });
+
+        this.app.get('/site/privacy', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/privacy.html'));
+        });
+
+        this.app.get('/site/terms', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/terms.html'));
+        });
+
+        this.app.get('/site/security', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/security.html'));
+        });
+
+        this.app.get('/site/sitemap', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/sitemap.html'));
+        });
+
         // Main dashboard (authenticated UI) - PROTECTED
         this.app.get('/dashboard', this.authenticateTokenHTML.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/index-modern.html'));

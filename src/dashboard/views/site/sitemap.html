@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sitemap - DarkLock Security</title>
+    <meta name="description" content="Complete sitemap of all DarkLock pages and resources.">
+    <link rel="stylesheet" href="/css/style.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <script src="/js/global-theme.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .sitemap-section {
+            margin-bottom: var(--space-2xl);
+        }
+        
+        .sitemap-section h3 {
+            color: var(--accent-primary);
+            margin-bottom: var(--space-lg);
+            padding-bottom: var(--space-md);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+        
+        .sitemap-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: var(--space-md);
+        }
+        
+        .sitemap-link {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            transition: var(--transition-base);
+        }
+        
+        .sitemap-link:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+            transform: translateX(4px);
+        }
+        
+        .sitemap-link i {
+            width: 20px;
+            text-align: center;
+            color: var(--accent-primary);
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/site/" class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <span class="brand-text">DarkLock</span>
+            </a>
+            
+            <div class="nav-menu" id="navMenu">
+                <a href="/site/features" class="nav-link">Features</a>
+                <a href="/site/security" class="nav-link">Security</a>
+                <a href="/site/pricing" class="nav-link">Pricing</a>
+                <a href="/site/documentation" class="nav-link">Docs</a>
+                <a href="/site/status" class="nav-link">Status</a>
+                <a href="/platform" class="nav-link">Platform</a>
+            </div>
+            
+            <div class="nav-actions">
+                <a href="/dashboard" class="btn btn-ghost">
+                    <i class="fas fa-rocket"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    <span>Add to Discord</span>
+                </a>
+            </div>
+            
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="page-header" style="padding: calc(100px + var(--space-3xl)) 0 var(--space-2xl);">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge"><i class="fas fa-sitemap"></i> Navigation</span>
+                <h1 class="section-title">Sitemap</h1>
+                <p class="section-subtitle">Find your way around DarkLock</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sitemap Content -->
+    <section style="padding: 0 0 var(--space-4xl);">
+        <div class="container" style="max-width: 1000px;">
+            <div class="feature-card" style="padding: var(--space-2xl);">
+                <!-- Main Pages -->
+                <div class="sitemap-section">
+                    <h3><i class="fas fa-home"></i> Main Pages</h3>
+                    <div class="sitemap-links">
+                        <a href="/site/" class="sitemap-link">
+                            <i class="fas fa-home"></i>
+                            <span>Home</span>
+                        </a>
+                        <a href="/site/features" class="sitemap-link">
+                            <i class="fas fa-star"></i>
+                            <span>Features</span>
+                        </a>
+                        <a href="/site/pricing" class="sitemap-link">
+                            <i class="fas fa-tag"></i>
+                            <span>Pricing</span>
+                        </a>
+                        <a href="/site/security" class="sitemap-link">
+                            <i class="fas fa-shield-halved"></i>
+                            <span>Security</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Product -->
+                <div class="sitemap-section">
+                    <h3><i class="fas fa-cube"></i> Product</h3>
+                    <div class="sitemap-links">
+                        <a href="/site/add-bot" class="sitemap-link">
+                            <i class="fas fa-plus"></i>
+                            <span>Add Bot to Server</span>
+                        </a>
+                        <a href="/dashboard" class="sitemap-link">
+                            <i class="fas fa-gauge-high"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="/site/status" class="sitemap-link">
+                            <i class="fas fa-signal"></i>
+                            <span>System Status</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Resources -->
+                <div class="sitemap-section">
+                    <h3><i class="fas fa-book"></i> Resources</h3>
+                    <div class="sitemap-links">
+                        <a href="/site/documentation" class="sitemap-link">
+                            <i class="fas fa-book-open"></i>
+                            <span>Documentation</span>
+                        </a>
+                        <a href="/site/support" class="sitemap-link">
+                            <i class="fas fa-headset"></i>
+                            <span>Support Center</span>
+                        </a>
+                        <a href="/site/bug-reports" class="sitemap-link">
+                            <i class="fas fa-bug"></i>
+                            <span>Bug Reports</span>
+                        </a>
+                        <a href="https://discord.gg/r8dvnad9c9" target="_blank" class="sitemap-link">
+                            <i class="fab fa-discord"></i>
+                            <span>Discord Server</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Legal -->
+                <div class="sitemap-section">
+                    <h3><i class="fas fa-scale-balanced"></i> Legal</h3>
+                    <div class="sitemap-links">
+                        <a href="/site/privacy" class="sitemap-link">
+                            <i class="fas fa-user-shield"></i>
+                            <span>Privacy Policy</span>
+                        </a>
+                        <a href="/site/terms" class="sitemap-link">
+                            <i class="fas fa-file-contract"></i>
+                            <span>Terms of Service</span>
+                        </a>
+                        <a href="/site/security" class="sitemap-link">
+                            <i class="fas fa-lock"></i>
+                            <span>Security Policy</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Dashboard (Auth Required) -->
+                <div class="sitemap-section">
+                    <h3><i class="fas fa-lock"></i> Dashboard (Login Required)</h3>
+                    <div class="sitemap-links">
+                        <a href="/dashboard" class="sitemap-link">
+                            <i class="fas fa-home"></i>
+                            <span>Dashboard Home</span>
+                        </a>
+                        <a href="/dashboard/servers" class="sitemap-link">
+                            <i class="fas fa-server"></i>
+                            <span>Server List</span>
+                        </a>
+                        <a href="/dashboard/profile" class="sitemap-link">
+                            <i class="fas fa-user"></i>
+                            <span>Profile</span>
+                        </a>
+                        <a href="/dashboard/settings" class="sitemap-link">
+                            <i class="fas fa-cog"></i>
+                            <span>Settings</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Darklock Platform -->
+                <div class="sitemap-section">
+                    <h3><i class="fas fa-desktop"></i> Darklock Platform</h3>
+                    <div class="sitemap-links">
+                        <a href="/platform" class="sitemap-link">
+                            <i class="fas fa-home"></i>
+                            <span>Platform Home</span>
+                        </a>
+                        <a href="/platform/docs" class="sitemap-link">
+                            <i class="fas fa-book"></i>
+                            <span>Platform Docs</span>
+                        </a>
+                        <a href="/platform/status" class="sitemap-link">
+                            <i class="fas fa-signal"></i>
+                            <span>Platform Status</span>
+                        </a>
+                        <a href="/platform/changelog" class="sitemap-link">
+                            <i class="fas fa-list"></i>
+                            <span>Changelog</span>
+                        </a>
+                        <a href="/platform/dashboard" class="sitemap-link">
+                            <i class="fas fa-gauge-high"></i>
+                            <span>Platform Dashboard</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Account -->
+                <div class="sitemap-section">
+                    <h3><i class="fas fa-user"></i> Account</h3>
+                    <div class="sitemap-links">
+                        <a href="/auth/login" class="sitemap-link">
+                            <i class="fas fa-sign-in-alt"></i>
+                            <span>Login</span>
+                        </a>
+                        <a href="/auth/logout" class="sitemap-link">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Logout</span>
+                        </a>
+                        <a href="/platform/auth/login" class="sitemap-link">
+                            <i class="fas fa-key"></i>
+                            <span>Platform Login</span>
+                        </a>
+                        <a href="/platform/auth/signup" class="sitemap-link">
+                            <i class="fas fa-user-plus"></i>
+                            <span>Platform Signup</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="/site/" class="brand-link">
+                        <div class="brand-icon">
+                            <i class="fas fa-shield-halved"></i>
+                        </div>
+                        <span>DarkLock</span>
+                    </a>
+                    <p>Enterprise-grade security for Discord communities of all sizes.</p>
+                    <div class="social-links">
+                        <a href="https://discord.gg/r8dvnad9c9" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
+                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                        <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="/site/features">Features</a></li>
+                        <li><a href="/site/pricing">Pricing</a></li>
+                        <li><a href="/dashboard">Dashboard</a></li>
+                        <li><a href="/site/add-bot">Add Bot</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="/site/documentation">Documentation</a></li>
+                        <li><a href="/site/status">Status</a></li>
+                        <li><a href="/site/bug-reports">Bug Reports</a></li>
+                        <li><a href="/site/support">Support</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="/site/privacy">Privacy Policy</a></li>
+                        <li><a href="/site/terms">Terms of Service</a></li>
+                        <li><a href="/site/security">Security</a></li>
+                        <li><a href="/site/sitemap">Sitemap</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 DarkLock. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>

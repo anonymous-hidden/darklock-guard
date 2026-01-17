@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation - DarkLock Security</title>
+    <meta name="description" content="Complete documentation for DarkLock Discord security bot. Learn how to set up and configure all features.">
+    <link rel="stylesheet" href="/css/style.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <script src="/js/global-theme.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .docs-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: var(--space-2xl);
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 var(--space-lg);
+        }
+        
+        .docs-sidebar {
+            position: sticky;
+            top: 100px;
+            height: fit-content;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+        
+        .docs-nav {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+        }
+        
+        .docs-nav-group {
+            margin-bottom: var(--space-lg);
+        }
+        
+        .docs-nav-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .docs-nav-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: var(--space-sm);
+        }
+        
+        .docs-nav-links {
+            list-style: none;
+        }
+        
+        .docs-nav-links a {
+            display: block;
+            padding: var(--space-sm) var(--space-md);
+            color: var(--text-secondary);
+            border-radius: var(--radius-md);
+            transition: var(--transition-base);
+            font-size: 0.9rem;
+        }
+        
+        .docs-nav-links a:hover,
+        .docs-nav-links a.active {
+            background: var(--accent-gradient-subtle);
+            color: var(--accent-primary);
+        }
+        
+        .docs-content section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            margin-bottom: var(--space-xl);
+        }
+        
+        .docs-content h2 {
+            color: var(--text-primary);
+            margin-bottom: var(--space-lg);
+            padding-bottom: var(--space-md);
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .docs-content h3 {
+            color: var(--accent-primary);
+            margin: var(--space-lg) 0 var(--space-md);
+        }
+        
+        .docs-content p {
+            color: var(--text-secondary);
+            margin-bottom: var(--space-md);
+            line-height: 1.7;
+        }
+        
+        .docs-content code {
+            font-family: var(--font-mono);
+            background: var(--bg-tertiary);
+            padding: 0.2em 0.4em;
+            border-radius: var(--radius-sm);
+            font-size: 0.9em;
+            color: var(--accent-primary);
+        }
+        
+        .docs-content pre {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            overflow-x: auto;
+            margin: var(--space-md) 0;
+        }
+        
+        .docs-content pre code {
+            background: none;
+            padding: 0;
+        }
+        
+        .command-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: var(--space-md) 0;
+        }
+        
+        .command-table th,
+        .command-table td {
+            padding: var(--space-md);
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .command-table th {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        
+        .command-table td {
+            color: var(--text-secondary);
+        }
+        
+        @media (max-width: 900px) {
+            .docs-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .docs-sidebar {
+                position: static;
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/site/" class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <span class="brand-text">DarkLock</span>
+            </a>
+            
+            <div class="nav-menu" id="navMenu">
+                <a href="/site/features" class="nav-link">Features</a>
+                <a href="/site/security" class="nav-link">Security</a>
+                <a href="/site/pricing" class="nav-link">Pricing</a>
+                <a href="/site/documentation" class="nav-link active">Docs</a>
+                <a href="/site/status" class="nav-link">Status</a>
+                <a href="/platform" class="nav-link">Platform</a>
+            </div>
+            
+            <div class="nav-actions">
+                <a href="/dashboard" class="btn btn-ghost">
+                    <i class="fas fa-rocket"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    <span>Add to Discord</span>
+                </a>
+            </div>
+            
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="page-header" style="padding: calc(100px + var(--space-2xl)) 0 var(--space-xl);">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge"><i class="fas fa-book"></i> Documentation</span>
+                <h1 class="section-title">DarkLock Documentation</h1>
+                <p class="section-subtitle">Everything you need to know about setting up and using DarkLock</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Documentation -->
+    <section style="padding: 0 0 var(--space-4xl);">
+        <div class="docs-layout">
+            <!-- Sidebar -->
+            <aside class="docs-sidebar">
+                <nav class="docs-nav">
+                    <div class="docs-nav-group">
+                        <div class="docs-nav-title">Getting Started</div>
+                        <ul class="docs-nav-links">
+                            <li><a href="#introduction" class="active">Introduction</a></li>
+                            <li><a href="#quickstart">Quick Start</a></li>
+                            <li><a href="#setup">Initial Setup</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="docs-nav-group">
+                        <div class="docs-nav-title">Security</div>
+                        <ul class="docs-nav-links">
+                            <li><a href="#anti-raid">Anti-Raid</a></li>
+                            <li><a href="#anti-spam">Anti-Spam</a></li>
+                            <li><a href="#anti-nuke">Anti-Nuke</a></li>
+                            <li><a href="#verification">Verification</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="docs-nav-group">
+                        <div class="docs-nav-title">Moderation</div>
+                        <ul class="docs-nav-links">
+                            <li><a href="#moderation">Mod Commands</a></li>
+                            <li><a href="#automod">Auto-Mod</a></li>
+                            <li><a href="#logging">Logging</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="docs-nav-group">
+                        <div class="docs-nav-title">Utilities</div>
+                        <ul class="docs-nav-links">
+                            <li><a href="#welcome">Welcome System</a></li>
+                            <li><a href="#xp">XP & Leveling</a></li>
+                            <li><a href="#tickets">Tickets</a></li>
+                        </ul>
+                    </div>
+                </nav>
+            </aside>
+
+            <!-- Content -->
+            <main class="docs-content">
+                <section id="introduction">
+                    <h2><i class="fas fa-info-circle" style="color: var(--accent-primary); margin-right: var(--space-sm);"></i> Introduction</h2>
+                    <p>DarkLock is a comprehensive security and moderation bot for Discord servers. It provides real-time protection against raids, spam, phishing, and other threats while offering powerful moderation and utility features.</p>
+                    <p>This documentation will help you set up and configure DarkLock to best protect your community.</p>
+                </section>
+
+                <section id="quickstart">
+                    <h2><i class="fas fa-rocket" style="color: var(--accent-primary); margin-right: var(--space-sm);"></i> Quick Start</h2>
+                    <p>Get DarkLock up and running in minutes:</p>
+                    <ol style="color: var(--text-secondary); padding-left: var(--space-xl);">
+                        <li style="margin-bottom: var(--space-sm);">Add DarkLock to your server using the <a href="/site/add-bot" style="color: var(--accent-primary);">invite link</a></li>
+                        <li style="margin-bottom: var(--space-sm);">Run <code>/setup</code> in your server to start the setup wizard</li>
+                        <li style="margin-bottom: var(--space-sm);">Follow the wizard to configure basic settings</li>
+                        <li style="margin-bottom: var(--space-sm);">Use the dashboard for advanced configuration</li>
+                    </ol>
+                </section>
+
+                <section id="setup">
+                    <h2><i class="fas fa-cog" style="color: var(--accent-primary); margin-right: var(--space-sm);"></i> Initial Setup</h2>
+                    <p>After adding DarkLock to your server, run the <code>/setup</code> command to access the interactive setup wizard.</p>
+                    
+                    <h3>Setup Wizard Options</h3>
+                    <ul style="color: var(--text-secondary); padding-left: var(--space-xl);">
+                        <li style="margin-bottom: var(--space-sm);"><strong>Log Channel:</strong> Select where security events are logged</li>
+                        <li style="margin-bottom: var(--space-sm);"><strong>Mod Roles:</strong> Define which roles can use moderation commands</li>
+                        <li style="margin-bottom: var(--space-sm);"><strong>Mute Role:</strong> Create or select a role for muted members</li>
+                        <li style="margin-bottom: var(--space-sm);"><strong>Security Level:</strong> Choose between Low, Medium, or High protection</li>
+                    </ul>
+                </section>
+
+                <section id="anti-raid">
+                    <h2><i class="fas fa-shield-halved" style="color: var(--accent-primary); margin-right: var(--space-sm);"></i> Anti-Raid Protection</h2>
+                    <p>The anti-raid system monitors join patterns to detect and prevent coordinated attacks.</p>
+                    
+                    <h3>Commands</h3>
+                    <table class="command-table">
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>/anti-raid enable</code></td>
+                                <td>Enable anti-raid protection</td>
+                            </tr>
+                            <tr>
+                                <td><code>/anti-raid disable</code></td>
+                                <td>Disable anti-raid protection</td>
+                            </tr>
+                            <tr>
+                                <td><code>/anti-raid settings</code></td>
+                                <td>Configure sensitivity and actions</td>
+                            </tr>
+                            <tr>
+                                <td><code>/lockdown</code></td>
+                                <td>Manually lock the server</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="anti-spam">
+                    <h2><i class="fas fa-ban" style="color: var(--accent-primary); margin-right: var(--space-sm);"></i> Anti-Spam System</h2>
+                    <p>Automatically detect and handle spam messages including duplicates, mass mentions, and rapid messaging.</p>
+                    
+                    <h3>Commands</h3>
+                    <table class="command-table">
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>/anti-spam enable</code></td>
+                                <td>Enable anti-spam protection</td>
+                            </tr>
+                            <tr>
+                                <td><code>/anti-spam settings</code></td>
+                                <td>Configure thresholds and actions</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="anti-nuke">
+                    <h2><i class="fas fa-bomb" style="color: var(--accent-primary); margin-right: var(--space-sm);"></i> Anti-Nuke Protection</h2>
+                    <p>Protect your server from mass deletions, role changes, and other destructive actions.</p>
+                    
+                    <h3>Commands</h3>
+                    <table class="command-table">
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>/antinuke enable</code></td>
+                                <td>Enable anti-nuke protection</td>
+                            </tr>
+                            <tr>
+                                <td><code>/antinuke whitelist</code></td>
+                                <td>Whitelist trusted users</td>
+                            </tr>
+                            <tr>
+                                <td><code>/antinuke settings</code></td>
+                                <td>Configure thresholds</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="verification">
+                    <h2><i class="fas fa-user-check" style="color: var(--accent-primary); margin-right: var(--space-sm);"></i> Verification System</h2>
+                    <p>Require new members to verify before accessing the server.</p>
+                    
+                    <h3>Commands</h3>
+                    <table class="command-table">
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>/verification setup</code></td>
+                                <td>Set up verification system</td>
+                            </tr>
+                            <tr>
+                                <td><code>/verification settings</code></td>
+                                <td>Configure verification type</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="moderation">
+                    <h2><i class="fas fa-gavel" style="color: var(--accent-primary); margin-right: var(--space-sm);"></i> Moderation Commands</h2>
+                    <p>Comprehensive moderation toolkit for managing your community.</p>
+                    
+                    <table class="command-table">
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>/ban &lt;user&gt; [reason]</code></td>
+                                <td>Ban a user from the server</td>
+                            </tr>
+                            <tr>
+                                <td><code>/kick &lt;user&gt; [reason]</code></td>
+                                <td>Kick a user from the server</td>
+                            </tr>
+                            <tr>
+                                <td><code>/timeout &lt;user&gt; &lt;duration&gt;</code></td>
+                                <td>Timeout a user</td>
+                            </tr>
+                            <tr>
+                                <td><code>/warn &lt;user&gt; &lt;reason&gt;</code></td>
+                                <td>Issue a warning</td>
+                            </tr>
+                            <tr>
+                                <td><code>/purge &lt;amount&gt;</code></td>
+                                <td>Delete multiple messages</td>
+                            </tr>
+                            <tr>
+                                <td><code>/cases &lt;user&gt;</code></td>
+                                <td>View moderation history</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="automod">
+                    <h2><i class="fas fa-robot" style="color: var(--accent-primary); margin-right: var(--space-sm);"></i> Auto-Moderation</h2>
+                    <p>Automatic content filtering and rule enforcement.</p>
+                    
+                    <h3>Commands</h3>
+                    <table class="command-table">
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>/automod enable</code></td>
+                                <td>Enable auto-moderation</td>
+                            </tr>
+                            <tr>
+                                <td><code>/wordfilter add &lt;word&gt;</code></td>
+                                <td>Add word to filter</td>
+                            </tr>
+                            <tr>
+                                <td><code>/anti-links enable</code></td>
+                                <td>Block links in messages</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="logging">
+                    <h2><i class="fas fa-scroll" style="color: var(--accent-primary); margin-right: var(--space-sm);"></i> Logging</h2>
+                    <p>Comprehensive logging of all server events and moderation actions.</p>
+                    
+                    <h3>Commands</h3>
+                    <table class="command-table">
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>/auditlog setup</code></td>
+                                <td>Configure logging channels</td>
+                            </tr>
+                            <tr>
+                                <td><code>/auditlog search</code></td>
+                                <td>Search through logs</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="welcome">
+                    <h2><i class="fas fa-hand-wave" style="color: var(--accent-primary); margin-right: var(--space-sm);"></i> Welcome System</h2>
+                    <p>Customize welcome and goodbye messages for your server.</p>
+                    
+                    <h3>Commands</h3>
+                    <table class="command-table">
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>/welcome setup</code></td>
+                                <td>Configure welcome messages</td>
+                            </tr>
+                            <tr>
+                                <td><code>/goodbye setup</code></td>
+                                <td>Configure goodbye messages</td>
+                            </tr>
+                            <tr>
+                                <td><code>/autorole setup</code></td>
+                                <td>Auto-assign roles to new members</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="xp">
+                    <h2><i class="fas fa-star" style="color: var(--accent-primary); margin-right: var(--space-sm);"></i> XP & Leveling</h2>
+                    <p>Engage your community with an XP and leveling system.</p>
+                    
+                    <h3>Commands</h3>
+                    <table class="command-table">
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>/xp enable</code></td>
+                                <td>Enable XP system</td>
+                            </tr>
+                            <tr>
+                                <td><code>/rank</code></td>
+                                <td>View your rank card</td>
+                            </tr>
+                            <tr>
+                                <td><code>/leaderboard</code></td>
+                                <td>View server leaderboard</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="tickets">
+                    <h2><i class="fas fa-ticket" style="color: var(--accent-primary); margin-right: var(--space-sm);"></i> Ticket System</h2>
+                    <p>Create and manage support tickets for your community.</p>
+                    
+                    <h3>Commands</h3>
+                    <table class="command-table">
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>/ticket setup</code></td>
+                                <td>Set up ticket system</td>
+                            </tr>
+                            <tr>
+                                <td><code>/ticket-manage close</code></td>
+                                <td>Close a ticket</td>
+                            </tr>
+                            <tr>
+                                <td><code>/ticket-manage claim</code></td>
+                                <td>Claim a ticket</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+            </main>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="/site/" class="brand-link">
+                        <div class="brand-icon">
+                            <i class="fas fa-shield-halved"></i>
+                        </div>
+                        <span>DarkLock</span>
+                    </a>
+                    <p>Enterprise-grade security for Discord communities of all sizes.</p>
+                    <div class="social-links">
+                        <a href="https://discord.gg/r8dvnad9c9" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
+                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                        <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="/site/features">Features</a></li>
+                        <li><a href="/site/pricing">Pricing</a></li>
+                        <li><a href="/dashboard">Dashboard</a></li>
+                        <li><a href="/site/add-bot">Add Bot</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="/site/documentation">Documentation</a></li>
+                        <li><a href="/site/status">Status</a></li>
+                        <li><a href="/site/bug-reports">Bug Reports</a></li>
+                        <li><a href="/site/support">Support</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="/site/privacy">Privacy Policy</a></li>
+                        <li><a href="/site/terms">Terms of Service</a></li>
+                        <li><a href="/site/security">Security</a></li>
+                        <li><a href="/site/sitemap">Sitemap</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 DarkLock. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>

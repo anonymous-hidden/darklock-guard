@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Bot - DarkLock Security</title>
+    <meta name="description" content="Add DarkLock to your Discord server and start protecting your community today.">
+    <link rel="stylesheet" href="/css/style.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <script src="/js/global-theme.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/site/" class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <span class="brand-text">DarkLock</span>
+            </a>
+            
+            <div class="nav-menu" id="navMenu">
+                <a href="/site/features" class="nav-link">Features</a>
+                <a href="/site/security" class="nav-link">Security</a>
+                <a href="/site/pricing" class="nav-link">Pricing</a>
+                <a href="/site/documentation" class="nav-link">Docs</a>
+                <a href="/site/status" class="nav-link">Status</a>
+                <a href="/platform" class="nav-link">Platform</a>
+            </div>
+            
+            <div class="nav-actions">
+                <a href="/dashboard" class="btn btn-ghost">
+                    <i class="fas fa-rocket"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    <span>Add to Discord</span>
+                </a>
+            </div>
+            
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="page-header" style="padding: calc(100px + var(--space-3xl)) 0 var(--space-2xl);">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge"><i class="fas fa-plus-circle"></i> Add Bot</span>
+                <h1 class="section-title">Add DarkLock to Your Server</h1>
+                <p class="section-subtitle">Start protecting your community in just a few clicks</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Add Bot Section -->
+    <section style="padding: var(--space-2xl) 0 var(--space-4xl);">
+        <div class="container">
+            <!-- Main CTA -->
+            <div class="feature-card" style="max-width: 700px; margin: 0 auto var(--space-3xl); text-align: center; padding: var(--space-2xl);">
+                <div style="font-size: 4rem; margin-bottom: var(--space-lg);">
+                    <i class="fas fa-shield-halved" style="background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i>
+                </div>
+                <h2 style="font-size: 1.5rem; margin-bottom: var(--space-md);">Ready to Secure Your Server?</h2>
+                <p style="color: var(--text-secondary); margin-bottom: var(--space-xl);">Click the button below to add DarkLock to your Discord server. You'll be redirected to Discord to authorize the bot.</p>
+                <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary btn-lg" style="font-size: 1.1rem; padding: var(--space-lg) var(--space-2xl);">
+                    <i class="fab fa-discord"></i>
+                    <span>Add to Discord</span>
+                </a>
+            </div>
+
+            <!-- Steps -->
+            <div class="section-header" style="margin-bottom: var(--space-2xl);">
+                <h2 class="section-title">How It Works</h2>
+            </div>
+
+            <div class="features-grid" style="max-width: 1000px; margin: 0 auto;">
+                <div class="feature-card" style="text-align: center;">
+                    <div class="feature-icon" style="margin: 0 auto var(--space-md);">
+                        <span style="font-size: 1.5rem; font-weight: bold;">1</span>
+                    </div>
+                    <h3>Click Add to Discord</h3>
+                    <p>Click the button above to start the authorization process.</p>
+                </div>
+                
+                <div class="feature-card" style="text-align: center;">
+                    <div class="feature-icon" style="margin: 0 auto var(--space-md);">
+                        <span style="font-size: 1.5rem; font-weight: bold;">2</span>
+                    </div>
+                    <h3>Select Your Server</h3>
+                    <p>Choose the server you want to add DarkLock to from the dropdown.</p>
+                </div>
+                
+                <div class="feature-card" style="text-align: center;">
+                    <div class="feature-icon" style="margin: 0 auto var(--space-md);">
+                        <span style="font-size: 1.5rem; font-weight: bold;">3</span>
+                    </div>
+                    <h3>Authorize Permissions</h3>
+                    <p>Review and authorize the required permissions for full functionality.</p>
+                </div>
+                
+                <div class="feature-card" style="text-align: center;">
+                    <div class="feature-icon" style="margin: 0 auto var(--space-md);">
+                        <span style="font-size: 1.5rem; font-weight: bold;">4</span>
+                    </div>
+                    <h3>Run /setup</h3>
+                    <p>Use the /setup command in your server to configure DarkLock.</p>
+                </div>
+                
+                <div class="feature-card" style="text-align: center;">
+                    <div class="feature-icon" style="margin: 0 auto var(--space-md);">
+                        <span style="font-size: 1.5rem; font-weight: bold;">5</span>
+                    </div>
+                    <h3>You're Protected!</h3>
+                    <p>DarkLock is now actively protecting your server 24/7.</p>
+                </div>
+            </div>
+
+            <!-- Permissions Info -->
+            <div class="feature-card" style="max-width: 800px; margin: var(--space-3xl) auto 0;">
+                <h3 style="margin-bottom: var(--space-lg);"><i class="fas fa-key" style="color: var(--accent-primary); margin-right: var(--space-sm);"></i> Required Permissions</h3>
+                <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">DarkLock requires Administrator permission to function properly. This allows the bot to:</p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md);">
+                    <div style="display: flex; align-items: center; gap: var(--space-sm); color: var(--text-secondary);">
+                        <i class="fas fa-check" style="color: var(--success);"></i>
+                        <span>Manage channels</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: var(--space-sm); color: var(--text-secondary);">
+                        <i class="fas fa-check" style="color: var(--success);"></i>
+                        <span>Manage roles</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: var(--space-sm); color: var(--text-secondary);">
+                        <i class="fas fa-check" style="color: var(--success);"></i>
+                        <span>Ban/kick members</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: var(--space-sm); color: var(--text-secondary);">
+                        <i class="fas fa-check" style="color: var(--success);"></i>
+                        <span>View audit logs</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: var(--space-sm); color: var(--text-secondary);">
+                        <i class="fas fa-check" style="color: var(--success);"></i>
+                        <span>Manage messages</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: var(--space-sm); color: var(--text-secondary);">
+                        <i class="fas fa-check" style="color: var(--success);"></i>
+                        <span>Create invites</span>
+                    </div>
+                </div>
+                <p style="color: var(--text-muted); margin-top: var(--space-lg); font-size: 0.9rem;"><i class="fas fa-info-circle"></i> DarkLock only uses permissions when necessary for security features.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Need Help Getting Started?</h2>
+                <p>Join our support server for setup assistance and configuration help.</p>
+                <div class="cta-buttons">
+                    <a href="https://discord.gg/r8dvnad9c9" target="_blank" class="btn btn-primary btn-lg">
+                        <i class="fab fa-discord"></i>
+                        <span>Join Support Server</span>
+                    </a>
+                    <a href="/site/documentation" class="btn btn-ghost btn-lg">
+                        <i class="fas fa-book"></i>
+                        <span>Read Documentation</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="/site/" class="brand-link">
+                        <div class="brand-icon">
+                            <i class="fas fa-shield-halved"></i>
+                        </div>
+                        <span>DarkLock</span>
+                    </a>
+                    <p>Enterprise-grade security for Discord communities of all sizes.</p>
+                    <div class="social-links">
+                        <a href="https://discord.gg/r8dvnad9c9" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
+                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                        <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="/site/features">Features</a></li>
+                        <li><a href="/site/pricing">Pricing</a></li>
+                        <li><a href="/dashboard">Dashboard</a></li>
+                        <li><a href="/site/add-bot">Add Bot</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="/site/documentation">Documentation</a></li>
+                        <li><a href="/site/status">Status</a></li>
+                        <li><a href="/site/bug-reports">Bug Reports</a></li>
+                        <li><a href="/site/support">Support</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="/site/privacy">Privacy Policy</a></li>
+                        <li><a href="/site/terms">Terms of Service</a></li>
+                        <li><a href="/site/security">Security</a></li>
+                        <li><a href="/site/sitemap">Sitemap</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 DarkLock. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>

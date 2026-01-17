@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bug Reports - DarkLock Security</title>
+    <meta name="description" content="Report bugs and issues with DarkLock to help us improve the service.">
+    <link rel="stylesheet" href="/css/style.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <script src="/js/global-theme.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .bug-form {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: var(--space-2xl);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        .form-group {
+            margin-bottom: var(--space-lg);
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+        }
+        
+        .form-group label .required {
+            color: var(--error);
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: var(--space-md);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 1rem;
+            transition: var(--transition-base);
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.1);
+        }
+        
+        .form-group textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+        
+        .form-group small {
+            display: block;
+            margin-top: var(--space-sm);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: var(--space-md);
+            margin-top: var(--space-xl);
+        }
+        
+        .guidelines {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            margin-bottom: var(--space-2xl);
+        }
+        
+        .guidelines h3 {
+            color: var(--accent-primary);
+            margin-bottom: var(--space-md);
+        }
+        
+        .guidelines ul {
+            color: var(--text-secondary);
+            padding-left: var(--space-xl);
+        }
+        
+        .guidelines li {
+            margin-bottom: var(--space-sm);
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/site/" class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <span class="brand-text">DarkLock</span>
+            </a>
+            
+            <div class="nav-menu" id="navMenu">
+                <a href="/site/features" class="nav-link">Features</a>
+                <a href="/site/security" class="nav-link">Security</a>
+                <a href="/site/pricing" class="nav-link">Pricing</a>
+                <a href="/site/documentation" class="nav-link">Docs</a>
+                <a href="/site/status" class="nav-link">Status</a>
+                <a href="/platform" class="nav-link">Platform</a>
+            </div>
+            
+            <div class="nav-actions">
+                <a href="/dashboard" class="btn btn-ghost">
+                    <i class="fas fa-rocket"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    <span>Add to Discord</span>
+                </a>
+            </div>
+            
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="page-header" style="padding: calc(100px + var(--space-3xl)) 0 var(--space-2xl);">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge"><i class="fas fa-bug"></i> Bug Reports</span>
+                <h1 class="section-title">Report a Bug</h1>
+                <p class="section-subtitle">Help us improve DarkLock by reporting issues you encounter</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bug Report Form -->
+    <section style="padding: 0 0 var(--space-4xl);">
+        <div class="container" style="max-width: 900px;">
+            <!-- Guidelines -->
+            <div class="guidelines">
+                <h3><i class="fas fa-info-circle"></i> Before Submitting</h3>
+                <ul>
+                    <li>Check the <a href="/site/documentation" style="color: var(--accent-primary);">documentation</a> to ensure the behavior isn't expected</li>
+                    <li>Make sure you're using the latest version of DarkLock</li>
+                    <li>Search existing reports to avoid duplicates</li>
+                    <li>Include as much detail as possible to help us reproduce the issue</li>
+                    <li>For urgent issues, join our <a href="https://discord.gg/r8dvnad9c9" style="color: var(--accent-primary);">Discord server</a></li>
+                </ul>
+            </div>
+
+            <!-- Form -->
+            <div class="bug-form">
+                <form id="bugReportForm" onsubmit="submitBugReport(event)">
+                    <div class="form-group">
+                        <label for="bugTitle">Bug Title <span class="required">*</span></label>
+                        <input type="text" id="bugTitle" name="title" placeholder="Brief description of the issue" required>
+                        <small>A short, descriptive title for the bug</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="bugCategory">Category <span class="required">*</span></label>
+                        <select id="bugCategory" name="category" required>
+                            <option value="">Select a category</option>
+                            <option value="bot">Bot Commands</option>
+                            <option value="dashboard">Dashboard</option>
+                            <option value="security">Security Features</option>
+                            <option value="moderation">Moderation Tools</option>
+                            <option value="api">API / Integrations</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="bugSeverity">Severity <span class="required">*</span></label>
+                        <select id="bugSeverity" name="severity" required>
+                            <option value="">Select severity</option>
+                            <option value="critical">Critical - Service is unusable</option>
+                            <option value="high">High - Major feature broken</option>
+                            <option value="medium">Medium - Feature partially working</option>
+                            <option value="low">Low - Minor issue</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="bugDescription">Description <span class="required">*</span></label>
+                        <textarea id="bugDescription" name="description" placeholder="Describe the bug in detail. What happened? What did you expect to happen?" required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="bugSteps">Steps to Reproduce</label>
+                        <textarea id="bugSteps" name="steps" placeholder="1. Go to...&#10;2. Click on...&#10;3. See error..."></textarea>
+                        <small>Help us reproduce the issue with step-by-step instructions</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="bugServer">Server ID (Optional)</label>
+                        <input type="text" id="bugServer" name="serverId" placeholder="Right-click server > Copy Server ID">
+                        <small>The Discord server where the bug occurred</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="bugContact">Contact Email (Optional)</label>
+                        <input type="email" id="bugContact" name="email" placeholder="your@email.com">
+                        <small>We'll notify you when the bug is fixed</small>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>Submit Report</span>
+                        </button>
+                        <a href="https://discord.gg/r8dvnad9c9" target="_blank" class="btn btn-outline btn-lg">
+                            <i class="fab fa-discord"></i>
+                            <span>Report on Discord</span>
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Alternative Options -->
+            <div class="feature-card" style="max-width: 700px; margin: var(--space-2xl) auto 0; text-align: center;">
+                <h3 style="margin-bottom: var(--space-md);">Prefer to Report Directly?</h3>
+                <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">Join our Discord server for faster support and to chat with the development team.</p>
+                <a href="https://discord.gg/r8dvnad9c9" target="_blank" class="btn btn-primary">
+                    <i class="fab fa-discord"></i>
+                    <span>Join Support Server</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="/site/" class="brand-link">
+                        <div class="brand-icon">
+                            <i class="fas fa-shield-halved"></i>
+                        </div>
+                        <span>DarkLock</span>
+                    </a>
+                    <p>Enterprise-grade security for Discord communities of all sizes.</p>
+                    <div class="social-links">
+                        <a href="https://discord.gg/r8dvnad9c9" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
+                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                        <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="/site/features">Features</a></li>
+                        <li><a href="/site/pricing">Pricing</a></li>
+                        <li><a href="/dashboard">Dashboard</a></li>
+                        <li><a href="/site/add-bot">Add Bot</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="/site/documentation">Documentation</a></li>
+                        <li><a href="/site/status">Status</a></li>
+                        <li><a href="/site/bug-reports">Bug Reports</a></li>
+                        <li><a href="/site/support">Support</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="/site/privacy">Privacy Policy</a></li>
+                        <li><a href="/site/terms">Terms of Service</a></li>
+                        <li><a href="/site/security">Security</a></li>
+                        <li><a href="/site/sitemap">Sitemap</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 DarkLock. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+    <script>
+        function submitBugReport(e) {
+            e.preventDefault();
+            // In production, this would submit to an API
+            alert('Thank you for your bug report! We will review it shortly.\n\nFor faster support, please also report this on our Discord server.');
+            e.target.reset();
+        }
+    </script>
+</body>
+</html>

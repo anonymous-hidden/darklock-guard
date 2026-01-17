@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Features - DarkLock Security</title>
+    <meta name="description" content="Explore all the powerful security features DarkLock offers to protect your Discord server.">
+    <link rel="stylesheet" href="/css/style.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <script src="/js/global-theme.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/site/" class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <span class="brand-text">DarkLock</span>
+            </a>
+            
+            <div class="nav-menu" id="navMenu">
+                <a href="/site/features" class="nav-link active">Features</a>
+                <a href="/site/security" class="nav-link">Security</a>
+                <a href="/site/pricing" class="nav-link">Pricing</a>
+                <a href="/site/documentation" class="nav-link">Docs</a>
+                <a href="/site/status" class="nav-link">Status</a>
+                <a href="/platform" class="nav-link">Platform</a>
+            </div>
+            
+            <div class="nav-actions">
+                <a href="/dashboard" class="btn btn-ghost">
+                    <i class="fas fa-rocket"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    <span>Add to Discord</span>
+                </a>
+            </div>
+            
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="page-header" style="padding: calc(100px + var(--space-3xl)) 0 var(--space-3xl);">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge">Features</span>
+                <h1 class="section-title">Powerful Security Features</h1>
+                <p class="section-subtitle">Everything you need to protect and manage your Discord community</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Security Features -->
+    <section class="features-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge"><i class="fas fa-shield-halved"></i> Security</span>
+                <h2 class="section-title">Security & Protection</h2>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-halved"></i>
+                    </div>
+                    <h3>Anti-Raid Protection</h3>
+                    <p>Detect and prevent coordinated attacks with intelligent join rate monitoring and automatic lockdown.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Real-time threat detection</li>
+                        <li><i class="fas fa-check"></i> Auto-lockdown triggers</li>
+                        <li><i class="fas fa-check"></i> Account age filtering</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-ban"></i>
+                    </div>
+                    <h3>Anti-Spam System</h3>
+                    <p>Stop message flooding and spam bots with intelligent pattern recognition and rate limiting.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Duplicate detection</li>
+                        <li><i class="fas fa-check"></i> Rate limiting</li>
+                        <li><i class="fas fa-check"></i> Bot spam prevention</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-link-slash"></i>
+                    </div>
+                    <h3>Anti-Phishing</h3>
+                    <p>Protect members from malicious links with real-time URL scanning and threat intelligence.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> URL reputation checking</li>
+                        <li><i class="fas fa-check"></i> Known scam detection</li>
+                        <li><i class="fas fa-check"></i> Nitro scam blocking</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-bomb"></i>
+                    </div>
+                    <h3>Anti-Nuke Protection</h3>
+                    <p>Prevent server destruction with automatic detection and rollback of mass deletions.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Mass delete prevention</li>
+                        <li><i class="fas fa-check"></i> Role change detection</li>
+                        <li><i class="fas fa-check"></i> Automatic rollback</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-user-secret"></i>
+                    </div>
+                    <h3>Alt Account Detection</h3>
+                    <p>Identify suspicious accounts and potential ban evaders with intelligent profiling.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Account age analysis</li>
+                        <li><i class="fas fa-check"></i> Pattern matching</li>
+                        <li><i class="fas fa-check"></i> Suspicious behavior flags</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <h3>Verification System</h3>
+                    <p>Require verification before granting access to prevent bot attacks.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> CAPTCHA challenges</li>
+                        <li><i class="fas fa-check"></i> Button verification</li>
+                        <li><i class="fas fa-check"></i> Custom requirements</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Moderation Features -->
+    <section class="features-section" style="background: var(--bg-secondary);">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge"><i class="fas fa-gavel"></i> Moderation</span>
+                <h2 class="section-title">Moderation Tools</h2>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-gavel"></i>
+                    </div>
+                    <h3>Comprehensive Moderation</h3>
+                    <p>Full suite of moderation commands with detailed logging and case management.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Kick, ban, timeout</li>
+                        <li><i class="fas fa-check"></i> Warning system</li>
+                        <li><i class="fas fa-check"></i> Case history</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>Auto-Moderation</h3>
+                    <p>Automated content filtering and rule enforcement with customizable triggers.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Word filters</li>
+                        <li><i class="fas fa-check"></i> Link blocking</li>
+                        <li><i class="fas fa-check"></i> Custom rules</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-scroll"></i>
+                    </div>
+                    <h3>Audit Logging</h3>
+                    <p>Complete audit trails with searchable logs and export capabilities.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> All actions logged</li>
+                        <li><i class="fas fa-check"></i> Searchable history</li>
+                        <li><i class="fas fa-check"></i> Export to CSV/JSON</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-ticket"></i>
+                    </div>
+                    <h3>Ticket System</h3>
+                    <p>Create and manage support tickets with staff assignment and transcripts.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Private channels</li>
+                        <li><i class="fas fa-check"></i> Staff claiming</li>
+                        <li><i class="fas fa-check"></i> Transcript saving</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Utility Features -->
+    <section class="features-section">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge"><i class="fas fa-wrench"></i> Utilities</span>
+                <h2 class="section-title">Utility & Management</h2>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Analytics Dashboard</h3>
+                    <p>Comprehensive server analytics with real-time charts and statistics.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Member activity</li>
+                        <li><i class="fas fa-check"></i> Message stats</li>
+                        <li><i class="fas fa-check"></i> Security events</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-hand-wave"></i>
+                    </div>
+                    <h3>Welcome System</h3>
+                    <p>Custom welcome messages, images, and auto-role assignment for new members.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Custom messages</li>
+                        <li><i class="fas fa-check"></i> Welcome images</li>
+                        <li><i class="fas fa-check"></i> Auto-roles</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <h3>XP & Leveling</h3>
+                    <p>Engage your community with XP rewards, levels, and rank cards.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Activity rewards</li>
+                        <li><i class="fas fa-check"></i> Role rewards</li>
+                        <li><i class="fas fa-check"></i> Leaderboards</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-tags"></i>
+                    </div>
+                    <h3>Reaction Roles</h3>
+                    <p>Let members self-assign roles with reaction-based role menus.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Multiple styles</li>
+                        <li><i class="fas fa-check"></i> Custom embeds</li>
+                        <li><i class="fas fa-check"></i> Role limits</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-cloud-arrow-down"></i>
+                    </div>
+                    <h3>Server Backup</h3>
+                    <p>Create and restore full server backups including roles, channels, and settings.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Full snapshots</li>
+                        <li><i class="fas fa-check"></i> Scheduled backups</li>
+                        <li><i class="fas fa-check"></i> Easy restore</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <h3>Multi-Language</h3>
+                    <p>Support for multiple languages with community translations.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> 10+ languages</li>
+                        <li><i class="fas fa-check"></i> Per-server setting</li>
+                        <li><i class="fas fa-check"></i> Easy switching</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2>Ready to Experience These Features?</h2>
+                <p>Add DarkLock to your server and start protecting your community today.</p>
+                <div class="cta-buttons">
+                    <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus"></i>
+                        <span>Add to Discord</span>
+                    </a>
+                    <a href="/site/documentation" class="btn btn-ghost btn-lg">
+                        <i class="fas fa-book"></i>
+                        <span>Read Documentation</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="/site/" class="brand-link">
+                        <div class="brand-icon">
+                            <i class="fas fa-shield-halved"></i>
+                        </div>
+                        <span>DarkLock</span>
+                    </a>
+                    <p>Enterprise-grade security for Discord communities of all sizes.</p>
+                    <div class="social-links">
+                        <a href="https://discord.gg/r8dvnad9c9" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
+                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                        <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="/site/features">Features</a></li>
+                        <li><a href="/site/pricing">Pricing</a></li>
+                        <li><a href="/dashboard">Dashboard</a></li>
+                        <li><a href="/site/add-bot">Add Bot</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="/site/documentation">Documentation</a></li>
+                        <li><a href="/site/status">Status</a></li>
+                        <li><a href="/site/bug-reports">Bug Reports</a></li>
+                        <li><a href="/site/support">Support</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="/site/privacy">Privacy Policy</a></li>
+                        <li><a href="/site/terms">Terms of Service</a></li>
+                        <li><a href="/site/security">Security</a></li>
+                        <li><a href="/site/sitemap">Sitemap</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 DarkLock. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>
