@@ -26,16 +26,13 @@ const db = require('../utils/database');
 // ENVIRONMENT VALIDATION - Fail hard if secrets are missing
 // ============================================================================
 
-function getJWTSecret() {
-    const secret = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET;
-    if (!secret) {
-        console.error('[FATAL] ADMIN_JWT_SECRET or JWT_SECRET environment variable is required');
-        process.exit(1);
-    }
-    return secret;
-}
-
+const JWT_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET;
 const BCRYPT_ROUNDS = 12; // Minimum 12 rounds for admin passwords
+
+if (!JWT_SECRET) {
+    console.error('[FATAL] ADMIN_JWT_SECRET or JWT_SECRET environment variable is required');
+    process.exit(1);
+}
 
 // ============================================================================
 // RATE LIMITING - Prevent brute force attacks
@@ -227,7 +224,7 @@ function generateAdminToken(admin) {
             role: admin.role,
             type: 'admin' // Distinguishes from regular user tokens
         },
-        getJWTSecret(),
+        JWT_SECRET,
         { expiresIn: '1h' }
     );
 }
@@ -237,7 +234,7 @@ function generateAdminToken(admin) {
  */
 function verifyAdminToken(token) {
     try {
-        const decoded = jwt.verify(token, getJWTSecret());
+        const decoded = jwt.verify(token, JWT_SECRET);
         
         // Ensure this is an admin token, not a regular user token
         if (decoded.type !== 'admin') {
