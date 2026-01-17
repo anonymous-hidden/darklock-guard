@@ -30,6 +30,11 @@ const {
     requireAdminAuth 
 } = require('./routes/admin-auth');
 
+// Admin dashboard
+const { initializeAdminSchema } = require('./utils/admin-schema');
+const adminApiRoutes = require('./routes/admin-api');
+const { initializeDefaultAdmins } = require('./default-admin');
+
 class DarklockPlatform {
     constructor(options = {}) {
         this.app = express();
@@ -379,6 +384,55 @@ class DarklockPlatform {
             });
         });
         
+        // Public Status API - for status page
+        this.app.get('/api/public/status', async (req, res) => {
+            try {
+                // Get platform settings (maintenance mode)
+                const maintenanceSetting = await db.get(`
+                    SELECT value FROM platform_settings WHERE key = 'maintenance_mode'
+                `);
+                const maintenanceMsgSetting = await db.get(`
+                    SELECT value FROM platform_settings WHERE key = 'maintenance_message'
+                `);
+                
+                // Get active announcements (global, not expired)
+                const now = new Date().toISOString();
+                const announcements = await db.all(`
+                    SELECT id, title, content, type, is_global, target_app
+                    FROM announcements
+                    WHERE is_active = 1 
+                    AND (starts_at IS NULL OR starts_at <= ?)
+                    AND (ends_at IS NULL OR ends_at >= ?)
+                    ORDER BY type = 'critical' DESC, created_at DESC
+                    LIMIT 5
+                `, [now, now]) || [];
+                
+                // Get service statuses
+                const services = await db.all(`
+                    SELECT service_name, display_name, status, status_message, last_check
+                    FROM service_status
+                    ORDER BY display_order ASC
+                `) || [];
+                
+                res.json({
+                    maintenance: maintenanceSetting?.value === 'true',
+                    maintenanceMessage: maintenanceMsgSetting?.value || null,
+                    announcements,
+                    services
+                });
+            } catch (err) {
+                console.error('[Public API] Status error:', err);
+                res.json({
+                    maintenance: false,
+                    announcements: [],
+                    services: [
+                        { service_name: 'api', display_name: 'API', status: 'online' },
+                        { service_name: 'dashboard', display_name: 'Dashboard', status: 'online' }
+                    ]
+                });
+            }
+        });
+        
         // Documentation page
         this.app.get('/platform/docs', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/docs.html'));
@@ -439,13 +493,21 @@ class DarklockPlatform {
         // Admin auth routes (/signin, /signout)
         this.app.use('/', adminAuthRoutes);
         
-        // Admin dashboard (protected)
-        this.app.get('/admin/dashboard', requireAdminAuth, (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/admin-dashboard.html'));
+        // Admin API routes (protected)
+        this.app.use('/admin/api', adminApiRoutes);
+        
+        // Admin dashboard (protected) - Full dashboard
+        this.app.get('/admin', requireAdminAuth, (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/admin.html'));
         });
         
-        // Admin API - Dashboard data (protected)
-        this.app.get('/admin/api/dashboard', requireAdminAuth, async (req, res) => {
+        // Admin dashboard legacy route
+        this.app.get('/admin/dashboard', requireAdminAuth, (req, res) => {
+            res.redirect('/admin');
+        });
+        
+        // Admin API - Dashboard data (protected) - LEGACY - now use /admin/api/dashboard
+        this.app.get('/admin/api/legacy/dashboard', requireAdminAuth, async (req, res) => {
             try {
                 const today = new Date().toISOString().split('T')[0];
                 
@@ -744,6 +806,14 @@ class DarklockPlatform {
                 // Initialize admin authentication tables
                 console.log('[Darklock Platform] Initializing admin auth...');
                 await initializeAdminTables();
+                
+                // Initialize admin dashboard schema
+                console.log('[Darklock Platform] Initializing admin dashboard schema...');
+                await initializeAdminSchema();
+                
+                // Initialize default admin accounts (only if no admins exist)
+                console.log('[Darklock Platform] Checking for default admin accounts...');
+                await initializeDefaultAdmins();
                 
                 // Run session cleanup on startup
                 await db.cleanupExpiredSessions();

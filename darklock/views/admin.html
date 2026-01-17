@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Admin Dashboard - Darklock</title>
+    <style>
+        :root {
+            --bg-primary: #09090b;
+            --bg-secondary: #18181b;
+            --bg-card: #27272a;
+            --bg-hover: #3f3f46;
+            --border: #3f3f46;
+            --border-light: #52525b;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+            --sidebar-width: 260px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        html, body {
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        /* Layout */
+        .app { display: flex; min-height: 100vh; }
+        
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.125rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 0.75rem;
+            overflow-y: auto;
+        }
+
+        .nav-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .nav-section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 0.5rem 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.625rem 0.75rem;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .nav-item.active { background: var(--accent); color: white; }
+        .nav-item .icon { font-size: 1rem; width: 20px; text-align: center; }
+
+        .sidebar-footer {
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .admin-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .admin-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .admin-details { flex: 1; min-width: 0; }
+        .admin-email { font-size: 0.8rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .admin-role { font-size: 0.7rem; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+
+        .btn-signout {
+            width: 100%;
+            padding: 0.5rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-signout:hover { background: var(--error); border-color: var(--error); color: white; }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .page-title { font-size: 1.25rem; font-weight: 600; }
+
+        .content {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        /* Cards & Panels */
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title { font-size: 0.95rem; font-weight: 600; }
+        .card-body { padding: 1.25rem; }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+        }
+
+        .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+        .stat-value { font-size: 1.75rem; font-weight: 700; }
+        .stat-card.warning .stat-value { color: var(--warning); }
+        .stat-card.error .stat-value { color: var(--error); }
+        .stat-card.success .stat-value { color: var(--success); }
+
+        /* Tables */
+        .table-container { overflow-x: auto; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 500;
+            background: var(--bg-card);
+        }
+
+        tr:hover { background: var(--bg-card); }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-info { background: rgba(59, 130, 246, 0.2); color: var(--info); }
+        .badge-warning { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .badge-critical { background: rgba(239, 68, 68, 0.2); color: var(--error); }
+        .badge-success { background: rgba(34, 197, 94, 0.2); color: var(--success); }
+        .badge-online { background: rgba(34, 197, 94, 0.2); color: var(--success); }
+        .badge-degraded { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .badge-offline { background: rgba(239, 68, 68, 0.2); color: var(--error); }
+        .badge-maintenance { background: rgba(99, 102, 241, 0.2); color: var(--accent); }
+
+        /* Forms */
+        .form-group { margin-bottom: 1rem; }
+        .form-label { display: block; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.375rem; font-weight: 500; }
+        
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 0.625rem 0.875rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .form-textarea { min-height: 120px; resize: vertical; font-family: inherit; }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: none;
+        }
+
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-secondary { background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .btn-danger { background: var(--error); color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.75rem; }
+
+        /* Toggle Switch */
+        .toggle {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle input { opacity: 0; width: 0; height: 0; }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            transition: 0.2s;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 2px;
+            bottom: 2px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            transition: 0.2s;
+        }
+
+        .toggle input:checked + .toggle-slider { background: var(--accent); border-color: var(--accent); }
+        .toggle input:checked + .toggle-slider:before { transform: translateX(20px); background: white; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title { font-size: 1rem; font-weight: 600; }
+        .modal-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.25rem; }
+        .modal-body { padding: 1.25rem; }
+        .modal-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.75rem; }
+
+        /* Sections - hidden by default */
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            padding: 0.875rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: slideIn 0.2s ease;
+        }
+
+        .toast.success { border-color: var(--success); }
+        .toast.error { border-color: var(--error); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Status indicator */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        .status-dot.online { background: var(--success); }
+        .status-dot.degraded { background: var(--warning); }
+        .status-dot.offline { background: var(--error); }
+        .status-dot.maintenance { background: var(--accent); }
+
+        /* Audit log details */
+        .audit-changes {
+            font-size: 0.75rem;
+            background: var(--bg-primary);
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+        }
+
+        .audit-old { color: var(--error); }
+        .audit-new { color: var(--success); }
+
+        /* Kill switch highlight */
+        .kill-switch { border-left: 3px solid var(--error); }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state .icon { font-size: 2rem; margin-bottom: 1rem; }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main { margin-left: 0; }
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>🔐 Darklock Admin</h1>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Overview</div>
+                    <a class="nav-item active" data-section="dashboard">
+                        <span class="icon">📊</span> Dashboard
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Platform</div>
+                    <a class="nav-item" data-section="announcements">
+                        <span class="icon">📢</span> Announcements
+                    </a>
+                    <a class="nav-item" data-section="status">
+                        <span class="icon">🔔</span> Service Status
+                    </a>
+                    <a class="nav-item" data-section="settings">
+                        <span class="icon">⚙️</span> Settings
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Development</div>
+                    <a class="nav-item" data-section="flags">
+                        <span class="icon">🚩</span> Feature Flags
+                    </a>
+                    <a class="nav-item" data-section="content">
+                        <span class="icon">📝</span> Content
+                    </a>
+                    <a class="nav-item" data-section="changelogs">
+                        <span class="icon">📋</span> Changelogs
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Security</div>
+                    <a class="nav-item" data-section="audit">
+                        <span class="icon">🔍</span> Audit Logs
+                    </a>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="admin-info">
+                    <div class="admin-avatar" id="adminAvatar">A</div>
+                    <div class="admin-details">
+                        <div class="admin-email" id="adminEmail">admin@example.com</div>
+                        <div class="admin-role" id="adminRole">Admin</div>
+                    </div>
+                </div>
+                <button class="btn-signout" id="signoutBtn">Sign Out</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <div class="topbar">
+                <h2 class="page-title" id="pageTitle">Dashboard</h2>
+                <div id="maintenanceBadge" style="display: none;">
+                    <span class="badge badge-warning">🔧 Maintenance Mode</span>
+                </div>
+            </div>
+
+            <div class="content">
+                <!-- Dashboard Section -->
+                <div class="section active" id="section-dashboard">
+                    <div class="stats-grid" id="statsGrid">
+                        <div class="loading"><div class="spinner"></div> Loading...</div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Service Status</h3>
+                        </div>
+                        <div class="card-body" id="dashboardServices">
+                            <div class="loading"><div class="spinner"></div> Loading...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Recent Activity</h3>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Action</th>
+                                        <th>Resource</th>
+                                        <th>Admin</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentActivity">
+                                    <tr><td colspan="4" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Announcements Section -->
+                <div class="section" id="section-announcements">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Announcements</h3>
+                            <button class="btn btn-primary btn-sm" onclick="openAnnouncementModal()">+ New Announcement</button>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Title</th>
+                                        <th>Scope</th>
+                                        <th>Active</th>
+                                        <th>Schedule</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="announcementsTable">
+                                    <tr><td colspan="6" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Service Status Section -->
+                <div class="section" id="section-status">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Service Status</h3>
+                            <button class="btn btn-primary btn-sm" onclick="openServiceModal()">+ Add Service</button>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Service</th>
+                                        <th>Status</th>
+                                        <th>Message</th>
+                                        <th>Visible</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="servicesTable">
+                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Platform Settings Section -->
+                <div class="section" id="section-settings">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Platform Settings</h3>
+                        </div>
+                        <div class="card-body" id="settingsContainer">
+                            <div class="loading"><div class="spinner"></div> Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feature Flags Section -->
+                <div class="section" id="section-flags">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Feature Flags</h3>
+                            <button class="btn btn-primary btn-sm" onclick="openFlagModal()">+ New Flag</button>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Flag</th>
+                                        <th>Key</th>
+                                        <th>Status</th>
+                                        <th>Rollout</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="flagsTable">
+                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content Blocks Section -->
+                <div class="section" id="section-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Content Blocks</h3>
+                            <button class="btn btn-primary btn-sm" onclick="openContentModal()">+ New Block</button>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Key</th>
+                                        <th>Title</th>
+                                        <th>Page</th>
+                                        <th>Active</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="contentTable">
+                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Changelogs Section -->
+                <div class="section" id="section-changelogs">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Changelogs</h3>
+                            <button class="btn btn-primary btn-sm" onclick="openChangelogModal()">+ New Changelog</button>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Version</th>
+                                        <th>Title</th>
+                                        <th>Type</th>
+                                        <th>Published</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="changelogsTable">
+                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audit Logs Section -->
+                <div class="section" id="section-audit">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Audit Logs</h3>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <select class="form-select" id="auditFilter" style="width: auto; padding: 0.375rem 0.75rem; font-size: 0.8rem;">
+                                    <option value="">All Actions</option>
+                                    <option value="CREATE">Create</option>
+                                    <option value="UPDATE">Update</option>
+                                    <option value="DELETE">Delete</option>
+                                </select>
+                                <button class="btn btn-secondary btn-sm" onclick="loadAuditLogs()">Refresh</button>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Action</th>
+                                        <th>Resource</th>
+                                        <th>Admin</th>
+                                        <th>Changes</th>
+                                        <th>IP</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="auditTable">
+                                    <tr><td colspan="6" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Template -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Modal</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer" id="modalFooter">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" id="modalSubmit">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // ====================================================================
+        // STATE
+        // ====================================================================
+        let adminData = { id: '', email: '', role: '' };
+        let currentSection = 'dashboard';
+
+        // ====================================================================
+        // UTILITIES
+        // ====================================================================
+        async function api(endpoint, method = 'GET', body = null) {
+            const opts = {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+            };
+            if (body) opts.body = JSON.stringify(body);
+            
+            const res = await fetch(`/api/admin${endpoint}`, opts);
+            const data = await res.json();
+            
+            if (!res.ok) {
+                if (res.status === 401) {
+                    window.location.href = '/signin';
+                    return;
+                }
+                throw new Error(data.error || 'Request failed');
+            }
+            return data;
+        }
+
+        function toast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.innerHTML = `${type === 'success' ? '✓' : '✗'} ${message}`;
+            container.appendChild(t);
+            setTimeout(() => t.remove(), 4000);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            return new Date(dateStr).toLocaleString();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        // ====================================================================
+        // NAVIGATION
+        // ====================================================================
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const section = item.dataset.section;
+                if (!section) return;
+                
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                
+                document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+                document.getElementById(`section-${section}`).classList.add('active');
+                
+                document.getElementById('pageTitle').textContent = item.textContent.trim();
+                currentSection = section;
+                
+                loadSectionData(section);
+            });
+        });
+
+        function loadSectionData(section) {
+            switch (section) {
+                case 'dashboard': loadDashboard(); break;
+                case 'announcements': loadAnnouncements(); break;
+                case 'status': loadServices(); break;
+                case 'settings': loadSettings(); break;
+                case 'flags': loadFlags(); break;
+                case 'content': loadContent(); break;
+                case 'changelogs': loadChangelogs(); break;
+                case 'audit': loadAuditLogs(); break;
+            }
+        }
+
+        // ====================================================================
+        // DASHBOARD
+        // ====================================================================
+        async function loadDashboard() {
+            try {
+                const data = await api('/dashboard');
+                adminData = data.admin;
+                
+                // Update admin info in sidebar
+                document.getElementById('adminEmail').textContent = data.admin.email;
+                document.getElementById('adminRole').textContent = data.admin.role;
+                document.getElementById('adminAvatar').textContent = data.admin.email[0].toUpperCase();
+                
+                // Maintenance badge
+                document.getElementById('maintenanceBadge').style.display = 
+                    data.stats.maintenanceMode ? 'block' : 'none';
+                
+                // Stats
+                document.getElementById('statsGrid').innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-label">Active Announcements</div>
+                        <div class="stat-value">${data.stats.activeAnnouncements}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Enabled Flags</div>
+                        <div class="stat-value">${data.stats.enabledFlags}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Admins</div>
+                        <div class="stat-value">${data.stats.totalAdmins}</div>
+                    </div>
+                    <div class="stat-card ${data.stats.maintenanceMode ? 'warning' : ''}">
+                        <div class="stat-label">Actions Today</div>
+                        <div class="stat-value">${data.stats.actionsToday}</div>
+                    </div>
+                `;
+                
+                // Services
+                document.getElementById('dashboardServices').innerHTML = data.services.map(s => `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+                        <span><span class="status-dot ${s.status}"></span>${escapeHtml(s.display_name)}</span>
+                        <span class="badge badge-${s.status}">${s.status}</span>
+                    </div>
+                `).join('');
+                
+                // Recent activity
+                document.getElementById('recentActivity').innerHTML = data.recentAudit.map(log => `
+                    <tr>
+                        <td><span class="badge badge-info">${escapeHtml(log.action)}</span></td>
+                        <td>${escapeHtml(log.resource_type)}</td>
+                        <td>${escapeHtml(log.admin_email)}</td>
+                        <td>${formatDate(log.created_at)}</td>
+                    </tr>
+                `).join('') || '<tr><td colspan="4" class="empty-state">No recent activity</td></tr>';
+                
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        // ====================================================================
+        // ANNOUNCEMENTS
+        // ====================================================================
+        async function loadAnnouncements() {
+            try {
+                const data = await api('/announcements');
+                document.getElementById('announcementsTable').innerHTML = data.announcements.map(a => `
+                    <tr>
+                        <td><span class="badge badge-${a.type}">${a.type}</span></td>
+                        <td>${escapeHtml(a.title)}</td>
+                        <td>${escapeHtml(a.scope)}</td>
+                        <td>
+                            <label class="toggle">
+                                <input type="checkbox" ${a.is_active ? 'checked' : ''} onchange="toggleAnnouncement('${a.id}', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </td>
+                        <td>${a.start_at ? formatDate(a.start_at) : 'Always'}</td>
+                        <td>
+                            <button class="btn btn-secondary btn-sm" onclick='editAnnouncement(${JSON.stringify(a)})'>Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement('${a.id}')">Delete</button>
+                        </td>
+                    </tr>
+                `).join('') || '<tr><td colspan="6" class="empty-state">No announcements</td></tr>';
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        async function toggleAnnouncement(id, isActive) {
+            try {
+                await api(`/announcements/${id}`, 'PUT', { is_active: isActive ? 1 : 0 });
+                toast('Announcement updated');
+            } catch (err) {
+                toast(err.message, 'error');
+                loadAnnouncements();
+            }
+        }
+
+        async function deleteAnnouncement(id) {
+            if (!confirm('Delete this announcement?')) return;
+            try {
+                await api(`/announcements/${id}`, 'DELETE');
+                toast('Announcement deleted');
+                loadAnnouncements();
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        function openAnnouncementModal(existing = null) {
+            document.getElementById('modalTitle').textContent = existing ? 'Edit Announcement' : 'New Announcement';
+            document.getElementById('modalBody').innerHTML = `
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-input" id="annTitle" value="${escapeHtml(existing?.title || '')}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Content (Markdown supported)</label>
+                    <textarea class="form-textarea" id="annContent">${escapeHtml(existing?.content || '')}</textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Type</label>
+                        <select class="form-select" id="annType">
+                            <option value="info" ${existing?.type === 'info' ? 'selected' : ''}>Info</option>
+                            <option value="warning" ${existing?.type === 'warning' ? 'selected' : ''}>Warning</option>
+                            <option value="critical" ${existing?.type === 'critical' ? 'selected' : ''}>Critical</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Scope</label>
+                        <select class="form-select" id="annScope">
+                            <option value="global" ${existing?.scope === 'global' ? 'selected' : ''}>Global</option>
+                            <option value="dashboard" ${existing?.scope === 'dashboard' ? 'selected' : ''}>Dashboard</option>
+                            <option value="api" ${existing?.scope === 'api' ? 'selected' : ''}>API</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Start Date (optional)</label>
+                        <input type="datetime-local" class="form-input" id="annStart" value="${existing?.start_at?.slice(0, 16) || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">End Date (optional)</label>
+                        <input type="datetime-local" class="form-input" id="annEnd" value="${existing?.end_at?.slice(0, 16) || ''}">
+                    </div>
+                </div>
+            `;
+            document.getElementById('modalSubmit').onclick = () => saveAnnouncement(existing?.id);
+            document.getElementById('modalOverlay').classList.add('active');
+        }
+
+        function editAnnouncement(a) {
+            openAnnouncementModal(a);
+        }
+
+        async function saveAnnouncement(id) {
+            const data = {
+                title: document.getElementById('annTitle').value,
+                content: document.getElementById('annContent').value,
+                type: document.getElementById('annType').value,
+                scope: document.getElementById('annScope').value,
+                start_at: document.getElementById('annStart').value || null,
+                end_at: document.getElementById('annEnd').value || null
+            };
+            
+            try {
+                if (id) {
+                    await api(`/announcements/${id}`, 'PUT', data);
+                } else {
+                    await api('/announcements', 'POST', data);
+                }
+                toast('Announcement saved');
+                closeModal();
+                loadAnnouncements();
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        // ====================================================================
+        // SERVICE STATUS
+        // ====================================================================
+        async function loadServices() {
+            try {
+                const data = await api('/service-status');
+                document.getElementById('servicesTable').innerHTML = data.services.map(s => `
+                    <tr>
+                        <td><span class="status-dot ${s.status}"></span>${escapeHtml(s.display_name)}</td>
+                        <td>
+                            <select class="form-select" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.8rem;"
+                                    onchange="updateServiceStatus('${s.id}', this.value)">
+                                <option value="online" ${s.status === 'online' ? 'selected' : ''}>Online</option>
+                                <option value="degraded" ${s.status === 'degraded' ? 'selected' : ''}>Degraded</option>
+                                <option value="offline" ${s.status === 'offline' ? 'selected' : ''}>Offline</option>
+                                <option value="maintenance" ${s.status === 'maintenance' ? 'selected' : ''}>Maintenance</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="text" class="form-input" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;"
+                                   value="${escapeHtml(s.status_message || '')}" 
+                                   onblur="updateServiceMessage('${s.id}', this.value)"
+                                   placeholder="Status message...">
+                        </td>
+                        <td>
+                            <label class="toggle">
+                                <input type="checkbox" ${s.is_visible ? 'checked' : ''} onchange="updateServiceVisibility('${s.id}', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </td>
+                        <td>${escapeHtml(s.service_name)}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        async function updateServiceStatus(id, status) {
+            try {
+                await api(`/service-status/${id}`, 'PUT', { status });
+                toast('Status updated');
+            } catch (err) {
+                toast(err.message, 'error');
+                loadServices();
+            }
+        }
+
+        async function updateServiceMessage(id, message) {
+            try {
+                await api(`/service-status/${id}`, 'PUT', { status_message: message });
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        async function updateServiceVisibility(id, visible) {
+            try {
+                await api(`/service-status/${id}`, 'PUT', { is_visible: visible ? 1 : 0 });
+                toast('Visibility updated');
+            } catch (err) {
+                toast(err.message, 'error');
+                loadServices();
+            }
+        }
+
+        function openServiceModal() {
+            document.getElementById('modalTitle').textContent = 'Add Service';
+            document.getElementById('modalBody').innerHTML = `
+                <div class="form-group">
+                    <label class="form-label">Service Name (key)</label>
+                    <input type="text" class="form-input" id="serviceName" placeholder="e.g. email_service">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Display Name</label>
+                    <input type="text" class="form-input" id="serviceDisplay" placeholder="e.g. Email Service">
+                </div>
+            `;
+            document.getElementById('modalSubmit').onclick = saveService;
+            document.getElementById('modalOverlay').classList.add('active');
+        }
+
+        async function saveService() {
+            try {
+                await api('/service-status', 'POST', {
+                    service_name: document.getElementById('serviceName').value,
+                    display_name: document.getElementById('serviceDisplay').value
+                });
+                toast('Service added');
+                closeModal();
+                loadServices();
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        // ====================================================================
+        // PLATFORM SETTINGS
+        // ====================================================================
+        async function loadSettings() {
+            try {
+                const data = await api('/platform-settings');
+                document.getElementById('settingsContainer').innerHTML = data.settings.map(s => `
+                    <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--border);">
+                        <div>
+                            <div style="font-weight: 500;">${escapeHtml(s.key)}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">${escapeHtml(s.description || '')}</div>
+                        </div>
+                        <div style="min-width: 200px;">
+                            ${s.value_type === 'boolean' ? `
+                                <label class="toggle">
+                                    <input type="checkbox" ${s.value === 'true' ? 'checked' : ''} 
+                                           onchange="updateSetting('${s.key}', this.checked ? 'true' : 'false')">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            ` : `
+                                <input type="text" class="form-input" value="${escapeHtml(s.value)}"
+                                       onblur="updateSetting('${s.key}', this.value)" style="text-align: right;">
+                            `}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        async function updateSetting(key, value) {
+            try {
+                await api(`/platform-settings/${key}`, 'PUT', { value });
+                toast('Setting updated');
+                if (key === 'maintenance_mode') {
+                    document.getElementById('maintenanceBadge').style.display = value === 'true' ? 'block' : 'none';
+                }
+            } catch (err) {
+                toast(err.message, 'error');
+                loadSettings();
+            }
+        }
+
+        // ====================================================================
+        // FEATURE FLAGS
+        // ====================================================================
+        async function loadFlags() {
+            try {
+                const data = await api('/feature-flags');
+                document.getElementById('flagsTable').innerHTML = data.flags.map(f => `
+                    <tr class="${f.is_kill_switch ? 'kill-switch' : ''}">
+                        <td>
+                            ${f.is_kill_switch ? '🚨 ' : ''}${escapeHtml(f.name)}
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(f.description || '')}</div>
+                        </td>
+                        <td><code style="background: var(--bg-primary); padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.8rem;">${escapeHtml(f.key)}</code></td>
+                        <td>
+                            <label class="toggle">
+                                <input type="checkbox" ${f.is_enabled ? 'checked' : ''} onchange="toggleFlag('${f.id}', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </td>
+                        <td>${f.rollout_percentage}%</td>
+                        <td>
+                            <button class="btn btn-secondary btn-sm" onclick='editFlag(${JSON.stringify(f)})'>Edit</button>
+                            ${adminData.role === 'owner' ? `<button class="btn btn-danger btn-sm" onclick="deleteFlag('${f.id}')">Delete</button>` : ''}
+                        </td>
+                    </tr>
+                `).join('') || '<tr><td colspan="5" class="empty-state">No feature flags</td></tr>';
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        async function toggleFlag(id, enabled) {
+            try {
+                await api(`/feature-flags/${id}`, 'PUT', { is_enabled: enabled });
+                toast('Feature flag updated');
+            } catch (err) {
+                toast(err.message, 'error');
+                loadFlags();
+            }
+        }
+
+        async function deleteFlag(id) {
+            if (!confirm('Delete this feature flag?')) return;
+            try {
+                await api(`/feature-flags/${id}`, 'DELETE');
+                toast('Feature flag deleted');
+                loadFlags();
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        function openFlagModal(existing = null) {
+            document.getElementById('modalTitle').textContent = existing ? 'Edit Feature Flag' : 'New Feature Flag';
+            document.getElementById('modalBody').innerHTML = `
+                <div class="form-group">
+                    <label class="form-label">Key (lowercase, underscores)</label>
+                    <input type="text" class="form-input" id="flagKey" value="${escapeHtml(existing?.key || '')}" ${existing ? 'disabled' : ''}>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-input" id="flagName" value="${escapeHtml(existing?.name || '')}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-input" id="flagDesc" value="${escapeHtml(existing?.description || '')}">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Rollout %</label>
+                        <input type="number" class="form-input" id="flagRollout" min="0" max="100" value="${existing?.rollout_percentage || 100}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Kill Switch</label>
+                        <label class="toggle" style="margin-top: 0.5rem;">
+                            <input type="checkbox" id="flagKill" ${existing?.is_kill_switch ? 'checked' : ''} ${existing ? 'disabled' : ''}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            `;
+            document.getElementById('modalSubmit').onclick = () => saveFlag(existing?.id);
+            document.getElementById('modalOverlay').classList.add('active');
+        }
+
+        function editFlag(f) {
+            openFlagModal(f);
+        }
+
+        async function saveFlag(id) {
+            const data = {
+                key: document.getElementById('flagKey').value,
+                name: document.getElementById('flagName').value,
+                description: document.getElementById('flagDesc').value,
+                rollout_percentage: parseInt(document.getElementById('flagRollout').value),
+                is_kill_switch: document.getElementById('flagKill').checked
+            };
+            
+            try {
+                if (id) {
+                    await api(`/feature-flags/${id}`, 'PUT', data);
+                } else {
+                    await api('/feature-flags', 'POST', data);
+                }
+                toast('Feature flag saved');
+                closeModal();
+                loadFlags();
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        // ====================================================================
+        // CONTENT BLOCKS
+        // ====================================================================
+        async function loadContent() {
+            try {
+                const data = await api('/content-blocks');
+                document.getElementById('contentTable').innerHTML = data.blocks.map(b => `
+                    <tr>
+                        <td><code style="background: var(--bg-primary); padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.8rem;">${escapeHtml(b.block_key)}</code></td>
+                        <td>${escapeHtml(b.title || '-')}</td>
+                        <td>${escapeHtml(b.page)}</td>
+                        <td>
+                            <label class="toggle">
+                                <input type="checkbox" ${b.is_active ? 'checked' : ''} onchange="toggleContent('${b.id}', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </td>
+                        <td>
+                            <button class="btn btn-secondary btn-sm" onclick='editContent(${JSON.stringify(b)})'>Edit</button>
+                        </td>
+                    </tr>
+                `).join('') || '<tr><td colspan="5" class="empty-state">No content blocks</td></tr>';
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        async function toggleContent(id, active) {
+            try {
+                await api(`/content-blocks/${id}`, 'PUT', { is_active: active ? 1 : 0 });
+                toast('Content block updated');
+            } catch (err) {
+                toast(err.message, 'error');
+                loadContent();
+            }
+        }
+
+        function openContentModal(existing = null) {
+            document.getElementById('modalTitle').textContent = existing ? 'Edit Content Block' : 'New Content Block';
+            document.getElementById('modalBody').innerHTML = `
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Block Key</label>
+                        <input type="text" class="form-input" id="contentKey" value="${escapeHtml(existing?.block_key || '')}" ${existing ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Page</label>
+                        <select class="form-select" id="contentPage">
+                            <option value="home" ${existing?.page === 'home' ? 'selected' : ''}>Home</option>
+                            <option value="about" ${existing?.page === 'about' ? 'selected' : ''}>About</option>
+                            <option value="pricing" ${existing?.page === 'pricing' ? 'selected' : ''}>Pricing</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-input" id="contentTitle" value="${escapeHtml(existing?.title || '')}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Content (Markdown)</label>
+                    <textarea class="form-textarea" id="contentBody" style="min-height: 200px;">${escapeHtml(existing?.content || '')}</textarea>
+                </div>
+            `;
+            document.getElementById('modalSubmit').onclick = () => saveContent(existing?.id);
+            document.getElementById('modalOverlay').classList.add('active');
+        }
+
+        function editContent(b) {
+            openContentModal(b);
+        }
+
+        async function saveContent(id) {
+            const data = {
+                block_key: document.getElementById('contentKey').value,
+                page: document.getElementById('contentPage').value,
+                title: document.getElementById('contentTitle').value,
+                content: document.getElementById('contentBody').value
+            };
+            
+            try {
+                if (id) {
+                    await api(`/content-blocks/${id}`, 'PUT', data);
+                } else {
+                    await api('/content-blocks', 'POST', data);
+                }
+                toast('Content block saved');
+                closeModal();
+                loadContent();
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        // ====================================================================
+        // CHANGELOGS
+        // ====================================================================
+        async function loadChangelogs() {
+            try {
+                const data = await api('/changelogs');
+                document.getElementById('changelogsTable').innerHTML = data.changelogs.map(c => `
+                    <tr>
+                        <td><strong>${escapeHtml(c.version)}</strong></td>
+                        <td>${escapeHtml(c.title)}</td>
+                        <td><span class="badge badge-info">${escapeHtml(c.release_type || 'minor')}</span></td>
+                        <td>
+                            <label class="toggle">
+                                <input type="checkbox" ${c.is_published ? 'checked' : ''} onchange="toggleChangelog('${c.id}', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </td>
+                        <td>
+                            <button class="btn btn-secondary btn-sm" onclick='editChangelog(${JSON.stringify(c)})'>Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteChangelog('${c.id}')">Delete</button>
+                        </td>
+                    </tr>
+                `).join('') || '<tr><td colspan="5" class="empty-state">No changelogs</td></tr>';
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        async function toggleChangelog(id, published) {
+            try {
+                await api(`/changelogs/${id}`, 'PUT', { is_published: published });
+                toast('Changelog updated');
+            } catch (err) {
+                toast(err.message, 'error');
+                loadChangelogs();
+            }
+        }
+
+        async function deleteChangelog(id) {
+            if (!confirm('Delete this changelog?')) return;
+            try {
+                await api(`/changelogs/${id}`, 'DELETE');
+                toast('Changelog deleted');
+                loadChangelogs();
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        function openChangelogModal(existing = null) {
+            document.getElementById('modalTitle').textContent = existing ? 'Edit Changelog' : 'New Changelog';
+            document.getElementById('modalBody').innerHTML = `
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Version</label>
+                        <input type="text" class="form-input" id="changeVersion" value="${escapeHtml(existing?.version || '')}" placeholder="e.g. 1.2.0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Release Type</label>
+                        <select class="form-select" id="changeType">
+                            <option value="major" ${existing?.release_type === 'major' ? 'selected' : ''}>Major</option>
+                            <option value="minor" ${existing?.release_type === 'minor' ? 'selected' : ''}>Minor</option>
+                            <option value="patch" ${existing?.release_type === 'patch' ? 'selected' : ''}>Patch</option>
+                            <option value="hotfix" ${existing?.release_type === 'hotfix' ? 'selected' : ''}>Hotfix</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-input" id="changeTitle" value="${escapeHtml(existing?.title || '')}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Content (Markdown)</label>
+                    <textarea class="form-textarea" id="changeContent" style="min-height: 200px;">${escapeHtml(existing?.content || '')}</textarea>
+                </div>
+            `;
+            document.getElementById('modalSubmit').onclick = () => saveChangelog(existing?.id);
+            document.getElementById('modalOverlay').classList.add('active');
+        }
+
+        function editChangelog(c) {
+            openChangelogModal(c);
+        }
+
+        async function saveChangelog(id) {
+            const data = {
+                version: document.getElementById('changeVersion').value,
+                release_type: document.getElementById('changeType').value,
+                title: document.getElementById('changeTitle').value,
+                content: document.getElementById('changeContent').value
+            };
+            
+            try {
+                if (id) {
+                    await api(`/changelogs/${id}`, 'PUT', data);
+                } else {
+                    await api('/changelogs', 'POST', data);
+                }
+                toast('Changelog saved');
+                closeModal();
+                loadChangelogs();
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        // ====================================================================
+        // AUDIT LOGS
+        // ====================================================================
+        async function loadAuditLogs() {
+            try {
+                const filter = document.getElementById('auditFilter').value;
+                const params = filter ? `?action=${filter}` : '';
+                const data = await api(`/audit-logs${params}`);
+                
+                document.getElementById('auditTable').innerHTML = data.logs.map(log => {
+                    let changes = '';
+                    if (log.old_value || log.new_value) {
+                        try {
+                            const oldVal = log.old_value ? JSON.parse(log.old_value) : null;
+                            const newVal = log.new_value ? JSON.parse(log.new_value) : null;
+                            changes = `<div class="audit-changes">
+                                ${oldVal ? `<div class="audit-old">- ${JSON.stringify(oldVal)}</div>` : ''}
+                                ${newVal ? `<div class="audit-new">+ ${JSON.stringify(newVal)}</div>` : ''}
+                            </div>`;
+                        } catch (e) {
+                            changes = '-';
+                        }
+                    }
+                    
+                    return `
+                        <tr>
+                            <td><span class="badge badge-info">${escapeHtml(log.action)}</span></td>
+                            <td>${escapeHtml(log.resource_type)}${log.resource_id ? ` (${log.resource_id.substring(0, 8)}...)` : ''}</td>
+                            <td>${escapeHtml(log.admin_email)}</td>
+                            <td>${changes || '-'}</td>
+                            <td style="font-size: 0.75rem;">${escapeHtml(log.ip_address)}</td>
+                            <td style="font-size: 0.75rem;">${formatDate(log.created_at)}</td>
+                        </tr>
+                    `;
+                }).join('') || '<tr><td colspan="6" class="empty-state">No audit logs</td></tr>';
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+        }
+
+        // ====================================================================
+        // MODAL
+        // ====================================================================
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+        }
+
+        document.getElementById('modalOverlay').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modalOverlay')) closeModal();
+        });
+
+        // ====================================================================
+        // SIGNOUT
+        // ====================================================================
+        document.getElementById('signoutBtn').addEventListener('click', async () => {
+            try {
+                await fetch('/signout', { method: 'POST', credentials: 'same-origin' });
+            } catch (e) {}
+            window.location.href = '/signin';
+        });
+
+        // ====================================================================
+        // INIT
+        // ====================================================================
+        loadDashboard();
+    </script>
+</body>
+</html>
