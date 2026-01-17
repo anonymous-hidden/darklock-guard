@@ -1,5 +1,5 @@
 {
-  "generated": "2026-01-16T23:14:43.834Z",
+  "generated": "2026-01-17T05:51:55.095Z",
   "version": "1.0.0",
   "fileCount": 216,
   "hashes": {
@@ -19,7 +19,7 @@
     "D:\\discord bot\\file-protection\\agent\\validator.js": "832fc82fe3a4d0c777f51f5a413198ee3f2709fd9a1d5b6c575c28136ebdf67d",
     "D:\\discord bot\\file-protection\\agent\\watcher.js": "4aa10a7fddd0f5197913dbc20e5c6d89662b4233bb15c4bd551ba8aaaa15a879",
     "D:\\discord bot\\file-protection\\index.js": "0923df633b7e5779749fb1bb13c4c685d6eb61601743df3c7cc3b9d012788668",
-    "D:\\discord bot\\darklock\\server.js": "7c0603d31166617ea4b0caf3a543c0292422fc39ced3d868fc3248fee7c5d21c",
+    "D:\\discord bot\\darklock\\server.js": "79eb85395e6508d4c60a62c00711c4156c6bec1928e3800ba27bedd5b4df99c0",
     "D:\\discord bot\\darklock\\integration.js": "13077ebc260d987767f60c9876f9b841fe8b519f2edeb045c870cf820a4f20bc",
     "D:\\discord bot\\darklock\\start.js": "ca438628f412800c28b75b798cac600a4864874b26974d4bb74b7a98626f79c6",
     "D:\\discord bot\\darklock\\data\\darklock.db": "713335996c2cff2c101251f57b599932d2fe0af6c19d223cbaf3262b93d36f6b",
@@ -80,8 +80,8 @@
     "D:\\discord bot\\package-lock.json": "766e009cebaabc6e613d695494ea9a961aac897127855ea40db91dac34dc582e",
     "D:\\discord bot\\data\\ranks.json": "a6d7a2d1a6381e405f2ccf695c334471365298639c4b83b2ab0d740c1b8370d5",
     "D:\\discord bot\\data\\file-integrity.json": "354a179bb8913d57abc1d0a7b71af139d97a7344ebb4aa3106227004a2f9d119",
-    "D:\\discord bot\\darklock\\routes\\admin-api.js": "f0e6011a8383e603cfa360c79546a943a3d56efa41b847ccf56c9ec8d19dce38",
-    "D:\\discord bot\\darklock\\routes\\admin-auth.js": "82533858425f94ddb5c3dc706b9d234cce9b8e9f8b98cf8f9dfc9489b9dd509b",
+    "D:\\discord bot\\darklock\\routes\\admin-api.js": "d712a3412abe4f2e64e8272ce91028a8d9e5e34b2ae42d4d1647c96d45036493",
+    "D:\\discord bot\\darklock\\routes\\admin-auth.js": "28cc5b0b30a41400fdf92f2b5e16c695134a0024ee3adf3542e82c2ad921ce59",
     "D:\\discord bot\\darklock\\routes\\auth.js": "8d009b13ccedc873dc22704980c768d58339872a7f7f2ba06abf010411db27f0",
     "D:\\discord bot\\darklock\\routes\\dashboard.js": "0424dcea412d130a8882dd8c2e7f62c5ba5637491349407699ae98b9b2e48861",
     "D:\\discord bot\\darklock\\routes\\index.js": "087713eb2260c4e39136417474f5554357005938ec82efe2e56c6e22bfc1278c",
@@ -202,7 +202,7 @@
     "D:\\discord bot\\src\\events\\ready.js": "42aaeea20e7989230b060441fc72c5067b2d8268a148c54992d1454ac8279c0d",
     "D:\\discord bot\\darklock\\views\\404.html": "c6cb39a64ce4cfdc48a48e2bbda0e955e40f98075e641f62971a27247312014f",
     "D:\\discord bot\\darklock\\views\\admin-dashboard.html": "bcfa2e3109c4228a3cfaacf300497c924796bfe5d95ca2004a836341857cdaa1",
-    "D:\\discord bot\\darklock\\views\\admin.html": "92d30f05c304987755753befecb84213eb39c07163cd156ac80142e38a2e74f4",
+    "D:\\discord bot\\darklock\\views\\admin.html": "ad29ec43f514963e855701edfb046aa2f2d6b1952cd0813023f0eeab30e1153c",
     "D:\\discord bot\\darklock\\views\\changelog.html": "a66bcc14e25b74b96427b081d28ccb976c4deda91a74a496a285a19fda74aece",
     "D:\\discord bot\\darklock\\views\\dashboard.html": "62df66534dd364433c046fa5c7b7556bb15fc7f6f8a317c846a4c862dcb66942",
     "D:\\discord bot\\darklock\\views\\docs.html": "bcab2f563bff193ebeacf32cf0034863b3dcbebb5ed462a1f4a34078aab2658e",
@@ -220,5 +220,5 @@
     "D:\\discord bot\\darklock\\views\\terms.html": "823c2df4ebed6ae6b082428e808bb21ed00f2d48922ad99c8eb5e05a208a6d3f",
     "D:\\discord bot\\ainti-tampering-app\\tauri-app\\src\\styles\\main.css": "01b6e8694ed0bee91f02ec817a34d51e678fef655e673919450856c7cca83986"
   },
-  "signature": "4ef6522c516aa514d9dc0c9d3d8938e745e075806faf7a0144ba8d5d3c379595"
+  "signature": "f8cd64e99bad34b3f76701457a0e8d56e1bc640d7320ef91ebe40e5047fb777d"
 }
