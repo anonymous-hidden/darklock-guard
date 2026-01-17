@@ -1064,10 +1064,12 @@
         let currentAdmin = null;
         let currentSection = 'dashboard';
 
-        document.addEventListener('DOMContentLoaded', () => {
-            loadDashboard();
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Try to load dashboard first - the server will handle auth
+            // If we're not authenticated, the API will return 401 and we'll redirect
             startClock();
             setupNavigation();
+            await loadDashboard();
         });
 
         function setupNavigation() {
@@ -1119,9 +1121,23 @@
                 const res = await fetch(`/api/admin${endpoint}`, {
                     ...options,
                     headers: { 'Content-Type': 'application/json', ...options.headers },
-                    credentials: 'same-origin'
+                    credentials: 'include' // Changed from 'same-origin' to 'include' for better cookie handling
                 });
-                if (res.status === 401) { window.location.href = '/signin'; return null; }
+                if (res.status === 401) {
+                    // Check if we're already on signin page or being redirected to prevent loop
+                    const isAlreadyRedirecting = sessionStorage.getItem('auth_redirecting');
+                    if (!isAlreadyRedirecting && !window.location.pathname.includes('/signin')) {
+                        console.error('[Auth] 401 Unauthorized - redirecting to signin');
+                        sessionStorage.setItem('auth_redirecting', 'true');
+                        toast('Session expired. Please sign in again.', 'error');
+                        setTimeout(() => {
+                            window.location.href = '/signin?redirect=' + encodeURIComponent(window.location.pathname);
+                        }, 1000);
+                    }
+                    return null;
+                }
+                // Clear redirect flag on successful request
+                sessionStorage.removeItem('auth_redirecting');
                 const data = await res.json();
                 if (!data.success && data.error) toast(data.error, 'error');
                 return data;

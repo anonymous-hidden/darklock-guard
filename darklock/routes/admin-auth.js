@@ -260,6 +260,7 @@ async function requireAdminAuth(req, res, next) {
     const token = req.cookies?.admin_token;
 
     if (!token) {
+        console.log('[Admin Auth] No admin_token cookie found. Cookies:', Object.keys(req.cookies || {}));
         // Redirect to signin for page requests, 401 for API
         if (req.accepts('html')) {
             return res.redirect('/signin');
@@ -270,11 +271,13 @@ async function requireAdminAuth(req, res, next) {
     const decoded = verifyAdminToken(token);
 
     if (!decoded) {
+        console.log('[Admin Auth] Invalid or expired token');
         // Clear invalid cookie
         res.clearCookie('admin_token', {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict'
+            sameSite: 'lax',
+            path: '/'
         });
 
         if (req.accepts('html')) {
@@ -286,10 +289,12 @@ async function requireAdminAuth(req, res, next) {
     // Verify admin still exists and is active
     const admin = await getAdminById(decoded.adminId);
     if (!admin) {
+        console.log('[Admin Auth] Admin not found:', decoded.adminId);
         res.clearCookie('admin_token', {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict'
+            sameSite: 'lax',
+            path: '/'
         });
 
         if (req.accepts('html')) {
@@ -392,7 +397,7 @@ router.post('/signin', signinLimiter, async (req, res) => {
         res.cookie('admin_token', token, {
             httpOnly: true, // Prevents XSS access to cookie
             secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-            sameSite: 'strict', // Prevents CSRF
+            sameSite: 'lax', // Use 'lax' to allow cookies in same-site navigations and API calls
             maxAge: 60 * 60 * 1000, // 1 hour (matches JWT expiry)
             path: '/'
         });
@@ -435,7 +440,7 @@ router.post('/signout', async (req, res) => {
     res.clearCookie('admin_token', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax',
         path: '/'
     });
 
@@ -458,7 +463,7 @@ router.get('/signout', async (req, res) => {
     res.clearCookie('admin_token', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'lax',
         path: '/'
     });
 
