@@ -872,7 +872,7 @@ class SecurityBot {
                 try {
                     const DarklockPlatform = require('../darklock/server');
                     const darklock = new DarklockPlatform();
-                    await darklock.mountOn(this.dashboard.app);
+                    await darklock.mountOn(this.dashboard.app, this); // Pass bot reference for admin API
                     this.logger.info('🔐 Darklock Platform mounted at /platform/*');
                     this.logger.info(`   - Homepage: http://localhost:${port}/platform`);
                     this.logger.info(`   - Darklock Guard: http://localhost:${port}/platform/download/darklock-guard-installer`);

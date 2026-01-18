@@ -43,24 +43,26 @@ const path = require('path');
  * 
  * // After setting up all existing routes, before server.listen()
  * const darklock = new DarklockPlatform();
- * darklock.mountOn(this.app);
+ * darklock.mountOn(this.app, this.bot); // Pass bot reference for admin API
  * ```
  * 
  * This mounts the Darklock platform at /platform/* while leaving all
  * existing routes untouched.
  */
 
-function integrateWithExistingDashboard(existingExpressApp) {
-    const darklock = new DarklockPlatform();
-    darklock.mountOn(existingExpressApp);
+function integrateWithExistingDashboard(existingExpressApp, discordBot = null) {
+    const darklock = new DarklockPlatform({ bot: discordBot });
+    darklock.mountOn(existingExpressApp, discordBot);
     
     console.log('[Integration] Darklock platform mounted successfully');
     console.log('[Integration] Existing bot routes: UNCHANGED');
+    console.log('[Integration] Discord bot integration:', discordBot ? 'ENABLED' : 'DISABLED');
     console.log('[Integration] New platform routes:');
     console.log('  - /platform (Homepage)');
     console.log('  - /platform/auth/login');
     console.log('  - /platform/auth/signup');
     console.log('  - /platform/dashboard');
+    console.log('  - /admin (Admin Dashboard with Bot Management)');
     
     return darklock;
 }

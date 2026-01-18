@@ -20,6 +20,9 @@ const rateLimit = require('express-rate-limit');
 // Database initialization
 const db = require('./utils/database');
 
+// Centralized maintenance module
+const maintenance = require('./utils/maintenance');
+
 // Import routes
 const authRoutes = require('./routes/auth');
 const { router: dashboardRoutes, requireAuth } = require('./routes/dashboard');
@@ -33,6 +36,7 @@ const {
 // Admin dashboard
 const { initializeAdminSchema } = require('./utils/admin-schema');
 const adminApiRoutes = require('./routes/admin-api');
+const { setDiscordBot } = require('./routes/admin-api');
 const { initializeDefaultAdmins } = require('./default-admin');
 
 class DarklockPlatform {
@@ -40,9 +44,25 @@ class DarklockPlatform {
         this.app = express();
         this.port = options.port || process.env.DARKLOCK_PORT || 3002;
         this.existingApp = options.existingApp || null;
+        this.discordBot = options.bot || null;
+        
+        // If bot is provided, set it for admin API routes
+        if (this.discordBot) {
+            setDiscordBot(this.discordBot);
+        }
         
         this.setupMiddleware();
         this.setupRoutes();
+    }
+    
+    /**
+     * Set the Discord bot reference (can be called after initialization)
+     * @param {Object} bot - The Discord bot instance
+     */
+    setBot(bot) {
+        this.discordBot = bot;
+        setDiscordBot(bot);
+        console.log('[Darklock Platform] Discord bot reference set');
     }
     
     /**
@@ -175,62 +195,31 @@ class DarklockPlatform {
             next();
         });
         
-        // Maintenance mode middleware - redirects visitors to maintenance page
-        this.app.use(async (req, res, next) => {
-            // Skip maintenance check for:
-            // - Static files
-            // - API endpoints (they return JSON errors instead)
-            // - Admin routes (admins can still access)
-            // - The maintenance page itself
-            // - Health check
-            const skipPaths = [
-                '/platform/static',
-                '/api/',
-                '/admin',
-                '/signin',
-                '/signout',
-                '/maintenance',
-                '/platform/api/health'
-            ];
-            
-            if (skipPaths.some(p => req.path.startsWith(p))) {
-                return next();
-            }
-            
-            try {
-                const maintenanceSetting = await db.get(`
-                    SELECT value FROM platform_settings WHERE key = 'maintenance_mode'
-                `);
-                
-                if (maintenanceSetting?.value === 'true') {
-                    // Check if IP is allowed to bypass maintenance
-                    const allowedIpsSetting = await db.get(`
-                        SELECT value FROM platform_settings WHERE key = 'maintenance_allowed_ips'
-                    `);
-                    
-                    const clientIP = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-                                     req.headers['x-real-ip'] ||
-                                     req.ip;
-                    
-                    const allowedIps = allowedIpsSetting?.value ? 
-                        allowedIpsSetting.value.split(',').map(ip => ip.trim()).filter(ip => ip) : [];
-                    
-                    // Allow localhost always for development
-                    const bypassIps = ['127.0.0.1', '::1', 'localhost', ...allowedIps];
-                    
-                    if (!bypassIps.some(ip => clientIP.includes(ip))) {
-                        // Redirect to maintenance page
-                        return res.redirect('/maintenance');
-                    }
+        // Initialize maintenance module with database
+        maintenance.init(db);
+        
+        // Global maintenance mode enforcement - runs BEFORE all routes
+        // Uses centralized maintenance configuration
+        this.app.use(maintenance.createMiddleware({
+            onBlock: (req, res, config) => {
+                const fullPath = (req.baseUrl || '') + req.path;
+                // For API requests, return 503 JSON
+                if (fullPath.startsWith('/api/') || fullPath.startsWith('/platform/api/')) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'Service temporarily unavailable',
+                        maintenance: {
+                            enabled: true,
+                            message: config.platform.message || config.bot.reason,
+                            endTime: config.platform.endTime || config.bot.endTime
+                        }
+                    });
                 }
-                
-                next();
-            } catch (err) {
-                // If database check fails, allow access (fail open for availability)
-                console.error('[Maintenance Check] Error:', err.message);
-                next();
+                // For all other requests, redirect to maintenance page
+                const maintenancePath = fullPath.startsWith('/platform') ? '/platform/maintenance' : '/maintenance';
+                return res.redirect(maintenancePath);
             }
-        });
+        }));
     }
     
     /**
@@ -492,20 +481,30 @@ class DarklockPlatform {
         });
         
         // Public Maintenance API - for maintenance page countdown
+        // Uses centralized maintenance module
         this.app.get('/api/public/maintenance-status', async (req, res) => {
             try {
-                const [enabled, message, endTime] = await Promise.all([
-                    db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_mode'`),
-                    db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_message'`),
-                    db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_end_time'`)
-                ]);
+                const config = await maintenance.getMaintenanceConfig();
+                
+                const platformMaintenance = config.platform.enabled;
+                const isBotMaintenance = config.bot.enabled;
+                
+                // Determine which maintenance is active
+                let maintenanceMessage = config.platform.message;
+                let maintenanceEndTime = config.platform.endTime;
+                
+                if (isBotMaintenance && !platformMaintenance) {
+                    maintenanceMessage = config.bot.reason || 'The Discord bot is currently undergoing maintenance.';
+                    maintenanceEndTime = config.bot.endTime;
+                }
                 
                 res.json({
                     success: true,
                     maintenance: {
-                        enabled: enabled?.value === 'true',
-                        message: message?.value || 'We\'re performing scheduled maintenance. Please check back soon.',
-                        endTime: endTime?.value || null
+                        enabled: platformMaintenance || isBotMaintenance,
+                        message: maintenanceMessage,
+                        endTime: maintenanceEndTime,
+                        type: platformMaintenance ? 'platform' : (isBotMaintenance ? 'bot' : 'none')
                     }
                 });
             } catch (err) {
@@ -515,7 +514,8 @@ class DarklockPlatform {
                     maintenance: {
                         enabled: false,
                         message: '',
-                        endTime: null
+                        endTime: null,
+                        type: 'none'
                     }
                 });
             }
@@ -661,9 +661,18 @@ class DarklockPlatform {
     /**
      * Mount platform routes on existing Express app
      * This allows Darklock to coexist with the Discord bot dashboard
+     * @param {Object} existingApp - Express app instance
+     * @param {Object} bot - Optional Discord bot instance for bot management features
      */
-    async mountOn(existingApp) {
+    async mountOn(existingApp, bot = null) {
         console.log('[Darklock Platform] Mounting on existing Express app...');
+        
+        // Store and set bot reference if provided
+        if (bot) {
+            this.discordBot = bot;
+            setDiscordBot(bot);
+            console.log('[Darklock Platform] Discord bot reference set for admin API');
+        }
         
         // Initialize database and admin tables before mounting routes
         try {
@@ -846,7 +855,7 @@ class DarklockPlatform {
         
         // Health check endpoint for monitoring (public)
         existingApp.get('/platform/api/health', (req, res) => {
-            try {
+            try{
                 const fs = require('fs');
                 const usersFileExists = fs.existsSync(path.join(process.env.DATA_PATH || path.join(__dirname, 'data'), 'users.json'));
                 const sessionsFileExists = fs.existsSync(path.join(process.env.DATA_PATH || path.join(__dirname, 'data'), 'sessions.json'));
@@ -864,6 +873,35 @@ class DarklockPlatform {
                 res.status(500).json({
                     status: 'unhealthy',
                     error: 'Health check failed'
+                });
+            }
+        });
+        
+        // Maintenance page (public, no auth required)
+        existingApp.get('/platform/maintenance', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/maintenance.html'));
+        });
+        
+        // Public maintenance status API (for maintenance page)
+        existingApp.get('/platform/api/public/maintenance-status', async (req, res) => {
+            try {
+                const config = await maintenance.getMaintenanceConfig();
+                res.json({
+                    success: true,
+                    maintenance: {
+                        enabled: config.platform.enabled || config.bot.enabled,
+                        type: config.platform.enabled ? 'platform' : 'bot',
+                        message: config.platform.message || config.bot.reason,
+                        endTime: config.platform.endTime || config.bot.endTime
+                    }
+                });
+            } catch (err) {
+                console.error('[Maintenance API] Error:', err);
+                res.json({
+                    success: true,
+                    maintenance: {
+                        enabled: false
+                    }
                 });
             }
         });

@@ -3,10 +3,35 @@
  * Handles all Discord interactions (commands, buttons, select menus, modals)
  */
 
-const { Collection, PermissionFlagsBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+const { Collection, PermissionFlagsBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder } = require('discord.js');
+const path = require('path');
 
 // Import the new help v2 handler
 const { handleHelpInteraction, PREFIX: HELP_PREFIX } = require('../interactions/helpV2Handler');
+
+// Bot maintenance check
+async function isBotInMaintenance() {
+    try {
+        const darklockDbPath = path.join(process.cwd(), 'data', 'darklock.db');
+        const sqlite3 = require('sqlite3').verbose();
+        const db = new sqlite3.Database(darklockDbPath);
+        
+        const result = await new Promise((resolve) => {
+            db.get(`SELECT value FROM platform_settings WHERE key = 'bot_maintenance'`, (err, row) => {
+                db.close();
+                resolve(err ? null : row);
+            });
+        });
+        
+        if (!result?.value) return { enabled: false };
+        
+        const data = JSON.parse(result.value);
+        return data;
+    } catch (err) {
+        console.error('[Bot Maintenance] Check failed:', err.message);
+        return { enabled: false };
+    }
+}
 
 module.exports = {
     name: 'interactionCreate',
@@ -20,6 +45,29 @@ module.exports = {
                 }).catch(() => {});
             }
             return;
+        }
+        
+        // Check bot maintenance mode (separate from platform maintenance)
+        const maintenance = await isBotInMaintenance();
+        if (maintenance.enabled && interaction.isChatInputCommand()) {
+            const embed = new EmbedBuilder()
+                .setColor(0xf59e0b)
+                .setTitle('🔧 Bot Maintenance')
+                .setDescription(maintenance.reason || 'The bot is currently undergoing maintenance.')
+                .setFooter({ text: 'We apologize for the inconvenience' });
+            
+            if (maintenance.endTime) {
+                const endDate = new Date(maintenance.endTime);
+                embed.addFields({
+                    name: 'Estimated Back Online',
+                    value: `<t:${Math.floor(endDate.getTime() / 1000)}:R>`
+                });
+            }
+            
+            return interaction.reply({
+                embeds: [embed],
+                ephemeral: true
+            }).catch(() => {});
         }
         
         // NEW: Check for help v2 interactions FIRST (buttons and modals)

@@ -14,6 +14,9 @@ const Stripe = require('stripe');
 const cookieParser = require('cookie-parser');
 const TwoFactorAuth = require('../utils/TwoFactorAuth');
 
+// Centralized maintenance module
+const maintenance = require('../../darklock/utils/maintenance');
+
 // SECURITY: Import centralized security helpers
 const {
     requireEnvSecret,
@@ -577,6 +580,59 @@ The DarkLock Team`
             res.json({ received: true });
         });
 
+        // Initialize maintenance module with Darklock database
+        (async () => {
+            try {
+                const darklockDbPath = path.join(process.cwd(), 'data', 'darklock.db');
+                const sqlite3 = require('sqlite3').verbose();
+                const darklockDb = new sqlite3.Database(darklockDbPath);
+                
+                // Wrap sqlite3 database with promise-based API for maintenance module
+                const dbWrapper = {
+                    get: (sql, params = []) => new Promise((resolve, reject) => {
+                        darklockDb.get(sql, params, (err, row) => {
+                            if (err) reject(err);
+                            else resolve(row);
+                        });
+                    }),
+                    run: (sql, params = []) => new Promise((resolve, reject) => {
+                        darklockDb.run(sql, params, function(err) {
+                            if (err) reject(err);
+                            else resolve({ lastID: this.lastID, changes: this.changes });
+                        });
+                    })
+                };
+                
+                maintenance.init(dbWrapper);
+                console.log('[Dashboard] Maintenance module initialized');
+            } catch (err) {
+                console.error('[Dashboard] Failed to initialize maintenance module:', err.message);
+            }
+        })();
+
+        // Global maintenance mode enforcement - runs BEFORE all routes
+        // Uses centralized maintenance configuration from Darklock database
+        this.app.use(maintenance.createMiddleware({
+            onBlock: (req, res, config) => {
+                const fullPath = (req.baseUrl || '') + req.path;
+                // For API requests, return 503 JSON
+                if (fullPath.startsWith('/api/') || fullPath.startsWith('/platform/api/')) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'Service temporarily unavailable',
+                        maintenance: {
+                            enabled: true,
+                            message: config.platform.message || config.bot.reason,
+                            endTime: config.platform.endTime || config.bot.endTime
+                        }
+                    });
+                }
+                // For all other requests, redirect to appropriate maintenance page
+                const maintenancePath = fullPath.startsWith('/platform') ? '/platform/maintenance' : '/maintenance';
+                return res.redirect(maintenancePath);
+            }
+        }));
+
         // Static files
         // Serve the marketing website under /site to avoid asset path conflicts with dashboard
         this.app.use('/site', express.static(path.join(process.cwd(), 'website')));
@@ -730,6 +786,12 @@ The DarkLock Team`
     }
 
     setupRoutes() {
+        // Maintenance page (must be before other routes)
+        this.app.get('/maintenance', (req, res) => {
+            const maintenanceHtmlPath = path.join(process.cwd(), 'darklock', 'views', 'maintenance.html');
+            res.sendFile(maintenanceHtmlPath);
+        });
+
         // Make the external website the first page people see
         this.app.get('/', (req, res) => {
             res.redirect('/site/');
@@ -1006,6 +1068,64 @@ The DarkLock Team`
             res.json({ authenticated: true, user: req.user });
         });
 
+        // Public API for maintenance status (no auth required)
+        this.app.get('/api/public/maintenance-status', async (req, res) => {
+            try {
+                const darklockDbPath = path.join(process.cwd(), 'data', 'darklock.db');
+                const sqlite3 = require('sqlite3').verbose();
+                const db = await new Promise((resolve, reject) => {
+                    const database = new sqlite3.Database(darklockDbPath, (err) => {
+                        if (err) reject(err);
+                        else resolve(database);
+                    });
+                });
+                
+                const [enabled, message, endTime, botMaintenance] = await Promise.all([
+                    new Promise((resolve) => db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_mode'`, (err, row) => resolve(err ? null : row))),
+                    new Promise((resolve) => db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_message'`, (err, row) => resolve(err ? null : row))),
+                    new Promise((resolve) => db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_end_time'`, (err, row) => resolve(err ? null : row))),
+                    new Promise((resolve) => db.get(`SELECT value FROM platform_settings WHERE key = 'bot_maintenance'`, (err, row) => resolve(err ? null : row)))
+                ]);
+                
+                db.close();
+                
+                const botMaintenanceData = botMaintenance ? JSON.parse(botMaintenance.value || '{}') : {};
+                const platformMaintenance = enabled?.value === 'true';
+                const isBotMaintenance = botMaintenanceData.enabled || false;
+                
+                // Determine which maintenance is active
+                let maintenanceMessage = message?.value || 'We\'re performing scheduled maintenance. Please check back soon.';
+                let maintenanceEndTime = endTime?.value || null;
+                
+                if (isBotMaintenance && !platformMaintenance) {
+                    // Bot maintenance is active, use bot message and end time
+                    maintenanceMessage = botMaintenanceData.reason || 'The Discord bot is currently undergoing maintenance. The platform will be back online soon.';
+                    maintenanceEndTime = botMaintenanceData.endTime || null;
+                }
+                
+                res.json({
+                    success: true,
+                    maintenance: {
+                        enabled: platformMaintenance || isBotMaintenance,
+                        message: maintenanceMessage,
+                        endTime: maintenanceEndTime,
+                        type: platformMaintenance ? 'platform' : (isBotMaintenance ? 'bot' : 'none')
+                    }
+                });
+            } catch (err) {
+                console.error('[Public API] Maintenance status error:', err);
+                res.json({
+                    success: true,
+                    maintenance: {
+                        enabled: false,
+                        message: '',
+                        endTime: null,
+                        type: 'none'
+                    }
+                });
+            }
+        });
+
         this.app.get('/api/auth/me', this.authenticateToken.bind(this), (req, res) => {
             res.json({
                 userId: req.user.userId,
@@ -1110,11 +1230,18 @@ The DarkLock Team`
         this.app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
 
         // === PROTECTED API ROUTES - All require authentication ===
-        // Apply auth middleware to all /api/* routes
-        this.app.use('/api/', this.authenticateToken.bind(this));
+        // Apply auth middleware to all /api/* routes EXCEPT /api/admin (handled by Darklock)
+        this.app.use('/api/', (req, res, next) => {
+            // Skip authentication for /api/admin routes (Darklock handles its own auth)
+            if (req.path.startsWith('/admin')) {
+                return next();
+            }
+            return this.authenticateToken(req, res, next);
+        });
         const csrfGuard = this.validateCSRF.bind(this);
         this.app.use('/api/', (req, res, next) => {
-            if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+            // Skip CSRF for GET/HEAD/OPTIONS and /api/admin routes
+            if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS' || req.path.startsWith('/admin')) {
                 return next();
             }
             return csrfGuard(req, res, next);
@@ -1733,7 +1860,13 @@ The DarkLock Team`
         });
 
         // Protected API routes (require authentication) - MOVED BEFORE SETUP ENDPOINTS FOR SECURITY
-        this.app.use('/api', this.authenticateToken.bind(this));
+        // Skip /api/admin routes as they have their own authentication (Darklock)
+        this.app.use('/api', (req, res, next) => {
+            if (req.path.startsWith('/admin')) {
+                return next();
+            }
+            return this.authenticateToken(req, res, next);
+        });
 
         // Setup API endpoints (now protected by authentication)
         this.app.get('/api/channels', this.authenticateToken.bind(this), this.getChannels.bind(this));

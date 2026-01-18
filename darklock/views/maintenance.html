@@ -229,7 +229,7 @@
         // Load maintenance settings
         async function loadMaintenanceInfo() {
             try {
-                const res = await fetch('/api/public/maintenance-status');
+                const res = await fetch('/platform/api/public/maintenance-status');
                 if (res.ok) {
                     const data = await res.json();
                     if (data.maintenance?.message) {

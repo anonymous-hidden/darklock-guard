@@ -23,6 +23,10 @@ const rateLimit = require('express-rate-limit');
 
 const db = require('../utils/database');
 const { requireAdminAuth } = require('./admin-auth');
+const maintenance = require('../utils/maintenance');
+
+// Initialize maintenance module with database
+maintenance.init(db);
 
 // ============================================================================
 // RATE LIMITING - Stricter for admin endpoints
@@ -806,22 +810,65 @@ router.get('/system-info', requireRole('owner', 'admin'), async (req, res) => {
 // MAINTENANCE MODE
 // ============================================================================
 
+// Get BOT maintenance settings (Discord bot maintenance, not platform maintenance)
+router.get('/bot/maintenance', async (req, res) => {
+    try {
+        const config = await maintenance.getMaintenanceConfig();
+        
+        res.json({
+            success: true,
+            enabled: config.bot.enabled,
+            reason: config.bot.reason,
+            endTime: config.bot.endTime,
+            notifyOwners: config.bot.notifyOwners !== false
+        });
+    } catch (err) {
+        console.error('[Admin API] Get bot maintenance error:', err);
+        res.status(500).json({ success: false, error: 'Failed to get bot maintenance settings' });
+    }
+});
+
+// Update BOT maintenance settings
+router.post('/bot/maintenance', requireRole('owner', 'admin'), async (req, res) => {
+    try {
+        const { enabled, reason, endTime, notifyOwners } = req.body;
+        
+        await maintenance.updateBotMaintenance({
+            enabled: !!enabled,
+            reason: reason || '',
+            endTime: endTime || '',
+            notifyOwners: notifyOwners !== false
+        }, req.admin.id);
+
+        await auditLog(req, enabled ? 'ENABLE' : 'DISABLE', 'bot_maintenance_mode', 'system', null, { 
+            enabled, 
+            reason,
+            endTime
+        });
+
+        res.json({ 
+            success: true, 
+            message: `Bot maintenance mode ${enabled ? 'enabled' : 'disabled'}`
+        });
+    } catch (err) {
+        console.error('[Admin API] Update bot maintenance error:', err);
+        res.status(500).json({ success: false, error: 'Failed to update bot maintenance settings' });
+    }
+});
+
+// Get platform maintenance settings
 router.get('/maintenance', async (req, res) => {
     try {
-        const [enabled, message, endTime, allowedIps] = await Promise.all([
-            db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_mode'`),
-            db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_message'`),
-            db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_end_time'`),
-            db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_allowed_ips'`)
-        ]);
-
+        const config = await maintenance.getMaintenanceConfig();
+        
         res.json({
             success: true,
             maintenance: {
-                enabled: enabled?.value === 'true',
-                message: message?.value || '',
-                endTime: endTime?.value || null,
-                allowedIps: allowedIps?.value ? allowedIps.value.split(',').filter(ip => ip.trim()) : []
+                enabled: config.platform.enabled,
+                message: config.platform.message,
+                endTime: config.platform.endTime,
+                allowedIps: config.platform.allowedIps,
+                applyLocalhost: config.platform.applyLocalhost
             }
         });
     } catch (err) {
@@ -830,33 +877,30 @@ router.get('/maintenance', async (req, res) => {
     }
 });
 
+// Update platform maintenance settings
 router.post('/maintenance', requireRole('owner', 'admin'), async (req, res) => {
     try {
-        const { enabled, message, endTime, allowedIps } = req.body;
-        const now = new Date().toISOString();
+        const { enabled, message, endTime, allowedIps, applyLocalhost } = req.body;
+        
+        const config = await maintenance.updatePlatformMaintenance({
+            enabled: !!enabled,
+            message: message || '',
+            endTime: endTime || '',
+            allowedIps: allowedIps || [],
+            applyLocalhost: !!applyLocalhost
+        }, req.admin.id);
 
-        // Upsert settings
-        const settings = [
-            ['maintenance_mode', enabled ? 'true' : 'false'],
-            ['maintenance_message', message || ''],
-            ['maintenance_end_time', endTime || ''],
-            ['maintenance_allowed_ips', (allowedIps || []).join(',')]
-        ];
+        await auditLog(req, enabled ? 'ENABLE' : 'DISABLE', 'maintenance_mode', 'system', null, { 
+            enabled, 
+            message,
+            applyLocalhost 
+        });
 
-        for (const [key, value] of settings) {
-            const existing = await db.get(`SELECT key FROM platform_settings WHERE key = ?`, [key]);
-            if (existing) {
-                await db.run(`UPDATE platform_settings SET value = ?, updated_by = ?, updated_at = ? WHERE key = ?`,
-                    [value, req.admin.id, now, key]);
-            } else {
-                await db.run(`INSERT INTO platform_settings (key, value, value_type, updated_by, updated_at) VALUES (?, ?, 'string', ?, ?)`,
-                    [key, value, req.admin.id, now]);
-            }
-        }
-
-        await auditLog(req, enabled ? 'ENABLE' : 'DISABLE', 'maintenance_mode', 'system', null, { enabled, message });
-
-        res.json({ success: true, message: `Maintenance mode ${enabled ? 'enabled' : 'disabled'}` });
+        res.json({ 
+            success: true, 
+            message: `Maintenance mode ${enabled ? 'enabled' : 'disabled'}`,
+            config: config.platform
+        });
     } catch (err) {
         console.error('[Admin API] Update maintenance error:', err);
         res.status(500).json({ success: false, error: 'Failed to update maintenance settings' });
@@ -1189,4 +1233,172 @@ router.delete('/admins/:id', requireRole('owner'), async (req, res) => {
     }
 });
 
+// ============================================================================
+// DISCORD BOT MANAGEMENT
+// ============================================================================
+
+let discordBot = null;
+
+function setDiscordBot(bot) {
+    discordBot = bot;
+    console.log('[Admin API] Discord bot reference set');
+}
+
+// Bot status endpoint
+router.get('/bot/status', async (req, res) => {
+    try {
+        if (!discordBot) {
+            return res.json({
+                online: false,
+                guilds: 0,
+                users: 0,
+                uptime: 0
+            });
+        }
+
+        res.json({
+            online: !!discordBot.user && !!discordBot.readyAt,
+            guilds: discordBot.guilds?.cache?.size || 0,
+            users: discordBot.users?.cache?.size || 0,
+            uptime: discordBot.uptime || 0,
+            ping: discordBot.ws?.ping || 0
+        });
+    } catch (err) {
+        console.error('[Admin API] Bot status error:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch bot status' });
+    }
+});
+
+// Get bot guilds
+router.get('/bot/guilds', async (req, res) => {
+    try {
+        if (!discordBot) {
+            return res.json([]);
+        }
+
+        const guilds = discordBot.guilds?.cache?.map(g => ({
+            id: g.id,
+            name: g.name,
+            memberCount: g.memberCount,
+            icon: g.iconURL()
+        })) || [];
+
+        res.json(guilds);
+    } catch (err) {
+        console.error('[Admin API] Bot guilds error:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch guilds' });
+    }
+});
+
+// Get guild features
+router.get('/bot/guilds/:guildId/features', async (req, res) => {
+    try {
+        if (!discordBot || !discordBot.database) {
+            return res.status(503).json({ success: false, error: 'Bot not available' });
+        }
+
+        const { guildId } = req.params;
+        const config = await discordBot.database.getGuildConfig(guildId);
+        
+        res.json({
+            antiNuke: config?.antiNuke?.enabled || false,
+            antiRaid: config?.antiRaid?.enabled || false,
+            antiSpam: config?.antiSpam?.enabled || false,
+            wordFilter: config?.wordFilter?.enabled || false,
+            verification: config?.verification?.enabled || false
+        });
+    } catch (err) {
+        console.error('[Admin API] Guild features error:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch guild features' });
+    }
+});
+
+// Update guild features
+router.post('/bot/guilds/:guildId/features', async (req, res) => {
+    try {
+        if (!discordBot || !discordBot.database) {
+            return res.status(503).json({ success: false, error: 'Bot not available' });
+        }
+
+        const { guildId } = req.params;
+        const features = req.body;
+
+        // Update each feature
+        for (const [feature, enabled] of Object.entries(features)) {
+            await discordBot.database.updateGuildSetting(guildId, feature, { enabled });
+        }
+
+        await auditLog(req, 'UPDATE', 'bot_guild_features', guildId, null, features);
+        res.json({ success: true, message: 'Guild features updated' });
+    } catch (err) {
+        console.error('[Admin API] Update guild features error:', err);
+        res.status(500).json({ success: false, error: 'Failed to update guild features' });
+    }
+});
+
+// Get bot commands
+router.get('/bot/commands', async (req, res) => {
+    try {
+        if (!discordBot) {
+            return res.json([]);
+        }
+
+        const commands = discordBot.commands?.map(c => ({
+            name: c.name,
+            description: c.description,
+            category: c.category || 'Other'
+        })) || [];
+
+        res.json(commands);
+    } catch (err) {
+        console.error('[Admin API] Bot commands error:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch commands' });
+    }
+});
+
+// Update bot presence
+router.post('/bot/presence', requireRole('admin'), async (req, res) => {
+    try {
+        if (!discordBot) {
+            return res.status(503).json({ success: false, error: 'Bot not available' });
+        }
+
+        const { status, activity } = req.body;
+
+        if (status) {
+            await discordBot.user.setStatus(status);
+        }
+
+        if (activity) {
+            await discordBot.user.setActivity(activity.name, { type: activity.type });
+        }
+
+        await auditLog(req, 'UPDATE', 'bot_presence', 'presence', null, { status, activity });
+        res.json({ success: true, message: 'Bot presence updated' });
+    } catch (err) {
+        console.error('[Admin API] Update presence error:', err);
+        res.status(500).json({ success: false, error: 'Failed to update presence' });
+    }
+});
+
+// Get bot settings
+router.get('/bot/settings', async (req, res) => {
+    try {
+        if (!discordBot) {
+            return res.status(503).json({ success: false, error: 'Bot not available' });
+        }
+
+        // Return bot-wide settings
+        res.json({
+            prefix: process.env.BOT_PREFIX || '!',
+            supportServer: process.env.SUPPORT_SERVER_ID,
+            defaultLanguage: 'en'
+        });
+    } catch (err) {
+        console.error('[Admin API] Bot settings error:', err);
+        res.status(500).json({ success: false, error: 'Failed to fetch bot settings' });
+    }
+});
+
 module.exports = router;
+module.exports.setDiscordBot = setDiscordBot;
