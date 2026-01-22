@@ -1,0 +1,24 @@
+{
+  "name": "hardware-key-protection",
+  "version": "1.0.0",
+  "description": "Raspberry Pi Pico hardware key file protection system",
+  "main": "index.js",
+  "scripts": {
+    "start": "node start-protection.js",
+    "test": "node test-hardware-key.js",
+    "list-ports": "node list-ports.js",
+    "create-backups": "node create-backups.js",
+    "cleanup": "node cleanup-backups.js"
+  },
+  "keywords": [
+    "hardware",
+    "security",
+    "raspberry-pi",
+    "pico",
+    "file-protection"
+  ],
+  "dependencies": {
+    "serialport": "^12.0.0",
+    "chokidar": "^3.5.3"
+  }
+}

@@ -2,29 +2,35 @@
 Secure Setup Wizard
 Main entry point for the application.
 
-A professional, privacy-respecting Windows setup wizard for developers 
-and security professionals.
+A professional, privacy-respecting setup wizard for developers 
+and security professionals. Cross-platform support for Windows and Linux.
 
 Usage:
     python main.py
 
 Requirements:
-    - Windows 10/11
+    - Windows 10/11 or Linux
     - Python 3.8+
     - Dependencies in requirements.txt
 """
 
 import sys
-import ctypes
+import os
+import platform
 from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox
 
 
 def check_admin() -> bool:
-    """Check if running with administrator privileges."""
+    """Check if running with administrator/root privileges."""
     try:
-        return ctypes.windll.shell32.IsUserAnAdmin()
+        if platform.system() == 'Windows':
+            import ctypes
+            return ctypes.windll.shell32.IsUserAnAdmin()
+        else:
+            # Linux/Unix - check if running as root
+            return os.geteuid() == 0
     except:
         return False
 
@@ -35,18 +41,35 @@ def show_admin_warning():
     root = tk.Tk()
     root.withdraw()
     
+    is_windows = platform.system() == 'Windows'
+    priv_name = "Administrator" if is_windows else "root/sudo"
+    run_cmd = "Right-click the .exe → Run as administrator" if is_windows else "Run with: sudo python main.py"
+    
     message = (
-        "NOTICE: Not running as Administrator\n\n"
-        "Some features require administrator privileges:\n"
-        "  • WSL2 installation\n"
-        "  • VirtualBox installation\n"
-        "  • System folder creation in C:\\\n\n"
+        f"NOTICE: Not running as {priv_name}\n\n"
+        "Some features require elevated privileges:\n"
+    )
+    
+    if is_windows:
+        message += (
+            "  • WSL2 installation\n"
+            "  • VirtualBox installation\n"
+            "  • System folder creation in C:\\\n\n"
+        )
+    else:
+        message += (
+            "  • System package installation\n"
+            "  • System-wide configurations\n"
+            "  • /opt folder creation\n\n"
+        )
+    
+    message += (
         "You can continue, but these features may be skipped.\n"
-        "To run as admin: Right-click the .exe → Run as administrator\n\n"
+        f"To run with privileges: {run_cmd}\n\n"
         "Do you want to continue anyway?"
     )
     
-    result = messagebox.askokcancel("Administrator Privileges", message)
+    result = messagebox.askokcancel(f"{priv_name} Privileges", message)
     root.destroy()
     
     if not result:

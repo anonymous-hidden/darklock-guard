@@ -155,29 +155,43 @@ async function ensureRoles(guild, cfg, bot) {
 
 async function sendVerificationDM(member) {
     try {
+        // Build the web verification URL
+        const dashboardUrl = process.env.DASHBOARD_URL || 'https://discord-security-bot-uyx6.onrender.com';
+        const verifyUrl = `${dashboardUrl}/verify/${member.guild.id}/${member.id}`;
+        
         const dmEmbed = new EmbedBuilder()
-            .setTitle(`dY\`< Welcome to ${member.guild.name}!`)
-            .setDescription('Thank you for joining! Please read the verification instructions below.')
+            .setTitle(`🔐 Welcome to ${member.guild.name}!`)
+            .setDescription('Thank you for joining! Please complete verification to access the server.')
             .addFields(
                 {
-                    name: 'How to Verify',
-                    value: '• Review the server rules.\n• Staff may approve you via the verification log.\n• Keep DMs open for updates.'
+                    name: '🌐 How to Verify',
+                    value: `Click the link below to open our secure verification portal:\n\n**[Click Here to Verify](${verifyUrl})**\n\nOr copy this link: \`${verifyUrl}\``
                 },
                 {
-                    name: 'Server Rules',
+                    name: '📜 Server Rules',
                     value: '• Be respectful\n• No spam or self-promo\n• Follow Discord TOS\n• Enjoy your stay!'
                 },
                 {
-                    name: 'Need Help?',
-                    value: 'If you have questions, reply here or ping a staff member.'
+                    name: '❓ Need Help?',
+                    value: 'If you have questions or issues verifying, head to the verification channel in the server or ping a staff member.'
                 }
             )
-            .setColor('#00FF00')
+            .setColor('#00d4ff')
             .setThumbnail(member.guild.iconURL({ dynamic: true }))
-            .setFooter({ text: `User ID: ${member.id}` })
+            .setFooter({ text: `User ID: ${member.id} | Verification required` })
             .setTimestamp();
 
-        await member.send({ embeds: [dmEmbed] });
+        // Add a button to the DM as well
+        const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setLabel('🔗 Verify Now')
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(verifyUrl)
+            );
+
+        await member.send({ embeds: [dmEmbed], components: [row] });
     } catch (error) {
         // User may have DMs disabled
     }

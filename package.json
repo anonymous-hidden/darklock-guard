@@ -4,7 +4,9 @@
   "description": "Advanced DarkLock with comprehensive protection features",
   "main": "src/bot.js",
   "scripts": {
-    "start": "node src/bot.js",
+    "start": "node start-bot.js",
+    "bot": "node src/bot.js",
+    "watchdog": "node file-protection/hardware-key/watchdog/start-watchdog.js",
     "build": "echo 'no build required'",
     "postinstall": "node file-protection/agent/baseline-generator.js && node darklock/check-downloads.js",
     "dev": "nodemon src/bot.js",
@@ -23,6 +25,7 @@
     "npm": ">=8"
   },
   "dependencies": {
+    "@serialport/parser-readline": "^13.0.0",
     "axios": "^1.6.2",
     "bcrypt": "^5.1.1",
     "chokidar": "^5.0.0",
@@ -43,6 +46,7 @@
     "nodemailer": "^7.0.11",
     "qrcode": "^1.5.3",
     "qs": ">=6.14.1",
+    "serialport": "^13.0.0",
     "sharp": "^0.33.5",
     "speakeasy": "^2.0.0",
     "sqlite3": "^5.1.7",

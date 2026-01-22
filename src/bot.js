@@ -213,6 +213,7 @@ class SecurityBot {
         this.roleAuditing = null;
         this.channelProtection = null;
         this.userVerification = null;
+        this.verificationSystem = null;
         this.joinQueue = null;
         this.dmQueue = null;
         this.toxicityFilter = null;
@@ -292,6 +293,10 @@ class SecurityBot {
             this.roleAuditing = new RoleAuditing(this);
             this.channelProtection = new ChannelProtection(this);
             this.userVerification = new UserVerification(this);
+            
+            // Initialize VerificationSystem for emoji/reaction verification
+            const VerificationSystem = require('./security/VerificationSystem');
+            this.verificationSystem = new VerificationSystem(this.database, this.client);
 
             const JoinQueue = require('./utils/joinQueue');
             this.joinQueue = new JoinQueue(this);
@@ -892,7 +897,11 @@ class SecurityBot {
 
             this.logger.info('✅ Bot initialization complete!');
         } catch (error) {
-            this.logger.error('❌ Failed to initialize bot:', error);
+            if (this.logger && this.logger.error) {
+                this.logger.error('❌ Failed to initialize bot:', error);
+            } else {
+                console.error('❌ Failed to initialize bot:', error);
+            }
             throw error;
         }
     }

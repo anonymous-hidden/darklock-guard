@@ -370,12 +370,24 @@ class VerificationSystem {
             if (!member) return;
 
             const config = await this.db.getGuildConfig(guildId);
-            if (!config?.verification_role) return;
+            // Check multiple possible role field names
+            const roleId = config?.verified_role_id || config?.verification_role;
+            if (!roleId) return;
 
-            const verifiedRole = guild.roles.cache.get(config.verification_role);
+            const verifiedRole = guild.roles.cache.get(roleId);
             if (!verifiedRole) return;
 
             await member.roles.add(verifiedRole);
+            
+            // Also remove unverified role if exists
+            const unverifiedRoleId = config?.unverified_role_id;
+            if (unverifiedRoleId) {
+                const unverifiedRole = guild.roles.cache.get(unverifiedRoleId);
+                if (unverifiedRole) {
+                    await member.roles.remove(unverifiedRole).catch(() => {});
+                }
+            }
+            
             console.log(`✅ Granted verified role to ${member.user.tag} in ${guild.name}`);
         } catch (error) {
             console.error('Failed to grant verified role:', error);
@@ -387,9 +399,11 @@ class VerificationSystem {
      */
     async getVerificationChannel(guild) {
         const config = await this.db.getGuildConfig(guild.id);
-        if (!config?.welcome_channel) return null;
+        // Check multiple possible channel fields
+        const channelId = config?.verification_channel_id || config?.verification_channel || config?.welcome_channel;
+        if (!channelId) return null;
 
-        return guild.channels.cache.get(config.welcome_channel);
+        return guild.channels.cache.get(channelId);
     }
 
     /**

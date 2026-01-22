@@ -5,7 +5,13 @@ const fs = require('fs');
 class Database {
     constructor() {
         this.db = null;
-        this.dbPath = path.join(process.env.DB_PATH || './data/', process.env.DB_NAME || 'security_bot.db');
+        // Force relative path for local development, absolute paths only in production
+        let dbPath = process.env.DB_PATH || './data/';
+        // Convert absolute /data to relative ./data for local development
+        if (dbPath === '/data' || dbPath === '/data/') {
+            dbPath = './data/';
+        }
+        this.dbPath = path.join(dbPath, process.env.DB_NAME || 'security_bot.db');
         
         // Config caching system
         this.configCache = new Map();

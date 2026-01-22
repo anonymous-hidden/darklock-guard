@@ -22,16 +22,18 @@ module.exports = {
         ),
 
     async execute(interaction, bot) {
+        // CRITICAL: Defer immediately to prevent 3-second timeout
+        await interaction.deferReply({ flags: 64 }); // 64 = MessageFlags.Ephemeral
+
         const subcommand = interaction.options.getSubcommand();
         const guildId = interaction.guild.id;
 
         if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild) && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-            return interaction.reply({ content: 'You need Manage Server or Administrator to configure verification.', ephemeral: true });
+            return interaction.editReply({ content: 'You need Manage Server or Administrator to configure verification.' });
         }
 
         if (subcommand === 'setup') {
             try {
-                await interaction.deferReply();
 
                 const channel = interaction.options.getChannel('channel');
                 const logChannel = interaction.options.getChannel('log_channel');
@@ -41,16 +43,17 @@ module.exports = {
 
                 // Update guild config with all verification settings
                 await bot.database.run(`
-                    INSERT INTO guild_configs (guild_id, verification_enabled, verification_method, unverified_role_id, verified_role_id, mod_log_channel)
-                    VALUES (?, 1, ?, ?, ?, ?)
+                    INSERT INTO guild_configs (guild_id, verification_enabled, verification_method, unverified_role_id, verified_role_id, mod_log_channel, verification_channel_id)
+                    VALUES (?, 1, ?, ?, ?, ?, ?)
                     ON CONFLICT(guild_id) DO UPDATE SET
                         verification_enabled = 1,
                         verification_method = excluded.verification_method,
                         unverified_role_id = excluded.unverified_role_id,
                         verified_role_id = excluded.verified_role_id,
                         mod_log_channel = excluded.mod_log_channel,
+                        verification_channel_id = excluded.verification_channel_id,
                         updated_at = CURRENT_TIMESTAMP
-                `, [guildId, method, unverifiedRole.id, verifiedRole.id, logChannel.id]);
+                `, [guildId, method, unverifiedRole.id, verifiedRole.id, logChannel.id, channel.id]);
 
                 // Emit change for dynamic command sync
                 if (typeof bot.emitSettingChange === 'function') {
@@ -86,38 +89,164 @@ module.exports = {
                     }).catch(() => {});
                 }
 
-                // Send setup instructions to verification channel
+                // Send setup instructions to verification channel based on method
                 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
                 
-                const instructionEmbed = new EmbedBuilder()
-                    .setTitle('🔐 Welcome to DarkLock support server')
-                    .setDescription(`Before you can access the rest of the server, please complete verification to confirm you're a real person.
+                let instructionEmbed;
+                let verifyButton;
+                
+                // Get the dashboard URL for web verification
+                const dashboardUrl = process.env.DASHBOARD_URL || 'https://discord-security-bot-uyx6.onrender.com';
+                const verifyUrl = `${dashboardUrl}/verify/${guildId}`;
+                
+                if (method === 'web') {
+                    // Web portal verification
+                    instructionEmbed = new EmbedBuilder()
+                        .setTitle('🔐 Welcome to Server Verification')
+                        .setDescription(`Before you can access the rest of the server, please complete verification to confirm you're a real person.
 
 **How to Verify:**
-You should receive a DM with verification instructions. This helps us keep the community safe and free from bots and spam.
+Click the **Verify Now** button below to open our secure verification portal. Complete the quick verification process to gain access to the server.
 
 **What happens next:**
-✅ You'll complete a quick verification step
+✅ Open the verification portal
+✅ Complete the verification challenge
 ✅ You'll receive the verified role automatically
 ✅ You'll gain access to all server channels
 
 **Need Help?**
 If you're having trouble verifying, please contact a staff member.
 
-*Didn't receive a DM? Click the button below to verify manually.*
+───────────────────────────────
+*This verification system protects our community and only takes a few seconds.*`)
+                        .setColor('#00d4ff')
+                        .setTimestamp();
+
+                    verifyButton = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setLabel('🔗 Verify Now')
+                                .setStyle(ButtonStyle.Link)
+                                .setURL(verifyUrl)
+                        );
+                } else if (method === 'button' || method === 'auto') {
+                    // Simple button click verification
+                    instructionEmbed = new EmbedBuilder()
+                        .setTitle('🔐 Welcome to Server Verification')
+                        .setDescription(`Before you can access the rest of the server, please complete verification to confirm you're a real person.
+
+**How to Verify:**
+Simply click the **✅ Verify** button below to gain access to the server.
+
+**What happens next:**
+✅ Click the verify button
+✅ You'll receive the verified role automatically
+✅ You'll gain access to all server channels
+
+**Need Help?**
+If you're having trouble verifying, please contact a staff member.
 
 ───────────────────────────────
 *This verification system protects our community and only takes a few seconds.*`)
-                    .setColor('#00d4ff')
-                    .setTimestamp();
+                        .setColor('#00d4ff')
+                        .setTimestamp();
 
-                const verifyButton = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('verify_button')
-                            .setLabel('✅ Verify')
-                            .setStyle(ButtonStyle.Success)
-                    );
+                    verifyButton = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('verify_button')
+                                .setLabel('✅ Verify')
+                                .setStyle(ButtonStyle.Success)
+                        );
+                } else if (method === 'captcha' || method === 'code') {
+                    // Captcha/code verification
+                    instructionEmbed = new EmbedBuilder()
+                        .setTitle('🔐 Welcome to Server Verification')
+                        .setDescription(`Before you can access the rest of the server, please complete verification to confirm you're a real person.
+
+**How to Verify:**
+1. Click the **🔐 Get Code** button below
+2. You'll receive a verification code in your DMs
+3. Click the button again and enter the code
+
+**What happens next:**
+✅ Get your unique verification code
+✅ Enter the code to verify
+✅ You'll receive the verified role automatically
+✅ You'll gain access to all server channels
+
+**Need Help?**
+If you're having trouble verifying or didn't receive a DM, please contact a staff member.
+
+───────────────────────────────
+*This verification system protects our community and only takes a few seconds.*`)
+                        .setColor('#00d4ff')
+                        .setTimestamp();
+
+                    verifyButton = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('verify_button')
+                                .setLabel('🔐 Get Code / Enter Code')
+                                .setStyle(ButtonStyle.Primary)
+                        );
+                } else if (method === 'reaction' || method === 'emoji') {
+                    // Emoji reaction verification
+                    instructionEmbed = new EmbedBuilder()
+                        .setTitle('🔐 Welcome to Server Verification')
+                        .setDescription(`Before you can access the rest of the server, please complete verification to confirm you're a real person.
+
+**How to Verify:**
+1. Click the **🎯 Start Verification** button below
+2. You'll receive a DM with emoji options
+3. React with the correct emoji to verify
+
+**What happens next:**
+✅ Start the emoji challenge
+✅ React with the correct emoji in your DMs
+✅ You'll receive the verified role automatically
+✅ You'll gain access to all server channels
+
+**Need Help?**
+If you're having trouble verifying or didn't receive a DM, please contact a staff member.
+
+───────────────────────────────
+*This verification system protects our community and only takes a few seconds.*`)
+                        .setColor('#00d4ff')
+                        .setTimestamp();
+
+                    verifyButton = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('verify_button')
+                                .setLabel('🎯 Start Verification')
+                                .setStyle(ButtonStyle.Primary)
+                        );
+                } else {
+                    // Fallback to web portal for unknown methods
+                    instructionEmbed = new EmbedBuilder()
+                        .setTitle('🔐 Welcome to Server Verification')
+                        .setDescription(`Before you can access the rest of the server, please complete verification to confirm you're a real person.
+
+**How to Verify:**
+Click the **Verify Now** button below to complete the verification process.
+
+**Need Help?**
+If you're having trouble verifying, please contact a staff member.
+
+───────────────────────────────
+*This verification system protects our community and only takes a few seconds.*`)
+                        .setColor('#00d4ff')
+                        .setTimestamp();
+
+                    verifyButton = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setLabel('🔗 Verify Now')
+                                .setStyle(ButtonStyle.Link)
+                                .setURL(verifyUrl)
+                        );
+                }
 
                 await channel.send({ embeds: [instructionEmbed], components: [verifyButton] }).catch(() => {});
 

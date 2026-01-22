@@ -899,6 +899,241 @@ The DarkLock Team`
             res.sendFile(path.join(__dirname, 'views/tickets-enhanced.html'));
         });
 
+        // Web verification page - PUBLIC (no auth required for users to verify)
+        // Supports both token-based (/verify/:token) and direct (/verify/:guildId/:userId) verification
+        this.app.get('/verify/:param1/:param2?', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/web-verify.html'));
+        });
+
+        // ==========================================
+        // Web Verification API - PUBLIC (no auth)
+        // These endpoints handle the captcha verification flow for new users
+        // ==========================================
+        
+        // Initialize web verification - get captcha code
+        this.app.post('/api/web-verify/init', async (req, res) => {
+            try {
+                const { token, guildId, userId } = req.body;
+                
+                if (!guildId || !userId) {
+                    return res.status(400).json({ error: 'Missing guildId or userId' });
+                }
+
+                // Get guild info
+                const guild = this.bot.client.guilds.cache.get(guildId);
+                if (!guild) {
+                    return res.status(404).json({ error: 'Server not found' });
+                }
+
+                // Check if user exists in guild
+                const member = await guild.members.fetch(userId).catch(() => null);
+                if (!member) {
+                    return res.status(404).json({ error: 'User not found in server' });
+                }
+
+                // Get guild config
+                const config = await this.bot.database.getGuildConfig(guildId);
+                if (!config || !config.verification_enabled) {
+                    return res.status(400).json({ error: 'Verification is not enabled on this server' });
+                }
+
+                // Check if already verified
+                if (config.verified_role_id && member.roles.cache.has(config.verified_role_id)) {
+                    return res.json({ 
+                        success: true, 
+                        alreadyVerified: true,
+                        serverName: guild.name 
+                    });
+                }
+
+                // Check verification queue for existing challenge
+                let challenge = await this.bot.database.get(
+                    `SELECT * FROM verification_queue WHERE guild_id = ? AND user_id = ? AND status = 'pending'`,
+                    [guildId, userId]
+                );
+
+                // Generate new captcha if no existing challenge
+                let captchaCode;
+                if (challenge && challenge.verification_data) {
+                    try {
+                        const data = JSON.parse(challenge.verification_data);
+                        captchaCode = data.code || data.captchaCode || data.displayCode;
+                    } catch (e) {
+                        captchaCode = null;
+                    }
+                }
+
+                if (!captchaCode) {
+                    // Generate new 6-character captcha code
+                    captchaCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+                    
+                    // Delete any existing pending entry first, then insert new one
+                    await this.bot.database.run(
+                        `DELETE FROM verification_queue WHERE guild_id = ? AND user_id = ? AND status = 'pending'`,
+                        [guildId, userId]
+                    );
+                    
+                    // Store in verification queue
+                    await this.bot.database.run(`
+                        INSERT INTO verification_queue (guild_id, user_id, verification_type, verification_data, status, attempts, created_at)
+                        VALUES (?, ?, 'web_captcha', ?, 'pending', 0, CURRENT_TIMESTAMP)
+                    `, [guildId, userId, JSON.stringify({ code: captchaCode })]);
+                    
+                    challenge = { attempts: 0 };
+                }
+
+                res.json({
+                    success: true,
+                    serverName: guild.name,
+                    guildId,
+                    userId,
+                    captchaCode,
+                    maxAttempts: 5,
+                    attempts: challenge.attempts || 0
+                });
+
+            } catch (err) {
+                console.error('[Web Verify] Init error:', err);
+                res.status(500).json({ error: 'Failed to initialize verification' });
+            }
+        });
+
+        // Submit verification code
+        this.app.post('/api/web-verify/submit', async (req, res) => {
+            try {
+                const { guildId, userId, code } = req.body;
+
+                if (!guildId || !userId || !code) {
+                    return res.status(400).json({ error: 'Missing required fields' });
+                }
+
+                // Get challenge from database
+                const challenge = await this.bot.database.get(
+                    `SELECT * FROM verification_queue WHERE guild_id = ? AND user_id = ? AND status = 'pending'`,
+                    [guildId, userId]
+                );
+
+                if (!challenge) {
+                    return res.status(404).json({ error: 'No pending verification found', expired: true });
+                }
+
+                // Check attempts
+                if (challenge.attempts >= 5) {
+                    return res.json({ success: false, locked: true, error: 'Too many failed attempts' });
+                }
+
+                // Parse stored code - support multiple formats
+                let storedCode = null;
+                let storedHash = null;
+                try {
+                    const data = JSON.parse(challenge.verification_data);
+                    storedCode = data.code || data.captchaCode || data.displayCode;
+                    storedHash = data.codeHash;
+                } catch (e) {
+                    return res.status(500).json({ error: 'Invalid verification data' });
+                }
+
+                // Check code (case-insensitive) - support direct match or hash match
+                const crypto = require('crypto');
+                const enteredHash = crypto.createHash('sha256').update(code.toLowerCase()).digest('hex');
+                const directMatch = storedCode && code.toUpperCase() === storedCode.toUpperCase();
+                const hashMatch = storedHash && enteredHash === storedHash;
+                
+                if (!directMatch && !hashMatch) {
+                    // Increment attempts
+                    await this.bot.database.run(
+                        `UPDATE verification_queue SET attempts = attempts + 1 WHERE guild_id = ? AND user_id = ?`,
+                        [guildId, userId]
+                    );
+                    return res.json({ success: false, error: 'Incorrect code' });
+                }
+
+                // Success! Grant verified role
+                const guild = this.bot.client.guilds.cache.get(guildId);
+                if (!guild) {
+                    return res.status(404).json({ error: 'Server not found' });
+                }
+
+                const member = await guild.members.fetch(userId).catch(() => null);
+                if (!member) {
+                    return res.status(404).json({ error: 'User not found' });
+                }
+
+                const config = await this.bot.database.getGuildConfig(guildId);
+
+                // Add verified role
+                if (config.verified_role_id) {
+                    await member.roles.add(config.verified_role_id).catch(err => {
+                        console.error('[Web Verify] Failed to add verified role:', err);
+                    });
+                }
+
+                // Remove unverified role
+                if (config.unverified_role_id) {
+                    await member.roles.remove(config.unverified_role_id).catch(err => {
+                        console.error('[Web Verify] Failed to remove unverified role:', err);
+                    });
+                }
+
+                // Mark verification complete
+                await this.bot.database.run(
+                    `UPDATE verification_queue SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE guild_id = ? AND user_id = ?`,
+                    [guildId, userId]
+                );
+
+                // Log to mod channel
+                if (config.mod_log_channel) {
+                    const logChannel = guild.channels.cache.get(config.mod_log_channel);
+                    if (logChannel) {
+                        const { EmbedBuilder } = require('discord.js');
+                        const embed = new EmbedBuilder()
+                            .setColor('#00ff88')
+                            .setTitle('✅ User Verified')
+                            .setDescription(`${member.user.tag} completed web verification`)
+                            .addFields(
+                                { name: 'User', value: `<@${userId}>`, inline: true },
+                                { name: 'Method', value: 'Web CAPTCHA', inline: true }
+                            )
+                            .setTimestamp();
+                        logChannel.send({ embeds: [embed] }).catch(() => {});
+                    }
+                }
+
+                res.json({ success: true });
+
+            } catch (err) {
+                console.error('[Web Verify] Submit error:', err);
+                res.status(500).json({ error: 'Failed to verify' });
+            }
+        });
+
+        // Refresh captcha code
+        this.app.post('/api/web-verify/refresh', async (req, res) => {
+            try {
+                const { guildId, userId } = req.body;
+
+                if (!guildId || !userId) {
+                    return res.status(400).json({ error: 'Missing guildId or userId' });
+                }
+
+                // Generate new captcha code
+                const captchaCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+                // Update in database
+                await this.bot.database.run(`
+                    UPDATE verification_queue 
+                    SET verification_data = ?
+                    WHERE guild_id = ? AND user_id = ? AND status = 'pending'
+                `, [JSON.stringify({ code: captchaCode }), guildId, userId]);
+
+                res.json({ success: true, captchaCode });
+
+            } catch (err) {
+                console.error('[Web Verify] Refresh error:', err);
+                res.status(500).json({ error: 'Failed to refresh captcha' });
+            }
+        });
+
         // Analytics dashboard page - PROTECTED
         this.app.get('/analytics', this.authenticateTokenHTML.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/analytics-modern.html'));

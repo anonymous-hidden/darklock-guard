@@ -1,0 +1,13 @@
+{
+  "name": "hardware-watchdog",
+  "version": "1.0.0",
+  "description": "Raspberry Pi Pico hardware watchdog for server monitoring",
+  "main": "server-watchdog.js",
+  "scripts": {
+    "start": "node start-watchdog.js"
+  },
+  "dependencies": {
+    "serialport": "^12.0.0",
+    "@serialport/parser-readline": "^12.0.0"
+  }
+}

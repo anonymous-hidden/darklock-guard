@@ -1153,13 +1153,22 @@ async function handleVerifyButton(interaction, bot) {
                 ephemeral: true 
             });
         } else {
-            // Default fallback
-            await member.roles.add(config.verified_role_id).catch(() => {});
-            if (config.unverified_role_id) {
-                await member.roles.remove(config.unverified_role_id).catch(() => {});
-            }
+            // Default fallback - use web portal
+            const dashboardUrl = process.env.DASHBOARD_URL || 'https://discord-security-bot-uyx6.onrender.com';
+            const verifyUrl = `${dashboardUrl}/verify/${guildId}/${member.id}`;
+            
+            const row = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setLabel('Open Verification Portal')
+                        .setStyle(ButtonStyle.Link)
+                        .setURL(verifyUrl)
+                        .setEmoji('🔗')
+                );
+            
             return interaction.reply({ 
-                content: '✅ **Verification Complete!**\n\nYou now have access to the rest of the server. Welcome!', 
+                content: `🌐 **Web Verification Required**\n\nClick the button below to complete your verification:`,
+                components: [row],
                 ephemeral: true 
             });
         }
@@ -1608,11 +1617,16 @@ async function handleVerifyModalSubmit(interaction, bot) {
             data = JSON.parse(pending.verification_data || '{}');
         } catch (e) {}
 
-        // Check code
+        // Check code - support both displayCode (direct) and codeHash methods
         const crypto = require('crypto');
         const enteredHash = crypto.createHash('sha256').update(enteredCode.toLowerCase()).digest('hex');
         
-        if (data.codeHash && enteredHash !== data.codeHash) {
+        // Check against displayCode (direct match) OR codeHash
+        const directMatch = data.displayCode && enteredCode.toUpperCase() === data.displayCode.toUpperCase();
+        const hashMatch = data.codeHash && enteredHash === data.codeHash;
+        const codeMatch = data.code && enteredCode.toUpperCase() === data.code.toUpperCase();
+        
+        if (!directMatch && !hashMatch && !codeMatch) {
             // Wrong code
             await bot.database.run(`UPDATE verification_queue SET attempts = ? WHERE id = ?`, [attempts, pending.id]);
             return interaction.reply({ 

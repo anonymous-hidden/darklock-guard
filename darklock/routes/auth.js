@@ -60,8 +60,12 @@ function generateToken(user, secret, jti, twoFactorVerified = false, expiresIn =
  * Create a new session record with jti
  */
 async function createSessionRecord(userId, jti, req) {
+    // Generate session ID
+    const sessionId = crypto.randomBytes(16).toString('hex');
+    
     // Database automatically cleans up expired sessions
     const session = await db.createSession({
+        id: sessionId,
         jti,
         userId,
         ip: getClientIP(req),
@@ -304,8 +308,12 @@ router.post('/signup', rateLimitMiddleware('signup'), async (req, res) => {
         const allUsers = await db.getAllUsers();
         const isFirstUser = allUsers.length === 0;
         
+        // Generate user ID
+        const userId = crypto.randomBytes(16).toString('hex');
+        
         // Create new user in database
         const newUser = await db.createUser({
+            id: userId,
             username: username.trim(),
             email: email.toLowerCase().trim(),
             password: hashedPassword,

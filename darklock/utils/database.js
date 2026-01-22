@@ -20,7 +20,11 @@ const { promisify } = require('util');
 class DarklockDatabase {
     constructor() {
         // Use same data directory as bot for consistency
-        const dataDir = process.env.DB_PATH || process.env.DATA_PATH || './data';
+        let dataDir = process.env.DB_PATH || process.env.DATA_PATH || './data';
+        // Convert absolute /data to relative ./data for local development
+        if (dataDir === '/data' || dataDir === '/data/') {
+            dataDir = './data';
+        }
         this.dbPath = process.env.DARKLOCK_DB_PATH || path.join(dataDir, 'darklock.db');
         this.db = null;
         this.ready = false;
@@ -242,6 +246,20 @@ class DarklockDatabase {
             }
         }
         return user;
+    }
+
+    async getAllUsers() {
+        const users = await this.all(`SELECT * FROM users`);
+        return users.map(user => {
+            if (user.settings) {
+                try {
+                    user.settings = JSON.parse(user.settings);
+                } catch (e) {
+                    user.settings = {};
+                }
+            }
+            return user;
+        });
     }
 
     async updateUser(userId, updates) {

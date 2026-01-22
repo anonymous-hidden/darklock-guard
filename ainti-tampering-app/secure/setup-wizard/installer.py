@@ -1,11 +1,13 @@
 """
 Installer Backend
 Handles all installation operations, folder creation, and system setup.
+Cross-platform support for Windows and Linux.
 """
 
 import subprocess
 import os
-import ctypes
+import sys
+import platform
 from pathlib import Path
 from typing import Callable, Optional
 from datetime import datetime
@@ -28,6 +30,7 @@ class Installer:
         """
         self.log_callback = log_callback or print
         self.errors = []
+        self.platform = platform.system()  # 'Windows', 'Linux', 'Darwin'
         
     def log(self, message: str) -> None:
         """Send log message to callback."""
@@ -35,22 +38,35 @@ class Installer:
     
     @staticmethod
     def is_admin() -> bool:
-        """Check if script is running with administrator privileges."""
+        """Check if script is running with administrator/root privileges."""
         try:
-            return ctypes.windll.shell32.IsUserAnAdmin()
+            if platform.system() == 'Windows':
+                import ctypes
+                return ctypes.windll.shell32.IsUserAnAdmin()
+            else:
+                # Linux/Unix - check if running as root
+                return os.geteuid() == 0
         except:
             return False
     
-    def create_dev_folders(self, base_path: str = "C:\\Dev") -> bool:
+    def create_dev_folders(self, base_path: Optional[str] = None) -> bool:
         """
         Create organized development folder structure.
         
         Args:
-            base_path: Root path for dev folders
+            base_path: Root path for dev folders (defaults based on platform)
             
         Returns:
             True if successful, False otherwise
         """
+        # Use platform-appropriate default paths
+        if base_path is None:
+            if self.platform == 'Windows':
+                base_path = "C:\\Dev"
+            else:
+                base_path = os.path.expanduser("~/dev")
+        
+        base_path = os.path.expanduser(base_path)  # Handle ~ on Unix systems
         folders = [
             base_path,
             os.path.join(base_path, "projects"),
@@ -101,9 +117,13 @@ Never test on systems you do not own or have explicit permission to test.
     
     def enable_wsl(self) -> bool:
         """
-        Enable WSL2 and Virtual Machine Platform features.
+        Enable WSL2 and Virtual Machine Platform features (Windows only).
         Requires administrator privileges.
         """
+        if self.platform != 'Windows':
+            self.log("  WSL is Windows-only, skipping on this platform")
+            return False
+            
         if not self.is_admin():
             self.log("  Administrator privileges required for WSL setup")
             return False
@@ -155,7 +175,11 @@ Never test on systems you do not own or have explicit permission to test.
             return False
     
     def install_wsl_ubuntu(self) -> bool:
-        """Install Ubuntu distribution for WSL."""
+        """Install Ubuntu distribution for WSL (Windows only)."""
+        if self.platform != 'Windows':
+            self.log("  WSL is Windows-only, skipping on this platform")
+            return False
+            
         self.log("Installing Ubuntu for WSL...")
         
         try:
@@ -182,10 +206,10 @@ Never test on systems you do not own or have explicit permission to test.
     
     def install_package(self, package_id: str, package_name: str) -> bool:
         """
-        Install a single package using winget.
+        Install a single package using the appropriate package manager.
         
         Args:
-            package_id: Winget package ID
+            package_id: Package ID (winget on Windows, apt package name on Linux)
             package_name: Human-readable package name
             
         Returns:
@@ -194,34 +218,75 @@ Never test on systems you do not own or have explicit permission to test.
         self.log(f"Installing {package_name}...")
         
         try:
-            result = subprocess.run(
-                ["winget", "install", "--id", package_id, 
-                 "--accept-source-agreements", "--accept-package-agreements", 
-                 "--silent"],
-                capture_output=True,
-                text=True,
-                timeout=300
-            )
-            
-            # Check various success conditions
-            if result.returncode == 0:
-                self.log(f"  ✓ {package_name} installed successfully")
-                return True
-            elif result.returncode == -1978335189 or "already installed" in result.stdout.lower():
-                self.log(f"  ✓ {package_name} (already installed)")
-                return True
+            if self.platform == 'Windows':
+                # Use winget on Windows
+                result = subprocess.run(
+                    ["winget", "install", "--id", package_id, 
+                     "--accept-source-agreements", "--accept-package-agreements", 
+                     "--silent"],
+                    capture_output=True,
+                    text=True,
+                    timeout=300
+                )
+                
+                # Check various success conditions
+                if result.returncode == 0:
+                    self.log(f"  ✓ {package_name} installed successfully")
+                    return True
+                elif result.returncode == -1978335189 or "already installed" in result.stdout.lower():
+                    self.log(f"  ✓ {package_name} (already installed)")
+                    return True
+                else:
+                    self.log(f"  ! {package_name} - check may be needed")
+                    return True
+                    
+            elif self.platform == 'Linux':
+                # Use apt on Linux (Debian/Ubuntu)
+                # First check if package exists
+                check = subprocess.run(
+                    ["dpkg", "-s", package_id],
+                    capture_output=True,
+                    text=True
+                )
+                
+                if check.returncode == 0:
+                    self.log(f"  ✓ {package_name} (already installed)")
+                    return True
+                
+                # Try to install
+                if self.is_admin():
+                    result = subprocess.run(
+                        ["apt-get", "install", "-y", package_id],
+                        capture_output=True,
+                        text=True,
+                        timeout=300
+                    )
+                else:
+                    result = subprocess.run(
+                        ["sudo", "apt-get", "install", "-y", package_id],
+                        capture_output=True,
+                        text=True,
+                        timeout=300
+                    )
+                
+                if result.returncode == 0:
+                    self.log(f"  ✓ {package_name} installed successfully")
+                    return True
+                else:
+                    self.log(f"  ✗ {package_name} failed to install")
+                    return False
             else:
-                self.log(f"  ! {package_name} - check may be needed")
-                # Don't treat as hard failure - some packages return non-zero on success
-                return True
+                self.log(f"  ✗ Unsupported platform: {self.platform}")
+                return False
                 
         except subprocess.TimeoutExpired:
             self.log(f"  ✗ {package_name} installation timed out")
             self.errors.append(f"{package_name}: timeout")
             return False
-        except FileNotFoundError:
-            self.log(f"  ✗ winget not found - cannot install {package_name}")
-            self.errors.append("winget not available")
+        except FileNotFoundError as e:
+            pkg_mgr = "winget" if self.platform == 'Windows' else "apt-get"
+            self.log(f"  ✗ {pkg_mgr} not found - cannot install {package_name}")
+            self.errors.append(f"{pkg_mgr} not available")
             return False
         except Exception as e:
             self.log(f"  ✗ {package_name} error: {str(e)}")
