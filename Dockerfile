@@ -36,4 +36,4 @@ RUN chmod +x startup.sh
 EXPOSE 10000
 
 # Start the application (baseline generation happens at runtime)
-CMD ["./startup.sh"]
+CMD ["sh", "startup.sh"]
