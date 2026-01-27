@@ -1,5 +1,4 @@
-#!/bin/sh
-set -e
+#!/bin/bash
 
 echo "� Checking Darklock Guard installer files..."
 node darklock/check-downloads.js
