@@ -22,17 +22,16 @@ const rateLimit = require('express-rate-limit');
 // Database
 const db = require('../utils/database');
 
+// Environment validator - fail-fast if secrets missing
+const { requireEnv } = require('../utils/env-validator');
+
 // ============================================================================
 // ENVIRONMENT VALIDATION - Fail hard if secrets are missing
 // ============================================================================
 
-const JWT_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET;
+// SECURITY: Admin JWT must use a DIFFERENT secret than user JWT
+const ADMIN_JWT_SECRET = requireEnv('ADMIN_JWT_SECRET');
 const BCRYPT_ROUNDS = 12; // Minimum 12 rounds for admin passwords
-
-if (!JWT_SECRET) {
-    console.error('[FATAL] ADMIN_JWT_SECRET or JWT_SECRET environment variable is required');
-    process.exit(1);
-}
 
 // ============================================================================
 // RATE LIMITING - Prevent brute force attacks
@@ -224,7 +223,7 @@ function generateAdminToken(admin) {
             role: admin.role,
             type: 'admin' // Distinguishes from regular user tokens
         },
-        JWT_SECRET,
+        ADMIN_JWT_SECRET,
         { expiresIn: '1h' }
     );
 }
@@ -234,7 +233,7 @@ function generateAdminToken(admin) {
  */
 function verifyAdminToken(token) {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, ADMIN_JWT_SECRET);
         
         // Ensure this is an admin token, not a regular user token
         if (decoded.type !== 'admin') {
@@ -259,8 +258,12 @@ function verifyAdminToken(token) {
 async function requireAdminAuth(req, res, next) {
     const token = req.cookies?.admin_token;
 
+    console.log('[Admin Auth] Checking auth for:', req.path);
+    console.log('[Admin Auth] Cookies present:', Object.keys(req.cookies || {}));
+    console.log('[Admin Auth] admin_token exists:', !!token);
+
     if (!token) {
-        console.log('[Admin Auth] No admin_token cookie found. Cookies:', Object.keys(req.cookies || {}));
+        console.log('[Admin Auth] No admin_token cookie found');
         // Redirect to signin for page requests, 401 for API
         if (req.accepts('html')) {
             return res.redirect('/signin');
@@ -334,7 +337,7 @@ router.get('/signin', (req, res) => {
     // If already authenticated, redirect to admin dashboard
     const token = req.cookies?.admin_token;
     if (token && verifyAdminToken(token)) {
-        return res.redirect('/admin/dashboard');
+        return res.redirect('/admin');
     }
 
     res.sendFile(path.join(__dirname, '../views/signin.html'));
@@ -409,7 +412,7 @@ router.post('/signin', signinLimiter, async (req, res) => {
 
         res.json({
             success: true,
-            redirect: '/admin/dashboard'
+            redirect: '/admin'
         });
 
     } catch (err) {

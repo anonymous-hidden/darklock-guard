@@ -1,63 +1,47 @@
-const Module = require('module');
-const ORIGINAL_MODULE_LOAD = Module._load;
-Object.freeze(Module);
-Object.freeze(Module._load);
-
 const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, REST, Routes, PermissionFlagsBits } = require('discord.js');
-const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SELF-INTEGRITY CHECK - Protect the Protector
-// These hashes are hardcoded. If an attacker modifies the protection system,
-// they would also need to modify bot.js, which is itself protected by the system.
-// This creates a circular dependency that's hard to bypass atomically.
-// ═══════════════════════════════════════════════════════════════════════════════
-const CRITICAL_HASHES = {
-    'file-protection/agent/validator.js': '832fc82fe3a4d0c777f51f5a413198ee3f2709fd9a1d5b6c575c28136ebdf67d',
-    'file-protection/agent/baseline-manager.js': 'a86c1e22a7ee3bb99f2a374ab6f4ecb9ca31c906e17d12285b1ab82c92278a41',
-    'file-protection/agent/response-handler.js': 'f4061527f5e62087f7d0e4e2c77e0c0b2ea93de8917ae780053f7c94b41c8ba5',
-    'file-protection/agent/constants.js': 'fbd542244a24c092face3a3951629eeb4650a7dde7bc23b4c1cec79c38f87f1e'
-};
-
-const hashFileSync = (filePath) => {
-    const buffer = fs.readFileSync(filePath);
-    return crypto.createHash('sha256').update(buffer).digest('hex');
-};
-
-for (const [relativePath, expectedHash] of Object.entries(CRITICAL_HASHES)) {
-    const fullPath = path.join(__dirname, '..', relativePath);
-    try {
-        const actualHash = hashFileSync(fullPath);
-        if (actualHash !== expectedHash) {
-            console.error(`[CRITICAL] Self-integrity check FAILED for ${relativePath}`);
-            console.error(`  Expected: ${expectedHash}`);
-            console.error(`  Actual:   ${actualHash}`);
-            console.error('[CRITICAL] Protection system may be compromised. Shutting down.');
-            process.exit(1);
-        }
-    } catch (err) {
-        console.error(`[CRITICAL] Cannot verify ${relativePath}: ${err.message}`);
-        process.exit(1);
-    }
-}
-
 // Initialize Tamper Protection System
 const TamperProtectionSystem = require('../file-protection/index');
-const tamperProtection = new TamperProtectionSystem({ logger: console });
+const tamperProtection = new TamperProtectionSystem();
 
-// Validate environment variables on startup (fail closed)
+// Validate environment variables on startup
 const EnvValidator = require('./utils/env-validator');
 const envValidator = new EnvValidator();
 envValidator.sanitize();
 const validationResult = envValidator.validate();
+
 const reportOk = envValidator.printReport();
 
+// Allow skipping strict validation via explicit env var or when running on common CI/host platforms
+const hostAutoSkip = !!(
+    process.env.CI === 'true' ||
+    process.env.RENDER ||
+    process.env.HEROKU ||
+    process.env.GITHUB_ACTIONS === 'true' ||
+    process.env.RAILWAY ||
+    process.env.NETLIFY
+);
+
+const SKIP_VALIDATION = (
+    process.env.SKIP_ENV_VALIDATION === '1' ||
+    process.env.SKIP_ENV_VALIDATION === 'true' ||
+    hostAutoSkip
+);
+
 if (!reportOk) {
-    console.error('\n[ENV] Environment validation failed! Please fix the errors above before starting the bot.\n');
-    process.exit(1);
+    if (SKIP_VALIDATION) {
+        if (hostAutoSkip && !process.env.SKIP_ENV_VALIDATION) {
+            console.warn('\n⚠️ Environment validation reported errors, but a hosting/CI environment was detected — continuing startup. To force strict validation, unset CI/RENDER/HEROKU/GITHUB_ACTIONS/RAILWAY/NETLIFY or set `SKIP_ENV_VALIDATION=0`.\n');
+        } else {
+            console.warn('\n⚠️ Environment validation reported errors, but `SKIP_ENV_VALIDATION` is set — continuing startup. Discord login may be skipped if the token is invalid.\n');
+        }
+    } else {
+        console.error('\n❌ Environment validation failed! Please fix the errors above before starting the bot.\n');
+        process.exit(1);
+    }
 }
 
 // Import core modules
@@ -69,6 +53,7 @@ const ConfigManager = require('./utils/config');
 const AntiRaid = require('./security/antiraid');
 const AntiSpam = require('./security/antispam');
 const AntiNuke = require('./security/antinuke');
+const AntiNukeManager = require('./security/AntiNukeManager');
 const AntiMaliciousLinks = require('./security/antilinks');
 const AntiPhishing = require('./security/antiphishing');
 const RoleAuditing = require('./security/roleaudit');
@@ -84,91 +69,40 @@ const SecurityDashboard = require('./dashboard/dashboard');
 const TicketManager = require('./utils/ticket-manager');
 const DMTicketManager = require('./utils/DMTicketManager');
 const EventEmitter = require('./utils/EventEmitter');
-const StandardEmbedBuilder = require('./utils/embed-builder');
+const HelpTicketSystem = require('./utils/HelpTicketSystem');
 
 // Import new enhanced modules
 const SecurityManager = require('./utils/SecurityManager');
 const AnalyticsManager = require('./utils/AnalyticsManager');
+const EnhancedTicketManager = require('./utils/EnhancedTicketManager');
 const SettingsManager = require('./utils/SettingsManager');
 const PermissionManager = require('./utils/PermissionManager');
 const SetupWizard = require('./utils/SetupWizard');
 const SecurityScanner = require('./utils/SecurityScanner');
 const DashboardLogger = require('./utils/DashboardLogger');
 const ConfirmationManager = require('./utils/ConfirmationManager');
+const TicketSystem = require('./utils/TicketSystem');
 const ForensicsManager = require('./utils/ForensicsManager');
 const LockdownManager = require('./utils/LockdownManager');
 
-// Import extracted interaction handlers
-const interactionHandlers = require('./core/interactions');
-
-// Import rank system from systems folder
-const RankSystem = require('./systems/rankSystem');
-
-// Production mode check
-const PRODUCTION_MODE = process.env.PRODUCTION_MODE === 'true' || process.env.NODE_ENV === 'production';
+// Import rank system modules
+const RankSystem = require('./utils/RankSystem');
+const RankCardGenerator = require('./utils/RankCardGenerator');
+const OpenAIClient = require('./utils/OpenAIClient');
 
 class SecurityBot {
     constructor() {
-        // Enhanced global error handlers with production mode support
-        process.on('unhandledRejection', (reason, promise) => {
-            const errorMsg = `Unhandled Promise Rejection at: ${promise}\nReason: ${reason}`;
-
-            if (PRODUCTION_MODE) {
-                // Production: Log to file/service, suppress console spam
-                if (this.logger) {
-                    this.logger.error(errorMsg);
-                } else {
-                    console.error('[CRITICAL]', errorMsg);
-                }
-            } else {
-                // Development: Verbose output
-                console.error('━'.repeat(80));
-                console.error('🚨 UNHANDLED PROMISE REJECTION');
-                console.error('━'.repeat(80));
-                console.error(reason);
-                console.error('━'.repeat(80));
-            }
-
-            // Attempt graceful recovery
-            if (this.database && typeof this.database.logError === 'function') {
-                this.database.logError('unhandled_rejection', errorMsg).catch(() => { });
-            }
+        // Global error handlers to prevent silent early exits
+        process.on('unhandledRejection', (reason) => {
+            try {
+                console.error('Unhandled Promise Rejection:', reason);
+            } catch {}
         });
-
-        process.on('uncaughtException', (error, origin) => {
-            const errorMsg = `Uncaught Exception at: ${origin}\nError: ${error.stack || error}`;
-
-            if (PRODUCTION_MODE) {
-                // Production: Log and attempt graceful shutdown
-                if (this.logger) {
-                    this.logger.error(errorMsg);
-                } else {
-                    console.error('[FATAL]', errorMsg);
-                }
-
-                // Give time for logs to flush before exiting
-                setTimeout(() => {
-                    process.exit(1);
-                }, 1000);
-            } else {
-                // Development: Verbose output, don't exit
-                console.error('━'.repeat(80));
-                console.error('💥 UNCAUGHT EXCEPTION');
-                console.error('━'.repeat(80));
-                console.error(error);
-                console.error('━'.repeat(80));
-            }
-
-            // Log to database if available
-            if (this.database && typeof this.database.logError === 'function') {
-                this.database.logError('uncaught_exception', errorMsg).catch(() => { });
-            }
+        process.on('uncaughtException', (err) => {
+            try {
+                console.error('Uncaught Exception:', err);
+            } catch {}
         });
-
-        // SIGTERM/SIGINT handlers for graceful shutdown
-        process.on('SIGTERM', () => this.gracefulShutdown('SIGTERM'));
-        process.on('SIGINT', () => this.gracefulShutdown('SIGINT'));
-
         // Initialize Discord client with necessary intents
         this.client = new Client({
             intents: [
@@ -198,43 +132,45 @@ class SecurityBot {
 
         this.commands = new Collection();
         this.cooldowns = new Collection();
-
+        
         // Initialize core systems
         this.database = null;
         this.logger = null;
         this.config = null;
-
+        
         // Initialize security modules
         this.antiRaid = null;
         this.antiSpam = null;
         this.antiNuke = null;
+        this.antiNukeManager = null;
         this.antiMaliciousLinks = null;
         this.antiPhishing = null;
         this.roleAuditing = null;
         this.channelProtection = null;
         this.userVerification = null;
-        this.verificationSystem = null;
         this.joinQueue = null;
         this.dmQueue = null;
         this.toxicityFilter = null;
         this.behaviorDetection = null;
-
+        
         // Initialize utility modules
         this.backupManager = null;
         this.dashboard = null;
         this.ticketManager = null;
-
+        
         // Initialize new enhanced systems
         this.securityManager = null;
         this.analyticsManager = null;
+        this.enhancedTicketManager = null;
         this.settingsManager = null;
         this.setupWizard = null;
         this.securityScanner = null;
         this.dashboardLogger = null;
         this.confirmationManager = null;
+        this.ticketSystem = null;
         this.forensicsManager = null;
         this.lockdownManager = null;
-
+        
         // Initialize rank system
         this.rankSystem = null;
         this.rankCardGenerator = null;
@@ -251,7 +187,6 @@ class SecurityBot {
 
         // Per-guild console buffer: guildId -> entries (max 5000 per guild)
         this.consoleBuffer = new Map();
-        this.commandProcessingDisabled = false;
     }
 
     async initialize() {
@@ -261,28 +196,25 @@ class SecurityBot {
             await this.database.initialize();
             this.database.attachBot(this);
             
-            // Give database time to fully initialize
-            await new Promise(resolve => setTimeout(resolve, 100));
-
             // Initialize logger with database reference
             this.logger = new Logger(this);
             await this.logger.initialize();
-
-            console.log('🤖 Initializing DarkLock...');
+            
+            console.log('🤖 Initializing Discord Security Bot...');
             await this.logger.logInternal({
                 eventType: 'bot_startup',
                 message: 'Bot initialization started',
                 details: { version: require('../package.json').version }
             });
-
+            
             this.config = new ConfigManager();
             await this.config.loadConfig();
-
+            
             // Load commands
             await this.loadCommands();
 
             console.log('🔧 Core modules loaded, initializing security modules...');
-
+            
             // Initialize security modules
             this.antiRaid = new AntiRaid(this);
             this.antiSpam = new AntiSpam(this);
@@ -293,57 +225,60 @@ class SecurityBot {
             this.roleAuditing = new RoleAuditing(this);
             this.channelProtection = new ChannelProtection(this);
             this.userVerification = new UserVerification(this);
+            this.logger.info(`[DEBUG] UserVerification type: ${typeof this.userVerification}, verifyNewMember: ${typeof this.userVerification?.verifyNewMember}`);
             
-            // Initialize VerificationSystem for emoji/reaction verification
-            const VerificationSystem = require('./security/VerificationSystem');
-            this.verificationSystem = new VerificationSystem(this.database, this.client);
-
             const JoinQueue = require('./utils/joinQueue');
             this.joinQueue = new JoinQueue(this);
-
+            
             const DMQueue = require('./utils/dmQueue');
             this.dmQueue = new DMQueue(this);
             this.toxicityFilter = new ToxicityFilter(this);
             this.behaviorDetection = new BehaviorDetection(this);
+            this.antiNukeManager = new AntiNukeManager(this);
 
             // Start audit watcher for fast anti-nuke detection
             try {
-                setupAuditWatcher(this.client, this);
+                setupAuditWatcher(this.client);
                 this.logger.info('   ✅ AuditWatcher initialized');
             } catch (err) {
                 this.logger.warn('   ⚠️ Failed to initialize AuditWatcher:', err?.message || err);
             }
-
+            
             // Initialize utility modules
             this.backupManager = new BackupManager(this);
-
+            
             // Initialize dashboard (but don't start it here)
             this.dashboard = new SecurityDashboard(this);
-
+            
             // Set logger reference in dashboard for WebSocket broadcasting
             if (this.logger) {
                 this.logger.setDashboard(this.dashboard);
             }
-
+            
             // Initialize DM-based ticket manager (new system)
             this.dmTicketManager = new DMTicketManager(this);
             await this.dmTicketManager.initialize();
             console.log('   ✅ DM Ticket Manager initialized');
-
+            
             // Initialize old ticket manager (for backwards compatibility)
             this.ticketManager = new TicketManager(this.client);
-
+            
             // Initialize new enhanced systems
             this.logger.info('🚀 Initializing enhanced systems...');
-
+            
             // Security Manager for comprehensive threat detection
             this.securityManager = new SecurityManager(this);
             this.logger.info('   ✅ Security Manager initialized');
-
+            
             // Analytics Manager for detailed data tracking
             this.analyticsManager = new AnalyticsManager(this);
             this.logger.info('   ✅ Analytics Manager initialized');
-
+            
+            // Enhanced Ticket Manager for advanced support system
+            this.enhancedTicketManager = new EnhancedTicketManager(this);
+            await this.enhancedTicketManager.initialize();
+            this.logger.info('   ✅ Enhanced Ticket Manager initialized');
+            
             // Settings Manager for configuration
             this.settingsManager = new SettingsManager(this);
             this.logger.info('   ✅ Settings Manager initialized');
@@ -351,23 +286,26 @@ class SecurityBot {
             // Permission Manager for role-based access
             this.permissionManager = new PermissionManager(this);
             this.logger.info('   ✅ Permission Manager initialized');
-
+            
             // Setup Wizard for initial configuration
             this.setupWizard = new SetupWizard(this);
             this.logger.info('   ✅ Setup Wizard initialized');
-
+            
             // Security Scanner for proactive threat detection
             this.securityScanner = new SecurityScanner(this);
             this.logger.info('   ✅ Security Scanner initialized');
-
+            
             // Dashboard Logger for comprehensive command tracking
             this.dashboardLogger = new DashboardLogger(this);
             this.logger.info('   ✅ Dashboard Logger initialized');
-
+            
             // Confirmation Manager for setting change notifications
             this.confirmationManager = new ConfirmationManager(this);
             this.logger.info('   ✅ Confirmation Manager initialized');
 
+            // Ticket System for panel-based ticketing
+            this.ticketSystem = new TicketSystem(this);
+            this.logger.info('   ✅ Ticket System initialized');
             // Forensics Manager for immutable audit logging
             this.forensicsManager = new ForensicsManager(this);
             this.logger.info('   ✅ Forensics Manager initialized');
@@ -377,8 +315,15 @@ class SecurityBot {
             await this.lockdownManager.initialize();
             this.logger.info('   ✅ Lockdown Manager initialized');
 
+            // Help Ticket System
+            this.helpTicketSystem = new HelpTicketSystem(this.database, this.logger);
+            this.logger.info('   ✅ Help Ticket System initialized');
+
             // Rank System for XP and leveling
             this.rankSystem = new RankSystem(this);
+            this.rankCardGenerator = new RankCardGenerator();
+            // OpenAI client (optional)
+            this.openAIClient = new OpenAIClient(this);
             this.logger.info('   ✅ Rank System initialized');
             this.logger.info('   ✅ Rank System initialized');
 
@@ -394,7 +339,7 @@ class SecurityBot {
                     }
                 } catch (e) {
                     // Don't let console broadcasting crash the bot
-                    try { this.logger?.warn && this.logger.warn('broadcastConsole failed:', e?.message || e); } catch (_) { }
+                    try { this.logger?.warn && this.logger.warn('broadcastConsole failed:', e?.message || e); } catch (_) {}
                 }
             };
 
@@ -423,7 +368,7 @@ class SecurityBot {
                         timestamp: Date.now()
                     };
                     this.appendConsoleLog(guildId, entry);
-                } catch (_) { }
+                } catch (_) {}
             };
 
             // Wrap console.* so dashboard receives all console outputs as well
@@ -444,25 +389,25 @@ class SecurityBot {
                 };
 
                 console.log = (...args) => {
-                    try { _log(...args); } catch (_) { }
+                    try { _log(...args); } catch (_) {}
                     const msg = serialize(args);
                     broadcastAllGuilds({ level: 'info', message: msg, timestamp: Date.now() });
                 };
 
                 console.info = (...args) => {
-                    try { _info(...args); } catch (_) { }
+                    try { _info(...args); } catch (_) {}
                     const msg = serialize(args);
                     broadcastAllGuilds({ level: 'info', message: msg, timestamp: Date.now() });
                 };
 
                 console.warn = (...args) => {
-                    try { _warn(...args); } catch (_) { }
+                    try { _warn(...args); } catch (_) {}
                     const msg = serialize(args);
                     broadcastAllGuilds({ level: 'warn', message: msg, timestamp: Date.now() });
                 };
 
                 console.error = (...args) => {
-                    try { _error(...args); } catch (_) { }
+                    try { _error(...args); } catch (_) {}
                     const msg = serialize(args);
                     broadcastAllGuilds({ level: 'error', message: msg, timestamp: Date.now() });
                 };
@@ -656,7 +601,7 @@ class SecurityBot {
                                     };
                                     const controller = new (global.AbortController || require('abort-controller'))();
                                     const timeoutHandle = setTimeout(() => {
-                                        try { controller.abort(); } catch (_) { }
+                                        try { controller.abort(); } catch (_) {}
                                     }, 3000);
                                     const doFetch = async () => {
                                         if (typeof fetch === 'function') return fetch;
@@ -766,149 +711,28 @@ class SecurityBot {
                 if (typeof cfg[key] === 'undefined' || cfg[key] === null) return true;
                 return Boolean(cfg[key]);
             };
-
-            // Listen for dashboard config updates for real-time sync
-            this.client.on('guildConfigUpdate', async ({ guildId, settings }) => {
-                try {
-                    this.logger.info(`[ConfigSync] Received config update for guild ${guildId}`);
-
-                    // Reload config from database to get fresh data
-                    const config = await this.database.getGuildConfig(guildId);
-
-                    // Handle anti-raid toggle
-                    if (settings.hasOwnProperty('anti_raid_enabled') || settings.hasOwnProperty('antiraid_enabled')) {
-                        const enabled = settings.anti_raid_enabled || settings.antiraid_enabled;
-                        if (!enabled && this.antiRaid) {
-                            this.logger.info(`[AntiRaid] Disabled for guild ${guildId}`);
-                            // Clear any active lockdowns
-                            if (this.antiRaid.lockdowns && this.antiRaid.lockdowns.has(guildId)) {
-                                this.antiRaid.lockdowns.delete(guildId);
-                            }
-                        } else if (enabled) {
-                            this.logger.info(`[AntiRaid] Enabled for guild ${guildId}`);
-                            if (this.antiRaid && this.antiRaid.initializeGuild) {
-                                await this.antiRaid.initializeGuild(guildId);
-                            }
-                        }
-                    }
-
-                    // Handle anti-spam toggle
-                    if (settings.hasOwnProperty('anti_spam_enabled') || settings.hasOwnProperty('antispam_enabled')) {
-                        const enabled = settings.anti_spam_enabled || settings.antispam_enabled;
-                        if (!enabled && this.antiSpam) {
-                            this.logger.info(`[AntiSpam] Disabled for guild ${guildId}`);
-                            // Clear message tracking for this guild
-                            if (this.antiSpam.userMessages) {
-                                for (const [key] of this.antiSpam.userMessages.entries()) {
-                                    if (key.startsWith(guildId)) {
-                                        this.antiSpam.userMessages.delete(key);
-                                    }
-                                }
-                            }
-                        } else if (enabled) {
-                            this.logger.info(`[AntiSpam] Enabled for guild ${guildId}`);
-                        }
-                    }
-
-                    // Handle anti-phishing toggle
-                    if (settings.hasOwnProperty('anti_phishing_enabled') || settings.hasOwnProperty('antiphishing_enabled')) {
-                        const enabled = settings.anti_phishing_enabled || settings.antiphishing_enabled;
-                        if (!enabled && this.antiPhishing) {
-                            this.logger.info(`[AntiPhishing] Disabled for guild ${guildId}`);
-                        } else if (enabled) {
-                            this.logger.info(`[AntiPhishing] Enabled for guild ${guildId}`);
-                        }
-                    }
-
-                    // Handle anti-nuke toggle
-                    if (settings.hasOwnProperty('antinuke_enabled')) {
-                        const enabled = settings.antinuke_enabled;
-                        if (!enabled && this.antiNuke) {
-                            this.logger.info(`[AntiNuke] Disabled for guild ${guildId}`);
-                        } else if (enabled) {
-                            this.logger.info(`[AntiNuke] Enabled for guild ${guildId}`);
-                            if (this.antiNuke && this.antiNuke.initializeGuild) {
-                                await this.antiNuke.initializeGuild(guildId);
-                            }
-                        }
-                    }
-
-                    // Handle verification toggle
-                    if (settings.hasOwnProperty('verification_enabled')) {
-                        const enabled = settings.verification_enabled;
-                        if (!enabled && this.userVerification) {
-                            this.logger.info(`[Verification] Disabled for guild ${guildId}`);
-                        } else if (enabled) {
-                            this.logger.info(`[Verification] Enabled for guild ${guildId}`);
-                        }
-                    }
-
-                    // Handle tickets toggle
-                    if (settings.hasOwnProperty('tickets_enabled')) {
-                        const enabled = settings.tickets_enabled;
-                        if (!enabled) {
-                            this.logger.info(`[Tickets] Disabled for guild ${guildId}`);
-                        } else if (enabled) {
-                            this.logger.info(`[Tickets] Enabled for guild ${guildId}`);
-                            // Initialize ticket system for this guild if needed
-                            if (this.ticketManager && this.ticketManager.initializeGuild) {
-                                await this.ticketManager.initializeGuild(guildId);
-                            }
-                        }
-                    }
-
-                    this.logger.success(`[ConfigSync] Guild ${guildId} configuration reloaded successfully`);
-                } catch (error) {
-                    this.logger.error(`[ConfigSync] Error handling config update for guild ${guildId}:`, error);
-                }
-            });
-
+            
             // Setup event handlers
             await this.setupEventHandlers();
-
+            
             // Start web dashboard if enabled
             if (process.env.ENABLE_WEB_DASHBOARD === 'true') {
                 // Prefer platform-assigned PORT, then DASHBOARD_PORT, then WEB_PORT, then fallback to 3001
                 const port = process.env.PORT || process.env.DASHBOARD_PORT || process.env.WEB_PORT || 3001;
                 await this.dashboard.start(port);
                 this.logger.info(`🌐 Dashboard started on http://localhost:${port}`);
-                
-                // Mount Darklock Platform on the same server
-                try {
-                    const DarklockPlatform = require('../darklock/server');
-                    const darklock = new DarklockPlatform();
-                    await darklock.mountOn(this.dashboard.app, this); // Pass bot reference for admin API
-                    this.logger.info('🔐 Darklock Platform mounted at /platform/*');
-                    this.logger.info(`   - Homepage: http://localhost:${port}/platform`);
-                    this.logger.info(`   - Darklock Guard: http://localhost:${port}/platform/download/darklock-guard-installer`);
-                    this.logger.info(`   - Web Monitor: http://localhost:${port}/platform/monitor/darklock-guard`);
-                } catch (error) {
-                    this.logger.error('❌ Failed to mount Darklock Platform:', error);
-                    this.logger.error('Stack trace:', error.stack);
-                    // Don't continue - this is a critical error
-                    throw error;
-                }
-                
-                // Register 404 handler AFTER Darklock routes are mounted
-                this.dashboard.app.use((req, res) => {
-                    res.status(404).json({ error: 'Not found' });
-                });
             }
-
+            
             this.logger.info('✅ Bot initialization complete!');
         } catch (error) {
-            if (this.logger && this.logger.error) {
-                this.logger.error('❌ Failed to initialize bot:', error);
-            } else {
-                console.error('❌ Failed to initialize bot:', error);
-            }
+            this.logger.error('❌ Failed to initialize bot:', error);
             throw error;
         }
     }
 
     async loadCommands() {
         this.logger.info('📂 Loading commands...');
-
+        
         const commandsPath = path.join(__dirname, 'commands');
         if (!fs.existsSync(commandsPath)) {
             fs.mkdirSync(commandsPath, { recursive: true });
@@ -916,14 +740,14 @@ class SecurityBot {
         }
 
         const commandFolders = ['admin', 'moderation', 'security', 'utility'];
-
+        
         for (const folder of commandFolders) {
             const folderPath = path.join(commandsPath, folder);
             if (!fs.existsSync(folderPath)) continue;
-
+            
             const commandFiles = fs.readdirSync(folderPath)
                 .filter(file => file.endsWith('.js'));
-
+            
             for (const file of commandFiles) {
                 try {
                     const command = require(path.join(folderPath, file));
@@ -938,63 +762,1157 @@ class SecurityBot {
                 }
             }
         }
-
+        
         this.logger.info(`📋 Loaded ${this.commands.size} commands`);
     }
 
     async setupEventHandlers() {
-        // Load event handlers from src/core/events/
-        const coreEvents = require('./core/events');
-        const allEvents = coreEvents.getAllEvents();
+        // Ready event (clientReady to avoid deprecation warning)
+        this.client.once('clientReady', async () => {
+            this.logger.info(`🚀 Bot is online as ${this.client.user.tag}`);
+            this.logger.info(`📊 Serving ${this.client.guilds.cache.size} guilds`);
+            
+            // Set bot presence
+            this.client.user.setActivity('🛡️ guardianbot.xyz | Protecting servers', { type: 'WATCHING' });
+            
+            // Register slash commands (global + per-guild for immediacy)
+            await this.registerSlashCommands();
+        });
 
-        this.logger.info(`📋 Loading ${allEvents.length} event handlers from core/events/`);
-
-        for (const event of allEvents) {
-            if (!event || !event.name) continue;
-
-            const handler = async (...args) => {
-                try {
-                    await event.execute(...args, this);
-                } catch (error) {
-                    this.logger.error(`Error in event ${event.name}:`, error);
+        // Interaction handling
+        this.client.on('interactionCreate', async (interaction) => {
+            if (interaction.isChatInputCommand()) {
+                const command = this.commands.get(interaction.commandName);
+                
+                if (!command) {
+                    return await interaction.reply({
+                        content: '❌ Command not found.',
+                        ephemeral: true
+                    });
                 }
-            };
 
-            if (event.once) {
-                this.client.once(event.name, handler);
-            } else {
-                this.client.on(event.name, handler);
+                // Check cooldowns
+                if (!this.cooldowns.has(command.data.name)) {
+                    this.cooldowns.set(command.data.name, new Collection());
+                }
+
+                const now = Date.now();
+                const timestamps = this.cooldowns.get(command.data.name);
+                const cooldownAmount = (command.cooldown || 3) * 1000;
+
+                if (timestamps.has(interaction.user.id)) {
+                    const expirationTime = timestamps.get(interaction.user.id) + cooldownAmount;
+
+                    if (now < expirationTime) {
+                        const timeLeft = (expirationTime - now) / 1000;
+                        return await interaction.reply({
+                            content: `⏰ Please wait ${timeLeft.toFixed(1)} seconds before using this command again.`,
+                            ephemeral: true
+                        });
+                    }
+                }
+
+                timestamps.set(interaction.user.id, now);
+                setTimeout(() => timestamps.delete(interaction.user.id), cooldownAmount);
+
+                const startTime = Date.now();
+                let commandSuccess = true;
+                let commandError = null;
+
+                try {
+                    // Feature gating
+                    const blocked = await this.isFeatureBlocked(interaction);
+                    if (blocked) {
+                        return await interaction.reply({ content: '❌ This feature is disabled in this server.', ephemeral: true });
+                    }
+
+                    // Plan-based gating
+                    if (interaction.guild) {
+                        const requiredPlan = command.requiredPlan || this.planRequirements?.[command.data?.name];
+                        if (requiredPlan === 'pro') {
+                            const hasPro = await this.hasProFeatures(interaction.guild.id);
+                            if (!hasPro) {
+                                return await interaction.reply('❌ This feature requires the **Pro plan**.');
+                            }
+                        } else if (requiredPlan === 'enterprise') {
+                            const hasEnterprise = await this.hasEnterpriseFeatures(interaction.guild.id);
+                            if (!hasEnterprise) {
+                                return await interaction.reply('❌ This feature requires the **Enterprise plan**.');
+                            }
+                        }
+                    }
+
+                    // Role-based permission check (before command execution)
+                    if (this.permissionManager) {
+                        const allowed = await this.permissionManager.isAllowed(interaction);
+                        if (!allowed) {
+                            return await interaction.reply({
+                                content: '🚫 You do not have permission to use this command. Ask a server admin to grant access via `/permissions`.',
+                                ephemeral: true
+                            });
+                        }
+                    }
+
+                    // Feature gating: if the command declares a feature requirement, ensure it's enabled for the guild
+                    if (interaction.guild && command.feature) {
+                        try {
+                            const enabled = await this.isFeatureEnabledForGuild(interaction.guild.id, command.feature);
+                            if (!enabled) {
+                                return await interaction.reply({
+                                    content: `⚠️ The feature required for this command (${command.feature}) is currently disabled in this server. Ask an admin to enable it in the dashboard.`,
+                                    ephemeral: true
+                                });
+                            }
+                        } catch (e) {
+                            await this.logger.logError({
+                                error: e,
+                                context: 'feature_gate_check',
+                                guildId: interaction.guild.id,
+                                userId: interaction.user.id
+                            });
+                        }
+                    }
+
+                    // Track command usage for analytics
+                    if (this.eventEmitter && interaction.guild) {
+                        await this.eventEmitter.emitCommandUsed(
+                            interaction.guild.id,
+                            interaction.commandName,
+                            interaction.user.id
+                        );
+                    }
+
+                    // Pass bot instance to commands that need it
+                    await command.execute(interaction, this);
+                    
+                    // Broadcast command execution to console
+                    try {
+                        const guildId = interaction.guild ? interaction.guild.id : null;
+                        const who = interaction.user ? `${interaction.user.tag} (${interaction.user.id})` : String(interaction.user?.id || 'Unknown');
+                        const cmd = command.data && command.data.name ? command.data.name : interaction.commandName;
+                        this.broadcastConsole(guildId, `[COMMAND] ${who} -> /${cmd}`);
+                    } catch (e) {
+                        /* ignore */
+                    }
+                    
+                    // NEW: Track command usage in analytics
+                    if (this.analyticsManager) {
+                        await this.analyticsManager.trackCommand(interaction);
+                    }
+                } catch (error) {
+                    commandSuccess = false;
+                    commandError = error.message || String(error);
+                    
+                    await this.logger.logError({
+                        error,
+                        context: `command_${interaction.commandName}`,
+                        userId: interaction.user.id,
+                        userTag: interaction.user.tag,
+                        guildId: interaction.guild?.id,
+                        channelId: interaction.channel?.id
+                    });
+                    
+                    // Broadcast error to console
+                    try {
+                        const guildId = interaction.guild ? interaction.guild.id : null;
+                        this.broadcastConsole(guildId, `[CMD ERROR] /${interaction.commandName} failed: ${error.message || error}`);
+                    } catch (_) {}
+                    
+                    const errorMessage = {
+                        content: '❌ An error occurred while executing this command.',
+                        ephemeral: true
+                    };
+
+                    if (interaction.replied || interaction.deferred) {
+                        await interaction.followUp(errorMessage);
+                    } else {
+                        await interaction.reply(errorMessage);
+                    }
+                } finally {
+                    // Log command execution
+                    const duration = Date.now() - startTime;
+                    await this.logger.logCommand({
+                        commandName: interaction.commandName,
+                        userId: interaction.user.id,
+                        userTag: interaction.user.tag,
+                        guildId: interaction.guild?.id,
+                        channelId: interaction.channel?.id,
+                        options: interaction.options?.data || {},
+                        success: commandSuccess,
+                        duration,
+                        error: commandError
+                    });
+                }
             }
+            // Handle button interactions
+            else if (interaction.isButton()) {
+                const buttonSuccess = await (async () => {
+                    try {
+                        // Verification skip/deny
+                        if (interaction.customId.startsWith('verify_allow_') || interaction.customId.startsWith('verify_deny_')) {
+                            const targetId = interaction.customId.split('_')[2];
+                            const approve = interaction.customId.startsWith('verify_allow_');
+                            if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild) &&
+                                !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+                                return interaction.reply({ content: 'Staff only.', ephemeral: true });
+                            }
+                            await interaction.deferReply({ ephemeral: true });
+                            const member = await interaction.guild.members.fetch(targetId).catch(() => null);
+                            if (!member) return interaction.editReply({ content: 'User not found.' });
+                            const cfg = await this.database.getGuildConfig(interaction.guild.id);
+                            const unverifiedRole = cfg.unverified_role_id ? interaction.guild.roles.cache.get(cfg.unverified_role_id) : null;
+                            const verifiedRole = cfg.verified_role_id ? interaction.guild.roles.cache.get(cfg.verified_role_id) : null;
+                            if (approve) {
+                                if (unverifiedRole) await member.roles.remove(unverifiedRole).catch(() => {});
+                                if (verifiedRole) await member.roles.add(verifiedRole).catch(() => {});
+                                const welcomeChannel = cfg.verified_welcome_channel_id ? interaction.guild.channels.cache.get(cfg.verified_welcome_channel_id) : interaction.guild.systemChannel;
+                                if (welcomeChannel?.isTextBased()) {
+                                    const msg = (cfg.verified_welcome_message || 'Welcome {user} to {server}!').replace('{user}', member).replace('{server}', interaction.guild.name);
+                                    await welcomeChannel.send({ content: msg });
+                                }
+                                await interaction.message.edit({ components: [] });
+                                await interaction.editReply({ content: `Approved ${member.user.tag}.` });
+                            } else {
+                                await member.kick(`Verification denied by ${interaction.user.tag}`);
+                                await interaction.message.edit({ components: [] });
+                                await interaction.editReply({ content: `Denied and kicked ${member.user.tag}.` });
+                            }
+                            return true;
+                        }
+                        // Handle enhanced ticket system buttons
+                        if (interaction.customId.startsWith('close_ticket_') || 
+                            interaction.customId.startsWith('claim_ticket_') || 
+                            interaction.customId.startsWith('add_user_') ||
+                            interaction.customId.startsWith('confirm_close_') ||
+                            interaction.customId.startsWith('cancel_close_') ||
+                            interaction.customId.startsWith('rate_ticket_')) {
+                            if (this.enhancedTicketManager) {
+                                await this.enhancedTicketManager.handleTicketInteraction(interaction);
+                            }
+                            return true;
+                        }
+                        // Handle setup wizard buttons
+                        else if (interaction.customId.startsWith('setup_')) {
+                            if (this.setupWizard) {
+                                await this.setupWizard.handleSetupInteraction(interaction);
+                            }
+                            return true;
+                        }
+                        else if (interaction.customId.startsWith('verify_allow_') || interaction.customId.startsWith('verify_deny_')) {
+                            const verifier = require('./events/guildMemberAdd-verification.js');
+                            if (verifier?.handleVerificationButtons) {
+                                await verifier.handleVerificationButtons(interaction, this);
+                            }
+                            return true;
+                        }
+                        // Handle verification buttons
+                        // verify_user_ handled centrally in events/interactionHandler.js
+                        // Handle settings buttons
+                        else if (interaction.customId.startsWith('toggle_') || 
+                                 interaction.customId.startsWith('configure_') ||
+                                 interaction.customId === 'settings_back') {
+                            if (this.settingsManager) {
+                                await this.settingsManager.handleSettingsInteraction(interaction);
+                            }
+                            return true;
+                        }
+                        // Handle legacy ticket system and other buttons
+                        else {
+                            await this.handleButtonInteraction(interaction);
+                            return true;
+                        }
+                    } catch (error) {
+                        await this.logger.logError({
+                            error,
+                            context: `button_${interaction.customId}`,
+                            userId: interaction.user.id,
+                            userTag: interaction.user.tag,
+                            guildId: interaction.guild?.id,
+                            channelId: interaction.channel?.id
+                        });
+                        return false;
+                    }
+                })();
 
-            this.logger.debug(`   ✅ Registered event: ${event.name}${event.once ? ' (once)' : ''}`);
-        }
+                // Log button interaction
+                await this.logger.logButton({
+                    customId: interaction.customId,
+                    userId: interaction.user.id,
+                    userTag: interaction.user.tag,
+                    guildId: interaction.guild?.id,
+                    channelId: interaction.channel?.id,
+                    messageId: interaction.message?.id,
+                    action: interaction.customId.split('_')[0],
+                    success: buttonSuccess
+                });
+            }
+            // Handle select menu interactions
+            else if (interaction.isStringSelectMenu()) {
+                // Handle ticket category selection
+                if (interaction.customId === 'ticket_category_select') {
+                    if (this.enhancedTicketManager) {
+                        await this.enhancedTicketManager.handleTicketButton(interaction);
+                    }
+                }
+                // Handle settings category selection
+                else if (interaction.customId === 'settings_category_select') {
+                    if (this.settingsManager) {
+                        await this.settingsManager.handleSettingsInteraction(interaction);
+                    }
+                }
+                // Handle help category selection
+                else if (interaction.customId === 'help-category-select') {
+                    const category = interaction.values[0];
+                    
+                    if (!this.helpTicketSystem) {
+                        return await interaction.reply({ content: '❌ Help ticket system not available', ephemeral: true });
+                    }
 
-        // Process-level error handler (keep in bot.js)
+                    // Show modal for the selected category
+                    const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+
+                    const modal = new ModalBuilder()
+                        .setCustomId(`help-ticket-modal-${category}`)
+                        .setTitle(`🆘 ${this.helpTicketSystem.getCategoryLabel(category)}`);
+
+                    const subjectInput = new TextInputBuilder()
+                        .setCustomId('help-subject')
+                        .setLabel('Subject/Title')
+                        .setStyle(TextInputStyle.Short)
+                        .setPlaceholder('Brief description of your issue')
+                        .setMinLength(5)
+                        .setMaxLength(100)
+                        .setRequired(true);
+
+                    const reasonInput = new TextInputBuilder()
+                        .setCustomId('help-reason')
+                        .setLabel('Reason')
+                        .setStyle(TextInputStyle.Short)
+                        .setPlaceholder('Why do you need help with this?')
+                        .setMinLength(5)
+                        .setMaxLength(200)
+                        .setRequired(true);
+
+                    const descriptionInput = new TextInputBuilder()
+                        .setCustomId('help-description')
+                        .setLabel('Detailed Description')
+                        .setStyle(TextInputStyle.Paragraph)
+                        .setPlaceholder('Please provide as much detail as possible...')
+                        .setMinLength(10)
+                        .setMaxLength(2000)
+                        .setRequired(true);
+
+                    modal.addComponents(
+                        new ActionRowBuilder().addComponents(subjectInput),
+                        new ActionRowBuilder().addComponents(reasonInput),
+                        new ActionRowBuilder().addComponents(descriptionInput)
+                    );
+
+                    await interaction.showModal(modal);
+                }
+            }
+            // Handle modal submissions
+            else if (interaction.isModalSubmit()) {
+                if (interaction.customId === 'ticket_modal') {
+                    await this.handleTicketSubmit(interaction);
+                } else if (interaction.customId === 'ticket_create_modal') {
+                    if (this.ticketSystem) {
+                        await this.ticketSystem.handleModalSubmit(interaction);
+                    }
+                } else if (interaction.customId === 'help-modal') {
+                    await this.handleHelpModal(interaction);
+                } else if (interaction.customId.startsWith('help-ticket-modal-')) {
+                    // Handle help ticket modal submission
+                    await this.handleHelpTicketModal(interaction);
+                }
+            }
+        });
+
+        // Message events for security modules
+        this.client.on('messageCreate', async (message) => {
+            if (message.author.bot || !message.guild) return;
+
+            try {
+                // Get guild config once for all checks
+                const guildConfig = await this.database.getGuildConfig(message.guild.id).catch(() => ({}));
+
+                // Anti-spam check
+                if (this.antiSpam && guildConfig.anti_spam_enabled !== 0) {
+                    const spamResult = await this.antiSpam.checkMessage(message);
+                    // checkMessage returns true if spam detected
+                    if (spamResult === true) {
+                        this.logger.debug(`Spam detected, message handled by antiSpam`);
+                        return;
+                    }
+                }
+
+                // Anti-malicious links check
+                if (this.antiMaliciousLinks && guildConfig.anti_phishing_enabled !== 0) {
+                    const linkResult = await this.antiMaliciousLinks.checkMessage(message);
+                    if (linkResult && linkResult.isBlocked) return;
+                }
+
+                // Toxicity filter (part of auto-mod)
+                if (this.toxicityFilter && guildConfig.auto_mod_enabled !== 0) {
+                    await this.toxicityFilter.checkMessage(message);
+                }
+
+                // Behavior detection
+                if (this.behaviorDetection) {
+                    await this.behaviorDetection.trackUserBehavior(message);
+                }
+                
+                // NEW: Security Manager comprehensive check
+                if (this.securityManager) {
+                    await this.securityManager.handleMessage(message);
+                }
+                
+                // NEW: Analytics tracking
+                if (this.analyticsManager) {
+                    await this.analyticsManager.trackMessage(message);
+                }
+
+                // Rank System: Add XP for message
+                if (this.rankSystem) {
+                    // Anti-ghost XP protection
+                    const content = message.content.trim();
+                    
+                    // Check minimum length (5 characters)
+                    if (content.length < 5) {
+                        this.logger.debug('Message too short for XP');
+                    }
+                    // Check emoji-only messages
+                    else if (/^[\p{Emoji}\s]+$/u.test(content)) {
+                        this.logger.debug('Emoji-only message, no XP');
+                    }
+                    else {
+                        const result = await this.rankSystem.addXP(message.guild.id, message.author.id, message.content);
+                        
+                        // If user leveled up, send congratulations
+                        if (result && result.leveledUp) {
+                            // Get guild config for custom level-up message
+                            const config = await this.database.getGuildConfig(message.guild.id);
+                            
+                            // Build custom message with variable replacement
+                            const defaultMessage = 'Congratulations {user}! You\'ve reached **Level {level}**!';
+                            let customMessage = config?.xp_levelup_message || defaultMessage;
+                            const userData = this.rankSystem.getUserData(message.guild.id, message.author.id);
+                            
+                            // Get role name if role reward exists
+                            let roleName = 'None';
+                            if (result.roleReward) {
+                                const role = message.guild.roles.cache.get(result.roleReward);
+                                roleName = role ? role.name : result.roleReward;
+                            }
+                            
+                            // Replace variables
+                            customMessage = customMessage
+                                .replace(/{user}/g, message.author.toString())
+                                .replace(/{username}/g, message.author.username)
+                                .replace(/{level}/g, result.newLevel.toString())
+                                .replace(/{xp}/g, this.rankSystem.formatXP(result.currentXP))
+                                .replace(/{role}/g, roleName)
+                                .replace(/{messages}/g, userData.totalMessages.toString());
+                            
+                            const embedTitle = config?.xp_levelup_title || '🎉 Level Up!';
+                            const embedColor = config?.xp_levelup_embed_color || '#00ff41';
+                            const showXP = config?.xp_levelup_show_xp !== 0;
+                            const showMessages = config?.xp_levelup_show_messages !== 0;
+
+                            const levelUpEmbed = new EmbedBuilder()
+                                .setColor(embedColor)
+                                .setTitle(embedTitle)
+                                .setDescription(customMessage)
+                                .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+                                .setTimestamp();
+
+                            // Add optional fields
+                            if (showXP) {
+                                levelUpEmbed.addFields({ name: 'Total XP', value: this.rankSystem.formatXP(result.currentXP), inline: true });
+                            }
+                            if (showMessages) {
+                                levelUpEmbed.addFields({ name: 'Messages', value: userData.totalMessages.toString(), inline: true });
+                            }
+
+                            try {
+                                // Check for custom level-up channel
+                                const levelUpChannelId = config?.xp_levelup_channel;
+                                const targetChannel = levelUpChannelId 
+                                    ? message.guild.channels.cache.get(levelUpChannelId) 
+                                    : message.channel;
+                                    
+                                if (targetChannel && targetChannel.isTextBased()) {
+                                    await targetChannel.send({ embeds: [levelUpEmbed] });
+                                } else {
+                                    await message.channel.send({ embeds: [levelUpEmbed] });
+                                }
+                            } catch (e) {
+                                // Couldn't send level up message (permissions)
+                            }
+                            
+                            // Check for role rewards
+                            if (result.roleReward) {
+                                try {
+                                    const role = message.guild.roles.cache.get(result.roleReward);
+                                    if (role) {
+                                        await message.member.roles.add(role);
+                                        await message.channel.send(`🏆 ${message.author} earned the **${role.name}** role!`);
+                                    }
+                                } catch (e) {
+                                    console.error('Failed to assign role reward:', e);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Ticket system message logging
+                if (this.ticketSystem) {
+                    await this.ticketSystem.handleTicketMessage(message);
+                }
+            } catch (error) {
+                this.logger.error('Error in message handler:', error);
+            }
+        });
+
+        // Member join events
+        this.client.on('guildMemberAdd', async (member) => {
+            try {
+                // Broadcast to console
+                try {
+                    this.broadcastConsole(member.guild.id, `[JOIN] ${member.user.tag} (${member.id}) joined ${member.guild.name}`);
+                } catch (_) {}
+
+                // Lockdown check - handle first
+                if (this.lockdownManager) {
+                    await this.lockdownManager.handleNewJoin(member);
+                }
+
+                // Anti-raid check
+                if (this.antiRaid) {
+                    const raidResult = await this.antiRaid.checkNewMember(member);
+                    if (raidResult && raidResult.isRaid) return;
+                }
+
+                // User verification via join queue (raid-safe)
+                if (this.joinQueue) {
+                    this.joinQueue.enqueueJoin(member);
+                } else if (this.userVerification && typeof this.userVerification.verifyNewMember === 'function') {
+                    await this.userVerification.verifyNewMember(member);
+                }
+
+                // Log join
+                if (this.database) {
+                    await this.database.logEvent({
+                        type: 'member_join',
+                        guildId: member.guild.id,
+                        userId: member.id,
+                        timestamp: Date.now(),
+                        metadata: {
+                            accountAge: Date.now() - member.user.createdTimestamp,
+                            joinMethod: 'unknown'
+                        }
+                    });
+                }
+                
+                // NEW: Security Manager join check
+                if (this.securityManager) {
+                    await this.securityManager.handleMemberJoin(member);
+                }
+                
+                // NEW: Analytics tracking
+                if (this.analyticsManager) {
+                    await this.analyticsManager.trackMemberJoin(member);
+                }
+
+                // Forensics audit log
+                if (this.forensicsManager) {
+                    await this.forensicsManager.logAuditEvent({
+                        guildId: member.guild.id,
+                        eventType: 'member_join',
+                        eventCategory: 'member',
+                        executor: { id: member.id, tag: member.user.tag },
+                        target: { id: member.id, name: member.user.tag, type: 'user' },
+                        changes: { accountAgeMs: Date.now() - member.user.createdTimestamp },
+                        canReplay: false
+                    });
+                }
+                
+                // Welcome message
+                if (this.database) {
+                    const config = await this.database.getGuildConfig(member.guild.id);
+                    if (config.welcome_enabled && config.welcome_channel) {
+                        try {
+                            const channel = member.guild.channels.cache.get(config.welcome_channel);
+                            if (channel && channel.permissionsFor(member.guild.members.me).has('SendMessages')) {
+                                const welcomeMessage = this.formatWelcomeMessage(
+                                    config.welcome_message || 'Welcome {user} to **{server}**! You are member #{memberCount}! 🎉',
+                                    member
+                                );
+                                await channel.send(welcomeMessage);
+                                this.logger.info(`📩 Sent welcome message to ${member.user.tag} in ${member.guild.name}`);
+                            }
+                        } catch (error) {
+                            this.logger.error('Error sending welcome message:', error);
+                        }
+                    }
+                }
+            } catch (error) {
+                this.logger.error('Error in member join handler:', error);
+            }
+        });
+
+        // Bot added to new server
+        this.client.on('guildCreate', async (guild) => {
+            try {
+                this.logger.info(`✅ Bot added to new server: ${guild.name} (${guild.id})`);
+                
+                // Initialize guild configuration
+                if (this.database) {
+                    await this.database.getGuildConfig(guild.id);
+                }
+                
+                // Send comprehensive DM guide to server owner
+                try {
+                    const owner = await guild.fetchOwner();
+                    
+                    const welcomeDM1 = new EmbedBuilder()
+                        .setTitle('🛡️ Welcome to GuardianBot!')
+                        .setDescription(`
+Thank you for adding **GuardianBot** to **${guild.name}**!
+
+I'm an advanced security and moderation bot designed to protect your server and make management easier.
+
+**🎯 I'm currently performing an initial security scan** of your server to check for existing threats. This will complete in a few minutes.
+                        `)
+                        .setColor('#00d4ff')
+                        .setThumbnail(this.client.user.displayAvatarURL())
+                        .setTimestamp();
+
+                    const securityFeatures = new EmbedBuilder()
+                        .setTitle('🔒 Security Features')
+                        .setColor('#e74c3c')
+                        .setDescription('GuardianBot provides comprehensive protection:')
+                        .addFields(
+                            { 
+                                name: '🚨 Anti-Raid Protection', 
+                                value: 'Automatically detects and stops server raids\n• Monitors join patterns\n• Configurable thresholds\n• Auto-lockdown capabilities', 
+                                inline: false 
+                            },
+                            { 
+                                name: '🗑️ Anti-Spam System', 
+                                value: 'Prevents spam and flooding\n• Message rate limiting\n• Duplicate detection\n• Auto-delete spam', 
+                                inline: false 
+                            },
+                            { 
+                                name: '🔗 Link Protection', 
+                                value: 'Blocks malicious links and phishing\n• Real-time URL scanning\n• Phishing database checks\n• Scam prevention', 
+                                inline: false 
+                            },
+                            { 
+                                name: '🧹 Toxicity Detection', 
+                                value: 'Filters toxic and harmful content\n• Advanced content analysis\n• Configurable sensitivity\n• Automatic warnings', 
+                                inline: false 
+                            },
+                            { 
+                                name: '📊 Proactive Scanning', 
+                                value: 'Regular security scans of all channels\n• Scheduled automatic scans\n• Manual scan triggers\n• Detailed threat reports', 
+                                inline: false 
+                            }
+                        );
+
+                    const moderationCommands = new EmbedBuilder()
+                        .setTitle('⚖️ Moderation Commands')
+                        .setColor('#3498db')
+                        .addFields(
+                            { 
+                                name: '`/ban` `[user] [reason]`', 
+                                value: 'Ban a user from the server', 
+                                inline: true 
+                            },
+                            { 
+                                name: '`/kick` `[user] [reason]`', 
+                                value: 'Kick a user from the server', 
+                                inline: true 
+                            },
+                            { 
+                                name: '`/timeout` `[user] [duration]`', 
+                                value: 'Timeout a user temporarily', 
+                                inline: true 
+                            },
+                            { 
+                                name: '`/warn` `[user] [reason]`', 
+                                value: 'Issue a warning to a user', 
+                                inline: true 
+                            },
+                            { 
+                                name: '`/purge` `[amount]`', 
+                                value: 'Delete multiple messages', 
+                                inline: true 
+                            },
+                            { 
+                                name: '`/lockdown` `[channel]`', 
+                                value: 'Lock a channel temporarily', 
+                                inline: true 
+                            }
+                        );
+
+                    const adminCommands = new EmbedBuilder()
+                        .setTitle('🛠️ Setup & Admin Commands')
+                        .setColor('#f39c12')
+                        .addFields(
+                            { 
+                                name: '`/wizard`', 
+                                value: '**⭐ Recommended first step!**\nInteractive setup wizard for all features', 
+                                inline: false 
+                            },
+                            { 
+                                name: '`/serversetup` `[template]`', 
+                                value: '**NEW!** Complete server setup with channels & roles\nChoose from Gaming, Business, Education, Creative, or General templates', 
+                                inline: false 
+                            },
+                            { 
+                                name: '`/setup`', 
+                                value: 'Configure security features and channels', 
+                                inline: true 
+                            },
+                            { 
+                                name: '`/settings` `[feature]`', 
+                                value: 'View and modify bot settings', 
+                                inline: true 
+                            },
+                            { 
+                                name: '`/security` `[action]`', 
+                                value: 'Manage security features', 
+                                inline: true 
+                            },
+                            { 
+                                name: '`/permissions` `[role]`', 
+                                value: 'Configure role permissions', 
+                                inline: true 
+                            }
+                        );
+
+                    const utilityCommands = new EmbedBuilder()
+                        .setTitle('🔧 Utility Commands')
+                        .setColor('#2ecc71')
+                        .addFields(
+                            { 
+                                name: '`/ticket` `[create/close]`', 
+                                value: 'Manage support tickets', 
+                                inline: true 
+                            },
+                            { 
+                                name: '`/help` `[command]`', 
+                                value: 'Get help with commands', 
+                                inline: true 
+                            },
+                            { 
+                                name: '`/serverinfo`', 
+                                value: 'View server information', 
+                                inline: true 
+                            },
+                            { 
+                                name: '`/userinfo` `[user]`', 
+                                value: 'View user information', 
+                                inline: true 
+                            },
+                            { 
+                                name: '`/analytics`', 
+                                value: 'View server analytics', 
+                                inline: true 
+                            },
+                            { 
+                                name: '`/status`', 
+                                value: 'Check security status', 
+                                inline: true 
+                            }
+                        );
+
+                    const dashboardInfo = new EmbedBuilder()
+                        .setTitle('🌐 Web Dashboard')
+                        .setColor('#9b59b6')
+                        .setDescription(`
+**Access your dashboard at:** \`${process.env.DASHBOARD_URL || 'Your Dashboard URL'}\`
+
+**Dashboard Features:**
+🎨 Modern, responsive interface
+📊 Real-time server statistics
+🔧 Configure all bot settings
+🚨 View security alerts and quarantined content
+📈 Detailed analytics and insights
+🎫 Manage tickets
+👥 User management tools
+⚙️ Auto-delete configuration for threats
+📋 Security scan history
+
+**Login:** Use your Discord account to authenticate
+                        `);
+
+                    const quickStart = new EmbedBuilder()
+                        .setTitle('🚀 Quick Start Guide')
+                        .setColor('#1abc9c')
+                        .setDescription(`
+**Recommended Setup Steps:**
+
+**1️⃣ Run the Setup Wizard**
+Use \`/wizard\` to configure basic settings in a guided format
+
+**2️⃣ Set Up Your Server Structure** *(Optional)*
+Use \`/serversetup\` to create a complete server template with channels and roles
+
+**3️⃣ Configure Security Features**
+Use \`/security enable\` to enable protection features
+• Anti-raid protection
+• Anti-spam filtering
+• Link protection
+• Toxicity detection
+
+**4️⃣ Set Moderation Roles**
+Use \`/setup\` to assign moderator and admin roles
+
+**5️⃣ Configure Auto-Delete Settings**
+Visit the web dashboard to configure automatic deletion of threats
+
+**6️⃣ Review Security Scan Results**
+Check the scan report I'm generating now!
+
+**💡 Pro Tips:**
+• Use the web dashboard for advanced configuration
+• Enable notifications for security events
+• Set up a dedicated log channel
+• Regular security scans are automatically performed
+• Check quarantined messages before deletion
+                        `);
+
+                    const supportInfo = new EmbedBuilder()
+                        .setTitle('❓ Need Help?')
+                        .setColor('#95a5a6')
+                        .setDescription(`
+**Support Resources:**
+
+📖 **Documentation:** Use \`/help\` for command documentation
+🌐 **Web Dashboard:** Full feature documentation available
+💬 **In-Server Help:** Use \`/help [command]\` for specific commands
+🔍 **Status Check:** Use \`/status\` to verify bot functionality
+🔗 **Website:** https://guardianbot.xyz
+💬 **Community Server:** https://discord.gg/BvGZ38dC
+
+**Common Issues:**
+• Missing permissions: Grant Administrator permission
+• Commands not working: Check role hierarchy
+• Features not triggering: Verify settings with \`/settings\`
+
+**All set!** GuardianBot is now protecting your server. Run \`/wizard\` to get started!
+                        `)
+                        .setFooter({ text: 'GuardianBot - Advanced Security & Moderation' })
+                        .setTimestamp();
+
+                    // Send all embeds to owner
+                    await owner.send({ embeds: [welcomeDM1] });
+                    await owner.send({ embeds: [securityFeatures] });
+                    await owner.send({ embeds: [moderationCommands] });
+                    await owner.send({ embeds: [adminCommands] });
+                    await owner.send({ embeds: [utilityCommands] });
+                    await owner.send({ embeds: [dashboardInfo] });
+                    await owner.send({ embeds: [quickStart] });
+                    await owner.send({ embeds: [supportInfo] });
+
+                    this.logger.info(`📧 Sent welcome guide to ${owner.user.tag}`);
+                } catch (dmError) {
+                    this.logger.error('Could not send DM to server owner:', dmError);
+                    // Fallback: send basic message in server
+                }
+                
+                // Send welcome message in server channel
+                const welcomeEmbed = new EmbedBuilder()
+                    .setTitle('🛡️ GuardianBot is now online!')
+                    .setDescription(`
+Thank you for adding me to **${guild.name}**!
+
+I'm performing an initial security scan to check for threats. This will complete in a few minutes.
+
+**Server owner:** Check your DMs for a complete feature guide!
+**Quick start:** Use \`/wizard\` to configure the bot
+**Server setup:** Use \`/serversetup\` to create a complete server structure
+                    `)
+                    .setColor('#00d4ff')
+                    .addFields(
+                        { name: '🔧 Setup', value: '`/wizard` or `/setup`', inline: true },
+                        { name: '❓ Help', value: '`/help`', inline: true },
+                        { name: '🌐 Dashboard', value: process.env.DASHBOARD_URL || 'See DM', inline: true }
+                    )
+                    .setTimestamp();
+
+                const firstChannel = guild.channels.cache.find(c => 
+                    c.type === 0 && 
+                    c.permissionsFor(guild.members.me).has(PermissionFlagsBits.SendMessages)
+                );
+
+                if (firstChannel) {
+                    await firstChannel.send({ embeds: [welcomeEmbed] });
+                }
+
+                // Start security scan in background
+                if (this.securityScanner) {
+                    setTimeout(async () => {
+                        try {
+                            await this.securityScanner.scanServer(guild);
+                            this.logger.info(`✅ Initial security scan complete for ${guild.name}`);
+                        } catch (error) {
+                            this.logger.error('Error during initial security scan:', error);
+                        }
+                    }, 5000); // Wait 5 seconds before starting scan
+                }
+                
+            } catch (error) {
+                this.logger.error('Error in guildCreate handler:', error);
+            }
+        });
+
+        // Member leave events
+        this.client.on('guildMemberRemove', async (member) => {
+            try {
+                // Broadcast to console
+                try {
+                    this.broadcastConsole(member.guild.id, `[LEAVE] ${member.user.tag} (${member.id}) left ${member.guild.name}`);
+                } catch (_) {}
+
+                if (this.database) {
+                    await this.database.logEvent({
+                        type: 'member_leave',
+                        guildId: member.guild.id,
+                        userId: member.id,
+                        timestamp: Date.now()
+                    });
+                }
+                
+                // NEW: Analytics tracking
+                if (this.analyticsManager) {
+                    await this.analyticsManager.trackMemberLeave(member);
+                }
+
+                if (this.forensicsManager) {
+                    await this.forensicsManager.logAuditEvent({
+                        guildId: member.guild.id,
+                        eventType: 'member_leave',
+                        eventCategory: 'member',
+                        executor: { id: member.id, tag: member.user.tag },
+                        target: { id: member.id, name: member.user.tag, type: 'user' },
+                        canReplay: false
+                    });
+                }
+            } catch (error) {
+                this.logger.error('Error in member leave handler:', error);
+            }
+        });
+
+        // Member update events (for timeout notifications and role conflict resolution)
+        this.client.on('guildMemberUpdate', async (oldMember, newMember) => {
+            try {
+                // Auto-resolve role conflicts (verified + unverified)
+                const cfg = await this.database.getGuildConfig(newMember.guild.id).catch(() => null);
+                if (cfg?.verified_role_id && cfg?.unverified_role_id) {
+                    if (newMember.roles.cache.has(cfg.verified_role_id) && newMember.roles.cache.has(cfg.unverified_role_id)) {
+                        await newMember.roles.remove(cfg.unverified_role_id).catch(() => {});
+                        this.logger?.info && this.logger.info(`[RoleConflict] Removed Unverified from ${newMember.user.tag} (has Verified)`);
+                    }
+                }
+            } catch (err) {
+                this.logger?.warn && this.logger.warn('[RoleConflict] Failed to resolve:', err);
+            }
+        });
+        
+        // Timeout notifications
+        this.client.on('guildMemberUpdate', async (oldMember, newMember) => {
+            try {
+                const { EmbedBuilder } = require('discord.js');
+                
+                // Check if timeout status changed
+                const wasTimedOut = oldMember.communicationDisabledUntil;
+                const isTimedOut = newMember.communicationDisabledUntil;
+                
+                // User was just timed out
+                if (!wasTimedOut && isTimedOut) {
+                    this.logger.info(`🔇 Timeout detected: ${newMember.user.tag} in ${newMember.guild.name}`);
+                    
+                    const timeoutUntil = new Date(isTimedOut);
+                    const duration = Math.round((timeoutUntil - Date.now()) / 1000 / 60); // minutes
+                    
+                    // Get guild config
+                    const config = await this.database.getGuildConfig(newMember.guild.id);
+                    
+                    // Find log channel
+                    let logChannel = null;
+                    if (config && config.log_channel_id) {
+                        logChannel = newMember.guild.channels.cache.get(config.log_channel_id);
+                    }
+                    
+                    if (!logChannel) {
+                        logChannel = newMember.guild.channels.cache.find(c => 
+                            c.name.toLowerCase().includes('log') || 
+                            c.name.toLowerCase().includes('mod') ||
+                            c.name.toLowerCase().includes('security')
+                        );
+                    }
+                    
+                    if (logChannel && logChannel.isTextBased()) {
+                        const timeoutEmbed = new EmbedBuilder()
+                            .setTitle('🔇 Member Timed Out')
+                            .setDescription(`**${newMember.user.tag}** has been timed out`)
+                            .addFields(
+                                { name: '👤 User', value: `${newMember.user.tag}\n<@${newMember.user.id}>\n\`${newMember.user.id}\``, inline: true },
+                                { name: '⏰ Duration', value: `${duration} minutes`, inline: true },
+                                { name: '🕐 Until', value: `<t:${Math.floor(timeoutUntil.getTime() / 1000)}:F>`, inline: true }
+                            )
+                            .setThumbnail(newMember.user.displayAvatarURL({ dynamic: true }))
+                            .setColor('#ffa502')
+                            .setTimestamp();
+                        
+                        try {
+                            await logChannel.send({ embeds: [timeoutEmbed] });
+                            this.logger.info(`✅ Timeout notification sent to #${logChannel.name}`);
+                        } catch (error) {
+                            this.logger.error('Failed to send timeout notification:', error);
+                        }
+                    }
+                    
+                    // Send to dashboard via WebSocket
+                    if (this.dashboard && this.dashboard.wss) {
+                        this.dashboard.broadcastToGuild(newMember.guild.id, {
+                            type: 'timeout_alert',
+                            data: {
+                                type: 'TIMEOUT',
+                                userId: newMember.user.id,
+                                userTag: newMember.user.tag,
+                                userAvatar: newMember.user.displayAvatarURL({ dynamic: true }),
+                                guildId: newMember.guild.id,
+                                guildName: newMember.guild.name,
+                                duration: duration,
+                                until: timeoutUntil.toISOString(),
+                                timestamp: new Date().toISOString(),
+                                severity: 'MEDIUM'
+                            }
+                        });
+                        this.logger.info('✅ Timeout notification sent to dashboard');
+                    }
+                    
+                    // Log to new Logger system
+                    try {
+                        await this.logger.logSecurityEvent({
+                            eventType: 'TIMEOUT',
+                            guildId: newMember.guild.id,
+                            channelId: null,
+                            moderatorId: null,
+                            moderatorTag: null,
+                            targetId: newMember.user.id,
+                            targetTag: newMember.user.tag,
+                            reason: `Timed out for ${duration} minutes`,
+                            details: {
+                                duration: duration,
+                                until: timeoutUntil.toISOString()
+                            }
+                        });
+                        this.logger.info('✅ Timeout logged to database');
+                    } catch (error) {
+                        this.logger.error('Failed to log timeout to database:', error);
+                    }
+                }
+                
+                // User timeout was removed
+                if (wasTimedOut && !isTimedOut) {
+                    this.logger.info(`✅ Timeout removed: ${newMember.user.tag} in ${newMember.guild.name}`);
+                }
+                
+            } catch (error) {
+                this.logger.error('Error handling member update:', error);
+            }
+        });
+
+        // Error handling
+        this.client.on('error', (error) => {
+            this.logger.error('Discord client error:', error);
+        });
+
+        this.client.on('warn', (warning) => {
+            this.logger.warn('Discord client warning:', warning);
+        });
+
+        // NEW: Voice state tracking for analytics
+        this.client.on('voiceStateUpdate', async (oldState, newState) => {
+            try {
+                if (this.analyticsManager) {
+                    await this.analyticsManager.trackVoiceActivity(oldState, newState);
+                }
+            } catch (error) {
+                this.logger.error('Error in voice state handler:', error);
+            }
+        });
+
+        // NEW: Reaction tracking for analytics
+        this.client.on('messageReactionAdd', async (reaction, user) => {
+            try {
+                if (this.analyticsManager && !user.bot) {
+                    await this.analyticsManager.trackReaction(reaction, user);
+                }
+            } catch (error) {
+                this.logger.error('Error in reaction handler:', error);
+            }
+        });
+        
+        // Anti-Nuke Event Handlers
+        this.client.on('roleCreate', async (role) => {
+            try {
+                await this.handleRoleCreate(role);
+            } catch (error) {
+                this.logger.error('Error handling roleCreate:', error);
+            }
+        });
+        
+        this.client.on('roleDelete', async (role) => {
+            try {
+                await this.handleRoleDelete(role);
+            } catch (error) {
+                this.logger.error('Error handling roleDelete:', error);
+            }
+        });
+        
+        this.client.on('channelCreate', async (channel) => {
+            try {
+                await this.handleChannelCreate(channel);
+            } catch (error) {
+                this.logger.error('Error handling channelCreate:', error);
+            }
+        });
+        
+        this.client.on('channelDelete', async (channel) => {
+            try {
+                await this.handleChannelDelete(channel);
+            } catch (error) {
+                this.logger.error('Error handling channelDelete:', error);
+            }
+        });
+        
+        this.client.on('guildBanAdd', async (ban) => {
+            try {
+                await this.handleBanAdd(ban);
+            } catch (error) {
+                this.logger.error('Error handling guildBanAdd:', error);
+            }
+        });
+        
+        this.client.on('webhookUpdate', async (channel) => {
+            try {
+                await this.handleWebhookUpdate(channel);
+            } catch (error) {
+                this.logger.error('Error handling webhookUpdate:', error);
+            }
+        });
+
         process.on('unhandledRejection', (error) => {
             this.logger.error('Unhandled promise rejection:', error);
         });
-
-        this.logger.info('✅ Event handlers loaded successfully');
     }
-
-    // NOTE: The following large block of event handler code has been moved to src/core/events/
-    // Old inline handlers for: clientReady, interactionCreate, messageCreate, guildMemberAdd,
-    // guildCreate, guildMemberRemove, guildMemberUpdate, voiceStateUpdate, messageReactionAdd,
-    // messageReactionRemove, roleCreate, roleDelete, channelCreate, channelDelete, guildBanAdd,
-    // webhookUpdate, error, warn have been extracted to separate files.
-
-    // =====================================================
-    // LEGACY CODE MARKER - Below methods are still needed
-    // as they are called BY the extracted event handlers
-    // =====================================================
-
-    // The following inline handlers were removed and moved to src/core/events/:
-    // - clientReady, interactionCreate, messageCreate, guildMemberAdd, guildCreate,
-    // - guildMemberRemove, guildMemberUpdate, voiceStateUpdate, messageReactionAdd,
-    // - messageReactionRemove, roleCreate, roleDelete, channelCreate, channelDelete,
-    // - guildBanAdd, webhookUpdate, error, warn
-
-
 
     /**
      * Runtime feature block check for interactions.
@@ -1085,7 +2003,7 @@ class SecurityBot {
 
                 case 'setup_guide':
                     const setupEmbed = new EmbedBuilder()
-                        .setTitle('📋 DarkLock Setup Guide')
+                        .setTitle('📋 GuardianBot Setup Guide')
                         .setDescription('Follow these steps to secure your server:')
                         .addFields(
                             { name: '1. Quick Setup', value: 'Use `/setup quick` for recommended settings', inline: false },
@@ -1108,7 +2026,7 @@ class SecurityBot {
                             { name: '✅ Set Verification Level', value: 'Use medium or high verification', inline: false },
                             { name: '✅ Configure Permissions', value: 'Review and limit role permissions', inline: false },
                             { name: '✅ Monitor Activity', value: 'Regular check security logs and dashboard', inline: false },
-                            { name: '✅ Stay Updated', value: 'Keep DarkLock permissions up to date', inline: false }
+                            { name: '✅ Stay Updated', value: 'Keep GuardianBot permissions up to date', inline: false }
                         )
                         .setColor('#2ed573');
 
@@ -1125,20 +2043,20 @@ class SecurityBot {
                 // Ticket system buttons
                 case 'ticket_open':
                 case 'ticket_create':
-                    if (this.ticketManager) {
-                        await this.ticketManager.handleCreateButton(interaction);
+                    if (this.ticketSystem) {
+                        await this.ticketSystem.handleCreateButton(interaction);
                     }
                     break;
-
+                
                 case 'ticket_claim':
-                    if (this.ticketManager) {
-                        await this.ticketManager.handleClaim(interaction);
+                    if (this.ticketSystem) {
+                        await this.ticketSystem.handleClaim(interaction);
                     }
                     break;
-
+                
                 case 'ticket_close':
-                    if (this.ticketManager) {
-                        await this.ticketManager.handleClose(interaction);
+                    if (this.ticketSystem) {
+                        await this.ticketSystem.handleClose(interaction);
                     }
                     break;
 
@@ -1185,7 +2103,7 @@ class SecurityBot {
 
         try {
             const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
-
+            
             if (!targetMember) {
                 return interaction.editReply({
                     content: '❌ User not found. They may have left the server.'
@@ -1199,7 +2117,7 @@ class SecurityBot {
                     // Remove timeout (from spam_remove_timeout_userId)
                     if (targetMember.communicationDisabledUntil) {
                         await targetMember.timeout(null, `Timeout removed by ${member.user.tag}`);
-
+                        
                         // Log the action
                         await this.database.run(`
                             INSERT INTO mod_actions 
@@ -1227,7 +2145,7 @@ class SecurityBot {
                     // Add additional warning
                     const userRecord = await this.database.getUserRecord(guild.id, targetUserId);
                     const newWarningCount = (userRecord?.warning_count || 0) + 1;
-
+                    
                     await this.database.createOrUpdateUserRecord(guild.id, targetUserId, {
                         warning_count: newWarningCount,
                         trust_score: Math.max(0, (userRecord?.trust_score || 50) - 15)
@@ -1301,7 +2219,7 @@ class SecurityBot {
                         });
                     }
 
-                    await guild.members.ban(targetUserId, {
+                    await guild.members.ban(targetUserId, { 
                         reason: `Banned by ${member.user.tag} after spam detection`,
                         deleteMessageSeconds: 86400 // Delete messages from last 24 hours
                     });
@@ -1388,885 +2306,88 @@ class SecurityBot {
 
     async start() {
         await this.initialize();
-
+        
         // Make bot and database accessible from client for command handlers
         this.client.bot = this;
         this.client.database = this.database;
-        this.tamperProtection = tamperProtection;
-        tamperProtection.attachBot(this);
-
-        // Prevent attempting Discord login with an obviously invalid token
+        
+        // Prevent attempting Discord login with an obviously invalid token when validation was skipped.
         const token = process.env.DISCORD_TOKEN;
         const tokenLooksValid = token && token.length >= 50 && !token.includes('your_') && !token.includes('paste_');
+        const skipValidationFlag = (process.env.SKIP_ENV_VALIDATION === '1' || process.env.SKIP_ENV_VALIDATION === 'true');
 
         if (!tokenLooksValid) {
-            this.logger.error('DISCORD_TOKEN appears to be invalid. Aborting login.');
-            throw new Error('Invalid DISCORD_TOKEN');
+            if (skipValidationFlag) {
+                this.logger.warn('⚠️ DISCORD_TOKEN appears invalid but SKIP_ENV_VALIDATION is set — skipping Discord login. Web/dashboard features may still start.');
+                return;
+            } else {
+                this.logger.error('❌ DISCORD_TOKEN appears to be invalid. Aborting login.');
+                throw new Error('Invalid DISCORD_TOKEN');
+            }
         }
 
         try {
-            console.log('[Tamper] Initializing tamper protection...');
-            await tamperProtection.initialize(this);
-            await tamperProtection.start(this);
-            console.log('[Tamper] Protection active - monitoring protected files');
-        } catch (err) {
-            console.error('[Tamper] Startup tamper checks failed:', err?.message || err);
-            throw err;
-        }
-
-        try {
-            console.log('[Login] Attempting Discord login...');
+            console.log('🔐 Attempting Discord login...');
             await this.client.login(process.env.DISCORD_TOKEN);
-            console.log('[Login] Discord login successful');
-
-            // Start trust recovery background job (runs every 6 hours)
-            this.startTrustRecoveryJob();
-            console.log('[Login] Trust recovery job scheduled');
+            console.log('✅ Discord login successful');
+            
+            // Start tamper protection system
+            console.log('🔒 Initializing tamper protection...');
+            await tamperProtection.initialize();
+            await tamperProtection.start();
+            console.log('✅ Tamper protection active - monitoring critical files');
         } catch (e) {
-            console.error('[Login] Discord login failed:', e?.message || e);
+            console.error('❌ Discord login failed:', e?.message || e);
             // Do not exit hard; allow Render to keep service up for dashboard/debugging
         }
     }
-    /**
-     * Runtime feature block check for interactions.
-     * Prefers a command-declared `feature` property, falls back to a small name->feature map.
-     */
+
+    // Feature gating utilities
     async isFeatureBlocked(interaction) {
+        const guild = interaction.guild;
+        if (!guild) return false;
+        const cfg = await this.database.getGuildConfig(guild.id);
+        const name = interaction.commandName;
+        // If the command object declares a feature, prefer that authoritative flag
         try {
-            if (!interaction || !interaction.guild) return false;
-
-            const commandName = interaction.commandName || (interaction?.customId || '').split('_')[1] || null;
-            const command = commandName ? this.commands.get(commandName) : null;
-
-            // If command explicitly declares a feature, use that as authoritative
-            if (command && command.feature) {
-                const enabled = await this.isFeatureEnabledForGuild(interaction.guild.id, command.feature);
+            const cmdObj = this.commands.get(name);
+            if (cmdObj && cmdObj.feature) {
+                const enabled = await this.isFeatureEnabledForGuild(guild.id, cmdObj.feature);
                 return !enabled;
             }
-
-            // Fallback small map of command name -> feature flag
-            const fallbackMap = {
-                ticket: 'tickets',
-                tix: 'tickets',
-                ai: 'ai',
-                welcome: 'welcome',
-                verify: 'verification',
-                ban: 'antinuke',
-                kick: 'antinuke',
-                timeout: 'antinuke',
-                purge: 'antinuke'
-            };
-
-            const feature = commandName ? (fallbackMap[commandName] || null) : null;
-            if (feature) {
-                const enabled = await this.isFeatureEnabledForGuild(interaction.guild.id, feature);
-                return !enabled;
-            }
-
-            return false;
         } catch (e) {
-            this.logger?.warn('isFeatureBlocked check failed:', e.message || e);
-            return false;
+            this.logger?.warn('Error checking command-level feature flag:', e.message || e);
         }
-    }
-
-    async handleButtonInteraction(interaction) {
-        const { customId } = interaction;
-
-        try {
-            // Early catch for verification buttons if event handler did not consume
-            if (customId.startsWith('verify_user_')) {
-                // Fallback parsing: verify_user_<guildId>_<userId>
-                const parts = customId.split('_');
-                if (parts.length >= 4) {
-                    const guildId = parts[2];
-                    const targetUserId = parts[3];
-                    if (interaction.user.id !== targetUserId) {
-                        return interaction.reply({ content: 'This verification button is not for you.', ephemeral: true });
-                    }
-                    const pending = await this.database.get(
-                        `SELECT * FROM verification_queue WHERE guild_id = ? AND user_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT 1`,
-                        [guildId, targetUserId]
-                    );
-                    if (!pending) {
-                        return interaction.reply({ content: 'No active verification challenge found.', ephemeral: true });
-                    }
-                    const isExpired = pending.expires_at && new Date(pending.expires_at).getTime() < Date.now();
-                    if (isExpired) {
-                        await this.database.run(`UPDATE verification_queue SET status = 'expired', completed_at = CURRENT_TIMESTAMP WHERE id = ?`, [pending.id]);
-                        return interaction.reply({ content: 'Verification challenge expired. Ask staff to resend.', ephemeral: true });
-                    }
-                    const guild = this.client.guilds.cache.get(guildId);
-                    if (!guild) return interaction.reply({ content: 'Guild not found for verification.', ephemeral: true });
-                    const member = await guild.members.fetch(targetUserId).catch(() => null);
-                    if (!member) return interaction.reply({ content: 'You are no longer in the server.', ephemeral: true });
-                    await this.userVerification.markVerified(member, 'button');
-                    await this.database.run(`UPDATE verification_queue SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ?`, [pending.id]);
-                    return interaction.reply({ content: '✅ You are now verified. Welcome!', ephemeral: true });
-                }
-            }
-            switch (customId) {
-                case 'refresh_status':
-                    // Refresh security status
-                    const statusCommand = this.commands.get('status');
-                    if (statusCommand) {
-                        await statusCommand.execute(interaction);
-                    }
-                    break;
-
-                case 'setup_guide':
-                    const setupEmbed = new EmbedBuilder()
-                        .setTitle('📋 DarkLock Setup Guide')
-                        .setDescription('Follow these steps to secure your server:')
-                        .addFields(
-                            { name: '1. Quick Setup', value: 'Use `/setup quick` for recommended settings', inline: false },
-                            { name: '2. Configure Logging', value: 'Use `/setup logs` to set up security logs', inline: false },
-                            { name: '3. Customize Protection', value: 'Fine-tune anti-spam and anti-raid settings', inline: false },
-                            { name: '4. Check Status', value: 'Use `/status` to monitor your security score', inline: false },
-                            { name: '5. Dashboard Access', value: 'Visit the web dashboard for detailed analytics', inline: false }
-                        )
-                        .setColor('#00d4ff');
-
-                    await interaction.reply({ embeds: [setupEmbed], ephemeral: true });
-                    break;
-
-                case 'security_guide':
-                    const securityEmbed = new EmbedBuilder()
-                        .setTitle('🛡️ Security Best Practices')
-                        .setDescription('Improve your server security:')
-                        .addFields(
-                            { name: '✅ Enable 2FA', value: 'Require 2FA for moderators', inline: false },
-                            { name: '✅ Set Verification Level', value: 'Use medium or high verification', inline: false },
-                            { name: '✅ Configure Permissions', value: 'Review and limit role permissions', inline: false },
-                            { name: '✅ Monitor Activity', value: 'Regular check security logs and dashboard', inline: false },
-                            { name: '✅ Stay Updated', value: 'Keep DarkLock permissions up to date', inline: false }
-                        )
-                        .setColor('#2ed573');
-
-                    await interaction.reply({ embeds: [securityEmbed], ephemeral: true });
-                    break;
-
-                case 'check_status':
-                    const statusCmd = this.commands.get('status');
-                    if (statusCmd) {
-                        await statusCmd.execute(interaction);
-                    }
-                    break;
-
-                // Ticket system buttons
-                case 'ticket_open':
-                case 'ticket_create':
-                    if (this.ticketManager) {
-                        await this.ticketManager.handleCreateButton(interaction);
-                    }
-                    break;
-
-                case 'ticket_claim':
-                    if (this.ticketManager) {
-                        await this.ticketManager.handleClaim(interaction);
-                    }
-                    break;
-
-                case 'ticket_close':
-                    if (this.ticketManager) {
-                        await this.ticketManager.handleClose(interaction);
-                    }
-                    break;
-
-                // Spam action buttons
-                default:
-                    // Check if it's a spam action button
-                    if (customId.startsWith('spam_')) {
-                        await this.handleSpamAction(interaction);
-                    } else {
-                        await interaction.reply({
-                            content: '❌ Unknown button interaction.',
-                            ephemeral: true
-                        });
-                    }
-            }
-        } catch (error) {
-            this.logger.error('Error handling button interaction:', error);
-            await interaction.reply({
-                content: '❌ An error occurred while processing your request.',
-                ephemeral: true
-            });
-        }
-    }
-
-    async handleSpamAction(interaction) {
-        const { customId, member, guild } = interaction;
-        const { PermissionsBitField } = require('discord.js');
-
-        // Check if user has moderation permissions
-        if (!member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
-            return interaction.reply({
-                content: '❌ You need Moderate Members permission to use these actions.',
-                ephemeral: true
-            });
-        }
-
-        // Parse the action and user ID from customId
-        // Format: spam_action_userId
-        const parts = customId.split('_');
-        const action = parts[1]; // remove_timeout, warn, kick, ban
-        const targetUserId = parts[parts.length - 1];
-
-        await interaction.deferReply({ ephemeral: true });
-
-        try {
-            const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
-
-            if (!targetMember) {
-                return interaction.editReply({
-                    content: '❌ User not found. They may have left the server.'
-                });
-            }
-
-            const targetUser = targetMember.user;
-
-            switch (action) {
-                case 'remove':
-                    // Remove timeout (from spam_remove_timeout_userId)
-                    if (targetMember.communicationDisabledUntil) {
-                        await targetMember.timeout(null, `Timeout removed by ${member.user.tag}`);
-
-                        // Log the action
-                        await this.database.run(`
-                            INSERT INTO mod_actions 
-                            (guild_id, action_type, target_user_id, moderator_id, reason)
-                            VALUES (?, ?, ?, ?, ?)
-                        `, [
-                            guild.id,
-                            'TIMEOUT_REMOVED',
-                            targetUserId,
-                            member.id,
-                            'Manual review: timeout removed after spam detection'
-                        ]);
-
-                        await interaction.editReply({
-                            content: `✅ Removed timeout from ${targetUser.tag}`
-                        });
-                    } else {
-                        await interaction.editReply({
-                            content: `ℹ️ ${targetUser.tag} is not currently timed out.`
-                        });
-                    }
-                    break;
-
-                case 'warn':
-                    // Add additional warning
-                    const userRecord = await this.database.getUserRecord(guild.id, targetUserId);
-                    const newWarningCount = (userRecord?.warning_count || 0) + 1;
-
-                    await this.database.createOrUpdateUserRecord(guild.id, targetUserId, {
-                        warning_count: newWarningCount,
-                        trust_score: Math.max(0, (userRecord?.trust_score || 50) - 15)
-                    });
-
-                    await this.database.run(`
-                        INSERT INTO mod_actions 
-                        (guild_id, action_type, target_user_id, moderator_id, reason)
-                        VALUES (?, ?, ?, ?, ?)
-                    `, [
-                        guild.id,
-                        'WARN',
-                        targetUserId,
-                        member.id,
-                        'Additional warning after spam detection'
-                    ]);
-
-                    // Try to DM the user
-                    try {
-                        await targetUser.send({
-                            embeds: [{
-                                title: '⚠️ Additional Warning',
-                                description: `You received an additional warning in **${guild.name}** from a moderator.`,
-                                fields: [
-                                    { name: 'Total Warnings', value: `${newWarningCount}`, inline: true },
-                                    { name: 'Moderator', value: member.user.tag, inline: true }
-                                ],
-                                color: 0xffa500,
-                                timestamp: new Date().toISOString()
-                            }]
-                        });
-                    } catch (e) {
-                        // User has DMs disabled
-                    }
-
-                    await interaction.editReply({
-                        content: `✅ Added warning to ${targetUser.tag} (Total: ${newWarningCount})`
-                    });
-                    break;
-
-                case 'kick':
-                    if (!member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
-                        return interaction.editReply({
-                            content: '❌ You need Kick Members permission to use this action.'
-                        });
-                    }
-
-                    await targetMember.kick(`Kicked by ${member.user.tag} after spam detection`);
-
-                    await this.database.run(`
-                        INSERT INTO mod_actions 
-                        (guild_id, action_type, target_user_id, moderator_id, reason)
-                        VALUES (?, ?, ?, ?, ?)
-                    `, [
-                        guild.id,
-                        'KICK',
-                        targetUserId,
-                        member.id,
-                        'Kicked after spam detection review'
-                    ]);
-
-                    await interaction.editReply({
-                        content: `✅ Kicked ${targetUser.tag} from the server`
-                    });
-                    break;
-
-                case 'ban':
-                    if (!member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
-                        return interaction.editReply({
-                            content: '❌ You need Ban Members permission to use this action.'
-                        });
-                    }
-
-                    await guild.members.ban(targetUserId, {
-                        reason: `Banned by ${member.user.tag} after spam detection`,
-                        deleteMessageSeconds: 86400 // Delete messages from last 24 hours
-                    });
-
-                    await this.database.run(`
-                        INSERT INTO mod_actions 
-                        (guild_id, action_type, target_user_id, moderator_id, reason)
-                        VALUES (?, ?, ?, ?, ?)
-                    `, [
-                        guild.id,
-                        'BAN',
-                        targetUserId,
-                        member.id,
-                        'Banned after spam detection review'
-                    ]);
-
-                    await interaction.editReply({
-                        content: `✅ Banned ${targetUser.tag} from the server`
-                    });
-                    break;
-
-                default:
-                    await interaction.editReply({
-                        content: '❌ Unknown action.'
-                    });
-            }
-
-            // Update the original message to show action was taken
-            try {
-                const originalEmbed = interaction.message.embeds[0];
-                if (originalEmbed) {
-                    const updatedEmbed = new EmbedBuilder(originalEmbed.data)
-                        .setColor(0x00ff00)
-                        .addFields({
-                            name: '✅ Action Taken',
-                            value: `${member.user.tag} used: **${action.toUpperCase()}**`,
-                            inline: false
-                        });
-
-                    await interaction.message.edit({
-                        embeds: [updatedEmbed],
-                        components: [] // Remove buttons after action
-                    });
-                }
-            } catch (e) {
-                // Failed to update original message
-            }
-
-        } catch (error) {
-            this.logger.error('Error handling spam action:', error);
-            await interaction.editReply({
-                content: `❌ Failed to execute action: ${error.message}`
-            });
-        }
-    }
-
-    async registerSlashCommands() {
-        try {
-            this.logger.info('🔄 Refreshing application commands (global only, clearing guild overrides)...');
-            const allCommands = Array.from(this.commands.values()).map(c => c.data.toJSON());
-
-            const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-
-            // Register commands globally
-            await rest.put(Routes.applicationCommands(this.client.user.id), { body: allCommands });
-            this.logger.info(`✅ Registered ${allCommands.length} global commands`);
-
-            // Clear any guild-specific command sets to avoid duplicates in clients
-            for (const guild of this.client.guilds.cache.values()) {
-                try {
-                    await rest.put(
-                        Routes.applicationGuildCommands(this.client.user.id, guild.id),
-                        { body: [] }
-                    );
-                    this.logger.info(`🧹 Cleared guild command overrides for ${guild.id}`);
-                } catch (gErr) {
-                    this.logger.warn(`⚠️ Failed to clear guild commands for ${guild.id}: ${gErr.message}`);
-                }
-            }
-        } catch (error) {
-            this.logger.error('❌ Failed to register slash commands:', error);
-        }
-    }
-
-    async isFeatureBlocked(interaction) {
-        try {
-            if (!interaction || !interaction.guild) return false;
-
-            const commandName = interaction.commandName || (interaction?.customId || '').split('_')[1] || null;
-            const command = commandName ? this.commands.get(commandName) : null;
-
-            // If command explicitly declares a feature, use that as authoritative
-            if (command && command.feature) {
-                const enabled = await this.isFeatureEnabledForGuild(interaction.guild.id, command.feature);
-                return !enabled;
-            }
-
-            // Fallback small map of command name -> feature flag
-            const fallbackMap = {
-                ticket: 'tickets',
-                tix: 'tickets',
-                ai: 'ai',
-                welcome: 'welcome',
-                verify: 'verification',
-                ban: 'antinuke',
-                kick: 'antinuke',
-                timeout: 'antinuke',
-                purge: 'antinuke'
-            };
-
-            const feature = commandName ? (fallbackMap[commandName] || null) : null;
-            if (feature) {
-                const enabled = await this.isFeatureEnabledForGuild(interaction.guild.id, feature);
-                return !enabled;
-            }
-
-            return false;
-        } catch (e) {
-            this.logger?.warn('isFeatureBlocked check failed:', e.message || e);
-            return false;
-        }
-    }
-
-    async handleButtonInteraction(interaction) {
-        const { customId } = interaction;
-
-        try {
-            // Early catch for verification buttons if event handler did not consume
-            if (customId.startsWith('verify_user_')) {
-                // Fallback parsing: verify_user_<guildId>_<userId>
-                const parts = customId.split('_');
-                if (parts.length >= 4) {
-                    const guildId = parts[2];
-                    const targetUserId = parts[3];
-                    if (interaction.user.id !== targetUserId) {
-                        return interaction.reply({ content: 'This verification button is not for you.', ephemeral: true });
-                    }
-                    const pending = await this.database.get(
-                        `SELECT * FROM verification_queue WHERE guild_id = ? AND user_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT 1`,
-                        [guildId, targetUserId]
-                    );
-                    if (!pending) {
-                        return interaction.reply({ content: 'No active verification challenge found.', ephemeral: true });
-                    }
-                    const isExpired = pending.expires_at && new Date(pending.expires_at).getTime() < Date.now();
-                    if (isExpired) {
-                        await this.database.run(`UPDATE verification_queue SET status = 'expired', completed_at = CURRENT_TIMESTAMP WHERE id = ?`, [pending.id]);
-                        return interaction.reply({ content: 'Verification challenge expired. Ask staff to resend.', ephemeral: true });
-                    }
-                    const guild = this.client.guilds.cache.get(guildId);
-                    if (!guild) return interaction.reply({ content: 'Guild not found for verification.', ephemeral: true });
-                    const member = await guild.members.fetch(targetUserId).catch(() => null);
-                    if (!member) return interaction.reply({ content: 'You are no longer in the server.', ephemeral: true });
-                    await this.userVerification.markVerified(member, 'button');
-                    await this.database.run(`UPDATE verification_queue SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ?`, [pending.id]);
-                    return interaction.reply({ content: '✅ You are now verified. Welcome!', ephemeral: true });
-                }
-            }
-            switch (customId) {
-                case 'refresh_status':
-                    // Refresh security status
-                    const statusCommand = this.commands.get('status');
-                    if (statusCommand) {
-                        await statusCommand.execute(interaction);
-                    }
-                    break;
-
-                case 'setup_guide':
-                    const setupEmbed = new EmbedBuilder()
-                        .setTitle('📋 DarkLock Setup Guide')
-                        .setDescription('Follow these steps to secure your server:')
-                        .addFields(
-                            { name: '1. Quick Setup', value: 'Use `/setup quick` for recommended settings', inline: false },
-                            { name: '2. Configure Logging', value: 'Use `/setup logs` to set up security logs', inline: false },
-                            { name: '3. Customize Protection', value: 'Fine-tune anti-spam and anti-raid settings', inline: false },
-                            { name: '4. Check Status', value: 'Use `/status` to monitor your security score', inline: false },
-                            { name: '5. Dashboard Access', value: 'Visit the web dashboard for detailed analytics', inline: false }
-                        )
-                        .setColor('#00d4ff');
-
-                    await interaction.reply({ embeds: [setupEmbed], ephemeral: true });
-                    break;
-
-                case 'security_guide':
-                    const securityEmbed = new EmbedBuilder()
-                        .setTitle('🛡️ Security Best Practices')
-                        .setDescription('Improve your server security:')
-                        .addFields(
-                            { name: '✅ Enable 2FA', value: 'Require 2FA for moderators', inline: false },
-                            { name: '✅ Set Verification Level', value: 'Use medium or high verification', inline: false },
-                            { name: '✅ Configure Permissions', value: 'Review and limit role permissions', inline: false },
-                            { name: '✅ Monitor Activity', value: 'Regular check security logs and dashboard', inline: false },
-                            { name: '✅ Stay Updated', value: 'Keep DarkLock permissions up to date', inline: false }
-                        )
-                        .setColor('#2ed573');
-
-                    await interaction.reply({ embeds: [securityEmbed], ephemeral: true });
-                    break;
-
-                case 'check_status':
-                    const statusCmd = this.commands.get('status');
-                    if (statusCmd) {
-                        await statusCmd.execute(interaction);
-                    }
-                    break;
-
-                // Ticket system buttons
-                case 'ticket_open':
-                case 'ticket_create':
-                    if (this.ticketManager) {
-                        await this.ticketManager.handleCreateButton(interaction);
-                    }
-                    break;
-
-                case 'ticket_claim':
-                    if (this.ticketManager) {
-                        await this.ticketManager.handleClaim(interaction);
-                    }
-                    break;
-
-                case 'ticket_close':
-                    if (this.ticketManager) {
-                        await this.ticketManager.handleClose(interaction);
-                    }
-                    break;
-
-                // Spam action buttons
-                default:
-                    // Check if it's a spam action button
-                    if (customId.startsWith('spam_')) {
-                        await this.handleSpamAction(interaction);
-                    } else {
-                        await interaction.reply({
-                            content: '❌ Unknown button interaction.',
-                            ephemeral: true
-                        });
-                    }
-            }
-        } catch (error) {
-            this.logger.error('Error handling button interaction:', error);
-            await interaction.reply({
-                content: '❌ An error occurred while processing your request.',
-                ephemeral: true
-            });
-        }
-    }
-
-    async handleSpamAction(interaction) {
-        const { customId, member, guild } = interaction;
-        const { PermissionsBitField } = require('discord.js');
-
-        // Check if user has moderation permissions
-        if (!member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
-            return interaction.reply({
-                content: '❌ You need Moderate Members permission to use these actions.',
-                ephemeral: true
-            });
-        }
-
-        // Parse the action and user ID from customId
-        // Format: spam_action_userId
-        const parts = customId.split('_');
-        const action = parts[1]; // remove_timeout, warn, kick, ban
-        const targetUserId = parts[parts.length - 1];
-
-        await interaction.deferReply({ ephemeral: true });
-
-        try {
-            const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
-
-            if (!targetMember) {
-                return interaction.editReply({
-                    content: '❌ User not found. They may have left the server.'
-                });
-            }
-
-            const targetUser = targetMember.user;
-
-            switch (action) {
-                case 'remove':
-                    // Remove timeout (from spam_remove_timeout_userId)
-                    if (targetMember.communicationDisabledUntil) {
-                        await targetMember.timeout(null, `Timeout removed by ${member.user.tag}`);
-
-                        // Log the action
-                        await this.database.run(`
-                            INSERT INTO mod_actions 
-                            (guild_id, action_type, target_user_id, moderator_id, reason)
-                            VALUES (?, ?, ?, ?, ?)
-                        `, [
-                            guild.id,
-                            'TIMEOUT_REMOVED',
-                            targetUserId,
-                            member.id,
-                            'Manual review: timeout removed after spam detection'
-                        ]);
-
-                        await interaction.editReply({
-                            content: `✅ Removed timeout from ${targetUser.tag}`
-                        });
-                    } else {
-                        await interaction.editReply({
-                            content: `ℹ️ ${targetUser.tag} is not currently timed out.`
-                        });
-                    }
-                    break;
-
-                case 'warn':
-                    // Add additional warning
-                    const userRecord = await this.database.getUserRecord(guild.id, targetUserId);
-                    const newWarningCount = (userRecord?.warning_count || 0) + 1;
-
-                    await this.database.createOrUpdateUserRecord(guild.id, targetUserId, {
-                        warning_count: newWarningCount,
-                        trust_score: Math.max(0, (userRecord?.trust_score || 50) - 15)
-                    });
-
-                    await this.database.run(`
-                        INSERT INTO mod_actions 
-                        (guild_id, action_type, target_user_id, moderator_id, reason)
-                        VALUES (?, ?, ?, ?, ?)
-                    `, [
-                        guild.id,
-                        'WARN',
-                        targetUserId,
-                        member.id,
-                        'Additional warning after spam detection'
-                    ]);
-
-                    // Try to DM the user
-                    try {
-                        await targetUser.send({
-                            embeds: [{
-                                title: '⚠️ Additional Warning',
-                                description: `You received an additional warning in **${guild.name}** from a moderator.`,
-                                fields: [
-                                    { name: 'Total Warnings', value: `${newWarningCount}`, inline: true },
-                                    { name: 'Moderator', value: member.user.tag, inline: true }
-                                ],
-                                color: 0xffa500,
-                                timestamp: new Date().toISOString()
-                            }]
-                        });
-                    } catch (e) {
-                        // User has DMs disabled
-                    }
-
-                    await interaction.editReply({
-                        content: `✅ Added warning to ${targetUser.tag} (Total: ${newWarningCount})`
-                    });
-                    break;
-
-                case 'kick':
-                    if (!member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
-                        return interaction.editReply({
-                            content: '❌ You need Kick Members permission to use this action.'
-                        });
-                    }
-
-                    await targetMember.kick(`Kicked by ${member.user.tag} after spam detection`);
-
-                    await this.database.run(`
-                        INSERT INTO mod_actions 
-                        (guild_id, action_type, target_user_id, moderator_id, reason)
-                        VALUES (?, ?, ?, ?, ?)
-                    `, [
-                        guild.id,
-                        'KICK',
-                        targetUserId,
-                        member.id,
-                        'Kicked after spam detection review'
-                    ]);
-
-                    await interaction.editReply({
-                        content: `✅ Kicked ${targetUser.tag} from the server`
-                    });
-                    break;
-
-                case 'ban':
-                    if (!member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
-                        return interaction.editReply({
-                            content: '❌ You need Ban Members permission to use this action.'
-                        });
-                    }
-
-                    await guild.members.ban(targetUserId, {
-                        reason: `Banned by ${member.user.tag} after spam detection`,
-                        deleteMessageSeconds: 86400 // Delete messages from last 24 hours
-                    });
-
-                    await this.database.run(`
-                        INSERT INTO mod_actions 
-                        (guild_id, action_type, target_user_id, moderator_id, reason)
-                        VALUES (?, ?, ?, ?, ?)
-                    `, [
-                        guild.id,
-                        'BAN',
-                        targetUserId,
-                        member.id,
-                        'Banned after spam detection review'
-                    ]);
-
-                    await interaction.editReply({
-                        content: `✅ Banned ${targetUser.tag} from the server`
-                    });
-                    break;
-
-                default:
-                    await interaction.editReply({
-                        content: '❌ Unknown action.'
-                    });
-            }
-
-            // Update the original message to show action was taken
-            try {
-                const originalEmbed = interaction.message.embeds[0];
-                if (originalEmbed) {
-                    const updatedEmbed = new EmbedBuilder(originalEmbed.data)
-                        .setColor(0x00ff00)
-                        .addFields({
-                            name: '✅ Action Taken',
-                            value: `${member.user.tag} used: **${action.toUpperCase()}**`,
-                            inline: false
-                        });
-
-                    await interaction.message.edit({
-                        embeds: [updatedEmbed],
-                        components: [] // Remove buttons after action
-                    });
-                }
-            } catch (e) {
-                // Failed to update original message
-            }
-
-        } catch (error) {
-            this.logger.error('Error handling spam action:', error);
-            await interaction.editReply({
-                content: `❌ Failed to execute action: ${error.message}`
-            });
-        }
-    }
-
-    async registerSlashCommands() {
-        try {
-            this.logger.info('🔄 Refreshing application commands (global only, clearing guild overrides)...');
-            const allCommands = Array.from(this.commands.values()).map(c => c.data.toJSON());
-
-            const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-
-            // Register commands globally
-            await rest.put(Routes.applicationCommands(this.client.user.id), { body: allCommands });
-            this.logger.info(`✅ Registered ${allCommands.length} global commands`);
-
-            // Clear any guild-specific command sets to avoid duplicates in clients
-            for (const guild of this.client.guilds.cache.values()) {
-                try {
-                    await rest.put(
-                        Routes.applicationGuildCommands(this.client.user.id, guild.id),
-                        { body: [] }
-                    );
-                    this.logger.info(`🧹 Cleared guild command overrides for ${guild.id}`);
-                } catch (gErr) {
-                    this.logger.warn(`⚠️ Failed to clear guild commands for ${guild.id}: ${gErr.message}`);
-                }
-            }
-        } catch (error) {
-            this.logger.error('❌ Failed to register slash commands:', error);
-        }
-    }
-
-
-    /**
-     * Background job: Recover trust scores over time for users without incidents
-     * +1 trust every 7 days without incidents, capped at 100
-     */
-    startTrustRecoveryJob() {
-        const RECOVERY_INTERVAL = 6 * 60 * 60 * 1000; // Run every 6 hours
-        const DAYS_PER_RECOVERY = 7; // +1 trust per 7 days
-        const MAX_TRUST = 100;
-        const MIN_TRUST_FOR_RECOVERY = 20; // Don't recover if trust is very low (likely banned/flagged)
-
-        const runRecovery = async () => {
-            try {
-                this.logger?.info('[TrustRecovery] Starting trust recovery job...');
-
-                // Find users eligible for trust recovery:
-                // - Trust < 100 (room to recover)
-                // - Trust >= 20 (not severely flagged)
-                // - No recent incidents (check mod_actions for warnings/kicks in last 7 days)
-                // - Last recovery was > 7 days ago (or never)
-                const eligibleUsers = await this.database.all(`
-                    SELECT ur.guild_id, ur.user_id, ur.trust_score, ur.last_trust_recovery, ur.manual_override
-                    FROM user_records ur
-                    WHERE ur.trust_score < ? 
-                      AND ur.trust_score >= ?
-                      AND (ur.last_trust_recovery IS NULL OR ur.last_trust_recovery < datetime('now', '-${DAYS_PER_RECOVERY} days'))
-                      AND NOT EXISTS (
-                          SELECT 1 FROM mod_actions ma 
-                          WHERE ma.guild_id = ur.guild_id 
-                            AND ma.target_user_id = ur.user_id
-                            AND ma.action_type IN ('warn', 'kick', 'ban', 'timeout', 'KICK', 'WARN', 'BAN', 'TIMEOUT')
-                            AND ma.created_at > datetime('now', '-${DAYS_PER_RECOVERY} days')
-                      )
-                    LIMIT 500
-                `, [MAX_TRUST, MIN_TRUST_FOR_RECOVERY]);
-
-                if (!eligibleUsers || eligibleUsers.length === 0) {
-                    this.logger?.debug('[TrustRecovery] No users eligible for trust recovery');
-                    return;
-                }
-
-                let recovered = 0;
-                for (const user of eligibleUsers) {
-                    const newTrust = Math.min(user.trust_score + 1, MAX_TRUST);
-                    await this.database.run(`
-                        UPDATE user_records 
-                        SET trust_score = ?, last_trust_recovery = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-                        WHERE guild_id = ? AND user_id = ?
-                    `, [newTrust, user.guild_id, user.user_id]);
-                    recovered++;
-                }
-
-                this.logger?.info(`[TrustRecovery] Recovered trust for ${recovered} users`);
-            } catch (err) {
-                this.logger?.error(`[TrustRecovery] Job failed: ${err.message}`);
-            }
+        const featureMap = {
+            welcome: ['welcome', 'onboarding'],
+            verification: ['verified_setup', 'onboarding'],
+            tickets: ['ticket', 'tickets'],
+            ai: ['ai', 'askai', 'ai_security_help', 'ticket_ai_summarize'],
+            antinuke: ['antinuke', 'security'],
+            antispam: ['antispam', 'spam'],
+            antiraid: ['antiraid', 'raid'],
+            antiphishing: ['antiphishing', 'phishing'],
+            automod: ['automod', 'moderation'],
+            autorole: ['autorole']
         };
-
-        // Run immediately on startup, then every RECOVERY_INTERVAL
-        setTimeout(() => runRecovery(), 30000); // 30 seconds after startup
-        setInterval(() => runRecovery(), RECOVERY_INTERVAL);
+        const isDisabled = (flag) => {
+            if (flag === 'welcome') return !cfg.welcome_enabled;
+            if (flag === 'verification') return !cfg.verification_enabled;
+            if (flag === 'tickets') return !cfg.tickets_enabled;
+            if (flag === 'ai') return !cfg.ai_enabled;
+            if (flag === 'antinuke') return !cfg.antinuke_enabled;
+            if (flag === 'antispam') return !cfg.anti_spam_enabled;
+            if (flag === 'antiraid') return !cfg.anti_raid_enabled;
+            if (flag === 'antiphishing') return !cfg.anti_phishing_enabled;
+            if (flag === 'automod') return !cfg.auto_mod_enabled;
+            if (flag === 'autorole') return !cfg.autorole_enabled;
+            return false;
+        };
+        for (const [flag, cmds] of Object.entries(featureMap)) {
+            if (cmds.includes(name)) return isDisabled(flag);
+        }
+        return false;
     }
-
-    // Feature gating utilities (see isFeatureBlocked above)
 
     async isFeatureEnabledForGuild(guildId, feature) {
         const cfg = await this.database.getGuildConfig(guildId);
@@ -2408,79 +2529,30 @@ class SecurityBot {
         }
     }
 
-    async gracefulShutdown(signal) {
-        console.log(`\n🛑 Received ${signal} - Starting graceful shutdown...`);
-
-        try {
-            // Close dashboard server
-            if (this.dashboard && this.dashboard.server) {
-                await new Promise((resolve) => {
-                    this.dashboard.server.close(() => {
-                        console.log('✅ Dashboard server closed');
-                        resolve();
-                    });
-                });
-            }
-
-            // Close database connections
-            if (this.database) {
-                await this.database.close();
-                console.log('✅ Database connections closed');
-            }
-
-            // Destroy Discord client
-            this.client.destroy();
-            console.log('✅ Discord client destroyed');
-
-            console.log('✅ Graceful shutdown complete');
-            process.exit(0);
-        } catch (error) {
-            console.error('❌ Error during graceful shutdown:', error);
-            process.exit(1);
-        }
-    }
-
     async shutdown() {
-        if (this.logger && typeof this.logger.info === 'function') {
-            this.logger.info('🔄 Shutting down bot...');
-        } else {
-            console.log('🔄 Shutting down bot...');
-        }
-
+        this.logger.info('🔄 Shutting down bot...');
+        
         if (this.dashboard && this.dashboard.server) {
             try {
                 this.dashboard.server.close(() => {
-                    if (this.logger && typeof this.logger.info === 'function') {
-                        this.logger.info('Dashboard shutdown complete');
-                    } else {
-                        console.log('Dashboard shutdown complete');
-                    }
+                    this.logger.info('Dashboard shutdown complete');
                 });
             } catch (error) {
-                if (this.logger && typeof this.logger.warn === 'function') {
-                    this.logger.warn('Dashboard shutdown error:', error.message);
-                } else {
-                    console.warn('Dashboard shutdown error:', error.message);
-                }
+                this.logger.warn('Dashboard shutdown error:', error.message);
             }
         }
-
+        
         if (this.database) {
             await this.database.close();
         }
-
-        this.client.destroy();
         
-        if (this.logger && typeof this.logger.info === 'function') {
-            this.logger.info('✅ Bot shutdown complete');
-        } else {
-            console.log('✅ Bot shutdown complete');
-        }
+        this.client.destroy();
+        this.logger.info('✅ Bot shutdown complete');
     }
 
     formatWelcomeMessage(messageTemplate, member) {
         const { EmbedBuilder } = require('discord.js');
-
+        
         // Try to parse as JSON for custom embeds
         let customization;
         try {
@@ -2506,7 +2578,7 @@ class SecurityBot {
 
             if (customization.embedTitle) embed.setTitle(customization.embedTitle);
             if (customization.imageUrl) embed.setImage(customization.imageUrl);
-
+            
             return { embeds: [embed] };
         }
 
@@ -2516,57 +2588,1086 @@ class SecurityBot {
 
     // Anti-Nuke Event Handlers
     async handleRoleCreate(role) {
-        return interactionHandlers.handleRoleCreate(role, this);
+        if (!this.antiNuke) return;
+        
+        const guild = role.guild;
+        this.logger.debug(`Role created: ${role.name} in ${guild.name}`);
+        
+        // Get audit log to find who created the role
+        const auditLogs = await guild.fetchAuditLogs({
+            type: 30, // ROLE_CREATE
+            limit: 1
+        }).catch(() => null);
+        
+        if (!auditLogs) return;
+        
+        const entry = auditLogs.entries.first();
+        if (!entry || !entry.executor) return;
+        
+        const userId = entry.executor.id;
+        if (userId === this.client.user.id) return; // Ignore bot's own actions
+        
+        // Track the action
+        const result = await this.antiNuke.trackAction(guild, userId, 'roleCreate', {
+            roleId: role.id,
+            roleName: role.name,
+            permissions: role.permissions.bitfield.toString()
+        });
+        
+        if (result.violated) {
+            await this.antiNuke.handleViolation(guild, userId, result);
+        }
+
+        if (this.forensicsManager) {
+            await this.forensicsManager.logAuditEvent({
+                guildId: guild.id,
+                eventType: 'role_create',
+                eventCategory: 'role',
+                executor: entry.executor,
+                target: { id: role.id, name: role.name, type: 'role' },
+                changes: { permissions: role.permissions.bitfield.toString() },
+                afterState: { name: role.name, permissions: role.permissions.bitfield.toString() },
+                canReplay: true
+            });
+        }
+
+        if (this.antiNukeManager) {
+            const tracked = this.antiNukeManager.track(guild.id, userId, 'role_create', { id: role.id });
+            if (tracked?.triggered) {
+                await this.antiNukeManager.mitigate(guild, userId);
+            }
+        }
     }
 
     async handleRoleDelete(role) {
-        return interactionHandlers.handleRoleDelete(role, this);
+        if (!this.antiNuke) return;
+        
+        const guild = role.guild;
+        this.logger.debug(`Role deleted: ${role.name} in ${guild.name}`);
+        
+        const auditLogs = await guild.fetchAuditLogs({
+            type: 32, // ROLE_DELETE
+            limit: 1
+        }).catch(() => null);
+        
+        if (!auditLogs) return;
+        
+        const entry = auditLogs.entries.first();
+        if (!entry || !entry.executor) return;
+        
+        const userId = entry.executor.id;
+        if (userId === this.client.user.id) return;
+        
+        const result = await this.antiNuke.trackAction(guild, userId, 'roleDelete', {
+            roleId: role.id,
+            roleName: role.name
+        });
+        
+        if (result.violated) {
+            await this.antiNuke.handleViolation(guild, userId, result);
+        }
+
+        if (this.forensicsManager) {
+            await this.forensicsManager.logAuditEvent({
+                guildId: guild.id,
+                eventType: 'role_delete',
+                eventCategory: 'role',
+                executor: entry.executor,
+                target: { id: role.id, name: role.name, type: 'role' },
+                beforeState: { name: role.name },
+                reason: result?.violated ? 'anti-nuke violation tracked' : null,
+                canReplay: true
+            });
+        }
+
+        if (this.antiNukeManager) {
+            const tracked = this.antiNukeManager.track(guild.id, userId, 'role_delete', { id: role.id });
+            if (tracked?.triggered) {
+                await this.antiNukeManager.mitigate(guild, userId);
+            }
+        }
     }
 
     async handleChannelCreate(channel) {
-        return interactionHandlers.handleChannelCreate(channel, this);
+        if (!this.antiNuke) {
+            this.logger.warn('⚠️ Anti-nuke module not initialized');
+            return;
+        }
+        if (!channel.guild) return; // DM channels
+        
+        const guild = channel.guild;
+        this.logger.info(`🔔 Channel created: ${channel.name} (${channel.id}) in ${guild.name}`);
+        
+        const auditLogs = await guild.fetchAuditLogs({
+            type: 10, // CHANNEL_CREATE
+            limit: 1
+        }).catch(err => {
+            this.logger.error('❌ Failed to fetch audit logs:', err.message);
+            return null;
+        });
+        
+        if (!auditLogs) {
+            this.logger.warn('⚠️ No audit logs available for channel creation');
+            return;
+        }
+        
+        const entry = auditLogs.entries.first();
+        if (!entry) {
+            this.logger.warn('⚠️ No audit log entry found');
+            return;
+        }
+        if (!entry.executor) {
+            this.logger.warn('⚠️ No executor in audit log entry');
+            return;
+        }
+        
+        const userId = entry.executor.id;
+        this.logger.info(`👤 Channel creator: ${entry.executor.tag} (${userId})`);
+        
+        if (userId === this.client.user.id) {
+            this.logger.debug('ℹ️ Ignoring own action');
+            return;
+        }
+        
+        this.logger.info(`🔍 Tracking channel creation by ${entry.executor.tag}`);
+        const result = await this.antiNuke.trackAction(guild, userId, 'channelCreate', {
+            channelId: channel.id,
+            channelName: channel.name,
+            channelType: channel.type
+        });
+        
+        this.logger.info(`📊 Anti-nuke result:`, {
+            violated: result.violated,
+            counts: result.counts,
+            limits: result.limits
+        });
+        
+        if (result.violated) {
+            this.logger.warn(`🚨 VIOLATION DETECTED! Taking action against ${entry.executor.tag}`);
+            await this.antiNuke.handleViolation(guild, userId, result);
+        }
+        if (this.forensicsManager) {
+            await this.forensicsManager.logAuditEvent({
+                guildId: guild.id,
+                eventType: 'channel_create',
+                eventCategory: 'channel',
+                executor: entry.executor,
+                target: { id: channel.id, name: channel.name, type: 'channel' },
+                changes: { channelType: channel.type },
+                afterState: { name: channel.name, type: channel.type },
+                canReplay: true
+            });
+        }
+
+        if (this.antiNukeManager) {
+            const tracked = this.antiNukeManager.track(guild.id, userId, 'channel_create', { id: channel.id });
+            if (tracked?.triggered) {
+                await this.antiNukeManager.mitigate(guild, userId);
+            }
+        }
     }
 
     async handleChannelDelete(channel) {
-        return interactionHandlers.handleChannelDelete(channel, this);
+        if (!this.antiNuke) return;
+        if (!channel.guild) return;
+        
+        const guild = channel.guild;
+        this.logger.debug(`Channel deleted: ${channel.name} in ${guild.name}`);
+        
+        const auditLogs = await guild.fetchAuditLogs({
+            type: 12, // CHANNEL_DELETE
+            limit: 1
+        }).catch(() => null);
+        
+        if (!auditLogs) return;
+        
+        const entry = auditLogs.entries.first();
+        if (!entry || !entry.executor) return;
+        
+        const userId = entry.executor.id;
+        if (userId === this.client.user.id) return;
+        
+        const result = await this.antiNuke.trackAction(guild, userId, 'channelDelete', {
+            channelId: channel.id,
+            channelName: channel.name
+        });
+        
+        if (result.violated) {
+            await this.antiNuke.handleViolation(guild, userId, result);
+        }
+        if (this.forensicsManager) {
+            await this.forensicsManager.logAuditEvent({
+                guildId: guild.id,
+                eventType: 'channel_delete',
+                eventCategory: 'channel',
+                executor: entry.executor,
+                target: { id: channel.id, name: channel.name, type: 'channel' },
+                beforeState: { name: channel.name, type: channel.type },
+                canReplay: true
+            });
+        }
+
+        if (this.antiNukeManager) {
+            const tracked = this.antiNukeManager.track(guild.id, userId, 'channel_delete', { id: channel.id });
+            if (tracked?.triggered) {
+                await this.antiNukeManager.mitigate(guild, userId);
+            }
+        }
     }
 
     async handleBanAdd(ban) {
-        return interactionHandlers.handleBanAdd(ban, this);
+        if (!this.antiNuke) return;
+        
+        const guild = ban.guild;
+        this.logger.debug(`Ban added: ${ban.user.tag} in ${guild.name}`);
+        
+        const auditLogs = await guild.fetchAuditLogs({
+            type: 22, // MEMBER_BAN_ADD
+            limit: 1
+        }).catch(() => null);
+        
+        if (!auditLogs) return;
+        
+        const entry = auditLogs.entries.first();
+        if (!entry || !entry.executor) return;
+        
+        const userId = entry.executor.id;
+        if (userId === this.client.user.id) return;
+        
+        const result = await this.antiNuke.trackAction(guild, userId, 'banAdd', {
+            targetId: ban.user.id,
+            targetTag: ban.user.tag
+        });
+        
+        if (result.violated) {
+            await this.antiNuke.handleViolation(guild, userId, result);
+        }
+        if (this.forensicsManager) {
+            await this.forensicsManager.logAuditEvent({
+                guildId: guild.id,
+                eventType: 'ban_add',
+                eventCategory: 'moderation',
+                executor: entry.executor,
+                target: { id: ban.user.id, name: ban.user.tag, type: 'user' },
+                reason: entry.reason || null,
+                changes: { action: 'ban' }
+            });
+        }
     }
 
     async handleWebhookUpdate(channel) {
-        return interactionHandlers.handleWebhookUpdate(channel, this);
+        if (!this.antiNuke) return;
+        if (!channel.guild) return;
+        
+        const guild = channel.guild;
+        
+        const auditLogs = await guild.fetchAuditLogs({
+            type: 50, // WEBHOOK_CREATE
+            limit: 1
+        }).catch(() => null);
+        
+        if (!auditLogs) return;
+        
+        const entry = auditLogs.entries.first();
+        if (!entry || !entry.executor) return;
+        if (Date.now() - entry.createdTimestamp > 5000) return; // Only recent webhooks
+        
+        const userId = entry.executor.id;
+        if (userId === this.client.user.id) return;
+        
+        const result = await this.antiNuke.trackAction(guild, userId, 'webhookCreate', {
+            webhookId: entry.target?.id,
+            channelId: channel.id,
+            channelName: channel.name
+        });
+        
+        if (result.violated) {
+            await this.antiNuke.handleViolation(guild, userId, result);
+        }
+        if (this.forensicsManager) {
+            await this.forensicsManager.logAuditEvent({
+                guildId: guild.id,
+                eventType: 'webhook_create',
+                eventCategory: 'integration',
+                executor: entry.executor,
+                target: { id: entry.target?.id || channel.id, name: channel.name, type: 'webhook' },
+                changes: { channelId: channel.id },
+                canReplay: true
+            });
+        }
     }
 
     // Handle channel-based ticket creation
     async handleTicketCreate(interaction) {
-        return interactionHandlers.handleTicketCreate(interaction, this);
+        const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField, ChannelType } = require('discord.js');
+        
+        await interaction.deferReply({ ephemeral: true });
+
+        try {
+            const guild = interaction.guild;
+            const user = interaction.user;
+
+            // Get guild ticket config
+            const config = await this.database.get(
+                'SELECT ticket_staff_role, ticket_category_id FROM guild_configs WHERE guild_id = ?',
+                [guild.id]
+            );
+
+            if (!config || !config.ticket_staff_role) {
+                return await interaction.editReply({
+                    content: '❌ Ticket system is not configured. Ask an admin to run `/ticket-panel setup`.',
+                    ephemeral: true
+                });
+            }
+
+            // Check if user already has an open ticket
+            const existingTicket = await this.database.get(
+                'SELECT channel_id FROM active_tickets WHERE guild_id = ? AND user_id = ? AND status = ?',
+                [guild.id, user.id, 'open']
+            );
+
+            if (existingTicket) {
+                const channel = guild.channels.cache.get(existingTicket.channel_id);
+                if (channel) {
+                    return await interaction.editReply({
+                        content: `❌ You already have an open ticket: ${channel}`,
+                        ephemeral: true
+                    });
+                }
+            }
+
+            // Create ticket channel
+            const ticketNumber = Date.now().toString().slice(-6);
+            const channelName = `ticket-${user.username}-${ticketNumber}`.toLowerCase().replace(/[^a-z0-9-]/g, '');
+
+            const channelOptions = {
+                name: channelName,
+                type: ChannelType.GuildText,
+                parent: config.ticket_category_id || null,
+                topic: `Support ticket for ${user.tag} | User ID: ${user.id}`,
+                permissionOverwrites: [
+                    {
+                        id: guild.roles.everyone,
+                        deny: [PermissionsBitField.Flags.ViewChannel]
+                    },
+                    {
+                        id: user.id,
+                        allow: [
+                            PermissionsBitField.Flags.ViewChannel,
+                            PermissionsBitField.Flags.SendMessages,
+                            PermissionsBitField.Flags.ReadMessageHistory,
+                            PermissionsBitField.Flags.AttachFiles
+                        ]
+                    },
+                    {
+                        id: config.ticket_staff_role,
+                        allow: [
+                            PermissionsBitField.Flags.ViewChannel,
+                            PermissionsBitField.Flags.SendMessages,
+                            PermissionsBitField.Flags.ReadMessageHistory,
+                            PermissionsBitField.Flags.ManageMessages
+                        ]
+                    },
+                    {
+                        id: this.client.user.id,
+                        allow: [
+                            PermissionsBitField.Flags.ViewChannel,
+                            PermissionsBitField.Flags.SendMessages,
+                            PermissionsBitField.Flags.ManageChannels
+                        ]
+                    }
+                ]
+            };
+
+            const ticketChannel = await guild.channels.create(channelOptions);
+
+            // Save to database
+            await this.database.run(`
+                INSERT INTO active_tickets (guild_id, channel_id, user_id, status, created_at)
+                VALUES (?, ?, ?, 'open', CURRENT_TIMESTAMP)
+            `, [guild.id, ticketChannel.id, user.id]);
+
+            // Send welcome message
+            const welcomeEmbed = new EmbedBuilder()
+                .setTitle('🎫 Support Ticket Created')
+                .setDescription(`
+Hello ${user}, welcome to your support ticket!
+
+Please describe your issue in detail. A staff member will assist you shortly.
+
+**What happens next:**
+• Staff will be notified of your ticket
+• Please be patient and wait for a response
+• Click the button below when your issue is resolved
+                `)
+                .setColor('#0096ff')
+                .setTimestamp();
+
+            const closeRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('ticket_close')
+                        .setLabel('🔒 Close Ticket')
+                        .setStyle(ButtonStyle.Danger)
+                );
+
+            await ticketChannel.send({
+                content: `${user} | <@&${config.ticket_staff_role}>`,
+                embeds: [welcomeEmbed],
+                components: [closeRow]
+            });
+
+            await interaction.editReply({
+                content: `✅ Ticket created! ${ticketChannel}`,
+                ephemeral: true
+            });
+
+        } catch (error) {
+            this.logger.error('Error creating ticket:', error);
+            await interaction.editReply({
+                content: '❌ Failed to create ticket. Please contact an administrator.',
+                ephemeral: true
+            });
+        }
     }
 
     // Handle ticket close
     async handleTicketClose(interaction) {
-        return interactionHandlers.handleTicketClose(interaction, this);
+        const { EmbedBuilder } = require('discord.js');
+        
+        await interaction.deferReply();
+
+        try {
+            const channel = interaction.channel;
+
+            // Check if this is a ticket channel
+            const ticket = await this.database.get(
+                'SELECT * FROM active_tickets WHERE channel_id = ? AND status = ?',
+                [channel.id, 'open']
+            );
+
+            if (!ticket) {
+                return await interaction.editReply({
+                    content: '❌ This is not an active ticket channel.',
+                    ephemeral: true
+                });
+            }
+
+            // Check permissions (ticket owner or staff)
+            const config = await this.database.get(
+                'SELECT ticket_staff_role FROM guild_configs WHERE guild_id = ?',
+                [interaction.guild.id]
+            );
+
+            const isOwner = interaction.user.id === ticket.user_id;
+            const isStaff = config && interaction.member.roles.cache.has(config.ticket_staff_role);
+            const isAdmin = interaction.member.permissions.has(PermissionsBitField.Flags.Administrator);
+
+            if (!isOwner && !isStaff && !isAdmin) {
+                return await interaction.editReply({
+                    content: '❌ You don\'t have permission to close this ticket.',
+                    ephemeral: true
+                });
+            }
+
+            // Update database
+            await this.database.run(
+                'UPDATE active_tickets SET status = ?, closed_at = CURRENT_TIMESTAMP, closed_by = ? WHERE channel_id = ?',
+                ['closed', interaction.user.id, channel.id]
+            );
+
+            // Send closing message
+            const closeEmbed = new EmbedBuilder()
+                .setTitle('🔒 Ticket Closed')
+                .setDescription(`
+This ticket has been closed by ${interaction.user}.
+
+The channel will be deleted in 10 seconds...
+                `)
+                .setColor('#ff4757')
+                .setTimestamp();
+
+            await interaction.editReply({ embeds: [closeEmbed] });
+
+            // Delete channel after delay
+            setTimeout(async () => {
+                try {
+                    await channel.delete('Ticket closed');
+                } catch (error) {
+                    this.logger.error('Error deleting ticket channel:', error);
+                }
+            }, 10000);
+
+        } catch (error) {
+            this.logger.error('Error closing ticket:', error);
+            await interaction.editReply({
+                content: '❌ Failed to close ticket. Please contact an administrator.',
+                ephemeral: true
+            });
+        }
     }
 
     async handleTicketCreateModal(interaction) {
-        return interactionHandlers.handleTicketCreateModal(interaction, this);
+        try {
+            const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+
+            // Create modal with Problem and Detailed Description fields
+            const modal = new ModalBuilder()
+                .setCustomId('ticket_modal')
+                .setTitle('📨 Create Support Ticket');
+
+            const problemInput = new TextInputBuilder()
+                .setCustomId('ticket_problem')
+                .setLabel('Problem')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('Brief summary of your issue...')
+                .setRequired(true)
+                .setMaxLength(100);
+
+            const descriptionInput = new TextInputBuilder()
+                .setCustomId('ticket_description')
+                .setLabel('Detailed Description')
+                .setStyle(TextInputStyle.Paragraph)
+                .setPlaceholder('Provide all relevant details about your issue...')
+                .setRequired(true)
+                .setMaxLength(1000);
+
+            const problemRow = new ActionRowBuilder().addComponents(problemInput);
+            const descriptionRow = new ActionRowBuilder().addComponents(descriptionInput);
+
+            modal.addComponents(problemRow, descriptionRow);
+
+            await interaction.showModal(modal);
+        } catch (error) {
+            this.logger.error('Error showing ticket modal:', error);
+            await interaction.reply({
+                content: '❌ Failed to open ticket creation form.',
+                ephemeral: true
+            });
+        }
     }
 
     async handleTicketSubmit(interaction) {
-        return interactionHandlers.handleTicketSubmit(interaction, this);
+        try {
+            const { ChannelType, PermissionsBitField, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+
+            await interaction.deferReply({ ephemeral: true });
+
+            // Get ticket config
+            const config = await this.database.get(
+                'SELECT ticket_channel_id, ticket_staff_role, ticket_manage_role, ticket_category_id FROM guild_configs WHERE guild_id = ?',
+                [interaction.guild.id]
+            );
+
+            if (!config || !config.ticket_channel_id) {
+                return await interaction.editReply({
+                    content: '❌ Ticket system is not set up. Ask an admin to run `/ticket setup`.',
+                    ephemeral: true
+                });
+            }
+
+            // Check if user already has an open ticket
+            const existingTicket = await this.database.get(
+                'SELECT * FROM active_tickets WHERE guild_id = ? AND user_id = ? AND status = ?',
+                [interaction.guild.id, interaction.user.id, 'open']
+            );
+
+            if (existingTicket) {
+                return await interaction.editReply({
+                    content: `❌ You already have an open ticket: <#${existingTicket.channel_id}>`,
+                    ephemeral: true
+                });
+            }
+
+            // Get form data
+            const problem = interaction.fields.getTextInputValue('ticket_problem');
+            const description = interaction.fields.getTextInputValue('ticket_description');
+
+            // Generate ticket ID
+            const ticketCount = await this.database.get(
+                'SELECT COUNT(*) as count FROM active_tickets WHERE guild_id = ?',
+                [interaction.guild.id]
+            );
+            const ticketId = (ticketCount.count + 1).toString().padStart(4, '0');
+
+            // Create ticket channel
+            const channelName = `ticket-${interaction.user.username}-${ticketId}`.toLowerCase().replace(/[^a-z0-9-]/g, '');
+            
+            const ticketChannel = await interaction.guild.channels.create({
+                name: channelName,
+                type: ChannelType.GuildText,
+                parent: config.ticket_category_id || null,
+                permissionOverwrites: [
+                    {
+                        id: interaction.guild.id,
+                        deny: [PermissionsBitField.Flags.ViewChannel]
+                    },
+                    {
+                        id: interaction.user.id,
+                        allow: [
+                            PermissionsBitField.Flags.ViewChannel,
+                            PermissionsBitField.Flags.SendMessages,
+                            PermissionsBitField.Flags.ReadMessageHistory,
+                            PermissionsBitField.Flags.AttachFiles
+                        ]
+                    },
+                    {
+                        id: config.ticket_staff_role,
+                        allow: [
+                            PermissionsBitField.Flags.ViewChannel,
+                            PermissionsBitField.Flags.SendMessages,
+                            PermissionsBitField.Flags.ReadMessageHistory,
+                            PermissionsBitField.Flags.AttachFiles
+                        ]
+                    }
+                ]
+            });
+
+            // Add manage role if specified
+            if (config.ticket_manage_role) {
+                await ticketChannel.permissionOverwrites.create(config.ticket_manage_role, {
+                    ViewChannel: true,
+                    SendMessages: true,
+                    ReadMessageHistory: true,
+                    ManageChannels: true,
+                    ManageMessages: true
+                });
+            }
+
+            // Save to database
+            await this.database.run(
+                `INSERT INTO active_tickets (guild_id, channel_id, user_id, ticket_id, problem, description, status, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+                [interaction.guild.id, ticketChannel.id, interaction.user.id, ticketId, problem, description, 'open']
+            );
+
+            // Send welcome message in ticket channel
+            const welcomeEmbed = new EmbedBuilder()
+                .setTitle(`🎫 Ticket #${ticketId}`)
+                .setDescription(`
+**Problem:** ${problem}
+
+**Description:**
+${description}
+
+**Created by:** ${interaction.user}
+**Status:** 🟢 Open
+
+Our support team will be with you shortly!
+                `)
+                .setColor('#00d4ff')
+                .setTimestamp();
+
+            const closeButton = new ButtonBuilder()
+                .setCustomId('ticket_close')
+                .setLabel('🔒 Close Ticket')
+                .setStyle(ButtonStyle.Danger);
+
+            const buttonRow = new ActionRowBuilder().addComponents(closeButton);
+
+            await ticketChannel.send({
+                content: `${interaction.user} | <@&${config.ticket_staff_role}>`,
+                embeds: [welcomeEmbed],
+                components: [buttonRow]
+            });
+
+            // Send DM confirmation to user
+            try {
+                const dmEmbed = new EmbedBuilder()
+                    .setTitle('✅ Ticket Created')
+                    .setDescription(`
+Your support ticket has been created successfully!
+
+**Ticket ID:** #${ticketId}
+**Channel:** ${ticketChannel}
+
+Our support team will reach out shortly. Please check the ticket channel for updates.
+                    `)
+                    .setColor('#2ed573')
+                    .setTimestamp();
+
+                await interaction.user.send({ embeds: [dmEmbed] });
+            } catch (dmError) {
+                this.logger.warn(`Could not send DM to ${interaction.user.tag}:`, dmError.message);
+            }
+
+            // Reply to interaction
+            await interaction.editReply({
+                content: `✅ Your ticket has been created: ${ticketChannel}`,
+                ephemeral: true
+            });
+
+            // Emit event for dashboard
+            if (this.backend && this.backend.eventEmitter) {
+                this.backend.eventEmitter.emit('ticketCreated', {
+                    guildId: interaction.guild.id,
+                    ticketId,
+                    channelId: ticketChannel.id,
+                    userId: interaction.user.id,
+                    problem,
+                    description
+                });
+            }
+
+        } catch (error) {
+            this.logger.error('Error creating ticket:', error);
+            await interaction.editReply({
+                content: '❌ Failed to create ticket. Please contact an administrator.',
+                ephemeral: true
+            });
+        }
     }
 
     async handleTicketClaim(interaction) {
-        return interactionHandlers.handleTicketClaim(interaction, this);
+        try {
+            const { EmbedBuilder, PermissionsBitField } = require('discord.js');
+
+            await interaction.deferReply({ ephemeral: true });
+
+            // Get ticket config
+            const config = await this.database.get(
+                'SELECT ticket_staff_role, ticket_manage_role FROM guild_configs WHERE guild_id = ?',
+                [interaction.guild.id]
+            );
+
+            if (!config) {
+                return await interaction.editReply({
+                    content: '❌ Ticket system is not configured.',
+                    ephemeral: true
+                });
+            }
+
+            // Check if user has staff or manage role
+            const hasStaffRole = interaction.member.roles.cache.has(config.ticket_staff_role);
+            const hasManageRole = config.ticket_manage_role && interaction.member.roles.cache.has(config.ticket_manage_role);
+            const isAdmin = interaction.member.permissions.has(PermissionsBitField.Flags.Administrator);
+
+            if (!hasStaffRole && !hasManageRole && !isAdmin) {
+                return await interaction.editReply({
+                    content: '❌ You don\'t have permission to claim tickets.',
+                    ephemeral: true
+                });
+            }
+
+            // Get ticket from database
+            const ticket = await this.database.get(
+                'SELECT * FROM active_tickets WHERE channel_id = ? AND status = ?',
+                [interaction.channel.id, 'open']
+            );
+
+            if (!ticket) {
+                return await interaction.editReply({
+                    content: '❌ This is not an active ticket channel.',
+                    ephemeral: true
+                });
+            }
+
+            // Check if already claimed
+            if (ticket.claimed_by) {
+                const claimer = await interaction.guild.members.fetch(ticket.claimed_by);
+                return await interaction.editReply({
+                    content: `❌ This ticket has already been claimed by ${claimer}.`,
+                    ephemeral: true
+                });
+            }
+
+            // Claim the ticket
+            await this.database.run(
+                'UPDATE active_tickets SET claimed_by = ?, claimed_at = CURRENT_TIMESTAMP WHERE channel_id = ?',
+                [interaction.user.id, interaction.channel.id]
+            );
+
+            // Send claim message
+            const claimEmbed = new EmbedBuilder()
+                .setTitle('✅ Ticket Claimed')
+                .setDescription(`This ticket has been claimed by ${interaction.user}`)
+                .setColor('#2ed573')
+                .setTimestamp();
+
+            await interaction.channel.send({ embeds: [claimEmbed] });
+
+            // Update original panel message to disable claim button (if found)
+            try {
+                const messages = await interaction.channel.messages.fetch({ limit: 50 });
+                const welcomeMessage = messages.find(msg => 
+                    msg.author.id === this.client.user.id && 
+                    msg.embeds.length > 0 && 
+                    msg.embeds[0].title?.includes('Ticket #')
+                );
+
+                if (welcomeMessage && welcomeMessage.components.length > 0) {
+                    // Keep the close button, but disable claim if it exists
+                    const { ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
+                    const closeButton = new ButtonBuilder()
+                        .setCustomId('ticket_close')
+                        .setLabel('🔒 Close Ticket')
+                        .setStyle(ButtonStyle.Danger);
+
+                    const buttonRow = new ActionRowBuilder().addComponents(closeButton);
+                    await welcomeMessage.edit({ components: [buttonRow] });
+                }
+            } catch (updateError) {
+                this.logger.warn('Could not update ticket message:', updateError.message);
+            }
+
+            await interaction.editReply({
+                content: '✅ You have claimed this ticket.',
+                ephemeral: true
+            });
+
+            // Emit event for dashboard
+            if (this.backend && this.backend.eventEmitter) {
+                this.backend.eventEmitter.emit('ticketClaimed', {
+                    guildId: interaction.guild.id,
+                    ticketId: ticket.ticket_id,
+                    channelId: interaction.channel.id,
+                    claimedBy: interaction.user.id
+                });
+            }
+
+        } catch (error) {
+            this.logger.error('Error claiming ticket:', error);
+            await interaction.editReply({
+                content: '❌ Failed to claim ticket. Please try again.',
+                ephemeral: true
+            });
+        }
     }
 
     async handleHelpModal(interaction) {
-        return interactionHandlers.handleHelpModal(interaction, this);
+        try {
+            const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+
+            // Get the topic the user selected
+            const topic = interaction.fields.getTextInputValue('help-description') || 'General';
+
+            const helpCategories = {
+                'Moderation': {
+                    emoji: '🔨',
+                    color: '#ff6b6b',
+                    commands: ['kick', 'ban', 'timeout', 'warn', 'purge', 'unban'],
+                    description: 'Manage and moderate your community with powerful tools'
+                },
+                'Security': {
+                    emoji: '🛡️',
+                    color: '#00d4ff',
+                    commands: ['status', 'lockdown', 'antispam', 'antiraid'],
+                    description: 'Advanced protection against raids, spam, and attacks'
+                },
+                'Verification': {
+                    emoji: '✅',
+                    color: '#51cf66',
+                    commands: ['verify', 'verify-approve', 'verify-reject'],
+                    description: 'Verify users with captcha and approval workflows'
+                },
+                'Admin': {
+                    emoji: '⚙️',
+                    color: '#ffd43b',
+                    commands: ['setup', 'config', 'backup', 'logs'],
+                    description: 'Configure and manage bot settings'
+                },
+                'Economy': {
+                    emoji: '💰',
+                    color: '#ff922b',
+                    commands: ['balance', 'daily', 'work', 'pay', 'deposit', 'withdraw'],
+                    description: 'Economy system with coins, shops, and trading'
+                },
+                'Leveling': {
+                    emoji: '📈',
+                    color: '#a78bfa',
+                    commands: ['rank', 'leaderboard', 'top10', 'profile'],
+                    description: 'XP system with ranks and leaderboards'
+                },
+                'Utility': {
+                    emoji: '🔧',
+                    color: '#1f2937',
+                    commands: ['help', 'ping', 'info', 'userinfo', 'serverinfo', 'avatar'],
+                    description: 'General utility and information commands'
+                }
+            };
+
+            const helpEmbed = new EmbedBuilder()
+                .setTitle('🛡️ GuardianBot - Help Center')
+                .setDescription('Select a category from the buttons below to learn more')
+                .setColor('#00d4ff')
+                .setThumbnail(interaction.client.user.displayAvatarURL({ size: 256 }))
+                .setTimestamp()
+                .setFooter({ text: 'Use /help <command> for detailed info on specific commands' });
+
+            // Add category information
+            let categoryText = '';
+            for (const [category, info] of Object.entries(helpCategories)) {
+                categoryText += `${info.emoji} **${category}**: ${info.description}\n`;
+            }
+            helpEmbed.addFields({ name: 'Available Categories', value: categoryText, inline: false });
+
+            // Create buttons for each category
+            const buttons = [];
+            const categoryNames = Object.keys(helpCategories);
+            
+            for (let i = 0; i < categoryNames.length; i += 5) {
+                const row = new ActionRowBuilder();
+                const slice = categoryNames.slice(i, i + 5);
+                
+                slice.forEach(category => {
+                    const info = helpCategories[category];
+                    row.addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`help-category-${category.toLowerCase()}`)
+                            .setLabel(category)
+                            .setEmoji(info.emoji)
+                            .setStyle(ButtonStyle.Secondary)
+                    );
+                });
+                
+                buttons.push(row);
+            }
+
+            // Add admin panel button
+            const adminRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setLabel('Admin Panel')
+                        .setStyle(ButtonStyle.Link)
+                        .setURL('https://discord-security-bot-uyxf.onrender.com/dashboard')
+                        .setEmoji('📊'),
+                    new ButtonBuilder()
+                        .setLabel('Support Server')
+                        .setStyle(ButtonStyle.Link)
+                        .setURL('https://discord.gg')
+                        .setEmoji('🤝')
+                );
+
+            buttons.push(adminRow);
+
+            await interaction.reply({
+                embeds: [helpEmbed],
+                components: buttons,
+                ephemeral: true
+            });
+
+        } catch (error) {
+            console.error('Error handling help modal:', error);
+            if (!interaction.replied) {
+                await interaction.reply({
+                    content: '❌ An error occurred while processing your request.',
+                    ephemeral: true
+                }).catch(() => {});
+            }
+        }
     }
 
     async handleHelpTicketModal(interaction) {
-        return interactionHandlers.handleHelpTicketModal(interaction, this);
+        const category = interaction.customId.replace('help-ticket-modal-', '');
+
+        try {
+            const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+            
+            const subject = interaction.fields.getTextInputValue('help-subject');
+            const reason = interaction.fields.getTextInputValue('help-reason');
+            const description = interaction.fields.getTextInputValue('help-description');
+            const priority = 'normal'; // Default priority
+
+            await interaction.deferReply({ ephemeral: true });
+
+            // Create the ticket (combine reason and description)
+            const fullDescription = `**Reason:** ${reason}\n\n**Details:**\n${description}`;
+            const result = await this.helpTicketSystem.createTicket(
+                interaction.user.id,
+                interaction.guildId,
+                category,
+                subject,
+                fullDescription,
+                priority
+            );
+
+            if (!result || !result.ticketId) {
+                return await interaction.editReply({
+                    content: '❌ Failed to create ticket. Please try again later.',
+                    ephemeral: true
+                });
+            }
+
+            const ticketId = result.ticketId;
+
+            // Send confirmation to user
+            const userEmbed = new EmbedBuilder()
+                .setTitle('✅ Support Ticket Created')
+                .setColor('#00ff00')
+                .addFields(
+                    { name: 'Ticket ID', value: `\`${ticketId}\``, inline: false },
+                    { name: 'Category', value: `${this.helpTicketSystem.getCategoryEmoji(category)} ${this.helpTicketSystem.getCategoryLabel(category)}`, inline: true },
+                    { name: 'Status', value: '🔄 Open', inline: true },
+                    { name: '\u200b', value: '\u200b', inline: true },
+                    { name: 'Subject', value: subject, inline: false },
+                    { name: 'Reason', value: reason, inline: false },
+                    { name: 'Description', value: description.slice(0, 400) + (description.length > 400 ? '...' : ''), inline: false },
+                )
+                .setFooter({ text: 'Our team will review your ticket shortly.' })
+                .setTimestamp();
+
+            await interaction.editReply({ embeds: [userEmbed] });
+
+            // Send notification to admins
+            try {
+                const config = await this.configManager.getGuildConfig(interaction.guildId);
+                const supportChannelId = config?.supportChannelId || config?.modLogChannel;
+
+                if (supportChannelId) {
+                    const adminChannel = await interaction.guild.channels.fetch(supportChannelId);
+
+                    const adminEmbed = new EmbedBuilder()
+                        .setTitle(`🆘 New Support Ticket: ${ticketId}`)
+                        .setColor('#ff9900')
+                        .addFields(
+                            { name: 'User', value: `${interaction.user.tag} (${interaction.user.id})`, inline: false },
+                            { name: 'Category', value: `${this.helpTicketSystem.getCategoryEmoji(category)} ${this.helpTicketSystem.getCategoryLabel(category)}`, inline: true },
+                            { name: 'Status', value: '🔄 Open', inline: true },
+                            { name: 'Subject', value: subject, inline: false },
+                            { name: 'Reason', value: reason, inline: false },
+                            { name: 'Description', value: description.slice(0, 800) + (description.length > 800 ? '...' : ''), inline: false },
+                        )
+                        .setThumbnail(interaction.user.displayAvatarURL())
+                        .setTimestamp();
+
+                    const row = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId(`ticket-assign-${ticketId}`)
+                                .setLabel('Assign to Me')
+                                .setStyle(ButtonStyle.Primary),
+                            new ButtonBuilder()
+                                .setCustomId(`ticket-in-progress-${ticketId}`)
+                                .setLabel('Mark In Progress')
+                                .setStyle(ButtonStyle.Warning),
+                            new ButtonBuilder()
+                                .setURL('https://discord-security-bot-uyx6.onrender.com/admin')
+                                .setLabel('View Dashboard')
+                                .setStyle(ButtonStyle.Link)
+                        );
+
+                    await adminChannel.send({ embeds: [adminEmbed], components: [row] });
+                }
+            } catch (error) {
+                this.logger?.warn('Failed to send ticket notification to admin channel:', error);
+            }
+
+            // Try to DM the user
+            try {
+                await interaction.user.send({
+                    embeds: [userEmbed]
+                });
+            } catch (error) {
+                this.logger?.warn('Failed to DM user about ticket:', error);
+            }
+
+        } catch (error) {
+            this.logger?.error('Error processing help ticket modal:', error);
+            await interaction.editReply({
+                content: '❌ An error occurred while creating your ticket. Please try again.',
+                ephemeral: true
+            });
+        }
     }
 }
 
@@ -2602,7 +3703,6 @@ if (require.main === module) {
 }
 
 module.exports = SecurityBot;
-
 
 
 

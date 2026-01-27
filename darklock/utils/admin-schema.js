@@ -172,19 +172,73 @@ async function initializeAdminSchema() {
     `);
 
     // ========================================================================
-    // INDEXES
+    // ERROR LOGS - Track application errors
     // ========================================================================
-    await db.run(`CREATE INDEX IF NOT EXISTS idx_audit_admin ON admin_audit_logs(admin_id)`);
-    await db.run(`CREATE INDEX IF NOT EXISTS idx_audit_created ON admin_audit_logs(created_at)`);
-    await db.run(`CREATE INDEX IF NOT EXISTS idx_audit_action ON admin_audit_logs(action)`);
-    await db.run(`CREATE INDEX IF NOT EXISTS idx_announcements_active ON announcements(is_active, start_at, end_at)`);
-    await db.run(`CREATE INDEX IF NOT EXISTS idx_feature_flags_key ON feature_flags(key)`);
-    await db.run(`CREATE INDEX IF NOT EXISTS idx_changelogs_version ON changelogs(version)`);
+    await db.run(`
+        CREATE TABLE IF NOT EXISTS error_logs (
+            id TEXT PRIMARY KEY,
+            error_type TEXT NOT NULL,
+            error_message TEXT NOT NULL,
+            error_stack TEXT,
+            source TEXT,
+            user_id TEXT,
+            request_url TEXT,
+            request_method TEXT,
+            ip_address TEXT,
+            user_agent TEXT,
+            severity TEXT DEFAULT 'error' CHECK(severity IN ('debug', 'info', 'warning', 'error', 'critical')),
+            created_at TEXT NOT NULL
+        )
+    `);
 
     // ========================================================================
-    // DEFAULT DATA
+    // MIGRATIONS - Add missing columns to existing tables
     // ========================================================================
-    await insertDefaultData();
+    try {
+        await db.run(`ALTER TABLE announcements ADD COLUMN is_active INTEGER DEFAULT 1`);
+        console.log('[Admin Schema] ✅ Added is_active column to announcements table');
+    } catch (e) {
+        // Column already exists, ignore
+    }
+    try {
+        await db.run(`ALTER TABLE announcements ADD COLUMN is_dismissible INTEGER DEFAULT 1`);
+        console.log('[Admin Schema] ✅ Added is_dismissible column to announcements table');
+    } catch (e) {
+        // Column already exists, ignore
+    }
+    try {
+        await db.run(`ALTER TABLE announcements ADD COLUMN start_at TEXT`);
+        console.log('[Admin Schema] ✅ Added start_at column to announcements table');
+    } catch (e) {
+        // Column already exists, ignore
+    }
+    try {
+        await db.run(`ALTER TABLE announcements ADD COLUMN end_at TEXT`);
+        console.log('[Admin Schema] ✅ Added end_at column to announcements table');
+    } catch (e) {
+        // Column already exists, ignore
+    }
+
+    // ========================================================================
+    // INDEXES - Wrap in try/catch to handle old table schemas gracefully
+    // ========================================================================
+    try { await db.run(`CREATE INDEX IF NOT EXISTS idx_audit_admin ON admin_audit_logs(admin_id)`); } catch (e) { /* Ignore errors from old schemas */ }
+    try { await db.run(`CREATE INDEX IF NOT EXISTS idx_audit_created ON admin_audit_logs(created_at)`); } catch (e) { /* Ignore errors from old schemas */ }
+    try { await db.run(`CREATE INDEX IF NOT EXISTS idx_audit_action ON admin_audit_logs(action)`); } catch (e) { /* Ignore errors from old schemas */ }
+    try { await db.run(`CREATE INDEX IF NOT EXISTS idx_announcements_active ON announcements(is_active, start_at, end_at)`); } catch (e) { /* Ignore errors from old schemas */ }
+    try { await db.run(`CREATE INDEX IF NOT EXISTS idx_feature_flags_key ON feature_flags(key)`); } catch (e) { /* Ignore errors from old schemas */ }
+    try { await db.run(`CREATE INDEX IF NOT EXISTS idx_changelogs_version ON changelogs(version)`); } catch (e) { /* Ignore errors from old schemas */ }
+    try { await db.run(`CREATE INDEX IF NOT EXISTS idx_error_logs_created ON error_logs(created_at)`); } catch (e) { /* Ignore errors from old schemas */ }
+    try { await db.run(`CREATE INDEX IF NOT EXISTS idx_error_logs_severity ON error_logs(severity)`); } catch (e) { /* Ignore errors from old schemas */ }
+
+    // ========================================================================
+    // DEFAULT DATA - Wrap in try/catch to handle old table schemas
+    // ========================================================================
+    try {
+        await insertDefaultData();
+    } catch (e) {
+        console.log('[Admin Schema] ⚠️  Warning: Could not insert default data (old table schema)');
+    }
 
     console.log('[Admin Schema] ✅ Admin dashboard tables initialized');
 }

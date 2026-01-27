@@ -1,0 +1,2672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Owner Dashboard - Darklock</title>
+    <style>
+        :root {
+            --bg-primary: #09090b;
+            --bg-secondary: #0f0f12;
+            --bg-card: #18181b;
+            --bg-card-hover: #1f1f23;
+            --bg-input: #27272a;
+            --border: #27272a;
+            --border-light: #3f3f46;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --accent-muted: rgba(99, 102, 241, 0.1);
+            --success: #22c55e;
+            --success-muted: rgba(34, 197, 94, 0.1);
+            --warning: #f59e0b;
+            --warning-muted: rgba(245, 158, 11, 0.1);
+            --error: #ef4444;
+            --error-muted: rgba(239, 68, 68, 0.1);
+            --info: #3b82f6;
+            --sidebar-width: 260px;
+            --header-height: 64px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        html, body {
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        /* Layout */
+        .app { display: flex; min-height: 100vh; }
+        
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #818cf8);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .sidebar-header span {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            background: var(--bg-card);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: auto;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 0.75rem;
+            overflow-y: auto;
+        }
+
+        .nav-section { margin-bottom: 1.5rem; }
+
+        .nav-section-title {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 0.5rem 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.625rem 0.75rem;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            margin-bottom: 2px;
+        }
+
+        .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+        .nav-item.active { background: var(--accent); color: white; }
+        .nav-item .icon { font-size: 1.125rem; width: 24px; text-align: center; opacity: 0.8; }
+        .nav-item.active .icon { opacity: 1; }
+
+        .sidebar-footer {
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .admin-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .admin-info:hover { background: var(--bg-card); }
+
+        .admin-avatar {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), var(--success));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .admin-details { flex: 1; min-width: 0; }
+        .admin-name { font-size: 0.875rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .admin-role { font-size: 0.7rem; color: var(--text-muted); text-transform: capitalize; }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            height: var(--header-height);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 1rem; }
+        .page-title { font-size: 1.125rem; font-weight: 600; }
+        .header-right { display: flex; align-items: center; gap: 1rem; }
+
+        .server-time {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .server-time .time { font-size: 1.25rem; font-weight: 600; color: var(--accent); }
+        .server-time .date { font-size: 0.7rem; color: var(--text-muted); }
+
+        .header-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-danger { background: var(--error-muted); color: var(--error); border: 1px solid transparent; }
+        .btn-danger:hover { background: var(--error); color: white; }
+        .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+        .btn-ghost:hover { background: var(--bg-card); color: var(--text-primary); }
+
+        /* Content */
+        .content { flex: 1; padding: 1.5rem; overflow-y: auto; }
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+        .card-title { font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: all 0.2s;
+        }
+
+        .stat-card:hover { border-color: var(--border-light); transform: translateY(-2px); }
+
+        .stat-card .icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .stat-card .icon.blue { background: var(--accent-muted); color: var(--accent); }
+        .stat-card .icon.green { background: var(--success-muted); color: var(--success); }
+        .stat-card .icon.yellow { background: var(--warning-muted); color: var(--warning); }
+        .stat-card .icon.red { background: var(--error-muted); color: var(--error); }
+
+        .stat-card .value { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+        .stat-card .label { font-size: 0.8rem; color: var(--text-muted); }
+
+        /* Services Status */
+        .services-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+        .service-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background: var(--bg-primary);
+            border-radius: 8px;
+        }
+
+        .service-name { font-size: 0.875rem; font-weight: 500; }
+
+        .service-status { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 500; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-online { background: var(--success); }
+        .status-degraded { background: var(--warning); }
+        .status-offline { background: var(--error); }
+        .status-maintenance { background: var(--info); }
+
+        /* Activity Feed */
+        .activity-feed { display: flex; flex-direction: column; gap: 0.5rem; }
+
+        .activity-item {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            font-size: 0.8rem;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .activity-content { flex: 1; }
+        .activity-text { color: var(--text-secondary); }
+        .activity-text strong { color: var(--text-primary); }
+        .activity-time { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        /* Form Styles */
+        .form-group { margin-bottom: 1.25rem; }
+        .form-label { display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-secondary); }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 0.625rem 0.875rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            transition: border-color 0.15s;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--accent); }
+        .form-textarea { min-height: 100px; resize: vertical; }
+        .form-hint { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.375rem; }
+
+        /* Toggle Switch */
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.875rem 1rem;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+
+        .toggle-info { flex: 1; }
+        .toggle-label { font-size: 0.875rem; font-weight: 500; }
+        .toggle-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.125rem; }
+
+        .toggle { position: relative; width: 44px; height: 24px; }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: var(--border);
+            border-radius: 24px;
+            transition: 0.2s;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.2s;
+        }
+
+        .toggle input:checked + .toggle-slider { background: var(--accent); }
+        .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+        /* Tables */
+        .table-container { overflow-x: auto; }
+        .table { width: 100%; border-collapse: collapse; }
+
+        .table th, .table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table th {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            background: var(--bg-primary);
+        }
+
+        .table td { font-size: 0.875rem; }
+        .table tbody tr:hover { background: var(--bg-card-hover); }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .badge-success { background: var(--success-muted); color: var(--success); }
+        .badge-warning { background: var(--warning-muted); color: var(--warning); }
+        .badge-error { background: var(--error-muted); color: var(--error); }
+        .badge-info { background: var(--accent-muted); color: var(--accent); }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+        }
+
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 480px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.95);
+            transition: transform 0.2s;
+        }
+
+        .modal-overlay.active .modal { transform: scale(1); }
+
+        .modal-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title { font-size: 1rem; font-weight: 600; }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.25rem;
+            padding: 0.25rem;
+        }
+
+        .modal-close:hover { color: var(--text-primary); }
+        .modal-body { padding: 1.25rem; }
+
+        .modal-footer {
+            padding: 1.25rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.875rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease;
+            max-width: 360px;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast.success { border-left: 3px solid var(--success); }
+        .toast.error { border-left: 3px solid var(--error); }
+        .toast.warning { border-left: 3px solid var(--warning); }
+
+        .toast-icon { font-size: 1.125rem; }
+        .toast-message { font-size: 0.875rem; flex: 1; }
+
+        /* Grid layouts */
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+        @media (max-width: 1024px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        /* Maintenance Banner */
+        .maintenance-banner {
+            background: linear-gradient(135deg, var(--warning-muted), rgba(245, 158, 11, 0.05));
+            border: 1px solid var(--warning);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .maintenance-banner.hidden { display: none; }
+        .maintenance-banner .icon { font-size: 1.5rem; }
+        .maintenance-banner .content { flex: 1; }
+        .maintenance-banner .title { font-weight: 600; color: var(--warning); }
+        .maintenance-banner .desc { font-size: 0.8rem; color: var(--text-secondary); }
+
+        /* Loading States */
+        .loading { display: flex; align-items: center; justify-content: center; padding: 2rem; color: var(--text-muted); }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 0.75rem;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Section Headers */
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+        .section-title { font-size: 1.25rem; font-weight: 600; }
+        .section-desc { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+                </div>
+                <h1>Darklock</h1>
+                <span>Owner</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Overview</div>
+                    <a class="nav-item active" data-section="dashboard">
+                        <span class="icon">📊</span> Dashboard
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Discord Bot</div>
+                    <a class="nav-item" data-section="bot-status">
+                        <span class="icon">🤖</span> Bot Status
+                    </a>
+                    <a class="nav-item" data-section="bot-guilds">
+                        <span class="icon">🏠</span> Servers
+                    </a>
+                    <a class="nav-item" data-section="bot-settings">
+                        <span class="icon">⚡</span> Bot Settings
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Platform</div>
+                    <a class="nav-item" data-section="announcements">
+                        <span class="icon">📢</span> Announcements
+                    </a>
+                    <a class="nav-item" data-section="services">
+                        <span class="icon">🔌</span> Service Status
+                    </a>
+                    <a class="nav-item" data-section="changelogs">
+                        <span class="icon">📋</span> Changelogs
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Configuration</div>
+                    <a class="nav-item" data-section="settings">
+                        <span class="icon">⚙️</span> Platform Settings
+                    </a>
+                    <a class="nav-item" data-section="security">
+                        <span class="icon">🔐</span> Security
+                    </a>
+                    <a class="nav-item" data-section="maintenance">
+                        <span class="icon">🔧</span> Maintenance
+                    </a>
+                    <a class="nav-item" data-section="features">
+                        <span class="icon">🚀</span> Feature Flags
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">My Account</div>
+                    <a class="nav-item" data-section="account">
+                        <span class="icon">👤</span> Account Settings
+                    </a>
+                    <a class="nav-item" data-section="sessions">
+                        <span class="icon">🔑</span> Active Sessions
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">System</div>
+                    <a class="nav-item" data-section="admins">
+                        <span class="icon">👥</span> Manage Admins
+                    </a>
+                    <a class="nav-item" data-section="audit">
+                        <span class="icon">📜</span> Audit Logs
+                    </a>
+                    <a class="nav-item" data-section="system">
+                        <span class="icon">🖥️</span> System Info
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="admin-info" id="adminInfo">
+                    <div class="admin-avatar" id="adminAvatar">A</div>
+                    <div class="admin-details">
+                        <div class="admin-name" id="adminName">Admin</div>
+                        <div class="admin-role" id="adminRole">Owner</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <h2 class="page-title" id="pageTitle">Dashboard</h2>
+                </div>
+                <div class="header-right">
+                    <div class="server-time">
+                        <div class="time" id="serverTime">--:--:--</div>
+                        <div class="date" id="serverDate">Loading...</div>
+                    </div>
+                    <button class="header-btn btn-danger" onclick="signOut()">
+                        <span>🚪</span> Sign Out
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content">
+                <!-- Dashboard Section -->
+                <section class="section active" id="section-dashboard">
+                    <div class="maintenance-banner hidden" id="maintenanceBanner">
+                        <span class="icon">⚠️</span>
+                        <div class="content">
+                            <div class="title">Maintenance Mode Active</div>
+                            <div class="desc">The platform is currently in maintenance mode. Visitors see the maintenance page.</div>
+                        </div>
+                        <button class="header-btn btn-ghost" onclick="goToSection('maintenance')">Configure</button>
+                    </div>
+
+                    <div class="stats-grid" id="statsGrid">
+                        <div class="stat-card">
+                            <div class="icon blue">👥</div>
+                            <div class="value" id="statAdmins">-</div>
+                            <div class="label">Active Admins</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="icon green">📢</div>
+                            <div class="value" id="statAnnouncements">-</div>
+                            <div class="label">Active Announcements</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="icon yellow">🚀</div>
+                            <div class="value" id="statFeatures">-</div>
+                            <div class="label">Enabled Features</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="icon red">📝</div>
+                            <div class="value" id="statActions">-</div>
+                            <div class="label">Actions Today</div>
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Service Status</h3>
+                                <button class="header-btn btn-ghost" onclick="goToSection('services')">Manage</button>
+                            </div>
+                            <div class="services-list" id="servicesList">
+                                <div class="loading"><div class="spinner"></div> Loading services...</div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Recent Activity</h3>
+                                <button class="header-btn btn-ghost" onclick="goToSection('audit')">View All</button>
+                            </div>
+                            <div class="activity-feed" id="activityFeed">
+                                <div class="loading"><div class="spinner"></div> Loading activity...</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Bot Status Section -->
+                <section class="section" id="section-bot-status">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">🤖 Discord Bot Status</h2>
+                            <p class="section-desc">Monitor your Discord bot's health and performance</p>
+                        </div>
+                        <button class="header-btn btn-ghost" onclick="loadBotStatus()">
+                            <span>🔄</span> Refresh
+                        </button>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="icon green" id="botStatusIcon">🟢</div>
+                            <div class="value" id="botStatusText">Online</div>
+                            <div class="label">Bot Status</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="icon blue">🏠</div>
+                            <div class="value" id="botGuilds">-</div>
+                            <div class="label">Servers</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="icon yellow">👥</div>
+                            <div class="value" id="botUsers">-</div>
+                            <div class="label">Users</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="icon red">⏱️</div>
+                            <div class="value" id="botUptime">-</div>
+                            <div class="label">Uptime</div>
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Bot Information</h3>
+                            </div>
+                            <div class="services-list">
+                                <div class="service-item">
+                                    <span class="service-name">Username</span>
+                                    <span id="botUsername" style="color: var(--text-muted);">Loading...</span>
+                                </div>
+                                <div class="service-item">
+                                    <span class="service-name">Bot ID</span>
+                                    <span id="botId" style="color: var(--text-muted); font-family: monospace; font-size: 0.75rem;">Loading...</span>
+                                </div>
+                                <div class="service-item">
+                                    <span class="service-name">Gateway Ping</span>
+                                    <span id="botPing" style="color: var(--text-muted);">Loading...</span>
+                                </div>
+                                <div class="service-item">
+                                    <span class="service-name">Ready Since</span>
+                                    <span id="botReadyAt" style="color: var(--text-muted);">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Bot Presence</h3>
+                            </div>
+                            <form id="botPresenceForm">
+                                <div class="form-group">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-select" id="botPresenceStatus">
+                                        <option value="online">🟢 Online</option>
+                                        <option value="idle">🟡 Idle</option>
+                                        <option value="dnd">🔴 Do Not Disturb</option>
+                                        <option value="invisible">⚫ Invisible</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Activity Type</label>
+                                    <select class="form-select" id="botActivityType">
+                                        <option value="playing">Playing</option>
+                                        <option value="watching">Watching</option>
+                                        <option value="listening">Listening to</option>
+                                        <option value="competing">Competing in</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Activity Text</label>
+                                    <input type="text" class="form-input" id="botActivityText" placeholder="e.g., your servers">
+                                </div>
+                                <button type="submit" class="header-btn btn-primary">Update Presence</button>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Bot Guilds Section -->
+                <section class="section" id="section-bot-guilds">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">🏠 Bot Servers</h2>
+                            <p class="section-desc">View all servers the bot is in</p>
+                        </div>
+                        <button class="header-btn btn-ghost" onclick="loadBotGuilds()">
+                            <span>🔄</span> Refresh
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Server Name</th>
+                                        <th>Members</th>
+                                        <th>Joined</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="botGuildsList">
+                                    <tr><td colspan="4" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Bot Settings Section -->
+                <section class="section" id="section-bot-settings">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">⚡ Bot Settings</h2>
+                            <p class="section-desc">Configure global bot settings and features</p>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-bottom: 1rem;">
+                        <div class="card-header">
+                            <h3 class="card-title">Global Features</h3>
+                        </div>
+                        <p class="form-hint" style="margin-bottom: 1rem;">These settings apply to all servers unless overridden</p>
+                        
+                        <div class="toggle-group">
+                            <div class="toggle-info">
+                                <div class="toggle-label">🛡️ Anti-Nuke Protection</div>
+                                <div class="toggle-desc">Protect against mass bans, kicks, channel deletes, and role modifications</div>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="botFeatureAntiNuke" checked onchange="toggleBotFeature('antiNuke', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="toggle-group">
+                            <div class="toggle-info">
+                                <div class="toggle-label">⚔️ Anti-Raid Protection</div>
+                                <div class="toggle-desc">Detect and prevent coordinated join attacks</div>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="botFeatureAntiRaid" checked onchange="toggleBotFeature('antiRaid', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="toggle-group">
+                            <div class="toggle-info">
+                                <div class="toggle-label">🚫 Anti-Spam Protection</div>
+                                <div class="toggle-desc">Automatically detect and handle spam messages</div>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="botFeatureAntiSpam" checked onchange="toggleBotFeature('antiSpam', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="toggle-group">
+                            <div class="toggle-info">
+                                <div class="toggle-label">🔗 Link Protection</div>
+                                <div class="toggle-desc">Block malicious or unwanted links</div>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="botFeatureLinkProtection" onchange="toggleBotFeature('linkProtection', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="toggle-group">
+                            <div class="toggle-info">
+                                <div class="toggle-label">📝 Logging</div>
+                                <div class="toggle-desc">Log moderation actions and events</div>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="botFeatureLogging" checked onchange="toggleBotFeature('logging', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="toggle-group">
+                            <div class="toggle-info">
+                                <div class="toggle-label">✅ Verification System</div>
+                                <div class="toggle-desc">Require users to verify before accessing the server</div>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="botFeatureVerification" onchange="toggleBotFeature('verification', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="toggle-group">
+                            <div class="toggle-info">
+                                <div class="toggle-label">🎫 Ticket System</div>
+                                <div class="toggle-desc">Allow users to create support tickets</div>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="botFeatureTickets" onchange="toggleBotFeature('tickets', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="toggle-group">
+                            <div class="toggle-info">
+                                <div class="toggle-label">👋 Welcome Messages</div>
+                                <div class="toggle-desc">Send welcome messages when users join</div>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="botFeatureWelcome" onchange="toggleBotFeature('welcomeMessages', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="toggle-group">
+                            <div class="toggle-info">
+                                <div class="toggle-label">🤖 Auto Moderation</div>
+                                <div class="toggle-desc">Enable automatic content moderation</div>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="botFeatureAutoMod" onchange="toggleBotFeature('autoMod', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Bot Commands</h3>
+                            <button class="header-btn btn-ghost" onclick="loadBotCommands()">
+                                <span>🔄</span> Refresh
+                            </button>
+                        </div>
+                        <div id="botCommandsList">
+                            <div class="loading"><div class="spinner"></div> Loading commands...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Announcements Section -->
+                <section class="section" id="section-announcements">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Announcements</h2>
+                            <p class="section-desc">Create and manage platform-wide announcements</p>
+                        </div>
+                        <button class="header-btn btn-primary" onclick="showModal('announcement')">
+                            <span>➕</span> New Announcement
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table class="table" id="announcementsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="announcementsList">
+                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Service Status Section -->
+                <section class="section" id="section-services">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Service Status</h2>
+                            <p class="section-desc">Monitor and update service health status</p>
+                        </div>
+                        <button class="header-btn btn-primary" onclick="showModal('service')">
+                            <span>➕</span> Add Service
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div id="servicesGrid" class="services-list">
+                            <div class="loading"><div class="spinner"></div> Loading services...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Platform Settings Section -->
+                <section class="section" id="section-settings">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Platform Settings</h2>
+                            <p class="section-desc">Configure global platform behavior</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div id="settingsList">
+                            <div class="loading"><div class="spinner"></div> Loading settings...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Security Settings Section -->
+                <section class="section" id="section-security">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Security Settings</h2>
+                            <p class="section-desc">Configure authentication and access controls</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <form id="securityForm">
+                            <div class="form-group">
+                                <label class="form-label">Session Timeout</label>
+                                <select class="form-select" id="sessionTimeout">
+                                    <option value="1800">30 minutes</option>
+                                    <option value="3600">1 hour</option>
+                                    <option value="14400">4 hours</option>
+                                    <option value="86400">24 hours</option>
+                                </select>
+                                <p class="form-hint">How long before inactive sessions expire</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Max Login Attempts</label>
+                                <select class="form-select" id="maxLoginAttempts">
+                                    <option value="3">3 attempts</option>
+                                    <option value="5">5 attempts</option>
+                                    <option value="10">10 attempts</option>
+                                </select>
+                                <p class="form-hint">Failed attempts before account lockout</p>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Lockout Duration</label>
+                                <select class="form-select" id="lockoutDuration">
+                                    <option value="300">5 minutes</option>
+                                    <option value="900">15 minutes</option>
+                                    <option value="1800">30 minutes</option>
+                                    <option value="3600">1 hour</option>
+                                </select>
+                                <p class="form-hint">How long accounts stay locked after too many failed attempts</p>
+                            </div>
+
+                            <div class="toggle-group">
+                                <div class="toggle-info">
+                                    <div class="toggle-label">Require 2FA for Admins</div>
+                                    <div class="toggle-desc">Force all admins to use two-factor authentication</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" id="require2fa">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">IP Whitelist (Admin Access)</label>
+                                <textarea class="form-textarea" id="ipWhitelist" placeholder="Enter IP addresses, one per line&#10;Leave empty to allow all"></textarea>
+                                <p class="form-hint">Only these IPs can access the admin panel. Leave empty to allow all.</p>
+                            </div>
+
+                            <button type="submit" class="header-btn btn-primary">Save Security Settings</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- Maintenance Section -->
+                <section class="section" id="section-maintenance">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">🔧 Maintenance Mode</h2>
+                            <p class="section-desc">Enable maintenance mode to show a maintenance page to visitors</p>
+                        </div>
+                    </div>
+
+                    <!-- Current Status Card -->
+                    <div class="card" id="maintenanceStatusCard" style="margin-bottom: 1rem; border: 1px solid var(--warning); display: none;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <span style="font-size: 2rem;">⚠️</span>
+                            <div style="flex: 1;">
+                                <h3 style="color: var(--warning); margin-bottom: 0.25rem;">Maintenance Mode is ACTIVE</h3>
+                                <p id="maintenanceCurrentStatus" style="color: var(--text-muted); font-size: 0.875rem;">Visitors see the maintenance page</p>
+                            </div>
+                            <div id="maintenanceCountdown" style="text-align: right;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Estimated End</div>
+                                <div id="maintenanceTimeRemaining" style="font-size: 1.5rem; font-weight: 600; color: var(--warning);">--:--:--</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <form id="maintenanceForm">
+                            <div class="toggle-group" style="margin-bottom: 1.5rem; border: 2px solid var(--border); border-radius: 12px;">
+                                <div class="toggle-info">
+                                    <div class="toggle-label" style="font-size: 1rem;">🔒 Enable Maintenance Mode</div>
+                                    <div class="toggle-desc">Visitors will see a maintenance page instead of the platform</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" id="maintenanceEnabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Maintenance Message</label>
+                                <textarea class="form-textarea" id="maintenanceMessage" placeholder="We're performing scheduled maintenance to improve your experience. We'll be back shortly!"></textarea>
+                                <p class="form-hint">This message will be displayed to visitors on the maintenance page</p>
+                            </div>
+
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label class="form-label">⏰ Estimated End Time</label>
+                                    <input type="datetime-local" class="form-input" id="maintenanceEndTime">
+                                    <p class="form-hint">Visitors will see a countdown to this time</p>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Quick Presets</label>
+                                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                        <button type="button" class="header-btn btn-ghost" onclick="setMaintenanceTime(15)">15 min</button>
+                                        <button type="button" class="header-btn btn-ghost" onclick="setMaintenanceTime(30)">30 min</button>
+                                        <button type="button" class="header-btn btn-ghost" onclick="setMaintenanceTime(60)">1 hour</button>
+                                        <button type="button" class="header-btn btn-ghost" onclick="setMaintenanceTime(120)">2 hours</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">🌐 Allowed IPs (Bypass Maintenance)</label>
+                                <textarea class="form-textarea" id="maintenanceAllowedIps" placeholder="Enter IP addresses that can bypass maintenance, one per line&#10;Example:&#10;192.168.1.1&#10;10.0.0.1"></textarea>
+                                <p class="form-hint">These IPs can still access the platform during maintenance. Your current IP is always allowed.</p>
+                            </div>
+
+                            <div class="toggle-group" style="margin-top: 1rem; border: 2px solid var(--border); border-radius: 12px; background: var(--bg-secondary);">
+                                <div class="toggle-info">
+                                    <div class="toggle-label">🏠 Apply Maintenance to Localhost</div>
+                                    <div class="toggle-desc">When enabled, maintenance mode will also block access from localhost/127.0.0.1 (local testing)</div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" id="maintenanceApplyLocalhost">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                                <button type="submit" class="header-btn btn-primary" style="flex: 1;">💾 Save Maintenance Settings</button>
+                                <button type="button" class="header-btn btn-danger" onclick="disableMaintenance()" id="disableMaintenanceBtn" style="display: none;">🔓 Disable Maintenance</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card" style="margin-top: 1rem;">
+                        <div class="card-header">
+                            <h3 class="card-title">Maintenance Preview</h3>
+                            <a href="/maintenance" target="_blank" class="header-btn btn-ghost">View Live Page →</a>
+                        </div>
+                        <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.5rem;">
+                            When maintenance mode is enabled, visitors will be redirected to a maintenance page with your custom message and countdown timer.
+                        </p>
+                    </div>
+
+                    <!-- Discord Bot Maintenance -->
+                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border);">
+                        <h3 style="margin-bottom: 1rem; font-size: 1.25rem;">🤖 Discord Bot Maintenance</h3>
+                        <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1rem;">Control bot availability and maintenance status</p>
+
+                        <!-- Bot Maintenance Status Card -->
+                        <div class="card" id="botMaintenanceStatusCard" style="margin-bottom: 1rem; border: 1px solid var(--warning); display: none;">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <span style="font-size: 2rem;">🚫</span>
+                                <div style="flex: 1;">
+                                    <h3 style="color: var(--warning); margin-bottom: 0.25rem;">Bot Maintenance Mode is ACTIVE</h3>
+                                    <p id="botMaintenanceCurrentStatus" style="color: var(--text-muted); font-size: 0.875rem;">Bot is offline for all servers</p>
+                                </div>
+                                <div id="botMaintenanceCountdown" style="text-align: right;">
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Estimated Back Online</div>
+                                    <div id="botMaintenanceTimeRemaining" style="font-size: 1.5rem; font-weight: 600; color: var(--warning);">--:--:--</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <form id="botMaintenanceForm">
+                                <div class="toggle-group" style="margin-bottom: 1.5rem; border: 2px solid var(--border); border-radius: 12px;">
+                                    <div class="toggle-info">
+                                        <div class="toggle-label" style="font-size: 1rem;">🔒 Enable Bot Maintenance Mode</div>
+                                        <div class="toggle-desc">Bot will shut down gracefully and stop responding to commands</div>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="botMaintenanceEnabled">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Maintenance Reason</label>
+                                    <textarea class="form-textarea" id="botMaintenanceReason" placeholder="Performing updates and improvements. The bot will be back online shortly!"></textarea>
+                                    <p class="form-hint">This message will be shown in bot status and to users</p>
+                                </div>
+
+                                <div class="grid-2">
+                                    <div class="form-group">
+                                        <label class="form-label">⏰ Estimated Back Online</label>
+                                        <input type="datetime-local" class="form-input" id="botMaintenanceEndTime">
+                                        <p class="form-hint">When you expect the bot to be back online</p>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Quick Presets</label>
+                                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                            <button type="button" class="header-btn btn-ghost" onclick="setBotMaintenanceTime(15)">15 min</button>
+                                            <button type="button" class="header-btn btn-ghost" onclick="setBotMaintenanceTime(30)">30 min</button>
+                                            <button type="button" class="header-btn btn-ghost" onclick="setBotMaintenanceTime(60)">1 hour</button>
+                                            <button type="button" class="header-btn btn-ghost" onclick="setBotMaintenanceTime(240)">4 hours</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">⚠️ Shutdown Options</label>
+                                    <div class="toggle-group">
+                                        <div class="toggle-info">
+                                            <div class="toggle-label">Notify Server Owners</div>
+                                            <div class="toggle-desc">Send a DM to server owners about the maintenance</div>
+                                        </div>
+                                        <label class="toggle">
+                                            <input type="checkbox" id="botMaintenanceNotifyOwners" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                                    <button type="submit" class="header-btn btn-primary" style="flex: 1;">💾 Save Bot Maintenance Settings</button>
+                                    <button type="button" class="header-btn btn-success" onclick="bringBotOnline()" id="bringBotOnlineBtn" style="display: none;">✅ Bring Bot Online</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="card" style="margin-top: 1rem; background: var(--background-secondary); border: 1px solid var(--border);">
+                            <div style="display: flex; align-items: start; gap: 1rem;">
+                                <span style="font-size: 1.5rem;">ℹ️</span>
+                                <div>
+                                    <h4 style="margin-bottom: 0.5rem; font-size: 0.875rem; font-weight: 600;">What happens during bot maintenance?</h4>
+                                    <ul style="color: var(--text-muted); font-size: 0.875rem; margin: 0; padding-left: 1.25rem;">
+                                        <li>Bot will gracefully disconnect from Discord</li>
+                                        <li>All commands will be unavailable</li>
+                                        <li>Bot status will show "Under Maintenance"</li>
+                                        <li>Active timers and scheduled tasks will be paused</li>
+                                        <li>Data is safely preserved during maintenance</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Feature Flags Section -->
+                <section class="section" id="section-features">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Feature Flags</h2>
+                            <p class="section-desc">Toggle features without deploying code</p>
+                        </div>
+                        <button class="header-btn btn-primary" onclick="showModal('feature')">
+                            <span>➕</span> New Feature Flag
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div id="featuresList">
+                            <div class="loading"><div class="spinner"></div> Loading feature flags...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Changelogs Section -->
+                <section class="section" id="section-changelogs">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Changelogs</h2>
+                            <p class="section-desc">Document platform updates and releases</p>
+                        </div>
+                        <button class="header-btn btn-primary" onclick="showModal('changelog')">
+                            <span>➕</span> New Changelog
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Version</th>
+                                        <th>Title</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="changelogsList">
+                                    <tr><td colspan="6" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Account Settings Section -->
+                <section class="section" id="section-account">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Account Settings</h2>
+                            <p class="section-desc">Manage your owner account and security</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Profile Information</h3>
+                            </div>
+                            <form id="profileForm">
+                                <div class="form-group">
+                                    <label class="form-label">Email Address</label>
+                                    <input type="email" class="form-input" id="accountEmail" disabled>
+                                    <p class="form-hint">Contact support to change your email</p>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Display Name</label>
+                                    <input type="text" class="form-input" id="accountDisplayName" placeholder="Your name">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Role</label>
+                                    <input type="text" class="form-input" id="accountRole" disabled>
+                                </div>
+                                <button type="submit" class="header-btn btn-primary">Save Profile</button>
+                            </form>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Change Password</h3>
+                            </div>
+                            <form id="passwordForm">
+                                <div class="form-group">
+                                    <label class="form-label">Current Password</label>
+                                    <input type="password" class="form-input" id="currentPassword" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">New Password</label>
+                                    <input type="password" class="form-input" id="newPassword" required minlength="12">
+                                    <p class="form-hint">Minimum 12 characters</p>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Confirm New Password</label>
+                                    <input type="password" class="form-input" id="confirmPassword" required>
+                                </div>
+                                <button type="submit" class="header-btn btn-primary">Update Password</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 1rem;">
+                        <div class="card-header">
+                            <h3 class="card-title">Two-Factor Authentication</h3>
+                        </div>
+                        <div id="twoFactorStatus">
+                            <div class="toggle-group">
+                                <div class="toggle-info">
+                                    <div class="toggle-label">2FA Status</div>
+                                    <div class="toggle-desc" id="twoFactorDesc">Loading...</div>
+                                </div>
+                                <button class="header-btn btn-primary" id="toggle2FABtn" onclick="toggle2FA()">Enable 2FA</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 1rem; border-color: var(--error);">
+                        <div class="card-header">
+                            <h3 class="card-title" style="color: var(--error);">⚠️ Danger Zone</h3>
+                        </div>
+                        <div class="toggle-group">
+                            <div class="toggle-info">
+                                <div class="toggle-label">Sign Out All Devices</div>
+                                <div class="toggle-desc">This will invalidate all sessions except the current one</div>
+                            </div>
+                            <button class="header-btn btn-danger" onclick="signOutAllDevices()">Sign Out All</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Active Sessions Section -->
+                <section class="section" id="section-sessions">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Active Sessions</h2>
+                            <p class="section-desc">View and manage your active login sessions</p>
+                        </div>
+                        <button class="header-btn btn-ghost" onclick="loadSessions()">
+                            <span>🔄</span> Refresh
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Device / Browser</th>
+                                        <th>IP Address</th>
+                                        <th>Location</th>
+                                        <th>Last Active</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sessionsList">
+                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Admin Users Section -->
+                <section class="section" id="section-admins">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Manage Admins</h2>
+                            <p class="section-desc">Add, edit, or remove administrator accounts</p>
+                        </div>
+                        <button class="header-btn btn-primary" onclick="showModal('admin')">
+                            <span>➕</span> Add Admin
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th>Last Login</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminsList">
+                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Audit Logs Section -->
+                <section class="section" id="section-audit">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">Audit Logs</h2>
+                            <p class="section-desc">Track all administrative actions</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Admin</th>
+                                        <th>Action</th>
+                                        <th>Resource</th>
+                                        <th>IP Address</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="auditList">
+                                    <tr><td colspan="5" class="loading"><div class="spinner"></div> Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- System Info Section -->
+                <section class="section" id="section-system">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title">System Information</h2>
+                            <p class="section-desc">Server status and diagnostics</p>
+                        </div>
+                        <button class="header-btn btn-ghost" onclick="loadSystemInfo()">
+                            <span>🔄</span> Refresh
+                        </button>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="icon blue">⏱️</div>
+                            <div class="value" id="sysUptime">-</div>
+                            <div class="label">Server Uptime</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="icon green">💾</div>
+                            <div class="value" id="sysMemory">-</div>
+                            <div class="label">Memory Usage</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="icon yellow">📦</div>
+                            <div class="value" id="sysNode">-</div>
+                            <div class="label">Node.js Version</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="icon red">🖥️</div>
+                            <div class="value" id="sysPlatform">-</div>
+                            <div class="label">Platform</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Quick Actions</h3>
+                        </div>
+                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                            <button class="header-btn btn-ghost" onclick="clearSessions()">🗑️ Clear Sessions</button>
+                            <button class="header-btn btn-danger" onclick="toggleEmergencyLockdown()">🚨 Emergency Lockdown</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Modal Overlay -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Modal</h3>
+                <button class="modal-close" onclick="hideModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer" id="modalFooter">
+                <button class="header-btn btn-ghost" onclick="hideModal()">Cancel</button>
+                <button class="header-btn btn-primary" id="modalSubmit">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentAdmin = null;
+        let currentSection = 'dashboard';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Try to load dashboard first - the server will handle auth
+            // If we're not authenticated, the API will return 401 and we'll redirect
+            startClock();
+            setupNavigation();
+            await loadDashboard();
+        });
+
+        function setupNavigation() {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const section = item.dataset.section;
+                    if (section) goToSection(section);
+                });
+            });
+        }
+
+        function goToSection(section) {
+            currentSection = section;
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.section === section);
+            });
+            document.querySelectorAll('.section').forEach(s => {
+                s.classList.toggle('active', s.id === `section-${section}`);
+            });
+
+            const titles = {
+                dashboard: 'Dashboard', announcements: 'Announcements', services: 'Service Status',
+                changelogs: 'Changelogs', settings: 'Platform Settings', security: 'Security Settings',
+                maintenance: 'Maintenance Mode', features: 'Feature Flags', admins: 'Manage Admins',
+                audit: 'Audit Logs', system: 'System Information', account: 'Account Settings',
+                sessions: 'Active Sessions',
+                'bot-status': '🤖 Bot Status', 'bot-guilds': '🏠 Bot Servers', 'bot-settings': '⚡ Bot Settings'
+            };
+            document.getElementById('pageTitle').textContent = titles[section] || section;
+            loadSectionData(section);
+        }
+
+        async function loadSectionData(section) {
+            switch(section) {
+                case 'dashboard': await loadDashboard(); break;
+                case 'announcements': await loadAnnouncements(); break;
+                case 'services': await loadServices(); break;
+                case 'settings': await loadSettings(); break;
+                case 'security': await loadSecuritySettings(); break;
+                case 'maintenance': 
+                    await loadMaintenance(); 
+                    await loadBotMaintenance(); 
+                    break;
+                case 'features': await loadFeatures(); break;
+                case 'changelogs': await loadChangelogs(); break;
+                case 'admins': await loadAdmins(); break;
+                case 'audit': await loadAuditLogs(); break;
+                case 'system': await loadSystemInfo(); break;
+                case 'account': await loadAccountSettings(); break;
+                case 'sessions': await loadSessions(); break;
+                case 'bot-status': await loadBotStatus(); break;
+                case 'bot-guilds': await loadBotGuilds(); break;
+                case 'bot-settings': await loadBotSettings(); break;
+            }
+        }
+
+        async function api(endpoint, options = {}) {
+            try {
+                const res = await fetch(`/api/admin${endpoint}`, {
+                    ...options,
+                    headers: { 'Content-Type': 'application/json', ...options.headers },
+                    credentials: 'include' // Changed from 'same-origin' to 'include' for better cookie handling
+                });
+                if (res.status === 401) {
+                    // Check if we're already on signin page or being redirected to prevent loop
+                    const isAlreadyRedirecting = sessionStorage.getItem('auth_redirecting');
+                    if (!isAlreadyRedirecting && !window.location.pathname.includes('/signin')) {
+                        console.error('[Auth] 401 Unauthorized - redirecting to signin');
+                        sessionStorage.setItem('auth_redirecting', 'true');
+                        toast('Session expired. Please sign in again.', 'error');
+                        setTimeout(() => {
+                            window.location.href = '/signin?redirect=' + encodeURIComponent(window.location.pathname);
+                        }, 1000);
+                    }
+                    return null;
+                }
+                // Clear redirect flag on successful request
+                sessionStorage.removeItem('auth_redirecting');
+                const data = await res.json();
+                if (!data.success && data.error) toast(data.error, 'error');
+                return data;
+            } catch (err) {
+                console.error('API error:', err);
+                toast('Connection error', 'error');
+                return null;
+            }
+        }
+
+        function startClock() {
+            function update() {
+                const now = new Date();
+                document.getElementById('serverTime').textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+                document.getElementById('serverDate').textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+            }
+            update();
+            setInterval(update, 1000);
+        }
+
+        async function loadDashboard() {
+            const data = await api('/dashboard');
+            if (!data) return;
+
+            currentAdmin = data.admin;
+            document.getElementById('adminName').textContent = data.admin.email.split('@')[0];
+            document.getElementById('adminRole').textContent = data.admin.role;
+            document.getElementById('adminAvatar').textContent = data.admin.email[0].toUpperCase();
+
+            document.getElementById('statAdmins').textContent = data.stats.totalAdmins;
+            document.getElementById('statAnnouncements').textContent = data.stats.activeAnnouncements;
+            document.getElementById('statFeatures').textContent = data.stats.enabledFlags;
+            document.getElementById('statActions').textContent = data.stats.actionsToday;
+
+            document.getElementById('maintenanceBanner').classList.toggle('hidden', !data.stats.maintenanceMode);
+
+            const servicesList = document.getElementById('servicesList');
+            if (data.services?.length) {
+                servicesList.innerHTML = data.services.map(s => `
+                    <div class="service-item">
+                        <span class="service-name">${s.display_name}</span>
+                        <span class="service-status">
+                            <span class="status-dot status-${s.status}"></span>
+                            ${s.status.charAt(0).toUpperCase() + s.status.slice(1)}
+                        </span>
+                    </div>
+                `).join('');
+            } else {
+                servicesList.innerHTML = '<p style="color: var(--text-muted); padding: 1rem; text-align: center;">No services configured</p>';
+            }
+
+            const activityFeed = document.getElementById('activityFeed');
+            if (data.recentAudit?.length) {
+                activityFeed.innerHTML = data.recentAudit.slice(0, 5).map(a => `
+                    <div class="activity-item">
+                        <div class="activity-icon" style="background: var(--accent-muted); color: var(--accent);">📝</div>
+                        <div class="activity-content">
+                            <div class="activity-text"><strong>${a.admin_email || 'System'}</strong> ${a.action.toLowerCase()} ${a.resource_type}</div>
+                            <div class="activity-time">${timeAgo(a.created_at)}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                activityFeed.innerHTML = '<p style="color: var(--text-muted); padding: 1rem; text-align: center;">No recent activity</p>';
+            }
+        }
+
+        async function loadAnnouncements() {
+            const data = await api('/announcements');
+            if (!data) return;
+            const list = document.getElementById('announcementsList');
+            if (data.announcements?.length) {
+                list.innerHTML = data.announcements.map(a => `
+                    <tr>
+                        <td><strong>${escapeHtml(a.title)}</strong></td>
+                        <td><span class="badge badge-${a.type === 'critical' ? 'error' : a.type === 'warning' ? 'warning' : 'info'}">${a.type}</span></td>
+                        <td><span class="badge ${a.is_active ? 'badge-success' : 'badge-warning'}">${a.is_active ? 'Active' : 'Inactive'}</span></td>
+                        <td>${formatDate(a.created_at)}</td>
+                        <td>
+                            <button class="header-btn btn-ghost" onclick="toggleAnnouncement('${a.id}', ${a.is_active ? 0 : 1})">${a.is_active ? 'Disable' : 'Enable'}</button>
+                            <button class="header-btn btn-ghost" onclick="deleteAnnouncement('${a.id}')" style="color: var(--error);">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                list.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No announcements</td></tr>';
+            }
+        }
+
+        async function toggleAnnouncement(id, active) {
+            const data = await api(`/announcements/${id}`, { method: 'PUT', body: JSON.stringify({ is_active: active }) });
+            if (data?.success) { toast('Announcement updated', 'success'); loadAnnouncements(); }
+        }
+
+        async function deleteAnnouncement(id) {
+            if (!confirm('Delete this announcement?')) return;
+            const data = await api(`/announcements/${id}`, { method: 'DELETE' });
+            if (data?.success) { toast('Announcement deleted', 'success'); loadAnnouncements(); }
+        }
+
+        async function loadServices() {
+            const data = await api('/service-status');
+            if (!data) return;
+            const grid = document.getElementById('servicesGrid');
+            if (data.services?.length) {
+                grid.innerHTML = data.services.map(s => `
+                    <div class="service-item" style="padding: 1rem;">
+                        <div style="flex: 1;">
+                            <div class="service-name">${escapeHtml(s.display_name)}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">${s.service_name}</div>
+                        </div>
+                        <select onchange="updateServiceStatus('${s.id}', this.value)" style="background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 0.375rem 0.5rem; color: var(--text-primary); font-size: 0.8rem;">
+                            <option value="online" ${s.status === 'online' ? 'selected' : ''}>🟢 Online</option>
+                            <option value="degraded" ${s.status === 'degraded' ? 'selected' : ''}>🟡 Degraded</option>
+                            <option value="offline" ${s.status === 'offline' ? 'selected' : ''}>🔴 Offline</option>
+                            <option value="maintenance" ${s.status === 'maintenance' ? 'selected' : ''}>🔵 Maintenance</option>
+                        </select>
+                    </div>
+                `).join('');
+            } else {
+                grid.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No services configured</p>';
+            }
+        }
+
+        async function updateServiceStatus(id, status) {
+            const data = await api(`/service-status/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+            if (data?.success) toast('Service status updated', 'success');
+        }
+
+        async function loadSettings() {
+            const data = await api('/platform-settings');
+            if (!data) return;
+            const list = document.getElementById('settingsList');
+            if (data.settings?.length) {
+                list.innerHTML = data.settings.map(s => `
+                    <div class="toggle-group">
+                        <div class="toggle-info">
+                            <div class="toggle-label">${s.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+                            <div class="toggle-desc">${s.description || s.key}</div>
+                        </div>
+                        ${s.value_type === 'boolean' ? `
+                            <label class="toggle">
+                                <input type="checkbox" ${s.value === 'true' ? 'checked' : ''} onchange="updateSetting('${s.key}', this.checked)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        ` : `
+                            <input type="text" class="form-input" value="${escapeHtml(s.value)}" style="width: 200px;" onchange="updateSetting('${s.key}', this.value)">
+                        `}
+                    </div>
+                `).join('');
+            } else {
+                list.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No settings found</p>';
+            }
+        }
+
+        async function updateSetting(key, value) {
+            const data = await api(`/platform-settings/${key}`, { method: 'PUT', body: JSON.stringify({ value: String(value) }) });
+            if (data?.success) toast('Setting updated', 'success');
+        }
+
+        async function loadSecuritySettings() {
+            const data = await api('/security-settings');
+            if (!data) return;
+            document.getElementById('sessionTimeout').value = data.settings.session_timeout || 3600;
+            document.getElementById('maxLoginAttempts').value = data.settings.max_login_attempts || 5;
+            document.getElementById('lockoutDuration').value = data.settings.lockout_duration || 900;
+            document.getElementById('require2fa').checked = data.settings.require_2fa || false;
+            document.getElementById('ipWhitelist').value = data.settings.ip_whitelist || '';
+        }
+
+        document.getElementById('securityForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = await api('/security-settings', {
+                method: 'POST',
+                body: JSON.stringify({
+                    session_timeout: parseInt(document.getElementById('sessionTimeout').value),
+                    max_login_attempts: parseInt(document.getElementById('maxLoginAttempts').value),
+                    lockout_duration: parseInt(document.getElementById('lockoutDuration').value),
+                    require_2fa: document.getElementById('require2fa').checked,
+                    ip_whitelist: document.getElementById('ipWhitelist').value
+                })
+            });
+            if (data?.success) toast('Security settings saved', 'success');
+        });
+
+        let maintenanceCountdownInterval = null;
+
+        async function loadMaintenance() {
+            const data = await api('/maintenance');
+            if (!data) return;
+            
+            const enabled = data.maintenance.enabled || false;
+            const endTime = data.maintenance.endTime || '';
+            
+            document.getElementById('maintenanceEnabled').checked = enabled;
+            document.getElementById('maintenanceMessage').value = data.maintenance.message || '';
+            if (endTime) {
+                document.getElementById('maintenanceEndTime').value = endTime.slice(0, 16);
+            }
+            document.getElementById('maintenanceAllowedIps').value = (data.maintenance.allowedIps || []).join('\n');
+            document.getElementById('maintenanceApplyLocalhost').checked = data.maintenance.applyLocalhost || false;
+            
+            // Update status card visibility
+            const statusCard = document.getElementById('maintenanceStatusCard');
+            const disableBtn = document.getElementById('disableMaintenanceBtn');
+            
+            if (enabled) {
+                statusCard.style.display = 'block';
+                disableBtn.style.display = 'block';
+                
+                // Start countdown if end time is set
+                if (endTime) {
+                    startMaintenanceCountdown(new Date(endTime));
+                } else {
+                    document.getElementById('maintenanceTimeRemaining').textContent = 'No end time set';
+                }
+            } else {
+                statusCard.style.display = 'none';
+                disableBtn.style.display = 'none';
+                if (maintenanceCountdownInterval) {
+                    clearInterval(maintenanceCountdownInterval);
+                    maintenanceCountdownInterval = null;
+                }
+            }
+        }
+
+        function startMaintenanceCountdown(endTime) {
+            if (maintenanceCountdownInterval) {
+                clearInterval(maintenanceCountdownInterval);
+            }
+            
+            function update() {
+                const now = new Date();
+                const diff = endTime - now;
+                
+                if (diff <= 0) {
+                    document.getElementById('maintenanceTimeRemaining').textContent = 'Should be done!';
+                    document.getElementById('maintenanceTimeRemaining').style.color = 'var(--success)';
+                    return;
+                }
+                
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                
+                document.getElementById('maintenanceTimeRemaining').textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                document.getElementById('maintenanceTimeRemaining').style.color = 'var(--warning)';
+            }
+            
+            update();
+            maintenanceCountdownInterval = setInterval(update, 1000);
+        }
+
+        function setMaintenanceTime(minutes) {
+            const endTime = new Date(Date.now() + minutes * 60 * 1000);
+            const localDateTime = new Date(endTime.getTime() - endTime.getTimezoneOffset() * 60000)
+                .toISOString()
+                .slice(0, 16);
+            document.getElementById('maintenanceEndTime').value = localDateTime;
+        }
+
+        async function disableMaintenance() {
+            if (!confirm('Are you sure you want to disable maintenance mode?')) return;
+            
+            const data = await api('/maintenance', {
+                method: 'POST',
+                body: JSON.stringify({
+                    enabled: false,
+                    message: document.getElementById('maintenanceMessage').value,
+                    endTime: null,
+                    allowedIps: document.getElementById('maintenanceAllowedIps').value.split('\n').filter(ip => ip.trim()),
+                    applyLocalhost: document.getElementById('maintenanceApplyLocalhost').checked
+                })
+            });
+            
+            if (data?.success) { 
+                toast('Maintenance mode disabled', 'success'); 
+                loadMaintenance();
+                loadDashboard(); 
+            }
+        }
+
+        document.getElementById('maintenanceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const enabled = document.getElementById('maintenanceEnabled').checked;
+            const applyLocalhost = document.getElementById('maintenanceApplyLocalhost').checked;
+            
+            // Warn if enabling with localhost enforcement
+            if (enabled && applyLocalhost) {
+                if (!confirm('⚠️ Warning: Maintenance mode will also block localhost access. You may lose access to this dashboard if accessing from localhost. Continue?')) {
+                    return;
+                }
+            }
+            
+            const data = await api('/maintenance', {
+                method: 'POST',
+                body: JSON.stringify({
+                    enabled: enabled,
+                    message: document.getElementById('maintenanceMessage').value,
+                    endTime: document.getElementById('maintenanceEndTime').value || null,
+                    allowedIps: document.getElementById('maintenanceAllowedIps').value.split('\n').filter(ip => ip.trim()),
+                    applyLocalhost: applyLocalhost
+                })
+            });
+            if (data?.success) { 
+                toast(`Maintenance mode ${enabled ? 'enabled' : 'saved'}`, 'success'); 
+                loadMaintenance();
+                loadDashboard(); 
+            }
+        });
+
+        // ========================================================================
+        // DISCORD BOT FUNCTIONS
+        // ========================================================================
+
+        async function loadBotStatus() {
+            const data = await api('/bot/status');
+            if (!data?.bot) {
+                document.getElementById('botStatusIcon').textContent = '🔴';
+                document.getElementById('botStatusText').textContent = 'Offline';
+                document.getElementById('botGuilds').textContent = '0';
+                document.getElementById('botUsers').textContent = '0';
+                document.getElementById('botUptime').textContent = '-';
+                document.getElementById('botUsername').textContent = 'Not connected';
+                document.getElementById('botId').textContent = '-';
+                document.getElementById('botPing').textContent = '-';
+                document.getElementById('botReadyAt').textContent = '-';
+                return;
+            }
+
+            const bot = data.bot;
+            
+            // Update status indicators
+            if (bot.online) {
+                document.getElementById('botStatusIcon').textContent = '🟢';
+                document.getElementById('botStatusText').textContent = 'Online';
+            } else {
+                document.getElementById('botStatusIcon').textContent = bot.status === 'connecting' ? '🟡' : '🔴';
+                document.getElementById('botStatusText').textContent = bot.status === 'connecting' ? 'Connecting' : 'Offline';
+            }
+            
+            // Update stats
+            document.getElementById('botGuilds').textContent = bot.guilds?.toLocaleString() || '0';
+            document.getElementById('botUsers').textContent = bot.users?.toLocaleString() || '0';
+            document.getElementById('botUptime').textContent = bot.uptimeFormatted || '-';
+            
+            // Update info
+            document.getElementById('botUsername').textContent = bot.username ? `${bot.username}#${bot.discriminator}` : 'Unknown';
+            document.getElementById('botId').textContent = bot.id || '-';
+            document.getElementById('botPing').textContent = bot.ping ? `${bot.ping}ms` : '-';
+            document.getElementById('botReadyAt').textContent = bot.readyAt ? new Date(bot.readyAt).toLocaleString() : '-';
+        }
+
+        async function loadBotGuilds() {
+            const data = await api('/bot/guilds');
+            const list = document.getElementById('botGuildsList');
+            
+            if (!data?.guilds?.length) {
+                list.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">No servers found</td></tr>';
+                return;
+            }
+
+            list.innerHTML = data.guilds.map(g => `
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            ${g.icon ? `<img src="${g.icon}" style="width: 32px; height: 32px; border-radius: 50%;">` : '<div style="width: 32px; height: 32px; border-radius: 50%; background: var(--bg-input); display: flex; align-items: center; justify-content: center;">🏠</div>'}
+                            <div>
+                                <div style="font-weight: 500;">${escapeHtml(g.name)}</div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); font-family: monospace;">${g.id}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${g.memberCount?.toLocaleString() || '0'}</td>
+                    <td>${g.joinedAt ? formatDate(g.joinedAt) : '-'}</td>
+                    <td>
+                        <button class="header-btn btn-ghost" onclick="viewGuildFeatures('${g.id}', '${escapeHtml(g.name)}')">Settings</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadBotSettings() {
+            // Load bot settings/features for global or first guild
+            // For now just show the toggles
+            const data = await api('/bot/settings');
+            if (data?.settings) {
+                // Settings loaded - could update checkboxes here if needed
+            }
+            
+            // Load commands
+            loadBotCommands();
+        }
+
+        async function loadBotCommands() {
+            const data = await api('/bot/commands');
+            const container = document.getElementById('botCommandsList');
+            
+            if (!data?.commands?.length) {
+                container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No commands registered</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.75rem;">
+                    ${data.commands.map(cmd => `
+                        <div style="background: var(--bg-primary); padding: 0.75rem 1rem; border-radius: 8px;">
+                            <div style="font-weight: 500;">/${escapeHtml(cmd.name)}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">${escapeHtml(cmd.description || 'No description')}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 1rem; text-align: center;">${data.total} commands total</p>
+            `;
+        }
+
+        async function toggleBotFeature(feature, enabled) {
+            // This would typically need a guild ID, but for global settings we'll use 'global'
+            toast(`Feature ${feature} ${enabled ? 'enabled' : 'disabled'} (note: applies per-server)`, 'info');
+        }
+
+        // ========================================================================
+        // DISCORD BOT MAINTENANCE FUNCTIONS
+        // ========================================================================
+
+        let botMaintenanceCountdownInterval = null;
+
+        async function loadBotMaintenance() {
+            const data = await api('/bot/maintenance');
+            if (!data) return;
+            
+            const enabled = data.enabled || false;
+            const endTime = data.endTime || '';
+            
+            document.getElementById('botMaintenanceEnabled').checked = enabled;
+            document.getElementById('botMaintenanceReason').value = data.reason || '';
+            if (endTime) {
+                document.getElementById('botMaintenanceEndTime').value = endTime.slice(0, 16);
+            }
+            document.getElementById('botMaintenanceNotifyOwners').checked = data.notifyOwners !== false;
+            
+            // Update status card visibility
+            const statusCard = document.getElementById('botMaintenanceStatusCard');
+            const onlineBtn = document.getElementById('bringBotOnlineBtn');
+            
+            if (enabled) {
+                statusCard.style.display = 'block';
+                onlineBtn.style.display = 'block';
+                
+                // Start countdown if end time is set
+                if (endTime) {
+                    startBotMaintenanceCountdown(new Date(endTime));
+                } else {
+                    document.getElementById('botMaintenanceTimeRemaining').textContent = 'No end time set';
+                }
+            } else {
+                statusCard.style.display = 'none';
+                onlineBtn.style.display = 'none';
+                if (botMaintenanceCountdownInterval) {
+                    clearInterval(botMaintenanceCountdownInterval);
+                    botMaintenanceCountdownInterval = null;
+                }
+            }
+        }
+
+        function startBotMaintenanceCountdown(endTime) {
+            if (botMaintenanceCountdownInterval) {
+                clearInterval(botMaintenanceCountdownInterval);
+            }
+            
+            function update() {
+                const now = new Date();
+                const diff = endTime - now;
+                
+                if (diff <= 0) {
+                    document.getElementById('botMaintenanceTimeRemaining').textContent = 'Should be online!';
+                    document.getElementById('botMaintenanceTimeRemaining').style.color = 'var(--success)';
+                    return;
+                }
+                
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                
+                document.getElementById('botMaintenanceTimeRemaining').textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                document.getElementById('botMaintenanceTimeRemaining').style.color = 'var(--warning)';
+            }
+            
+            update();
+            botMaintenanceCountdownInterval = setInterval(update, 1000);
+        }
+
+        function setBotMaintenanceTime(minutes) {
+            const endTime = new Date(Date.now() + minutes * 60 * 1000);
+            const localDateTime = new Date(endTime.getTime() - endTime.getTimezoneOffset() * 60000)
+                .toISOString()
+                .slice(0, 16);
+            document.getElementById('botMaintenanceEndTime').value = localDateTime;
+        }
+
+        async function bringBotOnline() {
+            if (!confirm('Are you sure you want to bring the bot back online?')) return;
+            
+            const data = await api('/bot/maintenance', {
+                method: 'POST',
+                body: JSON.stringify({
+                    enabled: false,
+                    reason: document.getElementById('botMaintenanceReason').value,
+                    endTime: null,
+                    notifyOwners: false
+                })
+            });
+            
+            if (data?.success) { 
+                toast('Bot is being brought back online', 'success'); 
+                loadBotMaintenance();
+                loadBotStatus();
+            }
+        }
+
+        document.getElementById('botMaintenanceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const enabled = document.getElementById('botMaintenanceEnabled').checked;
+            
+            if (enabled && !confirm('⚠️ This will shut down the bot. Are you sure?')) {
+                return;
+            }
+            
+            const data = await api('/bot/maintenance', {
+                method: 'POST',
+                body: JSON.stringify({
+                    enabled: enabled,
+                    reason: document.getElementById('botMaintenanceReason').value,
+                    endTime: document.getElementById('botMaintenanceEndTime').value || null,
+                    notifyOwners: document.getElementById('botMaintenanceNotifyOwners').checked
+                })
+            });
+            
+            if (data?.success) { 
+                toast(`Bot maintenance mode ${enabled ? 'enabled - shutting down bot' : 'saved'}`, enabled ? 'warning' : 'success'); 
+                loadBotMaintenance();
+                loadBotStatus();
+            }
+        });
+
+        // ========================================================================
+        // END BOT MAINTENANCE FUNCTIONS
+        // ========================================================================
+
+        async function viewGuildFeatures(guildId, guildName) {
+            const data = await api(`/bot/guilds/${guildId}/features`);
+            if (!data?.features) {
+                toast('Failed to load guild features', 'error');
+                return;
+            }
+
+            const features = data.features;
+            
+            showModal('guild-features');
+            document.getElementById('modalTitle').textContent = `Settings for ${guildName}`;
+            document.getElementById('modalBody').innerHTML = `
+                <p style="color: var(--text-muted); margin-bottom: 1rem;">Configure bot features for this server</p>
+                
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <div class="toggle-label">🛡️ Anti-Nuke</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${features.antiNuke ? 'checked' : ''} onchange="updateGuildFeature('${guildId}', 'antiNuke', this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <div class="toggle-label">⚔️ Anti-Raid</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${features.antiRaid ? 'checked' : ''} onchange="updateGuildFeature('${guildId}', 'antiRaid', this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <div class="toggle-label">🚫 Anti-Spam</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${features.antiSpam ? 'checked' : ''} onchange="updateGuildFeature('${guildId}', 'antiSpam', this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <div class="toggle-label">🔗 Link Protection</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${features.linkProtection ? 'checked' : ''} onchange="updateGuildFeature('${guildId}', 'linkProtection', this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <div class="toggle-label">📝 Logging</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${features.logging ? 'checked' : ''} onchange="updateGuildFeature('${guildId}', 'logging', this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <div class="toggle-label">✅ Verification</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${features.verification ? 'checked' : ''} onchange="updateGuildFeature('${guildId}', 'verification', this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <div class="toggle-label">🎫 Tickets</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${features.tickets ? 'checked' : ''} onchange="updateGuildFeature('${guildId}', 'tickets', this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <div class="toggle-label">👋 Welcome Messages</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${features.welcomeMessages ? 'checked' : ''} onchange="updateGuildFeature('${guildId}', 'welcomeMessages', this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-group">
+                    <div class="toggle-info">
+                        <div class="toggle-label">🤖 Auto Moderation</div>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" ${features.autoMod ? 'checked' : ''} onchange="updateGuildFeature('${guildId}', 'autoMod', this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            `;
+            document.getElementById('modalFooter').innerHTML = `
+                <button class="header-btn btn-ghost" onclick="hideModal()">Close</button>
+            `;
+        }
+
+        async function updateGuildFeature(guildId, feature, enabled) {
+            const data = await api(`/bot/guilds/${guildId}/features`, {
+                method: 'POST',
+                body: JSON.stringify({ feature, enabled })
+            });
+            if (data?.success) {
+                toast(`${feature} ${enabled ? 'enabled' : 'disabled'}`, 'success');
+            }
+        }
+
+        // Bot presence form
+        document.getElementById('botPresenceForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = await api('/bot/presence', {
+                method: 'POST',
+                body: JSON.stringify({
+                    status: document.getElementById('botPresenceStatus').value,
+                    activityType: document.getElementById('botActivityType').value,
+                    activityText: document.getElementById('botActivityText').value
+                })
+            });
+            if (data?.success) toast('Bot presence updated', 'success');
+        });
+
+        // ========================================================================
+        // END BOT FUNCTIONS
+        // ========================================================================
+
+        async function loadFeatures() {
+            const data = await api('/feature-flags');
+            if (!data) return;
+            const list = document.getElementById('featuresList');
+            if (data.flags?.length) {
+                list.innerHTML = data.flags.map(f => `
+                    <div class="toggle-group" style="${f.is_kill_switch ? 'border: 1px solid var(--error); border-radius: 8px;' : ''}">
+                        <div class="toggle-info">
+                            <div class="toggle-label">${f.is_kill_switch ? '🚨 ' : ''}${escapeHtml(f.name)} <span class="badge badge-info" style="margin-left: 0.5rem; font-size: 0.6rem;">${f.key}</span></div>
+                            <div class="toggle-desc">${escapeHtml(f.description || 'No description')}</div>
+                        </div>
+                        <label class="toggle">
+                            <input type="checkbox" ${f.is_enabled ? 'checked' : ''} onchange="updateFeature('${f.id}', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                `).join('');
+            } else {
+                list.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No feature flags</p>';
+            }
+        }
+
+        async function updateFeature(id, enabled) {
+            const data = await api(`/feature-flags/${id}`, { method: 'PUT', body: JSON.stringify({ is_enabled: enabled }) });
+            if (data?.success) toast('Feature flag updated', 'success');
+        }
+
+        async function loadChangelogs() {
+            const data = await api('/changelogs');
+            if (!data) return;
+            const list = document.getElementById('changelogsList');
+            if (data.changelogs?.length) {
+                list.innerHTML = data.changelogs.map(c => `
+                    <tr>
+                        <td><code style="background: var(--bg-input); padding: 0.25rem 0.5rem; border-radius: 4px;">${escapeHtml(c.version)}</code></td>
+                        <td><strong>${escapeHtml(c.title)}</strong></td>
+                        <td><span class="badge badge-${c.release_type === 'major' ? 'error' : c.release_type === 'minor' ? 'warning' : 'info'}">${c.release_type}</span></td>
+                        <td><span class="badge ${c.is_published ? 'badge-success' : 'badge-warning'}">${c.is_published ? 'Published' : 'Draft'}</span></td>
+                        <td>${formatDate(c.created_at)}</td>
+                        <td><button class="header-btn btn-ghost" onclick="toggleChangelog('${c.id}', ${c.is_published ? 0 : 1})">${c.is_published ? 'Unpublish' : 'Publish'}</button></td>
+                    </tr>
+                `).join('');
+            } else {
+                list.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No changelogs</td></tr>';
+            }
+        }
+
+        async function toggleChangelog(id, publish) {
+            const data = await api(`/changelogs/${id}`, { method: 'PUT', body: JSON.stringify({ is_published: publish }) });
+            if (data?.success) { toast('Changelog updated', 'success'); loadChangelogs(); }
+        }
+
+        async function loadAdmins() {
+            const data = await api('/admins');
+            if (!data) return;
+            const list = document.getElementById('adminsList');
+            if (data.admins?.length) {
+                list.innerHTML = data.admins.map(a => `
+                    <tr${a.id === currentAdmin?.id ? ' style="background: var(--accent-muted);"' : ''}>
+                        <td><strong>${escapeHtml(a.email)}</strong>${a.id === currentAdmin?.id ? ' <span class="badge badge-info">You</span>' : ''}</td>
+                        <td><span class="badge badge-${a.role === 'owner' ? 'error' : a.role === 'admin' ? 'warning' : 'info'}">${a.role}</span></td>
+                        <td><span class="badge ${a.active ? 'badge-success' : 'badge-error'}">${a.active ? 'Active' : 'Inactive'}</span></td>
+                        <td>${a.last_login ? timeAgo(a.last_login) : 'Never'}</td>
+                        <td>${a.role !== 'owner' && a.id !== currentAdmin?.id ? `
+                            <button class="header-btn btn-ghost" onclick="toggleAdminStatus('${a.id}', ${a.active ? 0 : 1})">${a.active ? 'Disable' : 'Enable'}</button>
+                            <button class="header-btn btn-ghost" onclick="deleteAdmin('${a.id}')" style="color: var(--error);">Delete</button>
+                        ` : '-'}</td>
+                    </tr>
+                `).join('');
+            } else {
+                list.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No admins found</td></tr>';
+            }
+        }
+
+        async function loadAuditLogs() {
+            const data = await api('/audit-logs?limit=50');
+            if (!data) return;
+            const list = document.getElementById('auditList');
+            if (data.logs?.length) {
+                list.innerHTML = data.logs.map(l => `
+                    <tr>
+                        <td style="white-space: nowrap;">${formatDateTime(l.created_at)}</td>
+                        <td>${escapeHtml(l.admin_email || 'System')}</td>
+                        <td><span class="badge badge-info">${l.action}</span></td>
+                        <td>${l.resource_type} ${l.resource_id ? `<code style="font-size: 0.7rem;">${l.resource_id.substring(0, 8)}</code>` : ''}</td>
+                        <td style="font-family: monospace; font-size: 0.75rem;">${l.ip_address || '-'}</td>
+                    </tr>
+                `).join('');
+            } else {
+                list.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No audit logs</td></tr>';
+            }
+        }
+
+        async function loadSystemInfo() {
+            const data = await api('/system-info');
+            if (!data) return;
+            document.getElementById('sysUptime').textContent = formatUptime(data.system.uptime);
+            document.getElementById('sysMemory').textContent = `${data.system.memoryUsage.used}MB`;
+            document.getElementById('sysNode').textContent = data.system.nodeVersion;
+            document.getElementById('sysPlatform').textContent = `${data.system.platform} (${data.system.arch})`;
+        }
+
+        async function clearSessions() {
+            if (!confirm('Clear all admin sessions? Everyone will need to log in again.')) return;
+            const data = await api('/quick-action/clear-sessions', { method: 'POST' });
+            if (data?.success) toast(data.message, 'success');
+        }
+
+        async function toggleEmergencyLockdown() {
+            if (!confirm('⚠️ EMERGENCY LOCKDOWN will disable all non-essential features. Continue?')) return;
+            const data = await api('/quick-action/emergency-lockdown', { method: 'POST', body: JSON.stringify({ enable: true }) });
+            if (data?.success) { toast(data.message, 'warning'); loadFeatures(); }
+        }
+
+        function showModal(type) {
+            const overlay = document.getElementById('modalOverlay');
+            const title = document.getElementById('modalTitle');
+            const body = document.getElementById('modalBody');
+            const submit = document.getElementById('modalSubmit');
+
+            if (type === 'announcement') {
+                title.textContent = 'New Announcement';
+                body.innerHTML = `
+                    <div class="form-group"><label class="form-label">Title</label><input type="text" class="form-input" id="modalAnnouncementTitle" required></div>
+                    <div class="form-group"><label class="form-label">Content</label><textarea class="form-textarea" id="modalAnnouncementContent" required></textarea></div>
+                    <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="modalAnnouncementType"><option value="info">Info</option><option value="warning">Warning</option><option value="critical">Critical</option></select></div>
+                `;
+                submit.onclick = createAnnouncement;
+            } else if (type === 'feature') {
+                title.textContent = 'New Feature Flag';
+                body.innerHTML = `
+                    <div class="form-group"><label class="form-label">Key</label><input type="text" class="form-input" id="modalFeatureKey" placeholder="feature_name" required><p class="form-hint">Lowercase letters, numbers, and underscores only</p></div>
+                    <div class="form-group"><label class="form-label">Name</label><input type="text" class="form-input" id="modalFeatureName" required></div>
+                    <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="modalFeatureDesc"></textarea></div>
+                `;
+                submit.onclick = createFeature;
+            } else if (type === 'changelog') {
+                title.textContent = 'New Changelog';
+                body.innerHTML = `
+                    <div class="form-group"><label class="form-label">Version</label><input type="text" class="form-input" id="modalChangelogVersion" placeholder="1.2.3" required></div>
+                    <div class="form-group"><label class="form-label">Title</label><input type="text" class="form-input" id="modalChangelogTitle" required></div>
+                    <div class="form-group"><label class="form-label">Release Type</label><select class="form-select" id="modalChangelogType"><option value="patch">Patch</option><option value="minor">Minor</option><option value="major">Major</option><option value="hotfix">Hotfix</option></select></div>
+                    <div class="form-group"><label class="form-label">Content (Markdown)</label><textarea class="form-textarea" id="modalChangelogContent" style="min-height: 150px;" required></textarea></div>
+                `;
+                submit.onclick = createChangelog;
+            } else if (type === 'admin') {
+                title.textContent = 'Add New Admin';
+                body.innerHTML = `
+                    <div class="form-group"><label class="form-label">Email Address</label><input type="email" class="form-input" id="modalAdminEmail" required></div>
+                    <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-input" id="modalAdminPassword" required minlength="12"><p class="form-hint">Minimum 12 characters</p></div>
+                    <div class="form-group"><label class="form-label">Role</label><select class="form-select" id="modalAdminRole"><option value="admin">Admin</option><option value="editor">Editor</option></select><p class="form-hint">Only owners can create other owners</p></div>
+                `;
+                submit.onclick = createAdmin;
+            }
+            overlay.classList.add('active');
+        }
+
+        function hideModal() { document.getElementById('modalOverlay').classList.remove('active'); }
+
+        async function createAnnouncement() {
+            const data = await api('/announcements', { method: 'POST', body: JSON.stringify({ title: document.getElementById('modalAnnouncementTitle').value, content: document.getElementById('modalAnnouncementContent').value, type: document.getElementById('modalAnnouncementType').value }) });
+            if (data?.success) { toast('Announcement created', 'success'); hideModal(); loadAnnouncements(); }
+        }
+
+        async function createFeature() {
+            const data = await api('/feature-flags', { method: 'POST', body: JSON.stringify({ key: document.getElementById('modalFeatureKey').value, name: document.getElementById('modalFeatureName').value, description: document.getElementById('modalFeatureDesc').value }) });
+            if (data?.success) { toast('Feature flag created', 'success'); hideModal(); loadFeatures(); }
+        }
+
+        async function createChangelog() {
+            const data = await api('/changelogs', { method: 'POST', body: JSON.stringify({ version: document.getElementById('modalChangelogVersion').value, title: document.getElementById('modalChangelogTitle').value, release_type: document.getElementById('modalChangelogType').value, content: document.getElementById('modalChangelogContent').value }) });
+            if (data?.success) { toast('Changelog created', 'success'); hideModal(); loadChangelogs(); }
+        }
+
+        async function createAdmin() {
+            const email = document.getElementById('modalAdminEmail').value;
+            const password = document.getElementById('modalAdminPassword').value;
+            const role = document.getElementById('modalAdminRole').value;
+            if (password.length < 12) { toast('Password must be at least 12 characters', 'error'); return; }
+            const data = await api('/admins', { method: 'POST', body: JSON.stringify({ email, password, role }) });
+            if (data?.success) { toast('Admin created successfully', 'success'); hideModal(); loadAdmins(); }
+        }
+
+        // Account Settings Functions
+        async function loadAccountSettings() {
+            if (!currentAdmin) return;
+            document.getElementById('accountEmail').value = currentAdmin.email;
+            document.getElementById('accountRole').value = currentAdmin.role.charAt(0).toUpperCase() + currentAdmin.role.slice(1);
+            
+            // Load 2FA status
+            const data = await api('/account/2fa-status');
+            if (data) {
+                const enabled = data.enabled;
+                document.getElementById('twoFactorDesc').textContent = enabled ? '2FA is enabled on your account' : '2FA is not enabled - your account is less secure';
+                document.getElementById('toggle2FABtn').textContent = enabled ? 'Disable 2FA' : 'Enable 2FA';
+                document.getElementById('toggle2FABtn').className = `header-btn ${enabled ? 'btn-danger' : 'btn-primary'}`;
+            }
+        }
+
+        document.getElementById('profileForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const displayName = document.getElementById('accountDisplayName').value;
+            const data = await api('/account/profile', { method: 'PUT', body: JSON.stringify({ display_name: displayName }) });
+            if (data?.success) toast('Profile updated', 'success');
+        });
+
+        document.getElementById('passwordForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword !== confirmPassword) { toast('Passwords do not match', 'error'); return; }
+            if (newPassword.length < 12) { toast('Password must be at least 12 characters', 'error'); return; }
+            
+            const data = await api('/account/password', { method: 'PUT', body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }) });
+            if (data?.success) { 
+                toast('Password updated successfully', 'success'); 
+                document.getElementById('passwordForm').reset();
+            }
+        });
+
+        async function toggle2FA() {
+            const data = await api('/account/2fa-status');
+            if (data?.enabled) {
+                if (!confirm('Are you sure you want to disable 2FA? This will make your account less secure.')) return;
+                const result = await api('/account/2fa/disable', { method: 'POST' });
+                if (result?.success) { toast('2FA disabled', 'warning'); loadAccountSettings(); }
+            } else {
+                toast('2FA setup coming soon', 'info');
+            }
+        }
+
+        async function signOutAllDevices() {
+            if (!confirm('Sign out all devices? You will need to sign in again on all devices.')) return;
+            const data = await api('/account/signout-all', { method: 'POST' });
+            if (data?.success) { toast('All devices signed out', 'success'); window.location.href = '/signin'; }
+        }
+
+        // Sessions Functions
+        async function loadSessions() {
+            const data = await api('/account/sessions');
+            const list = document.getElementById('sessionsList');
+            if (data?.sessions?.length) {
+                list.innerHTML = data.sessions.map(s => `
+                    <tr${s.current ? ' style="background: var(--accent-muted);"' : ''}>
+                        <td><strong>${escapeHtml(s.device || 'Unknown Device')}</strong>${s.current ? ' <span class="badge badge-success">Current</span>' : ''}</td>
+                        <td style="font-family: monospace;">${escapeHtml(s.ip_address)}</td>
+                        <td>${escapeHtml(s.location || 'Unknown')}</td>
+                        <td>${timeAgo(s.last_active)}</td>
+                        <td>${!s.current ? `<button class="header-btn btn-ghost" onclick="revokeSession('${s.id}')" style="color: var(--error);">Revoke</button>` : '-'}</td>
+                    </tr>
+                `).join('');
+            } else {
+                list.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No active sessions</td></tr>';
+            }
+        }
+
+        async function revokeSession(sessionId) {
+            if (!confirm('Revoke this session?')) return;
+            const data = await api(`/account/sessions/${sessionId}`, { method: 'DELETE' });
+            if (data?.success) { toast('Session revoked', 'success'); loadSessions(); }
+        }
+
+        // Admin Management Functions
+        async function toggleAdminStatus(id, active) {
+            const data = await api(`/admins/${id}`, { method: 'PUT', body: JSON.stringify({ active }) });
+            if (data?.success) { toast(`Admin ${active ? 'activated' : 'deactivated'}`, 'success'); loadAdmins(); }
+        }
+
+        async function deleteAdmin(id) {
+            if (!confirm('Delete this admin account? This cannot be undone.')) return;
+            const data = await api(`/admins/${id}`, { method: 'DELETE' });
+            if (data?.success) { toast('Admin deleted', 'success'); loadAdmins(); }
+        }
+
+        function toast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.innerHTML = `<span class="toast-icon">${type === 'success' ? '✓' : type === 'error' ? '✕' : type === 'info' ? 'ℹ' : '⚠'}</span><span class="toast-message">${escapeHtml(message)}</span>`;
+            container.appendChild(t);
+            setTimeout(() => t.remove(), 4000);
+        }
+
+        function escapeHtml(str) { if (!str) return ''; return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+        function formatDate(iso) { if (!iso) return '-'; return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+        function formatDateTime(iso) { if (!iso) return '-'; return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+        function timeAgo(iso) { const s = Math.floor((new Date() - new Date(iso)) / 1000); if (s < 60) return 'just now'; if (s < 3600) return `${Math.floor(s / 60)}m ago`; if (s < 86400) return `${Math.floor(s / 3600)}h ago`; return `${Math.floor(s / 86400)}d ago`; }
+        function formatUptime(s) { const d = Math.floor(s / 86400); const h = Math.floor((s % 86400) / 3600); const m = Math.floor((s % 3600) / 60); if (d > 0) return `${d}d ${h}h`; if (h > 0) return `${h}h ${m}m`; return `${m}m`; }
+        async function signOut() { await fetch('/signout', { method: 'POST', credentials: 'same-origin' }); window.location.href = '/signin'; }
+    </script>
+</body>
+</html>

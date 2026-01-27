@@ -5,13 +5,7 @@ const fs = require('fs');
 class Database {
     constructor() {
         this.db = null;
-        // Force relative path for local development, absolute paths only in production
-        let dbPath = process.env.DB_PATH || './data/';
-        // Convert absolute /data to relative ./data for local development
-        if (dbPath === '/data' || dbPath === '/data/') {
-            dbPath = './data/';
-        }
-        this.dbPath = path.join(dbPath, process.env.DB_NAME || 'security_bot.db');
+        this.dbPath = path.join(process.env.DB_PATH || './data/', process.env.DB_NAME || 'security_bot.db');
         
         // Config caching system
         this.configCache = new Map();
@@ -88,28 +82,6 @@ class Database {
             } catch (e) {
                 // Column already exists
             }
-
-            // Migration 1b: Add escalation and metadata columns to tickets table
-            const ticketColumns = [
-                { name: 'assigned_to_name', type: 'TEXT' },
-                { name: 'escalated', type: 'INTEGER DEFAULT 0' },
-                { name: 'escalated_at', type: 'DATETIME' },
-                { name: 'escalated_by', type: 'TEXT' },
-                { name: 'dm_notify', type: 'INTEGER DEFAULT 1' },
-                { name: 'first_response_at', type: 'DATETIME' },
-                { name: 'user_tag', type: 'TEXT' },
-                { name: 'user_avatar', type: 'TEXT' },
-                { name: 'category', type: 'TEXT' }
-            ];
-
-            for (const col of ticketColumns) {
-                try {
-                    await this.run(`ALTER TABLE tickets ADD COLUMN ${col.name} ${col.type}`);
-                    console.log(`✅ Added ${col.name} column to tickets`);
-                } catch (e) {
-                    // Column already exists
-                }
-            }
             
             // Migration 2: Add subject, description, last_message_at to active_tickets table
             try {
@@ -124,27 +96,6 @@ class Database {
                 console.log('✅ Added description column to active_tickets');
             } catch (e) {
                 // Column already exists
-            }
-
-            // Migration 2b: Add escalation and metadata columns to active_tickets table
-            const activeTicketColumns = [
-                { name: 'assigned_to_name', type: 'TEXT' },
-                { name: 'escalated', type: 'INTEGER DEFAULT 0' },
-                { name: 'escalated_at', type: 'DATETIME' },
-                { name: 'escalated_by', type: 'TEXT' },
-                { name: 'dm_notify', type: 'INTEGER DEFAULT 1' },
-                { name: 'first_response_at', type: 'DATETIME' },
-                { name: 'user_tag', type: 'TEXT' },
-                { name: 'user_avatar', type: 'TEXT' }
-            ];
-
-            for (const col of activeTicketColumns) {
-                try {
-                    await this.run(`ALTER TABLE active_tickets ADD COLUMN ${col.name} ${col.type}`);
-                    console.log(`✅ Added ${col.name} column to active_tickets`);
-                } catch (e) {
-                    // Column already exists
-                }
             }
             
             try {
@@ -228,8 +179,8 @@ class Database {
             }
             
             try {
-                await this.run(`ALTER TABLE guild_configs ADD COLUMN goodbye_channel_id TEXT`);
-                console.log('✅ Added goodbye_channel_id column to guild_configs');
+                await this.run(`ALTER TABLE guild_configs ADD COLUMN goodbye_channel TEXT`);
+                console.log('✅ Added goodbye_channel column to guild_configs');
             } catch (e) {
                 // Column already exists
             }
@@ -237,56 +188,6 @@ class Database {
             try {
                 await this.run(`ALTER TABLE guild_configs ADD COLUMN goodbye_message TEXT DEFAULT 'Goodbye {user}, thanks for being part of {server}!'`);
                 console.log('✅ Added goodbye_message column to guild_configs');
-            } catch (e) {
-                // Column already exists
-            }
-            
-            try {
-                await this.run(`ALTER TABLE guild_configs ADD COLUMN goodbye_embed_enabled BOOLEAN DEFAULT 0`);
-                console.log('✅ Added goodbye_embed_enabled column to guild_configs');
-            } catch (e) {
-                // Column already exists
-            }
-            
-            try {
-                await this.run(`ALTER TABLE guild_configs ADD COLUMN goodbye_delete_after INTEGER DEFAULT 0`);
-                console.log('✅ Added goodbye_delete_after column to guild_configs');
-            } catch (e) {
-                // Column already exists
-            }
-            
-            // Migration 7: Add enhanced antinuke columns
-            try {
-                await this.run(`ALTER TABLE guild_configs ADD COLUMN antinuke_limit INTEGER DEFAULT 5`);
-                console.log('✅ Added antinuke_limit column to guild_configs');
-            } catch (e) {
-                // Column already exists
-            }
-            
-            try {
-                await this.run(`ALTER TABLE guild_configs ADD COLUMN antinuke_window INTEGER DEFAULT 10`);
-                console.log('✅ Added antinuke_window column to guild_configs');
-            } catch (e) {
-                // Column already exists
-            }
-            
-            try {
-                await this.run(`ALTER TABLE guild_configs ADD COLUMN antinuke_punishment TEXT DEFAULT 'kick'`);
-                console.log('✅ Added antinuke_punishment column to guild_configs');
-            } catch (e) {
-                // Column already exists
-            }
-            
-            try {
-                await this.run(`ALTER TABLE guild_configs ADD COLUMN antinuke_protections TEXT DEFAULT '{"channel_delete":true,"channel_create":true,"role_delete":true,"role_create":true,"ban":true,"kick":true,"webhook":true,"emoji":true}'`);
-                console.log('✅ Added antinuke_protections column to guild_configs');
-            } catch (e) {
-                // Column already exists
-            }
-            
-            try {
-                await this.run(`ALTER TABLE guild_configs ADD COLUMN antinuke_whitelist TEXT DEFAULT '[]'`);
-                console.log('✅ Added antinuke_whitelist column to guild_configs');
             } catch (e) {
                 // Column already exists
             }
@@ -393,7 +294,6 @@ class Database {
                     CREATE TABLE IF NOT EXISTS dashboard_access (
                         guild_id TEXT NOT NULL,
                         user_id TEXT NOT NULL,
-                        permission_level TEXT DEFAULT 'viewer',
                         granted_by TEXT,
                         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                         PRIMARY KEY (guild_id, user_id)
@@ -404,18 +304,11 @@ class Database {
                 // Table already exists
             }
 
-            // Add permission_level to dashboard_access if missing
-            try {
-                await this.run(`ALTER TABLE dashboard_access ADD COLUMN permission_level TEXT DEFAULT 'viewer'`);
-                console.log('✅ Added permission_level to dashboard_access');
-            } catch (e) { /* Column exists */ }
-
             try {
                 await this.run(`
                     CREATE TABLE IF NOT EXISTS dashboard_role_access (
                         guild_id TEXT NOT NULL,
                         role_id TEXT NOT NULL,
-                        permission_level TEXT DEFAULT 'viewer',
                         granted_by TEXT,
                         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                         PRIMARY KEY (guild_id, role_id)
@@ -426,12 +319,6 @@ class Database {
                 // Table already exists
             }
 
-            // Add permission_level to dashboard_role_access if missing
-            try {
-                await this.run(`ALTER TABLE dashboard_role_access ADD COLUMN permission_level TEXT DEFAULT 'viewer'`);
-                console.log('✅ Added permission_level to dashboard_role_access');
-            } catch (e) { /* Column exists */ }
-
             try {
                 await this.run(`
                     CREATE TABLE IF NOT EXISTS dashboard_access_codes (
@@ -441,24 +328,10 @@ class Database {
                         created_by TEXT,
                         redeemed_by TEXT,
                         redeemed_at DATETIME,
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        permission_level TEXT DEFAULT 'viewer',
-                        code_type TEXT DEFAULT 'single',
-                        note TEXT DEFAULT ''
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     )
                 `);
                 console.log('✅ Created dashboard_access_codes table');
-                
-                // Add new columns if they don't exist (migration)
-                try {
-                    await this.run(`ALTER TABLE dashboard_access_codes ADD COLUMN permission_level TEXT DEFAULT 'viewer'`);
-                } catch (e) { /* Column exists */ }
-                try {
-                    await this.run(`ALTER TABLE dashboard_access_codes ADD COLUMN code_type TEXT DEFAULT 'single'`);
-                } catch (e) { /* Column exists */ }
-                try {
-                    await this.run(`ALTER TABLE dashboard_access_codes ADD COLUMN note TEXT DEFAULT ''`);
-                } catch (e) { /* Column exists */ }
             } catch (e) {
                 // Table already exists
             }
@@ -555,22 +428,6 @@ class Database {
                 // Column may already exist
             }
             
-            // Migration 20b: Add manual_override to user_records for "Mark Safe" persistence
-            try {
-                await this.run(`ALTER TABLE user_records ADD COLUMN manual_override INTEGER DEFAULT 0`);
-                console.log('✅ Added manual_override to user_records');
-            } catch (e) {
-                // Column may already exist
-            }
-            
-            // Migration 20c: Add last_trust_recovery to track trust recovery timer
-            try {
-                await this.run(`ALTER TABLE user_records ADD COLUMN last_trust_recovery DATETIME`);
-                console.log('✅ Added last_trust_recovery to user_records');
-            } catch (e) {
-                // Column may already exist
-            }
-            
             // Migration 21: Ensure security_logs has event_type column
             try {
                 await this.run(`ALTER TABLE security_logs ADD COLUMN event_type TEXT`);
@@ -634,24 +491,6 @@ class Database {
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_check_links INTEGER DEFAULT 1`); console.log('✅ Added phishing_check_links'); } catch (e) {}
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_delete_messages INTEGER DEFAULT 1`); console.log('✅ Added phishing_delete_messages'); } catch (e) {}
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_ban_user INTEGER DEFAULT 0`); console.log('✅ Added phishing_ban_user'); } catch (e) {}
-            // New Anti-Phishing Settings
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_check_usernames INTEGER DEFAULT 1`); console.log('✅ Added phishing_check_usernames'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_check_fake_admin INTEGER DEFAULT 1`); console.log('✅ Added phishing_check_fake_admin'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_check_unicode INTEGER DEFAULT 1`); console.log('✅ Added phishing_check_unicode'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_sensitivity TEXT DEFAULT 'medium'`); console.log('✅ Added phishing_sensitivity'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_action TEXT DEFAULT 'delete'`); console.log('✅ Added phishing_action'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_dm_user INTEGER DEFAULT 1`); console.log('✅ Added phishing_dm_user'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_mute_duration INTEGER DEFAULT 3600`); console.log('✅ Added phishing_mute_duration'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_escalate INTEGER DEFAULT 1`); console.log('✅ Added phishing_escalate'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_ban_threshold INTEGER DEFAULT 3`); console.log('✅ Added phishing_ban_threshold'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_reset_hours INTEGER DEFAULT 24`); console.log('✅ Added phishing_reset_hours'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_log_channel TEXT`); console.log('✅ Added phishing_log_channel'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_log_all INTEGER DEFAULT 1`); console.log('✅ Added phishing_log_all'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_notify_staff INTEGER DEFAULT 0`); console.log('✅ Added phishing_notify_staff'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_whitelist_roles TEXT DEFAULT ''`); console.log('✅ Added phishing_whitelist_roles'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_whitelist_channels TEXT DEFAULT ''`); console.log('✅ Added phishing_whitelist_channels'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_whitelist_domains TEXT DEFAULT '[]'`); console.log('✅ Added phishing_whitelist_domains'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_custom_blocked TEXT DEFAULT '[]'`); console.log('✅ Added phishing_custom_blocked'); } catch (e) {}
             
             // Advanced Settings - Anti-Nuke
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antinuke_auto_ban INTEGER DEFAULT 1`); console.log('✅ Added antinuke_auto_ban'); } catch (e) {}
@@ -678,18 +517,6 @@ class Database {
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN autorole_remove_on_leave INTEGER DEFAULT 1`); console.log('✅ Added autorole_remove_on_leave'); } catch (e) {}
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN autorole_bypass_bots INTEGER DEFAULT 1`); console.log('✅ Added autorole_bypass_bots'); } catch (e) {}
             
-            // Advanced Settings - Verification
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN verify_timeout INTEGER DEFAULT 0`); console.log('✅ Added verify_timeout'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN dm_verification INTEGER DEFAULT 0`); console.log('✅ Added dm_verification'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN verify_message TEXT`); console.log('✅ Added verify_message'); } catch (e) {}
-            
-            // Advanced Settings - Reaction Roles
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN reaction_roles_enabled INTEGER DEFAULT 0`); console.log('✅ Added reaction_roles_enabled'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN reaction_channel TEXT`); console.log('✅ Added reaction_channel'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN reaction_title TEXT DEFAULT 'Self Roles'`); console.log('✅ Added reaction_title'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN reaction_desc TEXT DEFAULT 'React to get roles!'`); console.log('✅ Added reaction_desc'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN reaction_roles TEXT DEFAULT '[]'`); console.log('✅ Added reaction_roles'); } catch (e) {}
-            
             // XP/Leveling System Settings
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN xp_enabled BOOLEAN DEFAULT 0`); console.log('✅ Added xp_enabled'); } catch (e) {}
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN xp_message INTEGER DEFAULT 20`); console.log('✅ Added xp_message'); } catch (e) {}
@@ -701,30 +528,6 @@ class Database {
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN xp_levelup_title TEXT DEFAULT '🎉 Level Up!'`); console.log('✅ Added xp_levelup_title'); } catch (e) {}
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN xp_levelup_show_xp BOOLEAN DEFAULT 1`); console.log('✅ Added xp_levelup_show_xp'); } catch (e) {}
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN xp_levelup_show_messages BOOLEAN DEFAULT 1`); console.log('✅ Added xp_levelup_show_messages'); } catch (e) {}
-            
-            // AutoMod & XP JSON Settings Storage
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN automod_settings TEXT`); console.log('✅ Added automod_settings'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN xp_settings TEXT`); console.log('✅ Added xp_settings'); } catch (e) {}
-            
-            // Enhanced Moderation Settings
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN spam_message_limit INTEGER DEFAULT 5`); console.log('✅ Added spam_message_limit'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN spam_time_window INTEGER DEFAULT 5`); console.log('✅ Added spam_time_window'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN spam_action TEXT DEFAULT 'mute'`); console.log('✅ Added spam_action'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN link_action TEXT DEFAULT 'delete'`); console.log('✅ Added link_action'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN allowed_domains TEXT`); console.log('✅ Added allowed_domains'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN block_invites INTEGER DEFAULT 1`); console.log('✅ Added block_invites'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_action TEXT DEFAULT 'delete'`); console.log('✅ Added phishing_action'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN detect_duplicates INTEGER DEFAULT 1`); console.log('✅ Added detect_duplicates'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN filter_zalgo INTEGER DEFAULT 1`); console.log('✅ Added filter_zalgo'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN warning_expiry_days INTEGER DEFAULT 30`); console.log('✅ Added warning_expiry_days'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN exempt_staff_automod INTEGER DEFAULT 1`); console.log('✅ Added exempt_staff_automod'); } catch (e) {}
-            
-            // Risk Assessment & Global Threat Network Settings
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN global_enabled INTEGER DEFAULT 0`); console.log('✅ Added global_enabled (global threat network)'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN auto_action_enabled INTEGER DEFAULT 0`); console.log('✅ Added auto_action_enabled (opt-in auto kicks/bans)'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN risk_alert_enabled INTEGER DEFAULT 1`); console.log('✅ Added risk_alert_enabled'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN risk_auto_kick_threshold INTEGER DEFAULT 0`); console.log('✅ Added risk_auto_kick_threshold (0=disabled)'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN risk_auto_ban_threshold INTEGER DEFAULT 0`); console.log('✅ Added risk_auto_ban_threshold (0=disabled)'); } catch (e) {}
             
             // Migration (Notes system): add notes column to verification_records
             try { await this.run(`ALTER TABLE verification_records ADD COLUMN notes TEXT`); console.log('✅ Added notes column to verification_records'); } catch (e) { /* already exists */ }
@@ -823,400 +626,6 @@ class Database {
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN pro_enabled INTEGER DEFAULT 0`); console.log('✅ Added pro_enabled'); } catch (e) {}
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN pro_expires_at DATETIME`); console.log('✅ Added pro_expires_at'); } catch (e) {}
             
-            // IMMUTABLE MOD LOGS: Create triggers to prevent UPDATE/DELETE on mod_actions
-            // This is critical for audit trail integrity - even owners' actions are logged permanently
-            try {
-                await this.run(`
-                    CREATE TRIGGER IF NOT EXISTS mod_actions_no_update 
-                    BEFORE UPDATE ON mod_actions
-                    BEGIN
-                        SELECT RAISE(ABORT, 'mod_actions is immutable - updates not allowed');
-                    END
-                `);
-                console.log('✅ Created mod_actions_no_update trigger');
-            } catch (e) { /* Trigger may already exist */ }
-            
-            try {
-                await this.run(`
-                    CREATE TRIGGER IF NOT EXISTS mod_actions_no_delete 
-                    BEFORE DELETE ON mod_actions
-                    BEGIN
-                        SELECT RAISE(ABORT, 'mod_actions is immutable - deletes not allowed');
-                    END
-                `);
-                console.log('✅ Created mod_actions_no_delete trigger');
-            } catch (e) { /* Trigger may already exist */ }
-            
-            // Migration: Add 2FA columns to admin_users table
-            try {
-                await this.run(`ALTER TABLE admin_users ADD COLUMN totp_secret TEXT`);
-                console.log('✅ Added totp_secret column to admin_users');
-            } catch (e) {
-                // Column already exists
-            }
-            
-            try {
-                await this.run(`ALTER TABLE admin_users ADD COLUMN totp_enabled INTEGER DEFAULT 0`);
-                console.log('✅ Added totp_enabled column to admin_users');
-            } catch (e) {
-                // Column already exists
-            }
-            
-            try {
-                await this.run(`ALTER TABLE admin_users ADD COLUMN backup_codes TEXT`);
-                console.log('✅ Added backup_codes column to admin_users');
-            } catch (e) {
-                // Column already exists
-            }
-            
-            // Migration: Add display_name column to admin_users table
-            try {
-                await this.run(`ALTER TABLE admin_users ADD COLUMN display_name TEXT`);
-                console.log('✅ Added display_name column to admin_users');
-            } catch (e) {
-                // Column already exists
-            }
-            
-            // Migration: Add missing columns to server_backups table for ServerBackupSystem compatibility
-            try { await this.run(`ALTER TABLE server_backups ADD COLUMN description TEXT`); console.log('✅ Added description to server_backups'); } catch (e) {}
-            try { await this.run(`ALTER TABLE server_backups ADD COLUMN includes TEXT`); console.log('✅ Added includes to server_backups'); } catch (e) {}
-            try { await this.run(`ALTER TABLE server_backups ADD COLUMN checksum TEXT`); console.log('✅ Added checksum to server_backups'); } catch (e) {}
-            try { await this.run(`ALTER TABLE server_backups ADD COLUMN version INTEGER DEFAULT 2`); console.log('✅ Added version to server_backups'); } catch (e) {}
-
-            // Migration: Normalize server_backups schema to match ServerBackupSystem
-            try {
-                const cols = await this.all(`PRAGMA table_info(server_backups)`);
-                const hasAll = cols && cols.length >= 9 &&
-                    cols.find(c => c.name === 'backup_type') &&
-                    cols.find(c => c.name === 'includes') &&
-                    cols.find(c => c.name === 'checksum');
-
-                if (!hasAll) {
-                    console.log('⚙️  Rebuilding server_backups table to correct schema');
-                    await this.run('BEGIN TRANSACTION');
-                    await this.run(`
-                        CREATE TABLE IF NOT EXISTS server_backups_new (
-                            id TEXT PRIMARY KEY,
-                            guild_id TEXT NOT NULL,
-                            backup_type TEXT DEFAULT 'manual',
-                            created_by TEXT,
-                            description TEXT,
-                            size_bytes INTEGER,
-                            includes TEXT,
-                            version INTEGER DEFAULT 2,
-                            checksum TEXT,
-                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                        )
-                    `);
-
-                    await this.run(`
-                        INSERT INTO server_backups_new (id, guild_id, backup_type, created_by, description, size_bytes, includes, version, checksum, created_at)
-                        SELECT CAST(id AS TEXT), guild_id, COALESCE(backup_type, 'manual'), created_by, description, size_bytes, includes, COALESCE(version, 2), checksum, created_at
-                        FROM server_backups
-                    `);
-
-                    await this.run('DROP TABLE server_backups');
-                    await this.run('ALTER TABLE server_backups_new RENAME TO server_backups');
-                    await this.run('CREATE INDEX IF NOT EXISTS idx_backups_guild ON server_backups(guild_id)');
-                    await this.run('COMMIT');
-                    console.log('✅ server_backups schema normalized');
-                }
-            } catch (e) {
-                await this.run('ROLLBACK').catch(() => {});
-                console.warn('⚠️  Skipped server_backups schema rebuild:', e.message || e);
-            }
-            
-            // VULN-005 FIX: Create admin user ONLY if ADMIN_PASSWORD is explicitly set
-            try {
-                const adminCount = await this.get('SELECT COUNT(*) as count FROM admin_users');
-                if (adminCount.count === 0) {
-                    // SECURITY: Require explicit ADMIN_PASSWORD - no default fallback
-                    const password = process.env.ADMIN_PASSWORD;
-                    if (!password) {
-                        console.warn('⚠️  [SECURITY] No admin user exists and ADMIN_PASSWORD is not set.');
-                        console.warn('    Set ADMIN_PASSWORD environment variable to create the initial admin account.');
-                        console.warn('    Example: ADMIN_PASSWORD=your-secure-password-here');
-                    } else {
-                        const bcrypt = require('bcrypt');
-                        const username = process.env.ADMIN_USERNAME || 'admin';
-                        const email = process.env.ADMIN_EMAIL || 'admin@localhost';
-                        
-                        // Hash password if not already hashed
-                        let passwordHash;
-                        if (password.startsWith('$2b$') || password.startsWith('$2a$')) {
-                            passwordHash = password; // Already hashed
-                        } else {
-                            passwordHash = await bcrypt.hash(password, 10);
-                        }
-                        
-                        await this.run(`
-                            INSERT INTO admin_users (username, email, password_hash, display_name, role, active, created_at)
-                            VALUES (?, ?, ?, ?, 'owner', 1, datetime('now'))
-                        `, [username.toLowerCase(), email.toLowerCase(), passwordHash, 'Administrator']);
-                        
-                        console.log(`✅ Created default admin user: ${username} with owner role`);
-                    }
-                }
-            } catch (e) {
-                console.error('⚠️ Failed to create default admin user:', e.message);
-            }
-            
-            // Migration: Upgrade existing admin user to owner role
-            try {
-                const adminUser = await this.get(`SELECT id, role FROM admin_users WHERE username = 'admin'`);
-                if (adminUser && adminUser.role !== 'owner') {
-                    await this.run(`UPDATE admin_users SET role = 'owner' WHERE username = 'admin'`);
-                    console.log('✅ Upgraded admin user to owner role');
-                }
-            } catch (e) {
-                console.error('⚠️ Failed to upgrade admin role:', e.message);
-            }
-            
-            // Migration: Create staff_chat table
-            try {
-                await this.run(`
-                    CREATE TABLE IF NOT EXISTS staff_chat (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id TEXT NOT NULL,
-                        username TEXT NOT NULL,
-                        display_name TEXT,
-                        role TEXT NOT NULL,
-                        message TEXT NOT NULL,
-                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                    )
-                `);
-                console.log('✅ Staff chat table ready');
-            } catch (e) {
-                // Table might already exist
-            }
-            
-            // Migration: Create dashboard_settings table
-            try {
-                await this.run(`
-                    CREATE TABLE IF NOT EXISTS dashboard_settings (
-                        key TEXT PRIMARY KEY,
-                        value TEXT NOT NULL,
-                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        updated_by TEXT
-                    )
-                `);
-                // Insert default settings if not exist
-                const defaultSettings = [
-                    ['theme', 'christmas'],
-                    ['session_timeout', '30'],
-                    ['max_login_attempts', '5'],
-                    ['force_2fa_admin', 'false'],
-                    ['login_webhook', ''],
-                    ['critical_alerts_webhook', ''],
-                    ['daily_reports_enabled', 'false'],
-                    ['daily_reports_channel', '']
-                ];
-                for (const [key, value] of defaultSettings) {
-                    await this.run(`
-                        INSERT OR IGNORE INTO dashboard_settings (key, value) VALUES (?, ?)
-                    `, [key, value]);
-                }
-                console.log('✅ Dashboard settings table ready');
-            } catch (e) {
-                // Table might already exist
-            }
-
-            // Migration: Custom domain allow/block lists for anti-links
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antilinks_allowed_domains TEXT DEFAULT '[]'`); console.log('✅ Added antilinks_allowed_domains'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antilinks_blocked_domains TEXT DEFAULT '[]'`); console.log('✅ Added antilinks_blocked_domains'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antilinks_phishing_domains TEXT DEFAULT '[]'`); console.log('✅ Added antilinks_phishing_domains'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antilinks_iplogger_domains TEXT DEFAULT '[]'`); console.log('✅ Added antilinks_iplogger_domains'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antilinks_bypass_roles TEXT DEFAULT ''`); console.log('✅ Added antilinks_bypass_roles'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antilinks_bypass_channels TEXT DEFAULT ''`); console.log('✅ Added antilinks_bypass_channels'); } catch (e) {}
-
-            // Migration: Safe Browsing opt-in
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN safe_browsing_enabled INTEGER DEFAULT 0`); console.log('✅ Added safe_browsing_enabled'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN safe_browsing_api_key TEXT DEFAULT ''`); console.log('✅ Added safe_browsing_api_key'); } catch (e) {}
-
-            // Migration: Anti-spam configurable thresholds and channel bypass
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antispam_bypass_channels TEXT DEFAULT ''`); console.log('✅ Added antispam_bypass_channels'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antispam_flood_mid INTEGER DEFAULT 8`); console.log('✅ Added antispam_flood_mid'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antispam_flood_high INTEGER DEFAULT 12`); console.log('✅ Added antispam_flood_high'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antispam_flood_seconds INTEGER DEFAULT 10`); console.log('✅ Added antispam_flood_seconds'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antispam_duplicate_mid INTEGER DEFAULT 3`); console.log('✅ Added antispam_duplicate_mid'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antispam_duplicate_high INTEGER DEFAULT 5`); console.log('✅ Added antispam_duplicate_high'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN spam_action TEXT DEFAULT 'delete'`); console.log('✅ Added spam_action'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antispam_mention_threshold INTEGER DEFAULT 5`); console.log('✅ Added antispam_mention_threshold'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antispam_emoji_mid INTEGER DEFAULT 15`); console.log('✅ Added antispam_emoji_mid'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antispam_emoji_high INTEGER DEFAULT 30`); console.log('✅ Added antispam_emoji_high'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antispam_link_threshold INTEGER DEFAULT 3`); console.log('✅ Added antispam_link_threshold'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antispam_caps_ratio REAL DEFAULT 0.8`); console.log('✅ Added antispam_caps_ratio'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antispam_caps_min_letters INTEGER DEFAULT 20`); console.log('✅ Added antispam_caps_min_letters'); } catch (e) {}
-
-            // Migration: Emoji spam additional columns (consolidating from emoji_spam_config table)
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN emoji_spam_sticker_max INTEGER DEFAULT 3`); console.log('✅ Added emoji_spam_sticker_max'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN emoji_spam_whitelist_roles TEXT DEFAULT ''`); console.log('✅ Added emoji_spam_whitelist_roles'); } catch (e) {}
-
-            // Migration: Raid lockdown auto-lift duration
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN raid_lockdown_duration_ms INTEGER DEFAULT 600000`); console.log('✅ Added raid_lockdown_duration_ms'); } catch (e) {}
-            
-            // Migration: Anti-Nuke v2.1 tables
-            try {
-                await this.run(`
-                    CREATE TABLE IF NOT EXISTS role_snapshots (
-                        guild_id TEXT NOT NULL,
-                        role_id TEXT NOT NULL,
-                        name TEXT NOT NULL,
-                        permissions TEXT NOT NULL,
-                        color INTEGER,
-                        hoist INTEGER,
-                        mentionable INTEGER,
-                        snapshot_at TEXT NOT NULL,
-                        PRIMARY KEY (guild_id, role_id)
-                    )
-                `);
-                console.log('✅ Created role_snapshots table');
-            } catch (e) {}
-
-            try {
-                await this.run(`
-                    CREATE TABLE IF NOT EXISTS channel_snapshots (
-                        guild_id TEXT NOT NULL,
-                        channel_id TEXT NOT NULL,
-                        name TEXT NOT NULL,
-                        type INTEGER NOT NULL,
-                        parent_id TEXT,
-                        position INTEGER,
-                        overwrites TEXT,
-                        snapshot_at TEXT NOT NULL,
-                        PRIMARY KEY (guild_id, channel_id)
-                    )
-                `);
-                console.log('✅ Created channel_snapshots table');
-            } catch (e) {}
-
-            try {
-                await this.run(`
-                    CREATE TABLE IF NOT EXISTS role_perm_backup (
-                        guild_id TEXT NOT NULL,
-                        role_id TEXT NOT NULL,
-                        original_permissions TEXT NOT NULL,
-                        backup_at TEXT NOT NULL,
-                        PRIMARY KEY (guild_id, role_id)
-                    )
-                `);
-                console.log('✅ Created role_perm_backup table');
-            } catch (e) {}
-
-            try {
-                await this.run(`
-                    CREATE TABLE IF NOT EXISTS incident_deleted_channels (
-                        guild_id TEXT NOT NULL,
-                        channel_id TEXT NOT NULL,
-                        payload TEXT NOT NULL,
-                        deleted_at TEXT NOT NULL,
-                        PRIMARY KEY (guild_id, channel_id)
-                    )
-                `);
-                console.log('✅ Created incident_deleted_channels table');
-            } catch (e) {}
-
-            try {
-                await this.run(`
-                    CREATE TABLE IF NOT EXISTS incident_created_channels (
-                        guild_id TEXT NOT NULL,
-                        channel_id TEXT NOT NULL,
-                        name TEXT NOT NULL,
-                        type INTEGER NOT NULL,
-                        created_at TEXT NOT NULL,
-                        PRIMARY KEY (guild_id, channel_id)
-                    )
-                `);
-                console.log('✅ Created incident_created_channels table');
-            } catch (e) {}
-
-            try {
-                await this.run(`
-                    CREATE TABLE IF NOT EXISTS antinuke_incidents (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        incident_id TEXT UNIQUE NOT NULL,
-                        guild_id TEXT NOT NULL,
-                        attacker_id TEXT,
-                        violation_type TEXT,
-                        violation_count INTEGER,
-                        restore_source TEXT,
-                        backup_id TEXT,
-                        backup_age_hours REAL,
-                        items_restored TEXT,
-                        items_skipped TEXT,
-                        actions_performed TEXT,
-                        warnings TEXT,
-                        detected_at DATETIME,
-                        completed_at DATETIME,
-                        response_time_ms INTEGER
-                    )
-                `);
-                console.log('✅ Created antinuke_incidents table');
-            } catch (e) {}
-
-            try {
-                await this.run(`
-                    CREATE TABLE IF NOT EXISTS member_snapshots (
-                        guild_id TEXT NOT NULL,
-                        user_id TEXT NOT NULL,
-                        nickname TEXT,
-                        roles TEXT,
-                        snapshot_at TEXT NOT NULL,
-                        PRIMARY KEY (guild_id, user_id)
-                    )
-                `);
-                console.log('✅ Created member_snapshots table');
-            } catch (e) {}
-
-            try {
-                await this.run(`
-                    CREATE TABLE IF NOT EXISTS incident_banned_members (
-                        guild_id TEXT NOT NULL,
-                        user_id TEXT NOT NULL,
-                        executor_id TEXT,
-                        banned_at TEXT NOT NULL,
-                        needs_role_restore INTEGER DEFAULT 0,
-                        PRIMARY KEY (guild_id, user_id)
-                    )
-                `);
-                console.log('✅ Created incident_banned_members table');
-            } catch (e) {}
-
-            // Migration: Word Filter Settings
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN word_filter_enabled INTEGER DEFAULT 0`); console.log('✅ Added word_filter_enabled'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN banned_words TEXT DEFAULT ''`); console.log('✅ Added banned_words'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN banned_phrases TEXT DEFAULT ''`); console.log('✅ Added banned_phrases'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN word_filter_action TEXT DEFAULT 'delete'`); console.log('✅ Added word_filter_action'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN word_filter_mode TEXT DEFAULT 'contains'`); console.log('✅ Added word_filter_mode'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN filter_display_names INTEGER DEFAULT 0`); console.log('✅ Added filter_display_names'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN log_filtered_messages INTEGER DEFAULT 1`); console.log('✅ Added log_filtered_messages'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN word_filter_custom_message TEXT DEFAULT ''`); console.log('✅ Added word_filter_custom_message'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN word_filter_whitelist_channels TEXT DEFAULT ''`); console.log('✅ Added word_filter_whitelist_channels'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN word_filter_whitelist_roles TEXT DEFAULT ''`); console.log('✅ Added word_filter_whitelist_roles'); } catch (e) {}
-
-            // Migration: Enhanced XP System Settings
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN xp_per_message INTEGER DEFAULT 15`); console.log('✅ Added xp_per_message'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN xp_randomness INTEGER DEFAULT 5`); console.log('✅ Added xp_randomness'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN xp_min_length INTEGER DEFAULT 3`); console.log('✅ Added xp_min_length'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN xp_level_multiplier REAL DEFAULT 1.5`); console.log('✅ Added xp_level_multiplier'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN voice_xp_enabled INTEGER DEFAULT 0`); console.log('✅ Added voice_xp_enabled'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN voice_xp_per_minute INTEGER DEFAULT 5`); console.log('✅ Added voice_xp_per_minute'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN voice_xp_min_members INTEGER DEFAULT 2`); console.log('✅ Added voice_xp_min_members'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN voice_xp_exclude_muted INTEGER DEFAULT 1`); console.log('✅ Added voice_xp_exclude_muted'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN level_up_messages_enabled INTEGER DEFAULT 1`); console.log('✅ Added level_up_messages_enabled'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN level_up_channel TEXT DEFAULT ''`); console.log('✅ Added level_up_channel'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN level_up_style TEXT DEFAULT 'embed'`); console.log('✅ Added level_up_style'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN level_up_message TEXT DEFAULT '🎉 Congratulations {user}! You''ve reached level {level}!'`); console.log('✅ Added level_up_message'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN role_rewards_enabled INTEGER DEFAULT 0`); console.log('✅ Added role_rewards_enabled'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN role_rewards TEXT DEFAULT ''`); console.log('✅ Added role_rewards'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN stack_role_rewards INTEGER DEFAULT 1`); console.log('✅ Added stack_role_rewards'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN booster_multiplier REAL DEFAULT 1.5`); console.log('✅ Added booster_multiplier'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN weekend_multiplier REAL DEFAULT 1.0`); console.log('✅ Added weekend_multiplier'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN no_xp_channels TEXT DEFAULT ''`); console.log('✅ Added no_xp_channels'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN no_xp_roles TEXT DEFAULT ''`); console.log('✅ Added no_xp_roles'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN public_leaderboard INTEGER DEFAULT 1`); console.log('✅ Added public_leaderboard'); } catch (e) {}
-            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN show_xp_in_profile INTEGER DEFAULT 1`); console.log('✅ Added show_xp_in_profile'); } catch (e) {}
-
             console.log('✅ Database migrations complete');
         } catch (error) {
             console.error('⚠️ Migration error:', error);
@@ -1232,10 +641,6 @@ class Database {
                 anti_spam_enabled BOOLEAN DEFAULT 1,
                 anti_links_enabled BOOLEAN DEFAULT 1,
                 anti_phishing_enabled BOOLEAN DEFAULT 1,
-                antilinks_allowed_domains TEXT DEFAULT '[]',
-                antilinks_blocked_domains TEXT DEFAULT '[]',
-                antilinks_phishing_domains TEXT DEFAULT '[]',
-                antilinks_iplogger_domains TEXT DEFAULT '[]',
                 verification_enabled BOOLEAN DEFAULT 1,
                 welcome_enabled BOOLEAN DEFAULT 0,
                 verification_channel_id TEXT,
@@ -1251,34 +656,16 @@ class Database {
                 antinuke_role_limit INTEGER DEFAULT 3,
                 antinuke_channel_limit INTEGER DEFAULT 3,
                 antinuke_ban_limit INTEGER DEFAULT 5,
-                antinuke_limit INTEGER DEFAULT 5,
-                antinuke_window INTEGER DEFAULT 10,
-                antinuke_punishment TEXT DEFAULT 'kick',
-                antinuke_protections TEXT DEFAULT '{"channel_delete":true,"channel_create":true,"role_delete":true,"role_create":true,"ban":true,"kick":true,"webhook":true,"emoji":true}',
-                antinuke_whitelist TEXT DEFAULT '[]',
                 log_channel_id TEXT,
                 mod_role_id TEXT,
                 admin_role_id TEXT,
                 raid_threshold INTEGER DEFAULT 10,
-                raid_lockdown_duration_ms INTEGER DEFAULT 600000,
                 spam_threshold INTEGER DEFAULT 5,
-                spam_action TEXT DEFAULT 'delete',
                 account_age_hours INTEGER DEFAULT 24,
                 verification_level INTEGER DEFAULT 1,
                 alert_channel TEXT,
                 antiraid_enabled BOOLEAN DEFAULT 1,
                 antispam_enabled BOOLEAN DEFAULT 1,
-                antispam_bypass_channels TEXT DEFAULT '',
-                antispam_flood_mid INTEGER DEFAULT 8,
-                antispam_flood_high INTEGER DEFAULT 12,
-                antispam_duplicate_mid INTEGER DEFAULT 3,
-                antispam_duplicate_high INTEGER DEFAULT 5,
-                antispam_mention_threshold INTEGER DEFAULT 5,
-                antispam_emoji_mid INTEGER DEFAULT 15,
-                antispam_emoji_high INTEGER DEFAULT 30,
-                antispam_link_threshold INTEGER DEFAULT 3,
-                antispam_caps_ratio REAL DEFAULT 0.8,
-                antispam_caps_min_letters INTEGER DEFAULT 20,
                 antiphishing_enabled BOOLEAN DEFAULT 1,
                 tickets_enabled BOOLEAN DEFAULT 0,
                 ticket_category TEXT,
@@ -1467,33 +854,14 @@ class Database {
 
             // Server backups
             `CREATE TABLE IF NOT EXISTS server_backups (
-                id TEXT PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 guild_id TEXT NOT NULL,
                 backup_type TEXT NOT NULL,
-                created_by TEXT NOT NULL,
-                description TEXT,
+                backup_data TEXT,
+                file_path TEXT,
                 size_bytes INTEGER,
-                includes TEXT,
-                checksum TEXT,
+                created_by TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )`,
-            
-            // Backup schedules
-            `CREATE TABLE IF NOT EXISTS backup_schedules (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                guild_id TEXT NOT NULL UNIQUE,
-                enabled INTEGER DEFAULT 0,
-                frequency TEXT DEFAULT 'daily',
-                time TEXT DEFAULT '03:00',
-                retention INTEGER DEFAULT 7,
-                include_channels INTEGER DEFAULT 1,
-                include_roles INTEGER DEFAULT 1,
-                include_emojis INTEGER DEFAULT 1,
-                include_bans INTEGER DEFAULT 0,
-                last_run DATETIME,
-                next_run DATETIME,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )`,
             
             // Enhanced Security Tables
@@ -1659,14 +1027,10 @@ class Database {
             `CREATE TABLE IF NOT EXISTS user_preferences (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id TEXT NOT NULL,
-                guild_id TEXT,
-                quick_actions_enabled INTEGER DEFAULT 1,
-                quick_actions_position TEXT DEFAULT 'bottom',
-                quick_actions_visible_actions TEXT DEFAULT '["viewServers","quickSettings","viewLogs","manageRoles"]',
+                guild_id TEXT NOT NULL,
                 dm_notifications INTEGER DEFAULT 1,
                 language TEXT DEFAULT 'en',
                 timezone TEXT,
-                theme TEXT DEFAULT 'auto',
                 preferences_json TEXT DEFAULT '{}',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -1759,19 +1123,6 @@ class Database {
                 expires_at DATETIME,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )`,
-            
-            // User Sessions - Active Sessions Tracking
-            `CREATE TABLE IF NOT EXISTS user_sessions (
-                session_id TEXT PRIMARY KEY,
-                user_id TEXT NOT NULL,
-                device TEXT,
-                browser TEXT,
-                os TEXT,
-                ip_address TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
-                expires_at DATETIME NOT NULL
-            )`,
 
             // Analytics and metrics
             `CREATE TABLE IF NOT EXISTS analytics (
@@ -1852,20 +1203,11 @@ class Database {
                 channel_id TEXT NOT NULL,
                 user_id TEXT NOT NULL,
                 status TEXT DEFAULT 'open',
-                priority TEXT DEFAULT 'medium',
+                priority TEXT DEFAULT 'normal',
                 tag TEXT,
                 subject TEXT,
                 description TEXT,
                 assigned_to TEXT,
-                                assigned_to_name TEXT,
-                                escalated INTEGER DEFAULT 0,
-                                escalated_at DATETIME,
-                                escalated_by TEXT,
-                                dm_notify INTEGER DEFAULT 1,
-                                first_response_at DATETIME,
-                                user_tag TEXT,
-                                user_avatar TEXT,
-                                category TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 closed_at DATETIME,
                 last_message_at DATETIME
@@ -1906,32 +1248,13 @@ class Database {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )`,
 
-            // Support tickets from /help command
-            `CREATE TABLE IF NOT EXISTS support_tickets (
+            `CREATE TABLE IF NOT EXISTS server_backups (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ticket_id TEXT UNIQUE NOT NULL,
                 guild_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                category TEXT,
-                subject TEXT NOT NULL,
-                description TEXT,
-                status TEXT DEFAULT 'open',
-                priority TEXT DEFAULT 'normal',
-                assigned_to TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )`,
-
-            `CREATE TABLE IF NOT EXISTS ticket_messages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ticket_id TEXT NOT NULL,
-                author_id TEXT NOT NULL,
-                content TEXT NOT NULL,
-                is_staff INTEGER DEFAULT 0,
-                is_internal INTEGER DEFAULT 0,
+                backup_data TEXT NOT NULL,
+                created_by TEXT NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )`,
-
 
             `CREATE TABLE IF NOT EXISTS antinuke_whitelist (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2009,9 +1332,6 @@ class Database {
                 discord_id TEXT,
                 role TEXT DEFAULT 'admin',
                 active BOOLEAN DEFAULT 1,
-                totp_secret TEXT,
-                totp_enabled BOOLEAN DEFAULT 0,
-                backup_codes TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 last_login DATETIME,
                 login_attempts INTEGER DEFAULT 0,
@@ -2071,15 +1391,6 @@ class Database {
                 last_xp_gain DATETIME,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(guild_id, user_id)
-            )`,
-
-            `CREATE TABLE IF NOT EXISTS level_roles (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                guild_id TEXT NOT NULL,
-                level INTEGER NOT NULL,
-                role_id TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(guild_id, level)
             )`,
 
             `CREATE TABLE IF NOT EXISTS user_economy (
@@ -2666,35 +1977,6 @@ class Database {
                 action_taken TEXT,
                 false_positive INTEGER DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )`,
-
-            // ============================================
-            // REACTION ROLE SYSTEM
-            // ============================================
-
-            // Reaction Role Panels (supports both reactions and buttons)
-            `CREATE TABLE IF NOT EXISTS reaction_role_panels (
-                panel_id TEXT PRIMARY KEY,
-                guild_id TEXT NOT NULL,
-                type TEXT NOT NULL, -- 'reaction' or 'button'
-                title TEXT NOT NULL,
-                description TEXT,
-                mode TEXT NOT NULL DEFAULT 'multiple', -- 'single' or 'multiple'
-                channel_id TEXT,
-                message_id TEXT,
-                created_by TEXT NOT NULL,
-                deployed_at DATETIME,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )`,
-
-            // Reaction Role Mappings (role-emoji/button assignments)
-            `CREATE TABLE IF NOT EXISTS reaction_role_mappings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                panel_id TEXT NOT NULL,
-                role_id TEXT NOT NULL,
-                emoji TEXT, -- emoji for reactions, button label for buttons
-                description TEXT,
-                FOREIGN KEY(panel_id) REFERENCES reaction_role_panels(panel_id) ON DELETE CASCADE
             )`
         ];
 
@@ -3209,10 +2491,6 @@ class Database {
     }
 
     async createOrUpdateUserRecord(guildId, userId, userData) {
-        // Ensure optional columns exist (idempotent ALTERs)
-        try { await this.run(`ALTER TABLE user_records ADD COLUMN verified_at DATETIME`); } catch (_) {}
-        try { await this.run(`ALTER TABLE user_records ADD COLUMN verification_reason TEXT`); } catch (_) {}
-
         const existing = await this.getUserRecord(guildId, userId);
         
         if (existing) {
@@ -3286,36 +2564,6 @@ class Database {
         }
 
         return result;
-    }
-    
-    /**
-     * Log to IMMUTABLE mod_actions table (append-only, no edits/deletes)
-     * This is the primary audit trail for all moderation actions.
-     * Protected by database triggers - even the bot cannot delete entries.
-     * @param {Object} data - Action data to log
-     * @returns {Promise<Object>} Insert result
-     */
-    async logModAction(data) {
-        try {
-            return await this.run(`
-                INSERT INTO mod_actions 
-                (guild_id, action_type, target_user_id, moderator_id, reason, duration, active, expires_at, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            `, [
-                data.guildId,
-                data.actionType,
-                data.targetUserId,
-                data.moderatorId,
-                data.reason || null,
-                data.duration || null,
-                data.active !== undefined ? (data.active ? 1 : 0) : 1,
-                data.expiresAt || null
-            ]);
-        } catch (err) {
-            // CRASH SAFETY: Log failure but don't block the action
-            console.error('[Database] Failed to log mod action (non-blocking):', err.message);
-            return null;
-        }
     }
 
     async getRecentActions(guildId, limit = 100, category = null) {

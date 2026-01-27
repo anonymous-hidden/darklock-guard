@@ -271,6 +271,12 @@ input, textarea, select {
     padding: 1rem 1.5rem;
 }
 
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
 .nav-brand {
     display: flex;
     align-items: center;
@@ -284,6 +290,17 @@ input, textarea, select {
     width: 2rem;
     height: 2rem;
     color: var(--accent-primary);
+}
+
+.nav-user-info {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.nav-user-info #nav-username {
+    color: var(--accent-primary);
+    font-weight: 600;
 }
 
 .nav-links {
@@ -301,6 +318,18 @@ input, textarea, select {
 
 .nav-link:hover {
     color: var(--text-primary);
+}
+
+.nav-user {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.nav-user-name {
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.875rem;
 }
 
 .nav-toggle {

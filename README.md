@@ -3,6 +3,12 @@
 Discord security and moderation bot with dashboard, analytics, ticket system, and leveling.
 
 ---
+## pie 
+npm start           # Start protection (fast mode, no backups)
+npm test            # Test the system
+npm run list-ports  # Show all USB devices
+npm run create-backups  # Manually create backups
+npm run cleanup
 
 ## Prerequisites
 

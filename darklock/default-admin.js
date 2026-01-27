@@ -25,9 +25,9 @@ const db = require('./utils/database');
 
 const DEFAULT_ADMIN = {
     email: 'admin@darklock.net',
-    // Password: DarkLock@Admin2025!
+    // Password: Client5-Luxury3-Backer0-Diploma2-Goes0-Boxer0-Switch0-Revisit7-Sesame1-Lunchbox6
     // Pre-hashed with bcrypt (12 rounds) - DO NOT CHANGE THIS HASH
-    passwordHash: '$2b$12$qocZQu8LaGNiPl/bZq5drOxFxpEqmZyUNV2kuCmwfLutHnmLB7TUi',
+    passwordHash: '$2b$12$yZbQ3O020tHCPXMwJiqbBOMuAX24dDBjOKVyXAzH7zrvayxXDHIHa',
     role: 'owner'
 };
 

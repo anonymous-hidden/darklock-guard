@@ -1,4 +1,21 @@
 {
   "users": {},
-  "guilds": {}
+  "guilds": {
+    "1447048621265518622": {
+      "users": {
+        "1448505156420501514": {
+          "xp": 19,
+          "level": 0,
+          "totalMessages": 1,
+          "lastMessageTime": 1769243166585,
+          "weeklyXP": 19,
+          "monthlyXP": 19,
+          "lastDaily": 1769243166585,
+          "streak": 1,
+          "messagesToday": 1,
+          "lastMessageDate": "Sat Jan 24 2026"
+        }
+      }
+    }
+  }
 }

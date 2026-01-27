@@ -11,6 +11,7 @@
  * - Rate limiting on sensitive endpoints
  * - Session tracking with IP/device info
  * - All sessions invalidated on password change
+ * - FAIL-FAST: App exits if JWT_SECRET is missing or weak
  */
 
 const express = require('express');
@@ -20,6 +21,9 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const path = require('path');
 const speakeasy = require('speakeasy');
+
+// Fail-fast environment validation
+const { getJwtSecret } = require('../utils/env-validator');
 
 // Database (SQLite)
 const db = require('../utils/database');
@@ -200,7 +204,7 @@ async function verifyToken(token, secret) {
 router.get('/login', async (req, res) => {
     const token = req.cookies?.darklock_token;
     if (token) {
-        const secret = process.env.JWT_SECRET || 'darklock-secret-key-change-in-production';
+        const secret = getJwtSecret();
         const decoded = await verifyToken(token, secret);
         if (decoded) {
             return res.redirect('/platform/dashboard');
@@ -216,7 +220,7 @@ router.get('/login', async (req, res) => {
 router.get('/signup', async (req, res) => {
     const token = req.cookies?.darklock_token;
     if (token) {
-        const secret = process.env.JWT_SECRET || 'darklock-secret-key-change-in-production';
+        const secret = getJwtSecret();
         const decoded = await verifyToken(token, secret);
         if (decoded) {
             return res.redirect('/platform/dashboard');
@@ -329,7 +333,7 @@ router.post('/signup', rateLimitMiddleware('signup'), async (req, res) => {
         }
         
         // Generate JWT with jti (new users have no 2FA, so twoFactorVerified = false)
-        const secret = process.env.JWT_SECRET || 'darklock-secret-key-change-in-production';
+        const secret = getJwtSecret();
         const jti = generateJti();
         const token = generateToken(newUser, secret, jti, false);
         
@@ -445,7 +449,7 @@ router.post('/login', rateLimitMiddleware('login'), async (req, res) => {
         }
         
         // Generate JWT with jti and 2FA verification status
-        const secret = process.env.JWT_SECRET || 'darklock-secret-key-change-in-production';
+        const secret = getJwtSecret();
         const jti = generateJti();
         const token = generateToken(user, secret, jti, twoFactorVerified);
         
@@ -525,7 +529,7 @@ router.post('/api/login', rateLimitMiddleware('login'), async (req, res) => {
         }
         
         // Generate JWT with jti
-        const secret = process.env.JWT_SECRET || 'darklock-secret-key-change-in-production';
+        const secret = getJwtSecret();
         const jti = generateJti();
         const token = generateToken(user, secret, jti, true);
         
@@ -566,7 +570,7 @@ router.post('/logout', async (req, res) => {
         const token = req.cookies?.darklock_token;
         
         if (token) {
-            const secret = process.env.JWT_SECRET || 'darklock-secret-key-change-in-production';
+            const secret = getJwtSecret();
             try {
                 const decoded = jwt.verify(token, secret);
                 
@@ -614,7 +618,7 @@ router.get('/me', async (req, res) => {
             });
         }
         
-        const secret = process.env.JWT_SECRET || 'darklock-secret-key-change-in-production';
+        const secret = getJwtSecret();
         const decoded = await verifyToken(token, secret);
         
         if (!decoded) {
@@ -685,7 +689,7 @@ router.get('/sessions', async (req, res) => {
             });
         }
         
-        const secret = process.env.JWT_SECRET || 'darklock-secret-key-change-in-production';
+        const secret = getJwtSecret();
         const decoded = await verifyToken(token, secret);
         
         if (!decoded) {
@@ -737,7 +741,7 @@ router.delete('/sessions/:sessionId', async (req, res) => {
             });
         }
         
-        const secret = process.env.JWT_SECRET || 'darklock-secret-key-change-in-production';
+        const secret = getJwtSecret();
         const decoded = await verifyToken(token, secret);
         
         if (!decoded) {
@@ -790,7 +794,7 @@ router.post('/sessions/revoke-all', async (req, res) => {
             });
         }
         
-        const secret = process.env.JWT_SECRET || 'darklock-secret-key-change-in-production';
+        const secret = getJwtSecret();
         const decoded = await verifyToken(token, secret);
         
         if (!decoded) {

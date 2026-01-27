@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Scheduled Maintenance - Darklock</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f59e0b'%3E%3Cpath d='M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z'/%3E%3C/svg%3E">
+    <style>
+        :root {
+            --bg: #09090b;
+            --bg-card: #18181b;
+            --bg-card-hover: #27272a;
+            --border: #27272a;
+            --text: #fafafa;
+            --text-muted: #a1a1aa;
+            --accent: #f59e0b;
+            --accent-light: #fbbf24;
+            --accent-glow: rgba(245, 158, 11, 0.3);
+            --discord: #5865F2;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        html, body {
+            height: 100%;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ============================================
+           ANIMATED BACKGROUND
+        ============================================ */
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: -2;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(245, 158, 11, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(251, 191, 36, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 100%, rgba(124, 58, 237, 0.04) 0%, transparent 50%);
+        }
+
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .floating-gear {
+            position: absolute;
+            opacity: 0.03;
+            fill: currentColor;
+            color: var(--accent);
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .floating-gear:nth-child(1) { top: 5%; left: 5%; width: 180px; animation-delay: 0s; }
+        .floating-gear:nth-child(2) { top: 15%; right: 10%; width: 120px; animation-delay: -5s; animation-duration: 25s; }
+        .floating-gear:nth-child(3) { bottom: 20%; left: 15%; width: 200px; animation-delay: -10s; animation-duration: 30s; }
+        .floating-gear:nth-child(4) { bottom: 10%; right: 5%; width: 160px; animation-delay: -15s; }
+        .floating-gear:nth-child(5) { top: 50%; left: 50%; width: 300px; opacity: 0.015; animation-delay: -7s; animation-duration: 35s; }
+
+        @keyframes float {
+            0%, 100% { transform: rotate(0deg) translate(0, 0); }
+            25% { transform: rotate(90deg) translate(10px, 10px); }
+            50% { transform: rotate(180deg) translate(0, 20px); }
+            75% { transform: rotate(270deg) translate(-10px, 10px); }
+        }
+
+        /* ============================================
+           MAIN LAYOUT
+        ============================================ */
+        .page-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .main-content {
+            max-width: 600px;
+            width: 100%;
+        }
+
+        /* ============================================
+           LOGO & BRANDING
+        ============================================ */
+        .logo-container {
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1rem;
+            position: relative;
+        }
+
+        .logo svg {
+            width: 100%;
+            height: 100%;
+            fill: var(--accent);
+            filter: drop-shadow(0 0 30px var(--accent-glow));
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { 
+                filter: drop-shadow(0 0 20px var(--accent-glow));
+                transform: scale(1);
+            }
+            50% { 
+                filter: drop-shadow(0 0 40px rgba(245, 158, 11, 0.5));
+                transform: scale(1.02);
+            }
+        }
+
+        .brand-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* ============================================
+           TITLE & MESSAGE
+        ============================================ */
+        .title-section {
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .subtitle {
+            font-size: 1.125rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .message-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .message-content {
+            font-size: 1rem;
+            color: var(--text-muted);
+            line-height: 1.8;
+        }
+
+        .message-content a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .message-content a:hover {
+            text-decoration: underline;
+        }
+
+        /* ============================================
+           COUNTDOWN TIMER
+        ============================================ */
+        .countdown-section {
+            margin-bottom: 2rem;
+            display: none;
+        }
+
+        .countdown-section.visible {
+            display: block;
+        }
+
+        .countdown-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .countdown-display {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .countdown-unit {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            min-width: 80px;
+            transition: all 0.3s ease;
+        }
+
+        .countdown-unit:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .countdown-value {
+            font-size: 2rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .countdown-name {
+            font-size: 0.6875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* ============================================
+           PROGRESS INDICATOR
+        ============================================ */
+        .progress-section {
+            margin-bottom: 2rem;
+        }
+
+        .progress-container {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-light), var(--accent));
+            background-size: 200% 100%;
+            border-radius: 4px;
+            animation: shimmer 2s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
+        }
+
+        /* ============================================
+           STATUS UPDATES
+        ============================================ */
+        .updates-section {
+            margin-bottom: 2rem;
+            display: none;
+        }
+
+        .updates-section.visible {
+            display: block;
+        }
+
+        .updates-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .updates-header svg {
+            width: 16px;
+            height: 16px;
+            fill: var(--accent);
+        }
+
+        .updates-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+        }
+
+        .updates-list {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .update-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .update-item:last-child {
+            border-bottom: none;
+        }
+
+        .update-time {
+            font-size: 0.6875rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .update-message {
+            font-size: 0.875rem;
+            color: var(--text);
+        }
+
+        /* ============================================
+           ACTION BUTTONS
+        ============================================ */
+        .actions-section {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        @media (min-width: 480px) {
+            .actions-section {
+                flex-direction: row;
+                justify-content: center;
+            }
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1.5rem;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            border: none;
+            font-family: inherit;
+        }
+
+        .btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .btn-discord {
+            background: var(--discord);
+            color: white;
+        }
+
+        .btn-discord:hover {
+            background: #4752c4;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(88, 101, 242, 0.4);
+        }
+
+        .btn-refresh {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-refresh:hover {
+            border-color: var(--accent);
+            background: var(--bg-card-hover);
+        }
+
+        .btn-refresh.refreshing svg {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* ============================================
+           FOOTER
+        ============================================ */
+        .footer-section {
+            margin-top: auto;
+            padding-top: 2rem;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--warning);
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .auto-refresh-notice {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            opacity: 0.7;
+        }
+
+        .scope-badge {
+            display: inline-block;
+            font-size: 0.6875rem;
+            padding: 0.25rem 0.75rem;
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 9999px;
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+
+        /* ============================================
+           LOADING STATE
+        ============================================ */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* ============================================
+           NOT IN MAINTENANCE
+        ============================================ */
+        .not-maintenance {
+            display: none;
+        }
+
+        .not-maintenance.visible {
+            display: block;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+        }
+
+        .success-icon svg {
+            width: 100%;
+            height: 100%;
+            fill: var(--success);
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-gradient"></div>
+    <div class="animated-bg">
+        <svg class="floating-gear" viewBox="0 0 100 100">
+            <path d="M50 0l6.9 19.1L75.5 7.6l-4.7 20.9L93.3 25l-15.2 14.5L97.5 50l-19.4 10.5L93.3 75l-22.5-3.5 4.7 20.9L57 80.9 50 100l-7-19.1-18.5 11.5 4.7-20.9L6.7 75l15.2-14.5L2.5 50l19.4-10.5L6.7 25l22.5 3.5-4.7-20.9L43 19.1 50 0z"/>
+        </svg>
+        <svg class="floating-gear" viewBox="0 0 100 100">
+            <path d="M50 0l6.9 19.1L75.5 7.6l-4.7 20.9L93.3 25l-15.2 14.5L97.5 50l-19.4 10.5L93.3 75l-22.5-3.5 4.7 20.9L57 80.9 50 100l-7-19.1-18.5 11.5 4.7-20.9L6.7 75l15.2-14.5L2.5 50l19.4-10.5L6.7 25l22.5 3.5-4.7-20.9L43 19.1 50 0z"/>
+        </svg>
+        <svg class="floating-gear" viewBox="0 0 100 100">
+            <path d="M50 0l6.9 19.1L75.5 7.6l-4.7 20.9L93.3 25l-15.2 14.5L97.5 50l-19.4 10.5L93.3 75l-22.5-3.5 4.7 20.9L57 80.9 50 100l-7-19.1-18.5 11.5 4.7-20.9L6.7 75l15.2-14.5L2.5 50l19.4-10.5L6.7 25l22.5 3.5-4.7-20.9L43 19.1 50 0z"/>
+        </svg>
+        <svg class="floating-gear" viewBox="0 0 100 100">
+            <path d="M50 0l6.9 19.1L75.5 7.6l-4.7 20.9L93.3 25l-15.2 14.5L97.5 50l-19.4 10.5L93.3 75l-22.5-3.5 4.7 20.9L57 80.9 50 100l-7-19.1-18.5 11.5 4.7-20.9L6.7 75l15.2-14.5L2.5 50l19.4-10.5L6.7 25l22.5 3.5-4.7-20.9L43 19.1 50 0z"/>
+        </svg>
+        <svg class="floating-gear" viewBox="0 0 100 100">
+            <path d="M50 0l6.9 19.1L75.5 7.6l-4.7 20.9L93.3 25l-15.2 14.5L97.5 50l-19.4 10.5L93.3 75l-22.5-3.5 4.7 20.9L57 80.9 50 100l-7-19.1-18.5 11.5 4.7-20.9L6.7 75l15.2-14.5L2.5 50l19.4-10.5L6.7 25l22.5 3.5-4.7-20.9L43 19.1 50 0z"/>
+        </svg>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading-overlay" id="loading">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="page-container">
+        <div class="main-content" id="maintenance-content">
+            <!-- Logo & Branding -->
+            <div class="logo-container">
+                <div class="logo">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+                    </svg>
+                </div>
+                <div class="brand-name">Darklock</div>
+            </div>
+
+            <!-- Scope Badge -->
+            <div class="scope-badge" id="scope-badge">Platform Maintenance</div>
+
+            <!-- Title Section -->
+            <div class="title-section">
+                <h1 id="main-title">Scheduled Maintenance</h1>
+                <p class="subtitle" id="subtitle">We'll be back shortly</p>
+            </div>
+
+            <!-- Message Box -->
+            <div class="message-box">
+                <p class="message-content" id="message">
+                    We're currently performing scheduled maintenance to improve your experience. 
+                    This won't take long – thank you for your patience.
+                </p>
+            </div>
+
+            <!-- Countdown Section -->
+            <div class="countdown-section" id="countdown-section">
+                <div class="countdown-label">Estimated time remaining</div>
+                <div class="countdown-display">
+                    <div class="countdown-unit">
+                        <div class="countdown-value" id="hours">00</div>
+                        <div class="countdown-name">Hours</div>
+                    </div>
+                    <div class="countdown-unit">
+                        <div class="countdown-value" id="minutes">00</div>
+                        <div class="countdown-name">Minutes</div>
+                    </div>
+                    <div class="countdown-unit">
+                        <div class="countdown-value" id="seconds">00</div>
+                        <div class="countdown-name">Seconds</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-section">
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Updates -->
+            <div class="updates-section" id="updates-section">
+                <div class="updates-header">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                    </svg>
+                    <span class="updates-title">Status Updates</span>
+                </div>
+                <div class="updates-list" id="updates-list">
+                    <!-- Updates will be populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="actions-section">
+                <a href="#" class="btn btn-discord" id="discord-btn" style="display: none;">
+                    <svg viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+                    </svg>
+                    Join Support Server
+                </a>
+                <button class="btn btn-refresh" id="refresh-btn" onclick="checkStatus()">
+                    <svg viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                    </svg>
+                    Check Status
+                </button>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer-section">
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span id="status-text">Maintenance in progress</span>
+                </div>
+                <div class="auto-refresh-notice">Auto-checking every 30 seconds</div>
+            </div>
+        </div>
+
+        <!-- Not in Maintenance (shown when maintenance ends) -->
+        <div class="main-content not-maintenance" id="not-maintenance-content">
+            <div class="success-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+            </div>
+            <h1>We're Back!</h1>
+            <p class="subtitle">Maintenance has been completed successfully.</p>
+            <div class="actions-section" style="margin-top: 2rem;">
+                <a href="/" class="btn btn-discord" style="background: var(--accent);">
+                    <svg viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                    </svg>
+                    Go to Homepage
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            checkInterval: 30000, // 30 seconds
+            apiEndpoint: '/api/maintenance/status',
+            scope: new URLSearchParams(window.location.search).get('scope') || 'platform'
+        };
+
+        // State
+        let maintenanceState = null;
+        let countdownInterval = null;
+        let autoCheckInterval = null;
+
+        // DOM Elements
+        const elements = {
+            loading: document.getElementById('loading'),
+            mainContent: document.getElementById('maintenance-content'),
+            notMaintenanceContent: document.getElementById('not-maintenance-content'),
+            pageTitle: document.getElementById('page-title'),
+            scopeBadge: document.getElementById('scope-badge'),
+            mainTitle: document.getElementById('main-title'),
+            subtitle: document.getElementById('subtitle'),
+            message: document.getElementById('message'),
+            countdownSection: document.getElementById('countdown-section'),
+            hours: document.getElementById('hours'),
+            minutes: document.getElementById('minutes'),
+            seconds: document.getElementById('seconds'),
+            updatesSection: document.getElementById('updates-section'),
+            updatesList: document.getElementById('updates-list'),
+            discordBtn: document.getElementById('discord-btn'),
+            refreshBtn: document.getElementById('refresh-btn'),
+            statusText: document.getElementById('status-text')
+        };
+
+        // Scope names
+        const scopeNames = {
+            'website': 'Website',
+            'platform': 'Platform',
+            'bot_dashboard': 'Bot Dashboard',
+            'api': 'API Services'
+        };
+
+        // Initialize
+        async function init() {
+            try {
+                await loadMaintenanceStatus();
+                startAutoCheck();
+            } catch (err) {
+                console.error('Failed to initialize:', err);
+                showDefaultState();
+            } finally {
+                elements.loading.classList.add('hidden');
+            }
+        }
+
+        // Load maintenance status from API
+        async function loadMaintenanceStatus() {
+            try {
+                const res = await fetch(`${CONFIG.apiEndpoint}?scope=${CONFIG.scope}`);
+                
+                if (!res.ok) {
+                    throw new Error('Failed to fetch status');
+                }
+
+                const data = await res.json();
+                
+                if (data.success && data.maintenance) {
+                    maintenanceState = data.maintenance;
+                    updateUI();
+                } else {
+                    // Not in maintenance - redirect or show success
+                    showNotInMaintenance();
+                }
+            } catch (err) {
+                console.error('Error loading status:', err);
+                showDefaultState();
+            }
+        }
+
+        // Update UI with maintenance state
+        function updateUI() {
+            if (!maintenanceState) return;
+
+            // Update scope badge
+            const scopeName = scopeNames[maintenanceState.scope] || maintenanceState.scope;
+            elements.scopeBadge.textContent = `${scopeName} Maintenance`;
+
+            // Update title
+            if (maintenanceState.title) {
+                elements.mainTitle.textContent = maintenanceState.title;
+                elements.pageTitle.textContent = `${maintenanceState.title} - Darklock`;
+            }
+
+            // Update subtitle
+            if (maintenanceState.subtitle) {
+                elements.subtitle.textContent = maintenanceState.subtitle;
+            }
+
+            // Update message
+            if (maintenanceState.message) {
+                elements.message.innerHTML = parseMarkdown(maintenanceState.message);
+            }
+
+            // Update countdown
+            if (maintenanceState.scheduled_end || maintenanceState.scheduledEnd) {
+                const endTime = new Date(maintenanceState.scheduled_end || maintenanceState.scheduledEnd);
+                if (endTime > new Date()) {
+                    elements.countdownSection.classList.add('visible');
+                    startCountdown(endTime);
+                }
+            }
+
+            // Update status updates
+            const updates = maintenanceState.status_updates || maintenanceState.updates;
+            if (updates && Array.isArray(updates) && updates.length > 0) {
+                elements.updatesSection.classList.add('visible');
+                renderUpdates(updates);
+            }
+
+            // Update Discord button
+            if (maintenanceState.discordUrl || maintenanceState.discord_url) {
+                const discordUrl = maintenanceState.discordUrl || maintenanceState.discord_url;
+                elements.discordBtn.href = discordUrl;
+                elements.discordBtn.style.display = 'inline-flex';
+            }
+        }
+
+        // Show default state (no API connection)
+        function showDefaultState() {
+            elements.scopeBadge.textContent = `${scopeNames[CONFIG.scope] || CONFIG.scope} Maintenance`;
+        }
+
+        // Show "not in maintenance" state
+        function showNotInMaintenance() {
+            elements.mainContent.style.display = 'none';
+            elements.notMaintenanceContent.classList.add('visible');
+            
+            // Redirect after 3 seconds
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 3000);
+        }
+
+        // Start countdown timer
+        function startCountdown(endTime) {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+
+            function update() {
+                const now = new Date();
+                const diff = endTime - now;
+
+                if (diff <= 0) {
+                    elements.hours.textContent = '00';
+                    elements.minutes.textContent = '00';
+                    elements.seconds.textContent = '00';
+                    elements.statusText.textContent = 'Completing maintenance...';
+                    clearInterval(countdownInterval);
+                    
+                    // Check if maintenance is done
+                    setTimeout(checkStatus, 2000);
+                    return;
+                }
+
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+                elements.hours.textContent = hours.toString().padStart(2, '0');
+                elements.minutes.textContent = minutes.toString().padStart(2, '0');
+                elements.seconds.textContent = seconds.toString().padStart(2, '0');
+            }
+
+            update();
+            countdownInterval = setInterval(update, 1000);
+        }
+
+        // Render status updates
+        function renderUpdates(updates) {
+            elements.updatesList.innerHTML = updates.map(update => {
+                const time = new Date(update.timestamp || update.created_at);
+                const timeStr = time.toLocaleString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                return `
+                    <div class="update-item">
+                        <div class="update-time">${timeStr}</div>
+                        <div class="update-message">${escapeHtml(update.message)}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Parse simple markdown
+        function parseMarkdown(text) {
+            if (!text) return '';
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/`(.*?)`/g, '<code>$1</code>')
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+                .replace(/\n/g, '<br>');
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Check status manually
+        async function checkStatus() {
+            const btn = elements.refreshBtn;
+            btn.classList.add('refreshing');
+            btn.disabled = true;
+
+            try {
+                await loadMaintenanceStatus();
+            } finally {
+                setTimeout(() => {
+                    btn.classList.remove('refreshing');
+                    btn.disabled = false;
+                }, 1000);
+            }
+        }
+
+        // Start auto-check interval
+        function startAutoCheck() {
+            if (autoCheckInterval) {
+                clearInterval(autoCheckInterval);
+            }
+            autoCheckInterval = setInterval(loadMaintenanceStatus, CONFIG.checkInterval);
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

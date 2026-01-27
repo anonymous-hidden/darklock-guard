@@ -10,23 +10,31 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/platform/static/css/main.css">
     <link rel="icon" type="image/svg+xml" href="/platform/static/icons/favicon.svg">
+    <script src="/platform/static/js/console-branding.js"></script>
+    <script src="/platform/static/js/debug-controller.js"></script>
 </head>
 <body class="home-page">
     <!-- Navigation -->
     <nav class="nav">
         <div class="nav-container">
-            <a href="/platform" class="nav-brand">
-                <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    <path d="M9 12l2 2 4-4"/>
-                </svg>
-                <span class="brand-text">Darklock</span>
-            </a>
+            <div class="nav-left">
+                <a href="/platform" class="nav-brand">
+                    <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="M9 12l2 2 4-4"/>
+                    </svg>
+                    <span class="brand-text">Darklock</span>
+                </a>
+                <span class="nav-user-info" id="nav-user-info" style="display: none;">
+                    Signed in as <span id="nav-username">User</span>
+                </span>
+            </div>
             <div class="nav-links">
                 <a href="#features" class="nav-link">Features</a>
                 <a href="#apps" class="nav-link">Applications</a>
-                <a href="/platform/auth/login" class="nav-link">Sign In</a>
-                <a href="/platform/auth/signup" class="btn btn-primary btn-sm">Get Started</a>
+                <a href="/platform/auth/login" class="nav-link" id="nav-signin">Sign In</a>
+                <a href="/platform/auth/signup" class="btn btn-primary btn-sm" id="nav-signup">Get Started</a>
+                <a href="/platform/dashboard" class="btn btn-primary btn-sm" id="nav-dashboard" style="display: none;">Dashboard</a>
             </div>
             <button class="nav-toggle" aria-label="Toggle navigation">
                 <span></span>
@@ -400,6 +408,16 @@
 
     <script src="/platform/static/js/home.js"></script>
     <script>
+        // Handle user state in navigation
+        if (window.DARKLOCK_USER) {
+            // User is logged in - show user info next to logo and dashboard button
+            document.getElementById('nav-user-info').style.display = 'inline';
+            document.getElementById('nav-username').textContent = window.DARKLOCK_USER.username;
+            document.getElementById('nav-signin').style.display = 'none';
+            document.getElementById('nav-signup').style.display = 'none';
+            document.getElementById('nav-dashboard').style.display = 'inline-flex';
+        }
+        
         // Fetch real-time metrics
         async function updateMetrics() {
             try {

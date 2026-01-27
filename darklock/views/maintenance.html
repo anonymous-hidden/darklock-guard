@@ -3,260 +3,1270 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="60">
-    <title>Under Maintenance - Darklock</title>
+    <title id="page-title">Scheduled Maintenance - Darklock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="/platform/static/icons/favicon.svg">
     <style>
+        /* CSS Variables - Matching Platform Theme */
         :root {
-            --bg: #09090b;
-            --bg-card: #18181b;
-            --border: #27272a;
-            --text: #fafafa;
-            --text-muted: #a1a1aa;
-            --accent: #f59e0b;
-            --accent-glow: rgba(245, 158, 11, 0.3);
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a24;
+            --bg-elevated: #1e1e2a;
+            --bg-hover: #252532;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-primary: #3b82f6;
+            --accent-secondary: #8b5cf6;
+            --accent-success: #22c55e;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            --gradient-glow: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-color-hover: rgba(255, 255, 255, 0.15);
+            --shadow-glow: 0 0 60px rgba(59, 130, 246, 0.15);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+            --discord-color: #5865F2;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        
-        html, body {
-            height: 100%;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
+        /* Reset */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
             line-height: 1.6;
         }
 
-        .container {
-            min-height: 100vh;
+        /* Hero Background - Matching Platform */
+        .hero-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hero-grid {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+            -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+        }
+
+        .hero-glow {
+            position: absolute;
+            top: -20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120%;
+            height: 60%;
+            background: var(--gradient-glow);
+            filter: blur(60px);
+            opacity: 0.8;
+        }
+
+        .hero-glow-2 {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 40%;
+            background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
+            filter: blur(80px);
+        }
+
+        /* Floating Orbs */
+        .floating-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            animation: float-orb 20s infinite ease-in-out;
+        }
+
+        .orb-1 {
+            width: 300px;
+            height: 300px;
+            background: rgba(59, 130, 246, 0.08);
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 250px;
+            height: 250px;
+            background: rgba(139, 92, 246, 0.08);
+            top: 60%;
+            right: 15%;
+            animation-delay: -7s;
+        }
+
+        .orb-3 {
+            width: 200px;
+            height: 200px;
+            background: rgba(34, 211, 238, 0.05);
+            bottom: 20%;
+            left: 20%;
+            animation-delay: -14s;
+        }
+
+        @keyframes float-orb {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -30px) scale(1.05); }
+            50% { transform: translate(-20px, 20px) scale(0.95); }
+            75% { transform: translate(20px, 30px) scale(1.02); }
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 2rem;
-            text-align: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
         }
 
-        .maintenance-icon {
-            width: 120px;
-            height: 120px;
-            margin-bottom: 2rem;
-            animation: pulse 2s ease-in-out infinite;
+        .loading-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
         }
 
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.8; }
+        .loader-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
         }
 
-        .maintenance-icon svg {
-            width: 100%;
-            height: 100%;
-            fill: var(--accent);
-            filter: drop-shadow(0 0 20px var(--accent-glow));
+        .loader-ring {
+            width: 64px;
+            height: 64px;
+            position: relative;
         }
 
-        h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, #f59e0b, #fbbf24);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        .loader-ring::before,
+        .loader-ring::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 3px solid transparent;
         }
 
-        .message {
-            font-size: 1.125rem;
-            color: var(--text-muted);
-            max-width: 500px;
-            margin-bottom: 2rem;
+        .loader-ring::before {
+            border-top-color: var(--accent-primary);
+            animation: spin 1s linear infinite;
         }
 
-        .status-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem 2rem;
-            margin-top: 1rem;
+        .loader-ring::after {
+            border-right-color: var(--accent-secondary);
+            animation: spin 1.5s linear infinite reverse;
         }
 
-        .status-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            letter-spacing: 0.05em;
-            margin-bottom: 0.5rem;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
-        .countdown {
-            font-size: 2rem;
-            font-weight: 600;
-            font-variant-numeric: tabular-nums;
-            color: var(--accent);
-        }
-
-        .progress-container {
-            width: 100%;
-            max-width: 400px;
-            margin-top: 2rem;
-        }
-
-        .progress-bar {
-            height: 4px;
-            background: var(--border);
-            border-radius: 2px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--accent), #fbbf24);
-            border-radius: 2px;
-            animation: loading 2s ease-in-out infinite;
-        }
-
-        @keyframes loading {
-            0% { width: 0%; margin-left: 0; }
-            50% { width: 100%; margin-left: 0; }
-            100% { width: 0%; margin-left: 100%; }
-        }
-
-        .footer {
-            margin-top: 3rem;
-            color: var(--text-muted);
+        .loader-text {
             font-size: 0.875rem;
-        }
-
-        .footer a {
-            color: var(--accent);
-            text-decoration: none;
-        }
-
-        .footer a:hover {
-            text-decoration: underline;
-        }
-
-        .refresh-notice {
-            margin-top: 1rem;
-            font-size: 0.75rem;
             color: var(--text-muted);
+            font-weight: 500;
         }
 
-        /* Decorative background */
-        .bg-decoration {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            pointer-events: none;
-            overflow: hidden;
+        /* Main Content */
+        .main-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .maintenance-card {
+            background: rgba(18, 18, 26, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 3rem;
+            max-width: 560px;
+            width: 100%;
+            text-align: center;
+            box-shadow: var(--shadow-glow), var(--shadow-lg);
+            animation: card-enter 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes card-enter {
+            from {
+                opacity: 0;
+                transform: translateY(40px) scale(0.96);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Logo */
+        .logo-container {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .logo {
+            width: 88px;
+            height: 88px;
+            background: var(--gradient-primary);
+            border-radius: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 12px 48px rgba(59, 130, 246, 0.35);
+            position: relative;
+            animation: logo-pulse 3s ease-in-out infinite;
+        }
+
+        .logo::before {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 25px;
+            background: var(--gradient-primary);
+            opacity: 0.5;
+            filter: blur(12px);
             z-index: -1;
         }
 
-        .bg-decoration::before {
+        @keyframes logo-pulse {
+            0%, 100% { 
+                box-shadow: 0 12px 48px rgba(59, 130, 246, 0.35);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 16px 64px rgba(59, 130, 246, 0.5);
+                transform: scale(1.02);
+            }
+        }
+
+        .logo svg {
+            width: 48px;
+            height: 48px;
+            color: white;
+        }
+
+        /* Scope Badge */
+        .scope-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.625rem 1.25rem;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(139, 92, 246, 0.12) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 1.75rem;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-warning);
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .status-indicator::after {
             content: '';
             position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at 30% 30%, rgba(245, 158, 11, 0.05) 0%, transparent 50%),
-                        radial-gradient(circle at 70% 70%, rgba(251, 191, 36, 0.05) 0%, transparent 50%);
+            inset: -3px;
+            border-radius: 50%;
+            background: var(--accent-warning);
+            opacity: 0.4;
+            animation: pulse-ring 2s ease-out infinite;
         }
 
-        .gear-bg {
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 0.4; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        /* Title & Subtitle */
+        .main-title {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.7;
+            max-width: 420px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Message Box */
+        .message-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .message-box::before {
+            content: '';
             position: absolute;
-            opacity: 0.03;
-            animation: rotate 20s linear infinite;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--gradient-primary);
+            border-radius: 4px 0 0 4px;
         }
 
-        .gear-bg:nth-child(1) { top: 10%; left: 5%; width: 200px; }
-        .gear-bg:nth-child(2) { bottom: 10%; right: 5%; width: 250px; animation-direction: reverse; }
-        .gear-bg:nth-child(3) { top: 50%; left: 80%; width: 150px; }
+        .message-box p {
+            color: var(--text-secondary);
+            font-size: 0.9375rem;
+            line-height: 1.75;
+            padding-left: 0.5rem;
+        }
 
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+        .message-box a {
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .message-box a:hover {
+            color: var(--accent-secondary);
+        }
+
+        .message-box code {
+            background: rgba(59, 130, 246, 0.1);
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.85em;
+            color: var(--accent-primary);
+        }
+
+        /* Countdown Section */
+        .countdown-section {
+            display: none;
+            margin-bottom: 2.5rem;
+        }
+
+        .countdown-section.visible {
+            display: block;
+            animation: fade-in 0.5s ease;
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .countdown-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 1.25rem;
+        }
+
+        .countdown-display {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .time-unit {
+            background: linear-gradient(145deg, rgba(30, 30, 42, 0.8), rgba(18, 18, 26, 0.9));
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 16px;
+            padding: 1.25rem 1rem;
+            min-width: 90px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .time-unit:hover {
+            border-color: rgba(59, 130, 246, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .time-unit::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.5), transparent);
+        }
+
+        .time-unit::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            100% { left: 100%; }
+        }
+
+        .time-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            position: relative;
+            z-index: 1;
+        }
+
+        .time-label {
+            font-size: 0.6875rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-top: 0.625rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Circular Progress Indicator */
+        .progress-ring-container {
+            display: none;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        .progress-ring-container.visible {
+            display: flex;
+        }
+
+        .progress-ring {
+            width: 140px;
+            height: 140px;
+            position: relative;
+        }
+
+        .progress-ring svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        .progress-ring circle {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+        }
+
+        .progress-ring .bg {
+            stroke: rgba(255, 255, 255, 0.05);
+        }
+
+        .progress-ring .progress {
+            stroke: url(#progressGradient);
+            stroke-dasharray: 408.407;
+            stroke-dashoffset: 408.407;
+            transition: stroke-dashoffset 1s ease;
+        }
+
+        .progress-ring .center-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .progress-ring .time-remaining {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .progress-ring .time-remaining-label {
+            font-size: 0.625rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 0.25rem;
+        }
+
+        /* Status Updates */
+        .updates-section {
+            display: none;
+            margin-bottom: 2rem;
+        }
+
+        .updates-section.visible {
+            display: block;
+        }
+
+        .updates-header {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .updates-header svg {
+            width: 16px;
+            height: 16px;
+            color: var(--accent-primary);
+        }
+
+        .updates-list {
+            max-height: 180px;
+            overflow-y: auto;
+            text-align: left;
+        }
+
+        .updates-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .updates-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 2px;
+        }
+
+        .updates-list::-webkit-scrollbar-thumb {
+            background: var(--accent-primary);
+            border-radius: 2px;
+        }
+
+        .update-item {
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            margin-bottom: 0.625rem;
+            border-left: 3px solid var(--accent-primary);
+            transition: all 0.2s ease;
+        }
+
+        .update-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .update-time {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.375rem;
+            font-weight: 500;
+        }
+
+        .update-message {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 0.875rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.625rem;
+            padding: 0.9375rem 1.625rem;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.35);
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.45);
+        }
+
+        .btn-primary:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary:active {
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+            border-color: var(--border-color-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-discord {
+            background: var(--discord-color);
+            color: white;
+            box-shadow: 0 4px 20px rgba(88, 101, 242, 0.35);
+        }
+
+        .btn-discord:hover {
+            background: #4752C4;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(88, 101, 242, 0.45);
+        }
+
+        .btn.refreshing {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .btn.refreshing svg {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8125rem;
+            margin-top: auto;
+            position: relative;
+            z-index: 10;
+        }
+
+        .footer-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-success);
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .status-dot::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 50%;
+            background: var(--accent-success);
+            opacity: 0.3;
+            animation: pulse-ring 2s ease-out infinite;
+        }
+
+        /* Not in Maintenance */
+        .not-maintenance {
+            display: none;
+            text-align: center;
+        }
+
+        .not-maintenance.visible {
+            display: block;
+            animation: fade-in 0.5s ease;
+        }
+
+        .success-icon {
+            width: 96px;
+            height: 96px;
+            margin: 0 auto 2rem;
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 12px 40px rgba(34, 197, 94, 0.3);
+        }
+
+        .success-icon svg {
+            width: 48px;
+            height: 48px;
+            color: white;
+        }
+
+        .success-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+        }
+
+        .success-subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .divider-line {
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+
+        .divider-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* Auto-refresh notice */
+        .auto-refresh-notice {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+            padding: 0.75rem 1rem;
+            background: rgba(59, 130, 246, 0.08);
+            border-radius: 10px;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+        }
+
+        .auto-refresh-notice svg {
+            width: 14px;
+            height: 14px;
+            color: var(--accent-primary);
+            animation: spin 4s linear infinite;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .maintenance-card {
+                padding: 2rem 1.5rem;
+                border-radius: 20px;
+                margin: 1rem;
+            }
+
+            .main-title {
+                font-size: 1.625rem;
+            }
+
+            .subtitle {
+                font-size: 0.9375rem;
+            }
+
+            .countdown-display {
+                gap: 0.5rem;
+            }
+
+            .time-unit {
+                padding: 1rem 0.75rem;
+                min-width: 72px;
+                border-radius: 12px;
+            }
+
+            .time-value {
+                font-size: 1.875rem;
+            }
+
+            .time-label {
+                font-size: 0.625rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .logo {
+                width: 72px;
+                height: 72px;
+                border-radius: 18px;
+            }
+
+            .logo svg {
+                width: 40px;
+                height: 40px;
+            }
+
+            .progress-ring {
+                width: 120px;
+                height: 120px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .time-unit {
+                min-width: 64px;
+                padding: 0.875rem 0.625rem;
+            }
+
+            .time-value {
+                font-size: 1.5rem;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="bg-decoration">
-        <svg class="gear-bg" viewBox="0 0 100 100">
-            <path fill="currentColor" d="M50 0l6.9 19.1L75.5 7.6l-4.7 20.9L93.3 25l-15.2 14.5L97.5 50l-19.4 10.5L93.3 75l-22.5-3.5 4.7 20.9L57 80.9 50 100l-7-19.1-18.5 11.5 4.7-20.9L6.7 75l15.2-14.5L2.5 50l19.4-10.5L6.7 25l22.5 3.5-4.7-20.9L43 19.1 50 0z"/>
-        </svg>
-        <svg class="gear-bg" viewBox="0 0 100 100">
-            <path fill="currentColor" d="M50 0l6.9 19.1L75.5 7.6l-4.7 20.9L93.3 25l-15.2 14.5L97.5 50l-19.4 10.5L93.3 75l-22.5-3.5 4.7 20.9L57 80.9 50 100l-7-19.1-18.5 11.5 4.7-20.9L6.7 75l15.2-14.5L2.5 50l19.4-10.5L6.7 25l22.5 3.5-4.7-20.9L43 19.1 50 0z"/>
-        </svg>
-        <svg class="gear-bg" viewBox="0 0 100 100">
-            <path fill="currentColor" d="M50 0l6.9 19.1L75.5 7.6l-4.7 20.9L93.3 25l-15.2 14.5L97.5 50l-19.4 10.5L93.3 75l-22.5-3.5 4.7 20.9L57 80.9 50 100l-7-19.1-18.5 11.5 4.7-20.9L6.7 75l15.2-14.5L2.5 50l19.4-10.5L6.7 25l22.5 3.5-4.7-20.9L43 19.1 50 0z"/>
-        </svg>
+    <!-- Background Effects -->
+    <div class="hero-bg">
+        <div class="hero-grid"></div>
+        <div class="hero-glow"></div>
+        <div class="hero-glow-2"></div>
+        <div class="floating-orb orb-1"></div>
+        <div class="floating-orb orb-2"></div>
+        <div class="floating-orb orb-3"></div>
     </div>
 
-    <div class="container">
-        <div class="maintenance-icon">
-            <svg viewBox="0 0 24 24">
-                <path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/>
-            </svg>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading">
+        <div class="loader-container">
+            <div class="loader-ring"></div>
+            <span class="loader-text">Loading maintenance status...</span>
         </div>
+    </div>
 
-        <h1>Under Maintenance</h1>
-        
-        <p class="message" id="message">
-            We're performing scheduled maintenance to improve your experience. 
-            We'll be back shortly.
-        </p>
+    <!-- Main Content -->
+    <div class="main-container">
+        <div class="maintenance-card" id="main-content">
+            <!-- Logo -->
+            <div class="logo-container">
+                <div class="logo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="M9 12l2 2 4-4"/>
+                    </svg>
+                </div>
+            </div>
 
-        <div class="progress-container">
-            <div class="progress-bar">
-                <div class="progress-fill"></div>
+            <!-- Scope Badge -->
+            <div class="scope-badge" id="scope-badge">
+                <span class="status-indicator"></span>
+                <span>Platform Maintenance</span>
+            </div>
+
+            <!-- Title -->
+            <h1 class="main-title" id="main-title">Scheduled Maintenance</h1>
+            <p class="subtitle" id="subtitle">We're currently performing scheduled maintenance to improve our services. We'll be back shortly.</p>
+
+            <!-- Message Box -->
+            <div class="message-box" id="message-box">
+                <p id="message">Our team is working hard to bring you an even better experience. Thank you for your patience.</p>
+            </div>
+
+            <!-- Circular Progress Timer -->
+            <div class="progress-ring-container" id="progress-container">
+                <div class="progress-ring">
+                    <svg viewBox="0 0 140 140">
+                        <defs>
+                            <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#3b82f6"/>
+                                <stop offset="100%" style="stop-color:#8b5cf6"/>
+                            </linearGradient>
+                        </defs>
+                        <circle class="bg" cx="70" cy="70" r="65"/>
+                        <circle class="progress" id="progress-circle" cx="70" cy="70" r="65"/>
+                    </svg>
+                    <div class="center-content">
+                        <div class="time-remaining" id="time-remaining">--:--</div>
+                        <div class="time-remaining-label">remaining</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Countdown -->
+            <div class="countdown-section" id="countdown-section">
+                <div class="countdown-label">Estimated Time Remaining</div>
+                <div class="countdown-display">
+                    <div class="time-unit">
+                        <div class="time-value" id="hours">00</div>
+                        <div class="time-label">Hours</div>
+                    </div>
+                    <div class="time-unit">
+                        <div class="time-value" id="minutes">00</div>
+                        <div class="time-label">Minutes</div>
+                    </div>
+                    <div class="time-unit">
+                        <div class="time-value" id="seconds">00</div>
+                        <div class="time-label">Seconds</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Updates -->
+            <div class="updates-section" id="updates-section">
+                <div class="updates-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                    Latest Updates
+                </div>
+                <div class="updates-list" id="updates-list"></div>
+            </div>
+
+            <!-- Divider -->
+            <div class="divider">
+                <div class="divider-line"></div>
+                <span class="divider-text">Need help?</span>
+                <div class="divider-line"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <a href="https://discord.gg/r8dvnad9c9" target="_blank" rel="noopener noreferrer" class="btn btn-discord" id="discord-btn">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/>
+                    </svg>
+                    Join Support Server
+                </a>
+                <button class="btn btn-secondary" id="refresh-btn" onclick="checkStatus()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 2v6h-6"/>
+                        <path d="M3 12a9 9 0 0115-6.7L21 8"/>
+                        <path d="M3 22v-6h6"/>
+                        <path d="M21 12a9 9 0 01-15 6.7L3 16"/>
+                    </svg>
+                    Check Status
+                </button>
+            </div>
+
+            <!-- Auto-refresh notice -->
+            <div class="auto-refresh-notice">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 2v6h-6"/>
+                    <path d="M3 12a9 9 0 0115-6.7L21 8"/>
+                    <path d="M3 22v-6h6"/>
+                    <path d="M21 12a9 9 0 01-15 6.7L3 16"/>
+                </svg>
+                Auto-refreshing every 30 seconds
             </div>
         </div>
 
-        <div class="status-card" id="countdown-card" style="display: none;">
-            <div class="status-label">Estimated Return</div>
-            <div class="countdown" id="countdown">--:--:--</div>
-        </div>
-
-        <div class="footer">
-            <p>Need urgent help? Contact <a href="mailto:support@darklock.net">support@darklock.net</a></p>
-            <p class="refresh-notice">This page will automatically refresh every 60 seconds</p>
+        <!-- Not in Maintenance State -->
+        <div class="not-maintenance" id="not-maintenance">
+            <div class="success-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+            </div>
+            <h2 class="success-title">We're Back Online!</h2>
+            <p class="success-subtitle">Maintenance has been completed. Redirecting you now...</p>
         </div>
     </div>
 
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <span class="footer-status">
+                <span class="status-dot"></span>
+                Systems being updated
+            </span>
+            <span>•</span>
+            <span>&copy; 2026 Darklock Security Platform</span>
+        </div>
+    </footer>
+
     <script>
-        // Load maintenance settings
-        async function loadMaintenanceInfo() {
+        // Configuration
+        const CONFIG = {
+            apiEndpoint: '/platform/maintenance/status',
+            scope: 'platform',
+            checkInterval: 30000,
+            discordInvite: 'https://discord.gg/r8dvnad9c9'
+        };
+
+        // Scope display names
+        const scopeNames = {
+            'darklock_site': 'Darklock Platform',
+            'bot_dashboard': 'Bot Dashboard',
+            'platform': 'Platform',
+            'api': 'API Services',
+            'discord_bot': 'Discord Bot',
+            'workers': 'Background Workers'
+        };
+
+        // State
+        let maintenanceState = null;
+        let countdownInterval = null;
+        let autoCheckInterval = null;
+        let totalDuration = null;
+        let startTime = null;
+
+        // DOM Elements
+        const elements = {
+            loading: document.getElementById('loading'),
+            mainContent: document.getElementById('main-content'),
+            notMaintenance: document.getElementById('not-maintenance'),
+            scopeBadge: document.getElementById('scope-badge'),
+            mainTitle: document.getElementById('main-title'),
+            pageTitle: document.getElementById('page-title'),
+            subtitle: document.getElementById('subtitle'),
+            message: document.getElementById('message'),
+            messageBox: document.getElementById('message-box'),
+            countdownSection: document.getElementById('countdown-section'),
+            progressContainer: document.getElementById('progress-container'),
+            progressCircle: document.getElementById('progress-circle'),
+            timeRemaining: document.getElementById('time-remaining'),
+            hours: document.getElementById('hours'),
+            minutes: document.getElementById('minutes'),
+            seconds: document.getElementById('seconds'),
+            updatesSection: document.getElementById('updates-section'),
+            updatesList: document.getElementById('updates-list'),
+            discordBtn: document.getElementById('discord-btn'),
+            refreshBtn: document.getElementById('refresh-btn')
+        };
+
+        // Initialize
+        async function init() {
             try {
-                const res = await fetch('/platform/api/public/maintenance-status');
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.maintenance?.message) {
-                        document.getElementById('message').textContent = data.maintenance.message;
-                    }
-                    if (data.maintenance?.endTime) {
-                        document.getElementById('countdown-card').style.display = 'block';
-                        startCountdown(new Date(data.maintenance.endTime));
-                    }
-                    
-                    // If maintenance is disabled, redirect to home
-                    if (!data.maintenance?.enabled) {
-                        window.location.href = '/platform';
-                    }
-                }
-            } catch (e) {
-                // Silently fail - use default message
+                await loadMaintenanceStatus();
+                startAutoCheck();
+            } catch (err) {
+                console.error('Failed to initialize:', err);
+                showDefaultState();
+            } finally {
+                elements.loading.classList.add('hidden');
             }
         }
 
+        // Load maintenance status from API
+        async function loadMaintenanceStatus() {
+            try {
+                const res = await fetch(`${CONFIG.apiEndpoint}?scope=${CONFIG.scope}`);
+                
+                if (!res.ok) {
+                    throw new Error('Failed to fetch status');
+                }
+
+                const data = await res.json();
+                
+                if (data.success && data.maintenance) {
+                    maintenanceState = data.maintenance;
+                    updateUI();
+                } else {
+                    showNotInMaintenance();
+                }
+            } catch (err) {
+                console.error('Error loading status:', err);
+                showDefaultState();
+            }
+        }
+
+        // Update UI with maintenance state
+        function updateUI() {
+            if (!maintenanceState) return;
+
+            // Update scope badge
+            const scopeName = scopeNames[maintenanceState.scope] || maintenanceState.scope;
+            elements.scopeBadge.innerHTML = `<span class="status-indicator"></span><span>${scopeName} Maintenance</span>`;
+
+            // Update title
+            if (maintenanceState.title) {
+                elements.mainTitle.textContent = maintenanceState.title;
+                elements.pageTitle.textContent = `${maintenanceState.title} - Darklock`;
+            }
+
+            // Update subtitle
+            if (maintenanceState.subtitle) {
+                elements.subtitle.textContent = maintenanceState.subtitle;
+            }
+
+            // Update message
+            if (maintenanceState.message) {
+                elements.message.innerHTML = parseMarkdown(maintenanceState.message);
+            }
+
+            // Update countdown and progress
+            const endTime = maintenanceState.scheduled_end || maintenanceState.scheduledEnd;
+            const schedStart = maintenanceState.scheduled_start || maintenanceState.scheduledStart;
+            
+            if (endTime) {
+                const end = new Date(endTime);
+                const start = schedStart ? new Date(schedStart) : new Date();
+                
+                if (end > new Date()) {
+                    startTime = start < new Date() ? start : new Date();
+                    totalDuration = end - startTime;
+                    
+                    elements.countdownSection.classList.add('visible');
+                    elements.progressContainer.classList.add('visible');
+                    startCountdown(end);
+                }
+            }
+
+            // Update status updates
+            const updates = maintenanceState.status_updates || maintenanceState.updates;
+            if (updates && Array.isArray(updates) && updates.length > 0) {
+                elements.updatesSection.classList.add('visible');
+                renderUpdates(updates);
+            }
+
+            // Discord button is always visible now
+            elements.discordBtn.href = CONFIG.discordInvite;
+        }
+
+        // Show default state
+        function showDefaultState() {
+            const scopeName = scopeNames[CONFIG.scope] || CONFIG.scope;
+            elements.scopeBadge.innerHTML = `<span class="status-indicator"></span><span>${scopeName} Maintenance</span>`;
+        }
+
+        // Show "not in maintenance" state
+        function showNotInMaintenance() {
+            elements.mainContent.style.display = 'none';
+            elements.notMaintenance.classList.add('visible');
+            
+            setTimeout(() => {
+                window.location.href = '/platform';
+            }, 3000);
+        }
+
+        // Start countdown timer
         function startCountdown(endTime) {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+
+            const circumference = 2 * Math.PI * 65; // radius = 65
+
             function update() {
                 const now = new Date();
                 const diff = endTime - now;
-                
+
                 if (diff <= 0) {
-                    document.getElementById('countdown').textContent = 'Any moment now...';
+                    elements.hours.textContent = '00';
+                    elements.minutes.textContent = '00';
+                    elements.seconds.textContent = '00';
+                    elements.timeRemaining.textContent = '00:00';
+                    elements.progressCircle.style.strokeDashoffset = 0;
+                    clearInterval(countdownInterval);
+                    
+                    // Show completion message and redirect
+                    showNotInMaintenance();
                     return;
                 }
 
@@ -264,15 +1274,96 @@
                 const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
                 const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-                document.getElementById('countdown').textContent = 
-                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                elements.hours.textContent = hours.toString().padStart(2, '0');
+                elements.minutes.textContent = minutes.toString().padStart(2, '0');
+                elements.seconds.textContent = seconds.toString().padStart(2, '0');
+
+                // Update circular progress and time remaining display
+                if (totalDuration && totalDuration > 0) {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / totalDuration, 1);
+                    const offset = circumference * (1 - progress);
+                    elements.progressCircle.style.strokeDashoffset = offset;
+                }
+
+                // Update center time display
+                if (hours > 0) {
+                    elements.timeRemaining.textContent = `${hours}h ${minutes}m`;
+                } else if (minutes > 0) {
+                    elements.timeRemaining.textContent = `${minutes}m ${seconds}s`;
+                } else {
+                    elements.timeRemaining.textContent = `${seconds}s`;
+                }
             }
 
             update();
-            setInterval(update, 1000);
+            countdownInterval = setInterval(update, 1000);
         }
 
-        loadMaintenanceInfo();
+        // Render status updates
+        function renderUpdates(updates) {
+            elements.updatesList.innerHTML = updates.map(update => {
+                const time = new Date(update.timestamp || update.created_at);
+                const timeStr = time.toLocaleString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                return `
+                    <div class="update-item">
+                        <div class="update-time">${timeStr}</div>
+                        <div class="update-message">${escapeHtml(update.message)}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Parse simple markdown
+        function parseMarkdown(text) {
+            if (!text) return '';
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/`(.*?)`/g, '<code>$1</code>')
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+                .replace(/\n/g, '<br>');
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Check status manually
+        async function checkStatus() {
+            const btn = elements.refreshBtn;
+            btn.classList.add('refreshing');
+            btn.disabled = true;
+
+            try {
+                await loadMaintenanceStatus();
+            } finally {
+                setTimeout(() => {
+                    btn.classList.remove('refreshing');
+                    btn.disabled = false;
+                }, 1000);
+            }
+        }
+
+        // Start auto-check interval
+        function startAutoCheck() {
+            if (autoCheckInterval) {
+                clearInterval(autoCheckInterval);
+            }
+            autoCheckInterval = setInterval(loadMaintenanceStatus, CONFIG.checkInterval);
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>

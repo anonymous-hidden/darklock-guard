@@ -18,6 +18,9 @@ async function initApp() {
     // Load user data
     await loadUserData();
     
+    // Load user settings
+    await loadUserSettings();
+    
     // Apply saved settings (font scaling, high contrast)
     applySavedSettings();
     
@@ -39,6 +42,12 @@ async function initApp() {
     // Setup modal
     setupModal();
     
+    // Setup collapsible cards
+    setupCollapsibleCards();
+    
+    // Setup language settings
+    setupLanguageSettings();
+    
     // Load initial page data
     loadPageData('dashboard');
 }
@@ -46,35 +55,81 @@ async function initApp() {
 // ============================================================================
 // USER DATA
 // ============================================================================
+let userSettings = {};
+
 async function loadUserData() {
     try {
-        const response = await fetch('/platform/auth/me', {
-            credentials: 'include'
-        });
-        
-        if (!response.ok) {
-            if (response.status === 401) {
-                window.location.href = '/platform/auth/login';
-                return;
-            }
-            throw new Error('Failed to load user data');
-        }
-        
+        const response = await fetch('/platform/dashboard/api/me');
         const data = await response.json();
         
         if (data.success) {
             currentUser = data.user;
-            updateUserUI();
-        } else {
-            window.location.href = '/platform/auth/login';
+            updateUserDisplay();
         }
     } catch (err) {
-        console.error('Error loading user data:', err);
-        window.location.href = '/platform/auth/login';
+        console.error('Failed to load user data:', err);
     }
 }
 
-function updateUserUI() {
+async function loadUserSettings() {
+    try {
+        const response = await fetch('/platform/dashboard/api/settings');
+        const data = await response.json();
+        
+        if (data.success && data.settings) {
+            userSettings = data.settings;
+            
+            // Populate form fields with saved settings
+            populateSettingsForm(userSettings);
+            
+            // Apply settings immediately
+            applySettings(userSettings);
+        }
+    } catch (err) {
+        console.error('Failed to load user settings:', err);
+    }
+}
+
+function populateSettingsForm(settings) {
+    // Language & Region
+    if (settings.language) document.getElementById('language').value = settings.language;
+    if (settings.autoDetectLanguage !== undefined) document.getElementById('autoDetectLanguage').checked = settings.autoDetectLanguage;
+    if (settings.timezone) document.getElementById('timezone').value = settings.timezone;
+    if (settings.autoDetectTimezone !== undefined) document.getElementById('autoDetectTimezone').checked = settings.autoDetectTimezone;
+    if (settings.dateFormat) document.getElementById('dateFormat').value = settings.dateFormat;
+    if (settings.timeFormat) document.getElementById('timeFormat').value = settings.timeFormat;
+    
+    // Platform
+    if (settings.defaultLandingPage) document.getElementById('defaultLandingPage').value = settings.defaultLandingPage;
+    if (settings.rememberLastApp !== undefined) document.getElementById('rememberLastApp').checked = settings.rememberLastApp;
+    if (settings.autoSave !== undefined) document.getElementById('autoSave').checked = settings.autoSave;
+    
+    // Appearance
+    if (settings.theme) document.getElementById('theme').value = settings.theme;
+    if (settings.compactMode !== undefined) document.getElementById('compactMode').checked = settings.compactMode;
+    if (settings.sidebarPosition) document.getElementById('sidebarPosition').value = settings.sidebarPosition;
+    
+    // Accessibility
+    if (settings.fontScaling) document.getElementById('fontScaling').value = settings.fontScaling;
+    if (settings.highContrast !== undefined) document.getElementById('highContrast').checked = settings.highContrast;
+    if (settings.reducedMotion !== undefined) document.getElementById('reducedMotion').checked = settings.reducedMotion;
+    if (settings.screenReaderSupport !== undefined) document.getElementById('screenReaderSupport').checked = settings.screenReaderSupport;
+    
+    // Notifications
+    if (settings.emailNotifications !== undefined) document.getElementById('emailNotifications').checked = settings.emailNotifications;
+    if (settings.pushNotifications !== undefined) document.getElementById('pushNotifications').checked = settings.pushNotifications;
+    if (settings.soundEnabled !== undefined) document.getElementById('soundEnabled').checked = settings.soundEnabled;
+    
+    // Privacy & Security
+    if (settings.activityTracking !== undefined) document.getElementById('activityTracking').checked = settings.activityTracking;
+    if (settings.sessionTimeout) document.getElementById('sessionTimeout').value = settings.sessionTimeout;
+    if (settings.require2FA !== undefined) document.getElementById('require2FA').checked = settings.require2FA;
+    
+    // Experimental
+    if (settings.betaFeatures !== undefined) document.getElementById('betaFeatures').checked = settings.betaFeatures;
+}
+
+function updateUserDisplay() {
     if (!currentUser) return;
     
     // Update sidebar user info
@@ -1165,6 +1220,12 @@ function setupAccountForms() {
 // SETTINGS DATA
 // ============================================================================
 function loadSettingsData() {
+    // Check if currentUser exists
+    if (!currentUser) {
+        console.warn('loadSettingsData called but currentUser is null');
+        return;
+    }
+    
     // Load settings from currentUser object (populated from database)
     const settings = currentUser.settings || {};
     
@@ -1775,4 +1836,185 @@ function formatTimeAgo(dateString) {
     if (diff < 604800000) return Math.floor(diff / 86400000) + ' days ago';
     
     return date.toLocaleDateString();
+}
+// ============================================================================
+// COLLAPSIBLE CARDS
+// ============================================================================
+function setupCollapsibleCards() {
+    const headers = document.querySelectorAll('.card-header[data-toggle="collapse"]');
+    
+    headers.forEach(header => {
+        header.addEventListener('click', () => {
+            const card = header.closest('.collapsible-card');
+            card.classList.toggle('collapsed');
+        });
+    });
+}
+
+// ============================================================================
+// LANGUAGE & REGION SETTINGS
+// ============================================================================
+function setupLanguageSettings() {
+    const autoDetectToggle = document.getElementById('autoDetectLanguage');
+    const languageSelect = document.getElementById('language');
+    const timezoneSelect = document.getElementById('timezone');
+    const autoDetectTimezoneToggle = document.getElementById('autoDetectTimezone');
+    
+    // Auto-detect language
+    if (autoDetectToggle) {
+        autoDetectToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                const browserLang = navigator.language.split('-')[0];
+                const langMap = {
+                    'en': 'en', 'es': 'es', 'fr': 'fr', 'de': 'de', 'it': 'it',
+                    'pt': 'pt', 'ru': 'ru', 'zh': 'zh', 'ja': 'ja', 'ko': 'ko',
+                    'ar': 'ar', 'hi': 'hi', 'nl': 'nl', 'pl': 'pl', 'tr': 'tr',
+                    'sv': 'sv', 'no': 'no', 'da': 'da', 'fi': 'fi', 'cs': 'cs'
+                };
+                
+                if (langMap[browserLang]) {
+                    languageSelect.value = langMap[browserLang];
+                    languageSelect.disabled = true;
+                } else {
+                    languageSelect.value = 'en';
+                    languageSelect.disabled = true;
+                }
+                
+                saveSettings();
+            } else {
+                languageSelect.disabled = false;
+            }
+        });
+        
+        // Initial check
+        if (autoDetectToggle.checked) {
+            autoDetectToggle.dispatchEvent(new Event('change'));
+        }
+    }
+    
+    // Auto-detect timezone
+    if (autoDetectTimezoneToggle) {
+        autoDetectTimezoneToggle.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                try {
+                    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    timezoneSelect.value = userTimezone;
+                    timezoneSelect.disabled = true;
+                    saveSettings();
+                } catch (error) {
+                    console.error('Failed to detect timezone:', error);
+                    autoDetectTimezoneToggle.checked = false;
+                }
+            } else {
+                timezoneSelect.disabled = false;
+            }
+        });
+        
+        // Initial check
+        if (autoDetectTimezoneToggle.checked) {
+            autoDetectTimezoneToggle.dispatchEvent(new Event('change'));
+        }
+    }
+    
+    // Save settings on change
+    const settingsInputs = document.querySelectorAll('.settings-sections select, .settings-sections input');
+    settingsInputs.forEach(input => {
+        input.addEventListener('change', saveSettings);
+    });
+}
+
+// ============================================================================
+// SAVE SETTINGS
+// ============================================================================
+async function saveSettings() {
+    const settings = {
+        // Language & Region
+        language: document.getElementById('language')?.value,
+        autoDetectLanguage: document.getElementById('autoDetectLanguage')?.checked,
+        timezone: document.getElementById('timezone')?.value,
+        autoDetectTimezone: document.getElementById('autoDetectTimezone')?.checked,
+        dateFormat: document.getElementById('dateFormat')?.value,
+        timeFormat: document.getElementById('timeFormat')?.value,
+        
+        // Platform
+        defaultLandingPage: document.getElementById('defaultLandingPage')?.value,
+        rememberLastApp: document.getElementById('rememberLastApp')?.checked,
+        autoSave: document.getElementById('autoSave')?.checked,
+        
+        // Appearance
+        theme: document.getElementById('theme')?.value,
+        compactMode: document.getElementById('compactMode')?.checked,
+        sidebarPosition: document.getElementById('sidebarPosition')?.value,
+        
+        // Accessibility
+        fontScaling: document.getElementById('fontScaling')?.value,
+        highContrast: document.getElementById('highContrast')?.checked,
+        reducedMotion: document.getElementById('reducedMotion')?.checked,
+        screenReaderSupport: document.getElementById('screenReaderSupport')?.checked,
+        
+        // Notifications
+        emailNotifications: document.getElementById('emailNotifications')?.checked,
+        pushNotifications: document.getElementById('pushNotifications')?.checked,
+        soundEnabled: document.getElementById('soundEnabled')?.checked,
+        
+        // Privacy & Security
+        activityTracking: document.getElementById('activityTracking')?.checked,
+        sessionTimeout: document.getElementById('sessionTimeout')?.value,
+        require2FA: document.getElementById('require2FA')?.checked,
+        
+        // Experimental
+        betaFeatures: document.getElementById('betaFeatures')?.checked
+    };
+    
+    try {
+        const response = await fetch('/platform/dashboard/api/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(settings)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to save settings');
+        }
+        
+        // Apply settings immediately
+        applySettings(settings);
+        
+        showToast('Settings saved successfully', 'success');
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        showToast('Failed to save settings', 'error');
+    }
+}
+
+// ============================================================================
+// APPLY SETTINGS
+// ============================================================================
+function applySettings(settings) {
+    // Theme
+    if (settings.theme) {
+        document.documentElement.setAttribute('data-theme', settings.theme);
+    }
+    
+    // Font scaling
+    if (settings.fontScaling) {
+        document.body.style.fontSize = settings.fontScaling + '%';
+    }
+    
+    // High contrast
+    if (settings.highContrast) {
+        document.body.classList.toggle('high-contrast', settings.highContrast);
+    }
+    
+    // Reduced motion
+    if (settings.reducedMotion) {
+        document.body.classList.toggle('reduced-motion', settings.reducedMotion);
+    }
+    
+    // Compact mode
+    if (settings.compactMode !== undefined) {
+        document.body.classList.toggle('compact-mode', settings.compactMode);
+    }
 }

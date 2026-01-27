@@ -23,6 +23,9 @@ const db = require('./utils/database');
 // Centralized maintenance module
 const maintenance = require('./utils/maintenance');
 
+// Debug logger
+const debugLogger = require('./utils/debug-logger');
+
 // Import routes
 const authRoutes = require('./routes/auth');
 const { router: dashboardRoutes, requireAuth } = require('./routes/dashboard');
@@ -37,6 +40,16 @@ const {
 const { initializeAdminSchema } = require('./utils/admin-schema');
 const adminApiRoutes = require('./routes/admin-api');
 const { setDiscordBot } = require('./routes/admin-api');
+// v2 Admin API with enhanced features
+const adminApiV2Routes = require('./routes/admin-api-v2');
+const { setDiscordBot: setDiscordBotV2 } = require('./routes/admin-api-v2');
+// v3 Admin API - Full RBAC dashboard with 12 tabs
+const adminApiV3Routes = require('./routes/admin-api-v3');
+const { setDiscordBot: setDiscordBotV3 } = require('./routes/admin-api-v3');
+// Public API routes (maintenance status, health checks)
+const publicApiRoutes = require('./routes/public-api');
+// RBAC schema initialization
+const rbacSchema = require('./utils/rbac-schema');
 const { initializeDefaultAdmins } = require('./default-admin');
 
 class DarklockPlatform {
@@ -49,6 +62,8 @@ class DarklockPlatform {
         // If bot is provided, set it for admin API routes
         if (this.discordBot) {
             setDiscordBot(this.discordBot);
+            setDiscordBotV2(this.discordBot);
+            setDiscordBotV3(this.discordBot);
         }
         
         this.setupMiddleware();
@@ -62,7 +77,9 @@ class DarklockPlatform {
     setBot(bot) {
         this.discordBot = bot;
         setDiscordBot(bot);
-        console.log('[Darklock Platform] Discord bot reference set');
+        setDiscordBotV2(bot);
+        setDiscordBotV3(bot);
+        debugLogger.log('[Darklock Platform] Discord bot reference set');
     }
     
     /**
@@ -131,24 +148,42 @@ class DarklockPlatform {
             next();
         });
         
-        // CORS configuration
+        // CORS configuration - SECURE: Explicit allowlist, no reflected origins
+        const allowedOrigins = process.env.CORS_ORIGINS 
+            ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+            : (process.env.NODE_ENV === 'production' 
+                ? ['https://darklock.net', 'https://www.darklock.net'] 
+                : ['http://localhost:3000', 'http://127.0.0.1:3000']);
+        
         this.app.use(cors({
-            origin: process.env.CORS_ORIGIN || true,
+            origin: function(origin, callback) {
+                // Allow requests with no origin (same-origin, Postman, mobile apps)
+                if (!origin) return callback(null, true);
+                
+                // Check against explicit allowlist
+                if (allowedOrigins.includes(origin)) {
+                    return callback(null, true);
+                }
+                
+                // Reject unknown origins
+                console.warn(`[CORS] Blocked request from origin: ${origin}`);
+                return callback(new Error('CORS policy: Origin not allowed'), false);
+            },
             credentials: true,
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
             allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
         }));
         
-        // Global rate limiting (100 requests per 15 minutes per IP)
+        // Global rate limiting (500 requests per 15 minutes per IP - generous for admin dashboard)
         const globalLimiter = rateLimit({
             windowMs: 15 * 60 * 1000,
-            max: 100,
+            max: 500,
             standardHeaders: true,
             legacyHeaders: false,
             message: { success: false, error: 'Too many requests, please try again later.' },
             skip: (req) => {
-                // Skip rate limiting for static assets
-                return req.path.includes('/static/');
+                // Skip rate limiting for static assets and admin API (has its own rate limiter)
+                return req.path.includes('/static/') || req.path.startsWith('/api/v3/');
             }
         });
         this.app.use('/platform', globalLimiter);
@@ -236,9 +271,46 @@ class DarklockPlatform {
         const avatarsPath = path.join(process.env.DATA_PATH || path.join(__dirname, 'data'), 'avatars');
         this.app.use('/platform/avatars', express.static(avatarsPath));
         
-        // Main homepage
-        this.app.get('/platform', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/home.html'));
+        // Main homepage (with user state)
+        this.app.get('/platform', async (req, res) => {
+            const token = req.cookies?.darklock_token;
+            let userData = null;
+            
+            if (token) {
+                try {
+                    const jwt = require('jsonwebtoken');
+                    const { requireEnv } = require('./utils/env-validator');
+                    const secret = requireEnv('JWT_SECRET');
+                    const decoded = jwt.verify(token, secret);
+                    
+                    // Get user from database
+                    const db = require('./utils/database');
+                    const user = await db.getUserById(decoded.userId);
+                    if (user) {
+                        userData = {
+                            id: user.id,
+                            username: user.username,
+                            email: user.email,
+                            role: user.role,
+                            displayName: user.display_name
+                        };
+                    }
+                } catch (err) {
+                    // Token invalid, clear it
+                    res.clearCookie('darklock_token');
+                }
+            }
+            
+            // Read HTML file and inject user data
+            const fs = require('fs');
+            const htmlPath = path.join(__dirname, 'views/home.html');
+            let html = fs.readFileSync(htmlPath, 'utf8');
+            
+            // Inject user data into script
+            const userScript = `<script>window.DARKLOCK_USER = ${JSON.stringify(userData)};</script>`;
+            html = html.replace('</head>', `${userScript}</head>`);
+            
+            res.send(html);
         });
         
         // Darklock Guard - Download page
@@ -589,12 +661,26 @@ class DarklockPlatform {
         // Admin API routes (protected) - Note: Frontend uses /api/admin/*
         this.app.use('/api/admin', adminApiRoutes);
         
-        // Admin dashboard (protected) - Full dashboard
+        // Admin API v2 routes (enhanced with live data, maintenance scopes, etc.)
+        this.app.use('/api/admin', adminApiV2Routes.router);
+        
+        // Admin API v3 routes (Full RBAC dashboard with 12 tabs)
+        this.app.use('/api', adminApiV3Routes.router);
+        
+        // Public API routes (maintenance status, health - no auth required)
+        this.app.use('/api', publicApiRoutes);
+        
+        // Admin dashboard - New modern dashboard v3 (default)
         this.app.get('/admin', requireAdminAuth, (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/admin.html'));
+            res.sendFile(path.join(__dirname, 'views/admin-v3.html'));
         });
         
-        // Admin dashboard legacy route
+        // Admin dashboard v2 (legacy)
+        this.app.get('/admin/v2', requireAdminAuth, (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/admin-v2.html'));
+        });
+        
+        // Admin dashboard legacy route redirect
         this.app.get('/admin/dashboard', requireAdminAuth, (req, res) => {
             res.redirect('/admin');
         });
@@ -679,11 +765,44 @@ class DarklockPlatform {
             await db.initialize();
             await initializeAdminTables();
             await initializeAdminSchema();
+            
+            // Initialize RBAC schema (roles, permissions, maintenance state, etc.)
+            console.log('[Darklock Platform] Initializing RBAC schema...');
+            await rbacSchema.initializeRBACSchema();
+            
             await initializeDefaultAdmins();
             console.log('[Darklock Platform] ✅ Database and admin tables initialized');
         } catch (err) {
             console.error('[Darklock Platform] Database initialization failed:', err);
         }
+        
+        // Initialize maintenance module with database
+        maintenance.init(db);
+        console.log('[Darklock Platform] Maintenance module initialized');
+        
+        // Add maintenance middleware for /platform routes
+        // This runs BEFORE all /platform routes to enforce maintenance mode
+        existingApp.use('/platform', maintenance.createMiddleware({
+            onBlock: (req, res, config) => {
+                const fullPath = (req.baseUrl || '') + req.path;
+                console.log('[Darklock Platform] Maintenance blocking request to:', fullPath);
+                // For API requests, return 503 JSON
+                if (fullPath.startsWith('/platform/api/')) {
+                    return res.status(503).json({
+                        success: false,
+                        error: 'Service temporarily unavailable',
+                        maintenance: {
+                            enabled: true,
+                            message: config.platform.message,
+                            endTime: config.platform.endTime
+                        }
+                    });
+                }
+                // For all other requests, redirect to maintenance page
+                return res.redirect('/platform/maintenance');
+            }
+        }));
+        console.log('[Darklock Platform] Maintenance middleware added for /platform routes');
         
         // Static files
         existingApp.use('/platform/static', express.static(path.join(__dirname, 'public')));
@@ -695,9 +814,46 @@ class DarklockPlatform {
         const avatarsPath = path.join(process.env.DATA_PATH || path.join(__dirname, 'data'), 'avatars');
         existingApp.use('/platform/avatars', express.static(avatarsPath));
         
-        // Main homepage
-        existingApp.get('/platform', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/home.html'));
+        // Main homepage (with user state)
+        existingApp.get('/platform', async (req, res) => {
+            const token = req.cookies?.darklock_token;
+            let userData = null;
+            
+            if (token) {
+                try {
+                    const jwt = require('jsonwebtoken');
+                    const { requireEnv } = require('./utils/env-validator');
+                    const secret = requireEnv('JWT_SECRET');
+                    const decoded = jwt.verify(token, secret);
+                    
+                    // Get user from database
+                    const db = require('./utils/database');
+                    const user = await db.getUserById(decoded.userId);
+                    if (user) {
+                        userData = {
+                            id: user.id,
+                            username: user.username,
+                            email: user.email,
+                            role: user.role,
+                            displayName: user.display_name
+                        };
+                    }
+                } catch (err) {
+                    // Token invalid, clear it
+                    res.clearCookie('darklock_token');
+                }
+            }
+            
+            // Read HTML file and inject user data
+            const fs = require('fs');
+            const htmlPath = path.join(__dirname, 'views/home.html');
+            let html = fs.readFileSync(htmlPath, 'utf8');
+            
+            // Inject user data into script
+            const userScript = `<script>window.DARKLOCK_USER = ${JSON.stringify(userData)};</script>`;
+            html = html.replace('</head>', `${userScript}</head>`);
+            
+            res.send(html);
         });
         
         // Darklock Guard - Download page
@@ -916,13 +1072,27 @@ class DarklockPlatform {
         // Admin API routes (protected) - Frontend uses /api/admin/*
         console.log('[Darklock Platform] Registering admin API routes at /api/admin');
         existingApp.use('/api/admin', adminApiRoutes);
+        existingApp.use('/api/admin', adminApiV2Routes.router);
         
-        // Admin dashboard (protected) - Full dashboard
+        // Admin API v3 routes (Full RBAC dashboard with 12 tabs)
+        console.log('[Darklock Platform] Registering admin API v3 routes at /api');
+        existingApp.use('/api', adminApiV3Routes.router);
+        
+        // Public API routes (maintenance status, health - no auth required)
+        console.log('[Darklock Platform] Registering public API routes at /api');
+        existingApp.use('/api', publicApiRoutes);
+        
+        // Admin dashboard - New modern dashboard v3 (default)
         existingApp.get('/admin', requireAdminAuth, (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/admin.html'));
+            res.sendFile(path.join(__dirname, 'views/admin-v3.html'));
         });
         
-        // Admin dashboard legacy route
+        // Admin dashboard v2 (legacy)
+        existingApp.get('/admin/v2', requireAdminAuth, (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/admin-v2.html'));
+        });
+        
+        // Admin dashboard legacy route redirect
         existingApp.get('/admin/dashboard', requireAdminAuth, (req, res) => {
             res.redirect('/admin');
         });
@@ -967,6 +1137,10 @@ class DarklockPlatform {
                 // Initialize admin dashboard schema
                 console.log('[Darklock Platform] Initializing admin dashboard schema...');
                 await initializeAdminSchema();
+                
+                // Initialize RBAC schema (roles, permissions, etc.)
+                console.log('[Darklock Platform] Initializing RBAC schema...');
+                await rbacSchema.initializeRBACSchema();
                 
                 // Initialize default admin accounts (only if no admins exist)
                 console.log('[Darklock Platform] Checking for default admin accounts...');

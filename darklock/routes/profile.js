@@ -20,6 +20,7 @@ const QRCode = require('qrcode');
 // Import auth middleware and helpers
 const { requireAuth } = require('./dashboard');
 const authModule = require('./auth');
+const db = require('../utils/database');
 
 // Security utilities
 const {
@@ -299,8 +300,8 @@ router.put('/api/password', requireAuth, rateLimitMiddleware('passwordChange'), 
  */
 router.get('/api/security', requireAuth, async (req, res) => {
     try {
-        const usersData = await loadUsers();
-        const user = usersData.users.find(u => u.id === req.user.userId);
+        // Get user from database
+        const user = await db.getUserById(req.user.userId);
         
         if (!user) {
             return res.status(404).json({
@@ -309,21 +310,20 @@ router.get('/api/security', requireAuth, async (req, res) => {
             });
         }
         
-        const sessionsData = await loadSessions();
-        const activeSessions = sessionsData.sessions.filter(
-            s => s.userId === user.id && !s.revokedAt
-        ).length;
+        // Get active sessions count
+        const sessions = await db.getUserSessions(user.id);
+        const activeSessions = sessions.filter(s => !s.revoked_at).length;
         
         res.json({
             success: true,
             security: {
-                twoFactorEnabled: user.twoFactorEnabled,
-                twoFactorEnabledAt: user.twoFactorEnabledAt,
-                lastPasswordChange: user.passwordChangedAt || user.createdAt,
+                twoFactorEnabled: user.two_factor_enabled || false,
+                twoFactorEnabledAt: user.two_factor_enabled_at || null,
+                lastPasswordChange: user.password_changed_at || user.created_at,
                 activeSessions,
-                lastLogin: user.lastLogin,
-                lastLoginIp: user.lastLoginIp || 'Unknown',
-                accountCreated: user.createdAt
+                lastLogin: user.last_login,
+                lastLoginIp: user.last_login_ip || 'Unknown',
+                accountCreated: user.created_at
             }
         });
         
@@ -595,8 +595,8 @@ router.post('/api/2fa/disable', requireAuth, async (req, res) => {
  */
 router.get('/api/2fa/status', requireAuth, async (req, res) => {
     try {
-        const usersData = await loadUsers();
-        const user = usersData.users.find(u => u.id === req.user.userId);
+        // Get user from database
+        const user = await db.getUserById(req.user.userId);
         
         if (!user) {
             return res.status(404).json({
@@ -608,9 +608,9 @@ router.get('/api/2fa/status', requireAuth, async (req, res) => {
         res.json({
             success: true,
             twoFactor: {
-                enabled: user.twoFactorEnabled,
-                enabledAt: user.twoFactorEnabledAt,
-                hasBackupCodes: !!(user.twoFactorBackupCodes && user.twoFactorBackupCodes.length > 0)
+                enabled: user.two_factor_enabled || false,
+                enabledAt: user.two_factor_enabled_at || null,
+                hasBackupCodes: !!(user.two_factor_backup_codes && JSON.parse(user.two_factor_backup_codes || '[]').length > 0)
             }
         });
         

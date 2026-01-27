@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/platform/static/css/main.css">
     <link rel="stylesheet" href="/platform/static/css/dashboard.css">
     <link rel="icon" type="image/svg+xml" href="/platform/static/icons/favicon.svg">
+    <script src="/platform/static/js/debug-controller.js"></script>
 </head>
 <body class="dashboard-page">
     <div class="dashboard-layout">
@@ -459,12 +460,31 @@
                         <p>Access and manage your Darklock applications</p>
                     </div>
 
-                    <div class="apps-list" id="appsList">
-                        <!-- Apps loaded dynamically -->
-                        <div class="loading-state">
-                            <div class="spinner"></div>
-                            <span>Loading applications...</span>
+                    <div class="apps-grid">
+                        <!-- Darklock Guard App -->
+                        <div class="app-card">
+                            <div class="app-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                    <path d="M9 12l2 2 4-4"/>
+                                </svg>
+                            </div>
+                            <div class="app-info">
+                                <h3 class="app-name">Darklock Guard</h3>
+                                <p class="app-desc">File integrity monitoring and protection</p>
+                                <div class="app-meta">
+                                    <span class="app-status active">Active</span>
+                                    <span class="app-version">v1.0.0</span>
+                                </div>
+                            </div>
+                            <div class="app-actions">
+                                <a href="/platform/launch/darklock-guard" class="btn btn-primary btn-sm">Launch</a>
+                                <a href="/platform/download/darklock-guard" class="btn btn-ghost btn-sm">Download</a>
+                            </div>
                         </div>
+
+                        <!-- More apps loaded dynamically -->
+                        <div id="appsList"></div>
                     </div>
                 </div>
 
@@ -735,13 +755,112 @@
                         <p>Platform-level configuration and preferences</p>
                     </div>
 
-                    <div class="settings-sections-grid">
-                        <!-- Platform Settings -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h3>Platform</h3>
+                    <div class="settings-sections">
+                        <!-- Language & Region -->
+                        <div class="card collapsible-card">
+                            <div class="card-header" data-toggle="collapse">
+                                <div class="card-header-content">
+                                    <h3>Language & Region</h3>
+                                    <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6 9 12 15 18 9"/>
+                                    </svg>
+                                </div>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body collapse-content">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Language</span>
+                                        <span class="setting-desc">Select your preferred language</span>
+                                    </div>
+                                    <select id="languageSelect" class="form-input" style="max-width: 200px;">
+                                        <option value="en">English</option>
+                                        <option value="es">Español (Spanish)</option>
+                                        <option value="fr">Français (French)</option>
+                                        <option value="de">Deutsch (German)</option>
+                                        <option value="it">Italiano (Italian)</option>
+                                        <option value="pt">Português (Portuguese)</option>
+                                        <option value="ru">Русский (Russian)</option>
+                                        <option value="zh">中文 (Chinese)</option>
+                                        <option value="ja">日本語 (Japanese)</option>
+                                        <option value="ko">한국어 (Korean)</option>
+                                        <option value="ar">العربية (Arabic)</option>
+                                        <option value="hi">हिन्दी (Hindi)</option>
+                                        <option value="nl">Nederlands (Dutch)</option>
+                                        <option value="pl">Polski (Polish)</option>
+                                        <option value="tr">Türkçe (Turkish)</option>
+                                        <option value="sv">Svenska (Swedish)</option>
+                                        <option value="no">Norsk (Norwegian)</option>
+                                        <option value="da">Dansk (Danish)</option>
+                                        <option value="fi">Suomi (Finnish)</option>
+                                        <option value="cs">Čeština (Czech)</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Auto-detect Language</span>
+                                        <span class="setting-desc">Automatically set language based on browser settings</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="autoDetectLanguageToggle" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Time Zone</span>
+                                        <span class="setting-desc">Your local time zone</span>
+                                    </div>
+                                    <select id="timezoneSelect" class="form-input" style="max-width: 250px;">
+                                        <option value="auto">Auto-detect</option>
+                                        <option value="UTC">UTC (Coordinated Universal Time)</option>
+                                        <option value="America/New_York">Eastern Time (US & Canada)</option>
+                                        <option value="America/Chicago">Central Time (US & Canada)</option>
+                                        <option value="America/Denver">Mountain Time (US & Canada)</option>
+                                        <option value="America/Los_Angeles">Pacific Time (US & Canada)</option>
+                                        <option value="Europe/London">London (GMT/BST)</option>
+                                        <option value="Europe/Paris">Central European Time</option>
+                                        <option value="Europe/Moscow">Moscow</option>
+                                        <option value="Asia/Tokyo">Tokyo</option>
+                                        <option value="Asia/Shanghai">Shanghai</option>
+                                        <option value="Asia/Dubai">Dubai</option>
+                                        <option value="Australia/Sydney">Sydney</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Date Format</span>
+                                        <span class="setting-desc">How dates are displayed</span>
+                                    </div>
+                                    <select id="dateFormatSelect" class="form-input" style="max-width: 150px;">
+                                        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                        <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                                        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Time Format</span>
+                                        <span class="setting-desc">12-hour or 24-hour time</span>
+                                    </div>
+                                    <select id="timeFormatSelect" class="form-input" style="max-width: 150px;">
+                                        <option value="12h">12-hour (AM/PM)</option>
+                                        <option value="24h">24-hour</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Platform Settings -->
+                        <div class="card collapsible-card">
+                            <div class="card-header" data-toggle="collapse">
+                                <div class="card-header-content">
+                                    <h3>Platform</h3>
+                                    <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6 9 12 15 18 9"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="card-body collapse-content">
                                 <div class="setting-item">
                                     <div class="setting-info">
                                         <span class="setting-title">Default Landing Page</span>
@@ -763,15 +882,75 @@
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Auto-save Preferences</span>
+                                        <span class="setting-desc">Automatically save changes to your preferences</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="autoSaveToggle" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Appearance Settings -->
+                        <div class="card collapsible-card">
+                            <div class="card-header" data-toggle="collapse">
+                                <div class="card-header-content">
+                                    <h3>Appearance</h3>
+                                    <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6 9 12 15 18 9"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="card-body collapse-content">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Theme</span>
+                                        <span class="setting-desc">Choose your color theme</span>
+                                    </div>
+                                    <select id="themeSelect" class="form-input" style="max-width: 150px;">
+                                        <option value="dark" selected>Dark</option>
+                                        <option value="light">Light</option>
+                                        <option value="auto">Auto (System)</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Compact Mode</span>
+                                        <span class="setting-desc">Reduce spacing for more content</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="compactModeToggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Sidebar Position</span>
+                                        <span class="setting-desc">Position of the navigation sidebar</span>
+                                    </div>
+                                    <select id="sidebarPosition" class="form-input" style="max-width: 150px;">
+                                        <option value="left" selected>Left</option>
+                                        <option value="right">Right</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Accessibility Settings -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h3>Accessibility</h3>
+                        <div class="card collapsible-card">
+                            <div class="card-header" data-toggle="collapse">
+                                <div class="card-header-content">
+                                    <h3>Accessibility</h3>
+                                    <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6 9 12 15 18 9"/>
+                                    </svg>
+                                </div>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body collapse-content">
                                 <div class="setting-item">
                                     <div class="setting-info">
                                         <span class="setting-title">Font Scaling</span>
@@ -794,16 +973,132 @@
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Reduced Motion</span>
+                                        <span class="setting-desc">Minimize animations and transitions</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="reducedMotionToggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Screen Reader Support</span>
+                                        <span class="setting-desc">Enhanced screen reader compatibility</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="screenReaderToggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notifications -->
+                        <div class="card collapsible-card">
+                            <div class="card-header" data-toggle="collapse">
+                                <div class="card-header-content">
+                                    <h3>Notifications</h3>
+                                    <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6 9 12 15 18 9"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="card-body collapse-content">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Email Notifications</span>
+                                        <span class="setting-desc">Receive important updates via email</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="emailNotificationsToggle" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Push Notifications</span>
+                                        <span class="setting-desc">Browser push notifications</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="pushNotificationsToggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Sound Notifications</span>
+                                        <span class="setting-desc">Play sounds for notifications</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="soundNotificationsToggle" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Privacy & Security -->
+                        <div class="card collapsible-card">
+                            <div class="card-header" data-toggle="collapse">
+                                <div class="card-header-content">
+                                    <h3>Privacy & Security</h3>
+                                    <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6 9 12 15 18 9"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="card-body collapse-content">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Activity Tracking</span>
+                                        <span class="setting-desc">Allow analytics to improve your experience</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="activityTrackingToggle" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Session Timeout</span>
+                                        <span class="setting-desc">Auto logout after inactivity</span>
+                                    </div>
+                                    <select id="sessionTimeoutSelect" class="form-input" style="max-width: 150px;">
+                                        <option value="15">15 minutes</option>
+                                        <option value="30">30 minutes</option>
+                                        <option value="60" selected>1 hour</option>
+                                        <option value="240">4 hours</option>
+                                        <option value="0">Never</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-title">Require 2FA for Login</span>
+                                        <span class="setting-desc">Always ask for two-factor authentication</span>
+                                    </div>
+                                    <label class="toggle">
+                                        <input type="checkbox" id="require2FAToggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Experimental Features -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h3>Experimental</h3>
+                        <div class="card collapsible-card">
+                            <div class="card-header" data-toggle="collapse">
+                                <div class="card-header-content">
+                                    <h3>Experimental</h3>
+                                    <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6 9 12 15 18 9"/>
+                                    </svg>
+                                </div>
                                 <p class="card-desc">Try new features before they're released</p>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body collapse-content">
                                 <div class="setting-item">
                                     <div class="setting-info">
                                         <span class="setting-title">Beta Features</span>
@@ -846,6 +1141,7 @@
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
+    <script src="/platform/static/js/console-branding.js"></script>
     <script src="/platform/static/js/dashboard.js"></script>
 </body>
 </html>

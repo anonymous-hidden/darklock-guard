@@ -9,13 +9,11 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
 
-// Security utilities
-const { isSessionValid, safeReadJSON } = require('../utils/security');
+// Database
+const db = require('../utils/database');
 
-// Data paths
-const DATA_DIR = process.env.DATA_PATH || path.join(__dirname, '../data');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
-const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
+// Fail-fast environment validation
+const { getJwtSecret } = require('../utils/env-validator');
 
 /**
  * Authentication middleware for dashboard routes
@@ -37,18 +35,22 @@ async function requireAuth(req, res, next) {
     }
     
     try {
-        const secret = process.env.JWT_SECRET || 'darklock-secret-key-change-in-production';
+        const secret = getJwtSecret();
         const decoded = jwt.verify(token, secret);
         
         // Validate session via jti (ensures revoked sessions are rejected)
-        const sessionsData = await safeReadJSON(SESSIONS_FILE, { sessions: [] });
-        if (!isSessionValid(decoded.jti, decoded.userId, sessionsData)) {
+        const session = await db.getSessionByJti(decoded.jti);
+        if (!session || session.revoked_at) {
             throw new Error('Session revoked');
         }
+        
+        // Update session activity
+        await db.updateSessionActivity(decoded.jti);
         
         req.user = decoded;
         next();
     } catch (err) {
+        console.error('[Dashboard Auth] Error:', err.message);
         res.clearCookie('darklock_token');
         
         if (req.xhr || req.headers.accept?.includes('application/json')) {
@@ -65,21 +67,17 @@ async function requireAuth(req, res, next) {
  * Load users from storage (async)
  */
 async function loadUsers() {
-    return await safeReadJSON(USERS_FILE, { users: [] });
+    const users = await db.getAllUsers();
+    return { users };
 }
 
 /**
- * Save users to storage (async)
+ * Save users to storage (async) - Not used with DB
  */
 async function saveUsers(data) {
-    const { atomicWriteJSON } = require('../utils/security');
-    try {
-        await atomicWriteJSON(USERS_FILE, data);
-        return true;
-    } catch (err) {
-        console.error('[Darklock Dashboard] Error saving users:', err.message);
-        return false;
-    }
+    // With database, individual user updates are handled by db.updateUser()
+    console.log('[Darklock Dashboard] Note: Using database for user updates');
+    return true;
 }
 
 // ============================================================================
@@ -101,6 +99,47 @@ router.get('/', requireAuth, (req, res) => {
 // ============================================================================
 // API ROUTES
 // ============================================================================
+
+/**
+ * GET /api/me - Get current user data
+ */
+router.get('/api/me', requireAuth, async (req, res) => {
+    try {
+        const user = await db.getUserById(req.user.userId);
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+        
+        // Remove sensitive data
+        delete user.password;
+        delete user.two_factor_secret;
+        
+        res.json({
+            success: true,
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                displayName: user.display_name,
+                role: user.role,
+                avatar: user.avatar,
+                twoFactorEnabled: user.two_factor_enabled === 1,
+                createdAt: user.created_at,
+                lastLogin: user.last_login
+            }
+        });
+    } catch (err) {
+        console.error('[Darklock Dashboard] Get user error:', err);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to load user data'
+        });
+    }
+});
 
 /**
  * GET /dashboard/api/stats - Get dashboard statistics
@@ -337,6 +376,59 @@ router.post('/api/devices/sync', requireAuth, async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to sync device status'
+        });
+    }
+});
+
+/**
+ * POST /api/settings - Save user settings
+ */
+router.post('/api/settings', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const settings = req.body;
+        
+        // Validate settings
+        if (!settings || typeof settings !== 'object') {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid settings data'
+            });
+        }
+        
+        // Save settings to database
+        await db.saveUserSettings(userId, settings);
+        
+        res.json({
+            success: true,
+            message: 'Settings saved successfully'
+        });
+    } catch (err) {
+        console.error('[Darklock Dashboard] Save settings error:', err);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to save settings'
+        });
+    }
+});
+
+/**
+ * GET /api/settings - Get user settings
+ */
+router.get('/api/settings', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const settings = await db.getUserSettings(userId);
+        
+        res.json({
+            success: true,
+            settings: settings || {}
+        });
+    } catch (err) {
+        console.error('[Darklock Dashboard] Get settings error:', err);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to load settings'
         });
     }
 });

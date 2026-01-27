@@ -295,6 +295,15 @@ class DarklockDatabase {
         return this.getUserById(userId);
     }
 
+    async updateUserLastLogin(userId, ip) {
+        const now = new Date().toISOString();
+        await this.run(`
+            UPDATE users 
+            SET last_login = ?, last_login_ip = ?, updated_at = ?
+            WHERE id = ?
+        `, [now, ip, now, userId]);
+    }
+
     /**
      * SESSION METHODS
      */
@@ -370,11 +379,33 @@ class DarklockDatabase {
      */
 
     async getUserSettings(userId) {
-        return this.get(`SELECT * FROM user_settings WHERE user_id = ?`, [userId]);
+        const user = await this.getUserById(userId);
+        if (user && user.settings) {
+            try {
+                // If already an object, return as-is
+                if (typeof user.settings === 'object') {
+                    return user.settings;
+                }
+                return JSON.parse(user.settings);
+            } catch (err) {
+                console.error('[Darklock DB] Failed to parse user settings:', err);
+                return {};
+            }
+        }
+        return {};
+    }
+
+    async saveUserSettings(userId, settings) {
+        const now = new Date().toISOString();
+        await this.run(`
+            UPDATE users 
+            SET settings = ?, updated_at = ? 
+            WHERE id = ?
+        `, [JSON.stringify(settings), now, userId]);
     }
 
     async updateUserSettings(userId, settings) {
-        const existing = await this.getUserSettings(userId);
+        const existing = await this.get(`SELECT * FROM user_settings WHERE user_id = ?`, [userId]);
         const now = new Date().toISOString();
 
         if (!existing) {
