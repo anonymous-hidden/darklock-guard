@@ -12,42 +12,16 @@ const rateLimit = require('express-rate-limit');
 const axios = require('axios');
 const Stripe = require('stripe');
 const cookieParser = require('cookie-parser');
-const TwoFactorAuth = require('../utils/TwoFactorAuth');
-
-// Centralized maintenance module
-const maintenance = require('../../darklock/utils/maintenance');
-
-// SECURITY: Import centralized security helpers
-const {
-    requireEnvSecret,
-    validateAllSecrets,
-    requireGuildAccess,
-    guildAccessMiddleware,
-    generateSessionCSRFToken,
-    validateSessionCSRFToken,
-    invalidateSessionCSRFToken,
-    rotateSessionCSRFToken,
-    getRealClientIP,
-    createRateLimitKeyGenerator
-} = require('./security-helpers');
-
-const {
-    checkBruteForce,
-    recordFailedLogin,
-    resetLoginAttempts
-} = require('./security-utils');
 const DarklockPlatform = require('../../darklock/server');
-const { createRoutes: createDarklockGuardRoutes } = require('./routes/darklock-guard');
 // const FileIntegrityMonitor = require('../security/fileIntegrity'); // Disabled - file not in repo
 
 class SecurityDashboard {
     constructor(bot) {
         this.bot = bot;
-        this.twoFactorAuth = new TwoFactorAuth(this.bot.database);
         // Discord OAuth configuration: prefer explicit env vars, fall back to bot client where possible
         // In production (Render), prefer DOMAIN env var or construct from request
         const domain = process.env.DOMAIN || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.WEB_PORT || 3001}`;
-
+        
         this.discordConfig = {
             clientId: process.env.DISCORD_CLIENT_ID || (this.bot && this.bot.client && this.bot.client.user ? this.bot.client.user.id : null),
             clientSecret: process.env.DISCORD_CLIENT_SECRET || null,
@@ -57,23 +31,8 @@ class SecurityDashboard {
         // Express app initialization; HTTP server created when starting so
         // we can bind to the platform port (Render provides the port at runtime).
         this.app = express();
-        
-        // SECURITY FIX (VULN-007): Only trust proxy from known upstreams
-        // Setting to false disables X-Forwarded-* header trust by default
-        // In production behind a known proxy (Render, Cloudflare), set TRUSTED_PROXY_IPS env var
-        const trustedProxies = process.env.TRUSTED_PROXY_IPS 
-            ? process.env.TRUSTED_PROXY_IPS.split(',').map(ip => ip.trim())
-            : ['loopback', 'linklocal', 'uniquelocal'];
-        this.app.set('trust proxy', trustedProxies);
-
-        // BUG #1 FIX: UTF-8 charset for ALL responses (fixes emoji encoding)
-        this.app.use((req, res, next) => {
-            // Set proper charset for HTML pages
-            if (req.path.endsWith('.html') || !req.path.includes('.') || req.path === '/') {
-                res.setHeader('Content-Type', 'text/html; charset=utf-8');
-            }
-            next();
-        });
+        // Trust proxy for correct secure cookie behavior behind Render/Heroku
+        this.app.set('trust proxy', 1);
 
         // Security headers with Helmet (CSP configured dynamically in middleware)
         this.app.use((req, res, next) => {
@@ -81,7 +40,7 @@ class SecurityDashboard {
             const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'wss' : 'ws';
             const host = req.get('host') || 'localhost:3000';
             const wsUrl = `${protocol}://${host}`;
-
+            
             // Apply CSP with dynamic WebSocket URL
             const cspDirectives = {
                 'default-src': ["'self'"],
@@ -94,8 +53,8 @@ class SecurityDashboard {
                 'style-src-elem': ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
                 'font-src': ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com"]
             };
-
-            res.setHeader('Content-Security-Policy',
+            
+            res.setHeader('Content-Security-Policy', 
                 Object.entries(cspDirectives)
                     .map(([key, values]) => `${key} ${values.join(' ')}`)
                     .join('; ')
@@ -126,59 +85,8 @@ class SecurityDashboard {
             origin: corsOrigin,
             credentials: true,
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token']
+            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
         }));
-
-        // SECURITY FIX (VULN-006): Session-bound CSRF protection
-        // Generate a session ID from cookies or create one
-        this.app.use((req, res, next) => {
-            // Get or create session identifier from cookie
-            let sessionId = req.cookies?.sessionId;
-            if (!sessionId) {
-                sessionId = crypto.randomBytes(32).toString('hex');
-                res.cookie('sessionId', sessionId, {
-                    httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'strict',
-                    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-                });
-            }
-            req.sessionId = sessionId;
-            next();
-        });
-
-        // BUG #2 FIX: Cache prevention for ALL authenticated pages - CRITICAL for logout security
-        // This prevents Back button from showing cached dashboard after logout
-        this.app.use((req, res, next) => {
-            // Apply to ALL protected routes
-            if (req.path.startsWith('/admin') ||
-                req.path.startsWith('/dashboard') ||
-                req.path.startsWith('/api/') ||
-                req.path.startsWith('/setup') ||
-                req.path.startsWith('/analytics') ||
-                req.path.startsWith('/tickets') ||
-                req.path.startsWith('/help') ||
-                req.path.startsWith('/console')) {
-                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-                res.setHeader('Pragma', 'no-cache');
-                res.setHeader('Expires', '0');
-                res.setHeader('Surrogate-Control', 'no-store');
-            }
-            next();
-        });
-        this.app.use((req, res, next) => {
-            // Apply to all dashboard routes and admin pages
-            if (req.path.startsWith('/admin') ||
-                req.path.startsWith('/dashboard') ||
-                req.path.startsWith('/api/')) {
-                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-                res.setHeader('Pragma', 'no-cache');
-                res.setHeader('Expires', '0');
-                res.setHeader('Surrogate-Control', 'no-store');
-            }
-            next();
-        });
-
         this.server = null;
         // WebSocket server is created when starting.
         this.wss = null;
@@ -199,7 +107,7 @@ class SecurityDashboard {
 
         // In-memory rate limit tracking for dashboard endpoints
         const rateLimitMap = new Map();
-
+        
         // CRITICAL SECURITY: Validate required secrets on construction
         this.validateSecrets();
 
@@ -242,10 +150,10 @@ class SecurityDashboard {
         });
 
         // Stripe checkout session endpoint (REQUIRES AUTH)
-        this.app.post('/api/stripe/create-checkout-session', this.authenticateToken.bind(this), this.validateCSRF.bind(this), async (req, res) => {
+        this.app.post('/api/stripe/create-checkout-session', this.authenticateToken.bind(this), async (req, res) => {
             try {
                 console.log('[Stripe Checkout] Creating session for user:', req.user);
-
+                
                 if (!this.stripe) {
                     console.error('[Stripe Checkout] Stripe not configured');
                     return res.status(503).json({ error: 'Stripe not configured' });
@@ -253,7 +161,7 @@ class SecurityDashboard {
 
                 const { plan, guildId } = req.body;
                 const userId = req.user?.userId; // From JWT
-
+                
                 if (!userId) {
                     console.error('[Stripe Checkout] User not authenticated');
                     return res.status(401).json({ error: 'User not authenticated' });
@@ -311,8 +219,8 @@ class SecurityDashboard {
                 res.json({ sessionId: session.id });
             } catch (error) {
                 console.error('[Stripe Checkout] Error:', error.message, error.stack);
-                const errorMessage = process.env.NODE_ENV === 'production'
-                    ? 'Failed to create checkout session'
+                const errorMessage = process.env.NODE_ENV === 'production' 
+                    ? 'Failed to create checkout session' 
                     : error.message;
                 res.status(500).json({ error: errorMessage });
             }
@@ -331,12 +239,12 @@ class SecurityDashboard {
 
                 const { sessionId } = req.params;
                 const userId = req.user?.userId; // From JWT token
-
+                
                 if (!userId) {
                     console.error('[Stripe Session] User not authenticated');
                     return res.status(401).json({ error: 'User not authenticated' });
                 }
-
+                
                 // Validate session ID format to prevent injection
                 if (!/^cs_[a-zA-Z0-9_-]+$/.test(sessionId)) {
                     console.error('[Stripe Session] Invalid session ID format:', sessionId);
@@ -448,27 +356,27 @@ class SecurityDashboard {
                     const emailUtil = require('../utils/email');
                     const emailSent = await emailUtil.sendEmail({
                         to: customerEmail,
-                        subject: 'âœ¨ Guardian Pro Activation Code',
+                        subject: 'Ã¢Å“Â¨ Guardian Pro Activation Code',
                         text: `Hi there,
 
-Thank you for subscribing to Guardian Pro â€” we're excited to help you unlock the full power of DarkLock.
+Thank you for subscribing to Guardian Pro Ã¢â‚¬â€ we're excited to help you unlock the full power of GuardianBot.
 
 Your activation code is:
 
-âž¡ï¸ ${code}
+Ã¢Å¾Â¡Ã¯Â¸Â ${code}
 
-Enter this code in your DarkLock Dashboard to enable all Pro-only features, including advanced protection tools, real-time alerts, enhanced analytics, and priority automation.
+Enter this code in your GuardianBot Dashboard to enable all Pro-only features, including advanced protection tools, real-time alerts, enhanced analytics, and priority automation.
 
-ðŸ“… Your subscription will automatically renew monthly at ${session.amount_total / 100} ${session.currency?.toUpperCase() || 'USD'} until you cancel.
+Ã°Å¸â€œâ€¦ Your subscription will automatically renew monthly at ${session.amount_total / 100} ${session.currency?.toUpperCase() || 'USD'} until you cancel.
 You can manage your subscription anytime through your dashboard or by contacting support.
 
 If you need help at any point, our support team is here for you.
 Just reply to this email or reach out through your dashboard.
 
-Thank you for choosing DarkLock â€” your server is now safer than ever.
+Thank you for choosing GuardianBot Ã¢â‚¬â€ your server is now safer than ever.
 
 Stay protected,
-The DarkLock Team`
+The GuardianBot Team`
                     });
                     console.log('[Stripe Session] Email send result:', emailSent ? 'SUCCESS' : 'FAILED');
                 } catch (e) {
@@ -476,8 +384,8 @@ The DarkLock Team`
                 }
 
                 console.log('[Stripe Session] Sending response with code:', code);
-                res.json({
-                    code,
+                res.json({ 
+                    code, 
                     email: customerEmail,
                     subscriptionId,
                     planType: 'subscription'
@@ -485,8 +393,8 @@ The DarkLock Team`
             } catch (error) {
                 console.error('[Stripe Session] Error:', error.message, error.stack);
                 console.error('Stripe session error:', error);
-                const errorMessage = process.env.NODE_ENV === 'production'
-                    ? 'Failed to retrieve session'
+                const errorMessage = process.env.NODE_ENV === 'production' 
+                    ? 'Failed to retrieve session' 
                     : error.message;
                 res.status(500).json({ error: errorMessage });
             }
@@ -580,71 +488,10 @@ The DarkLock Team`
             res.json({ received: true });
         });
 
-        // Initialize maintenance module with Darklock database
-        (async () => {
-            try {
-                const darklockDbPath = path.join(process.cwd(), 'data', 'darklock.db');
-                const sqlite3 = require('sqlite3').verbose();
-                const darklockDb = new sqlite3.Database(darklockDbPath);
-                
-                // Wrap sqlite3 database with promise-based API for maintenance module
-                const dbWrapper = {
-                    get: (sql, params = []) => new Promise((resolve, reject) => {
-                        darklockDb.get(sql, params, (err, row) => {
-                            if (err) reject(err);
-                            else resolve(row);
-                        });
-                    }),
-                    run: (sql, params = []) => new Promise((resolve, reject) => {
-                        darklockDb.run(sql, params, function(err) {
-                            if (err) reject(err);
-                            else resolve({ lastID: this.lastID, changes: this.changes });
-                        });
-                    })
-                };
-                
-                maintenance.init(dbWrapper);
-                console.log('[Dashboard] Maintenance module initialized');
-            } catch (err) {
-                console.error('[Dashboard] Failed to initialize maintenance module:', err.message);
-            }
-        })();
-
-        // Global maintenance mode enforcement - runs BEFORE all routes
-        // Uses centralized maintenance configuration from Darklock database
-        this.app.use(maintenance.createMiddleware({
-            onBlock: (req, res, config) => {
-                const fullPath = (req.baseUrl || '') + req.path;
-                // For API requests, return 503 JSON
-                if (fullPath.startsWith('/api/') || fullPath.startsWith('/platform/api/')) {
-                    return res.status(503).json({
-                        success: false,
-                        error: 'Service temporarily unavailable',
-                        maintenance: {
-                            enabled: true,
-                            message: config.platform.message || config.bot.reason,
-                            endTime: config.platform.endTime || config.bot.endTime
-                        }
-                    });
-                }
-                // For all other requests, redirect to appropriate maintenance page
-                const maintenancePath = fullPath.startsWith('/platform') ? '/platform/maintenance' : '/maintenance';
-                return res.redirect(maintenancePath);
-            }
-        }));
-
         // Static files
         // Serve the marketing website under /site to avoid asset path conflicts with dashboard
         this.app.use('/site', express.static(path.join(process.cwd(), 'website')));
         this.app.use('/css', express.static(path.join(__dirname, 'public/css')));
-        // Serve theme CSS files from website/css
-        this.app.use('/css', express.static(path.join(process.cwd(), 'website/css'), {
-            setHeaders: (res, filePath) => {
-                if (filePath.endsWith('.css')) {
-                    res.setHeader('Content-Type', 'text/css');
-                }
-            }
-        }));
         this.app.use('/js', express.static(path.join(__dirname, 'public/js')));
         this.app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
         // Serve localization files from workspace root
@@ -786,12 +633,6 @@ The DarkLock Team`
     }
 
     setupRoutes() {
-        // Maintenance page (must be before other routes)
-        this.app.get('/maintenance', (req, res) => {
-            const maintenanceHtmlPath = path.join(process.cwd(), 'darklock', 'views', 'maintenance.html');
-            res.sendFile(maintenanceHtmlPath);
-        });
-
         // Make the external website the first page people see
         this.app.get('/', (req, res) => {
             res.redirect('/site/');
@@ -802,71 +643,18 @@ The DarkLock Team`
             res.sendFile(path.join(__dirname, 'views/landing.html'));
         });
 
-        // Public site pages - NO AUTHENTICATION REQUIRED
-        this.app.get('/site', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/site/index.html'));
-        });
-
-        this.app.get('/site/', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/site/index.html'));
-        });
-
-        this.app.get('/site/features', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/site/features.html'));
-        });
-
-        this.app.get('/site/pricing', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/site/pricing.html'));
-        });
-
-        this.app.get('/site/add-bot', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/site/add-bot.html'));
-        });
-
-        this.app.get('/site/documentation', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/site/documentation.html'));
-        });
-
-        this.app.get('/site/status', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/site/status.html'));
-        });
-
-        this.app.get('/site/bug-reports', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/site/bug-reports.html'));
-        });
-
-        this.app.get('/site/support', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/site/support.html'));
-        });
-
-        this.app.get('/site/privacy', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/site/privacy.html'));
-        });
-
-        this.app.get('/site/terms', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/site/terms.html'));
-        });
-
-        this.app.get('/site/security', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/site/security.html'));
-        });
-
-        this.app.get('/site/sitemap', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/site/sitemap.html'));
-        });
-
-        // Main dashboard (authenticated UI) - PROTECTED
-        this.app.get('/dashboard', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Main dashboard (authenticated UI)
+        this.app.get('/dashboard', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/index-modern.html'));
         });
 
-        // Bot Console view - PROTECTED
-        this.app.get('/dashboard/console', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Bot Console view
+        this.app.get('/dashboard/console', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/console.html'));
         });
 
-        // Logs & Audit view - PROTECTED
-        this.app.get('/dashboard/logs', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Logs & Audit view
+        this.app.get('/dashboard/logs', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/logs.html'));
         });
 
@@ -883,7 +671,7 @@ The DarkLock Team`
         });
 
         // Bot Console API: clear per-guild logs
-        this.app.post('/api/logs/:guildId/clear', this.authenticateToken.bind(this), this.validateCSRF.bind(this), (req, res) => {
+        this.app.post('/api/logs/:guildId/clear', (req, res) => {
             try {
                 const guildId = String(req.params.guildId);
                 if (!this.bot || !this.bot.consoleBuffer) return res.json({ success: true });
@@ -894,341 +682,103 @@ The DarkLock Team`
             }
         });
 
-        // Tickets management page - PROTECTED
-        this.app.get('/tickets', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Tickets management page
+        this.app.get('/tickets', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/tickets-enhanced.html'));
         });
 
-        // Web verification page - PUBLIC (no auth required for users to verify)
-        // Supports both token-based (/verify/:token) and direct (/verify/:guildId/:userId) verification
-        this.app.get('/verify/:param1/:param2?', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/web-verify.html'));
-        });
-
-        // ==========================================
-        // Web Verification API - PUBLIC (no auth)
-        // These endpoints handle the captcha verification flow for new users
-        // ==========================================
-        
-        // Initialize web verification - get captcha code
-        this.app.post('/api/web-verify/init', async (req, res) => {
-            try {
-                const { token, guildId, userId } = req.body;
-                
-                if (!guildId || !userId) {
-                    return res.status(400).json({ error: 'Missing guildId or userId' });
-                }
-
-                // Get guild info
-                const guild = this.bot.client.guilds.cache.get(guildId);
-                if (!guild) {
-                    return res.status(404).json({ error: 'Server not found' });
-                }
-
-                // Check if user exists in guild
-                const member = await guild.members.fetch(userId).catch(() => null);
-                if (!member) {
-                    return res.status(404).json({ error: 'User not found in server' });
-                }
-
-                // Get guild config
-                const config = await this.bot.database.getGuildConfig(guildId);
-                if (!config || !config.verification_enabled) {
-                    return res.status(400).json({ error: 'Verification is not enabled on this server' });
-                }
-
-                // Check if already verified
-                if (config.verified_role_id && member.roles.cache.has(config.verified_role_id)) {
-                    return res.json({ 
-                        success: true, 
-                        alreadyVerified: true,
-                        serverName: guild.name 
-                    });
-                }
-
-                // Check verification queue for existing challenge
-                let challenge = await this.bot.database.get(
-                    `SELECT * FROM verification_queue WHERE guild_id = ? AND user_id = ? AND status = 'pending'`,
-                    [guildId, userId]
-                );
-
-                // Generate new captcha if no existing challenge
-                let captchaCode;
-                if (challenge && challenge.verification_data) {
-                    try {
-                        const data = JSON.parse(challenge.verification_data);
-                        captchaCode = data.code || data.captchaCode || data.displayCode;
-                    } catch (e) {
-                        captchaCode = null;
-                    }
-                }
-
-                if (!captchaCode) {
-                    // Generate new 6-character captcha code
-                    captchaCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-                    
-                    // Delete any existing pending entry first, then insert new one
-                    await this.bot.database.run(
-                        `DELETE FROM verification_queue WHERE guild_id = ? AND user_id = ? AND status = 'pending'`,
-                        [guildId, userId]
-                    );
-                    
-                    // Store in verification queue
-                    await this.bot.database.run(`
-                        INSERT INTO verification_queue (guild_id, user_id, verification_type, verification_data, status, attempts, created_at)
-                        VALUES (?, ?, 'web_captcha', ?, 'pending', 0, CURRENT_TIMESTAMP)
-                    `, [guildId, userId, JSON.stringify({ code: captchaCode })]);
-                    
-                    challenge = { attempts: 0 };
-                }
-
-                res.json({
-                    success: true,
-                    serverName: guild.name,
-                    guildId,
-                    userId,
-                    captchaCode,
-                    maxAttempts: 5,
-                    attempts: challenge.attempts || 0
-                });
-
-            } catch (err) {
-                console.error('[Web Verify] Init error:', err);
-                res.status(500).json({ error: 'Failed to initialize verification' });
-            }
-        });
-
-        // Submit verification code
-        this.app.post('/api/web-verify/submit', async (req, res) => {
-            try {
-                const { guildId, userId, code } = req.body;
-
-                if (!guildId || !userId || !code) {
-                    return res.status(400).json({ error: 'Missing required fields' });
-                }
-
-                // Get challenge from database
-                const challenge = await this.bot.database.get(
-                    `SELECT * FROM verification_queue WHERE guild_id = ? AND user_id = ? AND status = 'pending'`,
-                    [guildId, userId]
-                );
-
-                if (!challenge) {
-                    return res.status(404).json({ error: 'No pending verification found', expired: true });
-                }
-
-                // Check attempts
-                if (challenge.attempts >= 5) {
-                    return res.json({ success: false, locked: true, error: 'Too many failed attempts' });
-                }
-
-                // Parse stored code - support multiple formats
-                let storedCode = null;
-                let storedHash = null;
-                try {
-                    const data = JSON.parse(challenge.verification_data);
-                    storedCode = data.code || data.captchaCode || data.displayCode;
-                    storedHash = data.codeHash;
-                } catch (e) {
-                    return res.status(500).json({ error: 'Invalid verification data' });
-                }
-
-                // Check code (case-insensitive) - support direct match or hash match
-                const crypto = require('crypto');
-                const enteredHash = crypto.createHash('sha256').update(code.toLowerCase()).digest('hex');
-                const directMatch = storedCode && code.toUpperCase() === storedCode.toUpperCase();
-                const hashMatch = storedHash && enteredHash === storedHash;
-                
-                if (!directMatch && !hashMatch) {
-                    // Increment attempts
-                    await this.bot.database.run(
-                        `UPDATE verification_queue SET attempts = attempts + 1 WHERE guild_id = ? AND user_id = ?`,
-                        [guildId, userId]
-                    );
-                    return res.json({ success: false, error: 'Incorrect code' });
-                }
-
-                // Success! Grant verified role
-                const guild = this.bot.client.guilds.cache.get(guildId);
-                if (!guild) {
-                    return res.status(404).json({ error: 'Server not found' });
-                }
-
-                const member = await guild.members.fetch(userId).catch(() => null);
-                if (!member) {
-                    return res.status(404).json({ error: 'User not found' });
-                }
-
-                const config = await this.bot.database.getGuildConfig(guildId);
-
-                // Add verified role
-                if (config.verified_role_id) {
-                    await member.roles.add(config.verified_role_id).catch(err => {
-                        console.error('[Web Verify] Failed to add verified role:', err);
-                    });
-                }
-
-                // Remove unverified role
-                if (config.unverified_role_id) {
-                    await member.roles.remove(config.unverified_role_id).catch(err => {
-                        console.error('[Web Verify] Failed to remove unverified role:', err);
-                    });
-                }
-
-                // Mark verification complete
-                await this.bot.database.run(
-                    `UPDATE verification_queue SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE guild_id = ? AND user_id = ?`,
-                    [guildId, userId]
-                );
-
-                // Log to mod channel
-                if (config.mod_log_channel) {
-                    const logChannel = guild.channels.cache.get(config.mod_log_channel);
-                    if (logChannel) {
-                        const { EmbedBuilder } = require('discord.js');
-                        const embed = new EmbedBuilder()
-                            .setColor('#00ff88')
-                            .setTitle('✅ User Verified')
-                            .setDescription(`${member.user.tag} completed web verification`)
-                            .addFields(
-                                { name: 'User', value: `<@${userId}>`, inline: true },
-                                { name: 'Method', value: 'Web CAPTCHA', inline: true }
-                            )
-                            .setTimestamp();
-                        logChannel.send({ embeds: [embed] }).catch(() => {});
-                    }
-                }
-
-                res.json({ success: true });
-
-            } catch (err) {
-                console.error('[Web Verify] Submit error:', err);
-                res.status(500).json({ error: 'Failed to verify' });
-            }
-        });
-
-        // Refresh captcha code
-        this.app.post('/api/web-verify/refresh', async (req, res) => {
-            try {
-                const { guildId, userId } = req.body;
-
-                if (!guildId || !userId) {
-                    return res.status(400).json({ error: 'Missing guildId or userId' });
-                }
-
-                // Generate new captcha code
-                const captchaCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-                // Update in database
-                await this.bot.database.run(`
-                    UPDATE verification_queue 
-                    SET verification_data = ?
-                    WHERE guild_id = ? AND user_id = ? AND status = 'pending'
-                `, [JSON.stringify({ code: captchaCode }), guildId, userId]);
-
-                res.json({ success: true, captchaCode });
-
-            } catch (err) {
-                console.error('[Web Verify] Refresh error:', err);
-                res.status(500).json({ error: 'Failed to refresh captcha' });
-            }
-        });
-
-        // Analytics dashboard page - PROTECTED
-        this.app.get('/analytics', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Analytics dashboard page
+        this.app.get('/analytics', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/analytics-modern.html'));
         });
 
-        // Setup pages - ALL PROTECTED
-        this.app.get('/setup/security', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Setup pages
+        this.app.get('/setup/security', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-security.html'));
         });
 
-        this.app.get('/setup/tickets', this.authenticateTokenHTML.bind(this), (req, res) => {
+        this.app.get('/setup/tickets', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-tickets.html'));
         });
 
-        this.app.get('/setup/moderation', this.authenticateTokenHTML.bind(this), (req, res) => {
+        this.app.get('/setup/moderation', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-moderation.html'));
         });
 
+        this.app.get('/setup/features', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/setup-features.html'));
+        });
 
-
-        // AI settings page - PROTECTED
-        this.app.get('/setup/ai', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // AI settings page
+        this.app.get('/setup/ai', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-ai.html'));
         });
 
-        // Anti-nuke setup page (redesigned version) - PROTECTED
-        this.app.get('/setup/antinuke', this.authenticateTokenHTML.bind(this), (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/setup-antinuke-redesign.html'));
+        // Anti-nuke setup page
+        this.app.get('/setup/antinuke', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/setup-security.html'));
         });
 
-        // Access code page for non-admin users - PROTECTED
-        this.app.get('/access-code', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Access code page for non-admin users
+        this.app.get('/access-code', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/access-code.html'));
         });
 
-        // Alias for access code page - PROTECTED
-        this.app.get('/access', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Alias for access code page
+        this.app.get('/access', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/access-code.html'));
         });
 
-        // Welcome & Goodbye setup page (combined settings) - PROTECTED
-        this.app.get('/setup/welcome', this.authenticateTokenHTML.bind(this), (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/setup-welcome-goodbye-redesign.html'));
+        // Welcome setup page
+        this.app.get('/setup/welcome', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/welcome.html'));
         });
-
-        // Redirect goodbye to welcome page (for backwards compatibility) - PROTECTED
-        this.app.get('/setup/goodbye', this.authenticateTokenHTML.bind(this), (req, res) => {
-            res.redirect('/setup/welcome');
-        });
-        // Anti-Raid setup page - PROTECTED
-        this.app.get('/setup/anti-raid', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Anti-Raid setup page
+        this.app.get('/setup/anti-raid', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-anti-raid.html'));
         });
 
-        // Anti-Spam setup page - PROTECTED
-        this.app.get('/setup/anti-spam', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Anti-Spam setup page
+        this.app.get('/setup/anti-spam', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-anti-spam.html'));
         });
 
-        // Anti-Phishing setup page - PROTECTED
-        this.app.get('/setup/anti-phishing', this.authenticateTokenHTML.bind(this), (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/setup-anti-phishing-redesign.html'));
+        // Anti-Phishing setup page
+        this.app.get('/setup/anti-phishing', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/setup-anti-phishing.html'));
         });
 
-        // Verification settings page - PROTECTED
-        this.app.get('/setup/verification', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Verification settings page
+        this.app.get('/setup/verification', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-verification.html'));
         });
 
-        // Auto Role & Reaction Roles page - PROTECTED
-        this.app.get('/setup/autorole', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Auto Role & Reaction Roles page
+        this.app.get('/setup/autorole', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-autorole.html'));
         });
 
-        // Access Generator page (new modern UI) - PROTECTED
-        this.app.get('/access-generator', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Access Generator page (new modern UI)
+        this.app.get('/access-generator', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/access-generator.html'));
         });
 
-        // Access Share page - PROTECTED
-        this.app.get('/access-share', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Access Share page
+        this.app.get('/access-share', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/access-share.html'));
         });
 
 
-        // Help page with command reference (modern dashboard style) - PROTECTED
-        this.app.get('/help', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Help page with command reference
+        this.app.get('/help', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/help-modern.html'));
         });
-        this.app.get('/commands', this.authenticateTokenHTML.bind(this), (req, res) => {
+        this.app.get('/commands', (req, res) => {
             res.redirect('/help');
         });
 
-        // Command permissions page - PROTECTED
-        this.app.get('/command-permissions', this.authenticateTokenHTML.bind(this), (req, res) => {
+        // Command permissions page
+        this.app.get('/command-permissions', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/command-permissions.html'));
         });
 
@@ -1242,134 +792,14 @@ The DarkLock Team`
             res.sendFile(path.join(__dirname, 'views/login.html'));
         });
 
-        // Bot Admin dashboard - PROTECTED - ONLY accessible via username/password login
-        // RENAMED from /admin to /bot-admin to avoid conflict with Darklock admin system
-        this.app.get('/bot-admin', this.authenticateTokenHTML.bind(this), this.requirePasswordAuth.bind(this), (req, res) => {
-            // ONLY username/password authenticated users - OAuth users blocked
-            res.sendFile(path.join(__dirname, 'views/admin-dashboard.html'));
-        });
-
-        // Bot Admin 2FA settings page - PROTECTED - ONLY accessible via username/password login
-        this.app.get('/bot-admin/2fa', this.authenticateTokenHTML.bind(this), this.requirePasswordAuth.bind(this), (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/admin-2fa.html'));
-        });
-
-        // Bot Admin User Management page - PROTECTED - ONLY accessible via username/password login
-        this.app.get('/bot-admin/users', this.authenticateTokenHTML.bind(this), this.requirePasswordAuth.bind(this), (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/admin-users.html'));
-        });
-
-        // Staff Chat page - PROTECTED (Moderator+ only)
-        this.app.get('/staff-chat', this.authenticateTokenHTML.bind(this), (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/staff-chat.html'));
-        });
-
-        // Owner Settings page - PROTECTED (Owner only)
-        this.app.get('/bot-admin/settings', this.authenticateTokenHTML.bind(this), (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/owner-settings.html'));
-        });
-
-        // Theme Manager page - PROTECTED (Owner only)
-        this.app.get('/bot-admin/theme', this.authenticateTokenHTML.bind(this), (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/theme-manager.html'));
-        });
+        // Admin dashboard - Now handled by Darklock Platform (darklock/server.js)
+        // The /admin route is registered by the Darklock server which mounts on this app
+        // Do NOT register /admin here to avoid route conflicts
 
         // Authentication routes
         this.app.post('/auth/login', this.handleLogin.bind(this));
         this.app.get('/auth/discord', this.handleDiscordAuth.bind(this));
         this.app.get('/auth/discord/callback', this.handleDiscordCallback.bind(this));
-
-        // SECURITY FIX (VULN-006): Session-bound CSRF token endpoint
-        this.app.get('/api/csrf-token', (req, res) => {
-            const sessionId = req.sessionId || req.cookies?.sessionId;
-            
-            if (!sessionId) {
-                return res.status(400).json({ error: 'Session required' });
-            }
-            
-            // Generate session-bound CSRF token
-            const userId = req.user?.userId || null;
-            const token = generateSessionCSRFToken(sessionId, userId);
-            const expiresAt = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
-
-            res.json({
-                csrfToken: token,
-                expiresAt
-            });
-        });
-
-        // Auth check endpoints
-        this.app.get('/api/auth/check', this.authenticateToken.bind(this), (req, res) => {
-            res.json({ authenticated: true, user: req.user });
-        });
-
-        // Public API for maintenance status (no auth required)
-        this.app.get('/api/public/maintenance-status', async (req, res) => {
-            try {
-                const darklockDbPath = path.join(process.cwd(), 'data', 'darklock.db');
-                const sqlite3 = require('sqlite3').verbose();
-                const db = await new Promise((resolve, reject) => {
-                    const database = new sqlite3.Database(darklockDbPath, (err) => {
-                        if (err) reject(err);
-                        else resolve(database);
-                    });
-                });
-                
-                const [enabled, message, endTime, botMaintenance] = await Promise.all([
-                    new Promise((resolve) => db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_mode'`, (err, row) => resolve(err ? null : row))),
-                    new Promise((resolve) => db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_message'`, (err, row) => resolve(err ? null : row))),
-                    new Promise((resolve) => db.get(`SELECT value FROM platform_settings WHERE key = 'maintenance_end_time'`, (err, row) => resolve(err ? null : row))),
-                    new Promise((resolve) => db.get(`SELECT value FROM platform_settings WHERE key = 'bot_maintenance'`, (err, row) => resolve(err ? null : row)))
-                ]);
-                
-                db.close();
-                
-                const botMaintenanceData = botMaintenance ? JSON.parse(botMaintenance.value || '{}') : {};
-                const platformMaintenance = enabled?.value === 'true';
-                const isBotMaintenance = botMaintenanceData.enabled || false;
-                
-                // Determine which maintenance is active
-                let maintenanceMessage = message?.value || 'We\'re performing scheduled maintenance. Please check back soon.';
-                let maintenanceEndTime = endTime?.value || null;
-                
-                if (isBotMaintenance && !platformMaintenance) {
-                    // Bot maintenance is active, use bot message and end time
-                    maintenanceMessage = botMaintenanceData.reason || 'The Discord bot is currently undergoing maintenance. The platform will be back online soon.';
-                    maintenanceEndTime = botMaintenanceData.endTime || null;
-                }
-                
-                res.json({
-                    success: true,
-                    maintenance: {
-                        enabled: platformMaintenance || isBotMaintenance,
-                        message: maintenanceMessage,
-                        endTime: maintenanceEndTime,
-                        type: platformMaintenance ? 'platform' : (isBotMaintenance ? 'bot' : 'none')
-                    }
-                });
-            } catch (err) {
-                console.error('[Public API] Maintenance status error:', err);
-                res.json({
-                    success: true,
-                    maintenance: {
-                        enabled: false,
-                        message: '',
-                        endTime: null,
-                        type: 'none'
-                    }
-                });
-            }
-        });
-
-        this.app.get('/api/auth/me', this.authenticateToken.bind(this), (req, res) => {
-            res.json({
-                userId: req.user.userId,
-                username: req.user.username,
-                role: req.user.role,
-                hasAccess: req.user.hasAccess
-            });
-        });
-
         // Debug route (admin only). Guarded by authenticateToken and admin check inside debugOAuth.
         // Only enable in non-production environments to avoid leaking sensitive info.
         if (process.env.NODE_ENV !== 'production') {
@@ -1380,34 +810,6 @@ The DarkLock Team`
         this.app.get('/auth/logout', this.handleLogout.bind(this));
         // Backwards-compatible route used by some frontend files
         this.app.get('/logout', this.handleLogout.bind(this)); // Use same logout handler
-
-        // 2FA Routes
-        this.app.post('/api/2fa/setup', this.authenticateToken.bind(this), this.setup2FA.bind(this));
-        this.app.post('/api/2fa/verify', this.authenticateToken.bind(this), this.verify2FA.bind(this));
-        this.app.post('/api/2fa/disable', this.authenticateToken.bind(this), this.disable2FA.bind(this));
-        this.app.post('/api/2fa/regenerate-codes', this.authenticateToken.bind(this), this.regenerateBackupCodes.bind(this));
-        this.app.get('/api/2fa/status', this.authenticateToken.bind(this), this.get2FAStatus.bind(this));
-
-        // Admin User Management API Routes
-        this.app.get('/api/admin/users', this.authenticateToken.bind(this), this.getAdminUsers.bind(this));
-        this.app.post('/api/admin/users', this.authenticateToken.bind(this), this.createAdminUser.bind(this));
-        this.app.put('/api/admin/users/:id', this.authenticateToken.bind(this), this.updateAdminUser.bind(this));
-        this.app.delete('/api/admin/users/:id', this.authenticateToken.bind(this), this.deleteAdminUser.bind(this));
-        this.app.post('/api/admin/users/:id/reset-password', this.authenticateToken.bind(this), this.resetUserPassword.bind(this));
-        this.app.post('/api/admin/users/:id/reset-2fa', this.authenticateToken.bind(this), this.resetUser2FA.bind(this));
-
-        // Staff Chat API Routes (moderator+ only)
-        this.app.get('/api/staff-chat', this.authenticateToken.bind(this), this.getStaffChat.bind(this));
-        this.app.post('/api/staff-chat', this.authenticateToken.bind(this), this.postStaffChat.bind(this));
-        this.app.delete('/api/staff-chat/:id', this.authenticateToken.bind(this), this.deleteStaffChat.bind(this));
-
-        // Owner Settings API Routes (owner only)
-        this.app.get('/api/settings', this.authenticateToken.bind(this), this.getOwnerSettings.bind(this));
-        this.app.post('/api/settings', this.authenticateToken.bind(this), this.saveOwnerSettings.bind(this));
-        this.app.post('/api/settings/theme', this.authenticateToken.bind(this), this.setTheme.bind(this));
-        this.app.post('/api/settings/theme-schedule', this.authenticateToken.bind(this), this.setThemeSchedule.bind(this));
-        this.app.post('/api/settings/test-webhook', this.authenticateToken.bind(this), this.testWebhook.bind(this));
-        this.app.get('/api/current-theme', this.getCurrentTheme.bind(this)); // Public endpoint for theme loading
 
         // Rate limiters for security
         const authLimiter = rateLimit({
@@ -1420,31 +822,22 @@ The DarkLock Team`
 
         const apiLimiter = rateLimit({
             windowMs: 15 * 60 * 1000, // 15 minutes
-            max: process.env.NODE_ENV === 'production' ? 100 : 500, // Higher limit for development
+            max: 100, // 100 requests per IP
             message: { error: 'Too many requests, please try again later' },
             standardHeaders: true,
-            legacyHeaders: false
+            legacyHeaders: false,
+            skip: (req) => {
+                // Skip rate limiting for admin API routes (they have their own rate limiters)
+                return req.path.startsWith('/v3/') || req.path.startsWith('/admin/');
+            }
         });
 
         // Apply rate limiting to auth routes
         this.app.use('/auth/login', authLimiter);
         this.app.use('/api/', apiLimiter);
 
-        // ============================
-        // Darklock Guard API Routes (desktop app integration)
-        // Must be mounted BEFORE global /api auth middleware
-        // Routes handle their own auth (device tokens for desktop, JWT for web)
-        // ============================
-        try {
-            const darklockGuardRouter = createDarklockGuardRoutes(this.bot, this.bot?.database);
-            this.app.use('/api/darklock', darklockGuardRouter);
-            console.log('[Dashboard] Darklock Guard API routes registered at /api/darklock');
-        } catch (err) {
-            console.error('[Dashboard] Failed to register Darklock Guard routes:', err.message);
-        }
-
         // Billing routes
-        this.app.post('/billing/portal', this.authenticateToken.bind(this), this.validateCSRF.bind(this), this.handleBillingPortal.bind(this));
+        this.app.post('/billing/portal', this.authenticateToken.bind(this), this.handleBillingPortal.bind(this));
         this.app.get('/billing/status/:guildId', this.authenticateToken.bind(this), this.getBillingStatus.bind(this));
         this.app.get('/billing/success', this.renderBillingSuccess.bind(this));
         this.app.get('/billing/cancel', this.renderBillingCancel.bind(this));
@@ -1453,9 +846,8 @@ The DarkLock Team`
         this.app.get('/invite', (req, res) => {
             const clientId = this.discordConfig.clientId;
             if (!clientId) return res.status(500).send('Bot client ID not configured');
-            // Administrator permission required to create channels and manage guild settings
-            // Administrator (8) grants all permissions
-            const permissions = '8'; // Administrator permission
+            // Least-privilege permissions: KICK_MEMBERS (2) + BAN_MEMBERS (4) + MANAGE_CHANNELS (16) + MANAGE_GUILD (32) + MANAGE_ROLES (268435456)
+            const permissions = '268435510'; // Minimal required permissions, not Administrator
             const scopes = 'bot applications.commands';
             const url = `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=${permissions}&scope=${encodeURIComponent(scopes)}`;
             res.redirect(url);
@@ -1464,76 +856,40 @@ The DarkLock Team`
         // Public health check only (no auth required)
         this.app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
 
+        // CSRF token endpoint (before auth middleware - needs session but not auth)
+        this.app.get('/api/csrf-token', (req, res) => {
+            if (!req.session) req.session = {};
+            if (!req.session.csrfToken) {
+                const crypto = require('crypto');
+                req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+            }
+            res.json({ csrfToken: req.session.csrfToken });
+        });
+
+        // Current theme endpoint (returns default if not authenticated)
+        this.app.get('/current-theme', (req, res) => {
+            res.json({ theme: 'dark', customColors: null });
+        });
+
         // === PROTECTED API ROUTES - All require authentication ===
-        // Apply auth middleware to all /api/* routes EXCEPT /api/admin (handled by Darklock)
-        this.app.use('/api/', (req, res, next) => {
-            // Skip authentication for /api/admin routes (Darklock handles its own auth)
-            if (req.path.startsWith('/admin')) {
-                return next();
-            }
-            return this.authenticateToken(req, res, next);
-        });
-        const csrfGuard = this.validateCSRF.bind(this);
-        this.app.use('/api/', (req, res, next) => {
-            // Skip CSRF for GET/HEAD/OPTIONS and /api/admin routes
-            if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS' || req.path.startsWith('/admin')) {
-                return next();
-            }
-            return csrfGuard(req, res, next);
-        });
-
-        // ============================
-        // Role-based access control middleware
-        // ============================
-        const requireAdmin = (req, res, next) => {
-            if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'super_admin')) {
-                return res.status(403).json({ error: 'Admin access required' });
-            }
-            next();
-        };
-
-        const requireModerator = (req, res, next) => {
-            if (!req.user || !['moderator', 'admin', 'super_admin'].includes(req.user.role)) {
-                return res.status(403).json({ error: 'Moderator access required' });
-            }
-            next();
-        };
-
-        const requireSuperAdmin = (req, res, next) => {
-            if (!req.user || req.user.role !== 'super_admin') {
-                return res.status(403).json({ error: 'Super Admin access required' });
-            }
-            next();
-        };
-
-        // Store middleware for use in route handlers
-        this.requireAdmin = requireAdmin;
-        this.requireModerator = requireModerator;
-        this.requireSuperAdmin = requireSuperAdmin;
+        // Apply auth middleware to all /api/* routes
+        this.app.use('/api/', this.authenticateToken.bind(this));
 
         // Bot health endpoint (authenticated)
         this.app.get('/api/bot/health', this.getBotHealth.bind(this));
-
+        
         // User authentication endpoint
-        this.app.get('/api/me', async (req, res) => {
+        this.app.get('/api/me', (req, res) => {
             // authenticateToken middleware already applied via /api/* route above
-            console.log('[/api/me] REQUEST - User:', req.user?.username);
-
-            // Fetch fresh role from database (in case it was updated after login)
-            let freshRole = req.user.role || 'viewer';
-            try {
-                const dbUser = await this.bot.database.get(
-                    'SELECT role FROM admin_users WHERE username = ?',
-                    [req.user.username?.toLowerCase()]
-                );
-                if (dbUser && dbUser.role) {
-                    freshRole = dbUser.role;
-                    console.log('[/api/me] Fresh role from DB:', freshRole);
-                }
-            } catch (e) {
-                console.warn('[/api/me] Could not fetch fresh role:', e.message);
-            }
-
+            console.log('\n========================================');
+            console.log('[/api/me] Ã¢Å“â€¦ REQUEST RECEIVED');
+            console.log('[/api/me] ALL Cookies:', req.cookies);
+            console.log('[/api/me] dashboardToken cookie:', req.cookies?.dashboardToken ? 'PRESENT' : 'MISSING');
+            console.log('[/api/me] User from middleware:', req.user);
+            console.log('[/api/me] User ID:', req.user?.userId);
+            console.log('[/api/me] Username:', req.user?.username);
+            console.log('========================================\n');
+            
             res.json({
                 success: true,
                 user: {
@@ -1542,39 +898,40 @@ The DarkLock Team`
                     username: req.user.username,
                     globalName: req.user.globalName,
                     avatar: req.user.avatar,
-                    role: freshRole,
+                    role: req.user.role,
+                    hasAccess: req.user.hasAccess,
+                    accessGuild: req.user.accessGuild,
                     guilds: req.user.guilds || []
                 }
             });
-        })
-
-        // Analytics endpoints (authenticated)
-        this.app.get('/api/status', this.getPublicStatus.bind(this)); // Intentionally public - status page
-        this.app.get('/api/analytics/overview', this.authenticateToken.bind(this), this.getAnalyticsOverview.bind(this));
-        this.app.get('/api/overview-stats', this.authenticateToken.bind(this), this.getOverviewStats.bind(this));
-        this.app.get('/api/analytics/report', this.authenticateToken.bind(this), this.getAnalyticsReport.bind(this));
-        this.app.get('/api/analytics/full', this.authenticateToken.bind(this), this.getFullAnalytics.bind(this));
-        this.app.get('/api/analytics/live', this.authenticateToken.bind(this), this.getLiveAnalytics.bind(this));
-
+        });
+        
+        // Analytics endpoints (authenticated + guild check)
+        this.app.get('/api/status', this.getPublicStatus.bind(this));
+        this.app.get('/api/analytics/overview', this.getAnalyticsOverview.bind(this));
+        this.app.get('/api/overview-stats', this.getOverviewStats.bind(this));
+        this.app.get('/api/analytics/report', this.getAnalyticsReport.bind(this));
+        this.app.get('/api/analytics/full', this.getFullAnalytics.bind(this));
+        this.app.get('/api/analytics/live', this.getLiveAnalytics.bind(this));
+        
         // Security/logging endpoints (authenticated + admin check)
-        this.app.get('/api/console/messages', this.authenticateToken.bind(this), this.getConsoleMessages.bind(this));
-        this.app.get('/api/ws-token', this.authenticateToken.bind(this), this.getWebSocketToken.bind(this));
-        this.app.get('/api/security/logs', this.authenticateToken.bind(this), this.getSecurityLogs.bind(this));
-        this.app.get('/api/security/actions', this.authenticateToken.bind(this), this.getModerationActions.bind(this));
-        this.app.get('/api/security/recent', this.authenticateToken.bind(this), this.getRecentSecurityEvents.bind(this));
-        this.app.get('/api/security/stats', this.authenticateToken.bind(this), this.getSecurityStats.bind(this));
-        this.app.get('/api/security-stats', this.authenticateToken.bind(this), this.getSecurityStats.bind(this)); // Alias
-        this.app.get('/api/actions', this.authenticateToken.bind(this), this.getModerationActions.bind(this)); // Alias
-        this.app.get('/api/security/events', this.authenticateToken.bind(this), this.getSecurityEvents.bind(this));
-
+        this.app.get('/api/console/messages', this.getConsoleMessages.bind(this));
+        this.app.get('/api/security/logs', this.getSecurityLogs.bind(this));
+        this.app.get('/api/security/actions', this.getModerationActions.bind(this));
+        this.app.get('/api/security/recent', this.getRecentSecurityEvents.bind(this));
+        this.app.get('/api/security/stats', this.getSecurityStats.bind(this));
+        this.app.get('/api/security-stats', this.getSecurityStats.bind(this)); // Alias
+        this.app.get('/api/actions', this.getModerationActions.bind(this)); // Alias
+        this.app.get('/api/security/events', this.getSecurityEvents.bind(this));
+        
         // Lockdown endpoints (authenticated + admin check)
-        this.app.get('/api/lockdown/status', this.authenticateToken.bind(this), this.getLockdownStatus.bind(this));
-        this.app.get('/api/lockdown/history', this.authenticateToken.bind(this), this.getLockdownHistory.bind(this));
+        this.app.get('/api/lockdown/status', this.getLockdownStatus.bind(this));
+        this.app.get('/api/lockdown/history', this.getLockdownHistory.bind(this));
         // Levels/XP endpoints
-        this.app.get('/api/levels/leaderboard', this.authenticateToken.bind(this), this.getLevelsLeaderboard.bind(this));
-        this.app.post('/api/levels/reset', this.authenticateToken.bind(this), this.resetGuildLevels.bind(this));
+        this.app.get('/api/levels/leaderboard', this.getLevelsLeaderboard.bind(this));
+        this.app.post('/api/levels/reset', this.resetGuildLevels.bind(this));
         // Advanced settings update endpoint
-        this.app.post('/api/update-advanced-settings', this.authenticateToken.bind(this), this.updateAdvancedSettings.bind(this));
+        this.app.post('/api/update-advanced-settings', this.updateAdvancedSettings.bind(this));
         // ============================
         // Pro gating middleware - FIXED: Use JWT identity only
         // ============================
@@ -1583,13 +940,13 @@ The DarkLock Team`
                 // CRITICAL FIX: Get userId from JWT token, NOT from user-supplied headers
                 const userId = req.user?.userId;
                 if (!userId) return res.status(401).json({ error: 'Unauthorized - valid JWT required' });
-
+                
                 const row = await this.bot.database.get(`SELECT is_pro FROM users WHERE id = ?`, [userId]);
                 if (!row || !row.is_pro) return res.status(403).json({ error: 'Pro subscription required' });
                 next();
-            } catch (e) {
+            } catch (e) { 
                 console.error('[Security] Pro gating error:', e);
-                return res.status(500).json({ error: 'Authentication error' });
+                return res.status(500).json({ error: 'Authentication error' }); 
             }
         };
         const requireProOrTrial = async (req, res, next) => {
@@ -1597,16 +954,16 @@ The DarkLock Team`
                 // CRITICAL FIX: Get userId from JWT token, NOT from user-supplied headers
                 const userId = req.user?.userId;
                 if (!userId) return res.status(401).json({ error: 'Unauthorized - valid JWT required' });
-
+                
                 const row = await this.bot.database.get(`SELECT is_pro FROM users WHERE id = ?`, [userId]);
                 if (!row || (!row.is_pro)) {
                     // TODO: trial logic placeholder; allow read-only if trial flag set
                     return res.status(403).json({ error: 'Pro subscription required' });
                 }
                 next();
-            } catch (e) {
+            } catch (e) { 
                 console.error('[Security] Pro gating error:', e);
-                return res.status(500).json({ error: 'Authentication error' });
+                return res.status(500).json({ error: 'Authentication error' }); 
             }
         };
 
@@ -1675,20 +1032,20 @@ The DarkLock Team`
 
         this.app.post('/api/paypal/create-order', async (req, res) => {
             try {
-                const { plan } = req.body || {};
+                    const { plan } = req.body || {};
                 const clientId = process.env.client_id;
                 const secret = process.env.Secret_key_1;
                 if (!clientId || !secret) return res.status(500).json({ error: 'Missing PayPal credentials' });
                 const env = (process.env.PAYPAL_ENV || 'live').toLowerCase();
                 const base = env === 'sandbox' ? 'https://api-m.sandbox.paypal.com' : 'https://api-m.paypal.com';
 
-                // Determine price based on plan
-                const prices = {
-                    monthly: '4.99',
-                    yearly: '50.00'
-                };
-                const price = prices[plan] || '4.99';
-                const description = plan === 'yearly' ? 'Guardian Pro - Yearly Subscription' : 'Guardian Pro - Monthly Subscription';
+                    // Determine price based on plan
+                    const prices = {
+                        monthly: '4.99',
+                        yearly: '50.00'
+                    };
+                    const price = prices[plan] || '4.99';
+                    const description = plan === 'yearly' ? 'Guardian Pro - Yearly Subscription' : 'Guardian Pro - Monthly Subscription';
 
                 // Get access token
                 const basic = Buffer.from(`${clientId}:${secret}`).toString('base64');
@@ -1705,10 +1062,10 @@ The DarkLock Team`
                     headers: { Authorization: `Bearer ${tokenData.access_token}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         intent: 'CAPTURE',
-                        purchase_units: [{
-                            amount: { currency_code: 'USD', value: price },
-                            description: description
-                        }]
+                            purchase_units: [{ 
+                                amount: { currency_code: 'USD', value: price },
+                                description: description
+                            }]
                     })
                 });
                 const orderData = await orderResp.json();
@@ -1721,58 +1078,58 @@ The DarkLock Team`
         });
 
         this.app.post('/api/paypal/capture/:orderID', async (req, res) => {
-            // ============================
-            // Apply Pro gating to endpoints
-            // ============================
-            // Snapshots & rollback
-            this.app.post('/api/snapshots/create', requirePro, async (req, res) => {
-                const { guildId, userId } = req.body || {};
-                const lim = await enforceLimits(guildId, 'snapshots', userId);
-                if (!lim.ok) return res.status(429).json({ error: lim.error });
-                // TODO: implement snapshot creation
-                return res.json({ success: true });
-            });
-            this.app.post('/api/rollback/execute', requirePro, async (req, res) => {
-                const { guildId } = req.body || {};
-                // TODO: implement rollback
-                return res.json({ success: true });
-            });
+                    // ============================
+                    // Apply Pro gating to endpoints
+                    // ============================
+                    // Snapshots & rollback
+                    this.app.post('/api/snapshots/create', requirePro, async (req, res) => {
+                        const { guildId, userId } = req.body || {};
+                        const lim = await enforceLimits(guildId, 'snapshots', userId);
+                        if (!lim.ok) return res.status(429).json({ error: lim.error });
+                        // TODO: implement snapshot creation
+                        return res.json({ success: true });
+                    });
+                    this.app.post('/api/rollback/execute', requirePro, async (req, res) => {
+                        const { guildId } = req.body || {};
+                        // TODO: implement rollback
+                        return res.json({ success: true });
+                    });
 
-            // Verification staff actions
-            this.app.post('/api/verification/approve', requirePro, async (req, res) => { return res.json({ success: true }); });
-            this.app.post('/api/verification/deny', requirePro, async (req, res) => { return res.json({ success: true }); });
+                    // Verification staff actions
+                    this.app.post('/api/verification/approve', requirePro, async (req, res) => { return res.json({ success: true }); });
+                    this.app.post('/api/verification/deny', requirePro, async (req, res) => { return res.json({ success: true }); });
 
-            // Analytics
-            this.app.get('/api/analytics/drilldown', requirePro, async (req, res) => { return res.json({ success: true, data: [] }); });
-            this.app.get('/api/analytics/export', requirePro, async (req, res) => { return res.json({ success: true, url: null }); });
+                    // Analytics
+                    this.app.get('/api/analytics/drilldown', requirePro, async (req, res) => { return res.json({ success: true, data: [] }); });
+                    this.app.get('/api/analytics/export', requirePro, async (req, res) => { return res.json({ success: true, url: null }); });
 
-            // Tickets
-            this.app.get('/api/tickets/transcripts', requirePro, async (req, res) => { return res.json({ success: true, transcripts: [] }); });
-            this.app.post('/api/tickets/ratings', requirePro, async (req, res) => { return res.json({ success: true }); });
+                    // Tickets
+                    this.app.get('/api/tickets/transcripts', requirePro, async (req, res) => { return res.json({ success: true, transcripts: [] }); });
+                    this.app.post('/api/tickets/ratings', requirePro, async (req, res) => { return res.json({ success: true }); });
 
-            // Alerts
-            this.app.post('/api/alerts/notify', requirePro, async (req, res) => {
-                try {
-                    const alerts = require('../utils/alerts');
-                    const { guildId, type, details, userId } = req.body || {};
-                    const lim = await enforceLimits(guildId, 'alerts', userId);
-                    if (!lim.ok) return res.status(429).json({ error: lim.error });
-                    await alerts.notifyIncident(this.bot, guildId, type, details || {});
-                    return res.json({ success: true });
-                } catch (e) { return res.status(500).json({ error: 'Failed to send alert' }); }
-            });
+                    // Alerts
+                    this.app.post('/api/alerts/notify', requirePro, async (req, res) => {
+                        try {
+                            const alerts = require('../utils/alerts');
+                            const { guildId, type, details, userId } = req.body || {};
+                            const lim = await enforceLimits(guildId, 'alerts', userId);
+                            if (!lim.ok) return res.status(429).json({ error: lim.error });
+                            await alerts.notifyIncident(this.bot, guildId, type, details || {});
+                            return res.json({ success: true });
+                        } catch (e) { return res.status(500).json({ error: 'Failed to send alert' }); }
+                    });
 
-            // AI (example route)
-            this.app.post('/api/ai/scan', async (req, res) => {
-                const { guildId, userId } = req.body || {};
-                const user = await this.bot.database.get(`SELECT is_pro FROM users WHERE id = ?`, [userId]);
-                if (!(user && user.is_pro)) {
-                    const lim = await enforceLimits(guildId, 'ai_scan', userId);
-                    if (!lim.ok) return res.status(429).json({ error: lim.error });
-                }
-                // TODO: perform AI scan
-                return res.json({ success: true, result: { score: 0.2 } });
-            });
+                    // AI (example route)
+                    this.app.post('/api/ai/scan', async (req, res) => {
+                        const { guildId, userId } = req.body || {};
+                        const user = await this.bot.database.get(`SELECT is_pro FROM users WHERE id = ?`, [userId]);
+                        if (!(user && user.is_pro)) {
+                            const lim = await enforceLimits(guildId, 'ai_scan', userId);
+                            if (!lim.ok) return res.status(429).json({ error: lim.error });
+                        }
+                        // TODO: perform AI scan
+                        return res.json({ success: true, result: { score: 0.2 } });
+                    });
             try {
                 const { orderID } = req.params;
                 const clientId = process.env.client_id;
@@ -1806,7 +1163,7 @@ The DarkLock Team`
                 // Generate activation code
                 const code = (require('crypto').randomBytes(6).toString('hex').toUpperCase());
                 // Format XXXX-XXXX-XXXX
-                const formatted = `${code.slice(0, 4)}-${code.slice(4, 8)}-${code.slice(8, 12)}`;
+                const formatted = `${code.slice(0,4)}-${code.slice(4,8)}-${code.slice(8,12)}`;
 
                 // Store in DB
                 await this.bot.database.run(
@@ -1849,7 +1206,7 @@ The DarkLock Team`
                 // Check activation_codes table first (legacy)
                 let row = await this.bot.database.get(`SELECT * FROM activation_codes WHERE code = ?`, [code]);
                 let isLegacyCode = !!row;
-
+                
                 if (row) {
                     // Legacy activation code
                     if (row.used) return res.status(400).json({ error: 'Code already used' });
@@ -1857,19 +1214,19 @@ The DarkLock Team`
                 } else {
                     // Check pro_codes table (new system)
                     row = await this.bot.database.get(`SELECT * FROM pro_codes WHERE code = ?`, [code]);
-
+                    
                     if (!row) return res.status(404).json({ error: 'Code not found' });
                     if (row.status && row.status !== 'active') return res.status(400).json({ error: 'Code is not active' });
                     if (new Date(row.expires_at) < new Date()) return res.status(400).json({ error: 'Code has expired' });
                     if (row.current_uses >= row.max_uses) return res.status(400).json({ error: 'Code has reached maximum uses' });
-
+                    
                     // Check if user already redeemed
                     const existing = await this.bot.database.get(
                         `SELECT * FROM pro_redemptions WHERE code = ? AND user_id = ?`,
                         [code, userId]
                     );
                     if (existing) return res.status(400).json({ error: 'You have already redeemed this code' });
-
+                    
                     // If guildId provided, update guild config
                     if (guildId) {
                         await this.bot.database.getGuildConfig(guildId);
@@ -1879,7 +1236,7 @@ The DarkLock Team`
                             [guildId]
                         );
                     }
-
+                    
                     // Record redemption
                     if (guildId) {
                         await this.bot.database.run(
@@ -1894,7 +1251,7 @@ The DarkLock Team`
                             [code, userId]
                         );
                     }
-
+                    
                     // Increment usage count
                     await this.bot.database.run(
                         `UPDATE pro_codes SET current_uses = current_uses + 1, last_used_at = CURRENT_TIMESTAMP
@@ -1914,7 +1271,7 @@ The DarkLock Team`
                 return res.status(500).json({ error: 'Failed to activate code', details: e.message });
             }
         });
-
+        
         // Unified subscription status (user-level) - FIXED: Use JWT identity
         this.app.get('/api/subscription', async (req, res) => {
             try {
@@ -1936,7 +1293,7 @@ The DarkLock Team`
                 if (!row || !row.is_pro) return res.status(403).json({ error: 'Pro Required' });
                 await this.ensureSchema();
                 await this.bot.database.run(`INSERT OR IGNORE INTO guild_customization (guild_id) VALUES (?)`, [guildId]);
-
+                
                 const p = payload || {};
                 await this.bot.database.run(`UPDATE guild_customization SET 
                     tickets_categories = ?, tickets_autoclose = ?, tickets_autoclose_hours = ?, tickets_footer = ?, tickets_priority = ?,
@@ -1962,9 +1319,9 @@ The DarkLock Team`
                     guildId
                 ]);
                 return res.json({ success: true });
-            } catch (e) {
+            } catch (e) { 
                 console.error('[Customization] Save error:', e);
-                return res.status(500).json({ error: 'Failed to save customization' });
+                return res.status(500).json({ error: 'Failed to save customization' }); 
             }
         });
 
@@ -1984,31 +1341,27 @@ The DarkLock Team`
         this.app.get('/api/server/info', this.getServerInfo.bind(this));
         this.app.get('/api/server-info', this.getServerInfo.bind(this)); // Alias for dashboard
 
-        // SECURITY FIX (VULN-002): Debug endpoints COMPLETELY REMOVED in production
-        // These endpoints are ONLY available in development mode
-        if (process.env.NODE_ENV !== 'production') {
-            console.log('[Security] ⚠️ DEBUG ENDPOINTS ENABLED (non-production mode)');
-            
-            // All debug routes require authentication AND admin role
-            this.app.get('/api/debug/database', this.authenticateToken.bind(this), this.requireAdmin, this.debugDatabase.bind(this));
-            this.app.get('/api/debug/guild/:guildId', this.authenticateToken.bind(this), this.requireAdmin, this.debugGuild.bind(this));
-            this.app.get('/api/debug/tables', this.authenticateToken.bind(this), this.requireAdmin, this.debugTables.bind(this));
-            
-            this.app.get('/debug-config/:guildId', this.authenticateToken.bind(this), this.requireAdmin, async (req, res) => {
-                try {
-                    const guildId = req.params.guildId;
-                    const config = await this.bot.database.get('SELECT * FROM guild_configs WHERE guild_id = ?', [guildId]);
-                    const settings = await this.bot.database.get('SELECT * FROM guild_settings WHERE guild_id = ?', [guildId]);
-                    res.json({ guild_id: guildId, config, settings });
-                } catch (e) {
-                    res.status(500).json({ error: 'Debug query failed' });
-                }
-            });
-
-            this.app.post('/debug-create-config/:guildId', this.authenticateToken.bind(this), this.requireAdmin, async (req, res) => {
-                try {
-                    const guildId = req.params.guildId;
-
+        // Debug endpoints for troubleshooting (public for debugging)
+        this.app.get('/api/debug/database', this.debugDatabase.bind(this));
+        this.app.get('/api/debug/guild/:guildId', this.debugGuild.bind(this));
+        this.app.get('/api/debug/tables', this.debugTables.bind(this));
+        
+        // Additional debug endpoints for settings troubleshooting
+        this.app.get('/debug-config/:guildId', async (req, res) => {
+            try {
+                const guildId = req.params.guildId;
+                const config = await this.bot.database.get('SELECT * FROM guild_configs WHERE guild_id = ?', [guildId]);
+                const settings = await this.bot.database.get('SELECT * FROM guild_settings WHERE guild_id = ?', [guildId]);
+                res.json({ guild_id: guildId, config, settings });
+            } catch (e) {
+                res.status(500).json({ error: e.message });
+            }
+        });
+        
+        this.app.post('/debug-create-config/:guildId', async (req, res) => {
+            try {
+                const guildId = req.params.guildId;
+                
                 // Create default config (use INSERT OR IGNORE to avoid overwriting existing settings)
                 await this.bot.database.run(`
                     INSERT OR IGNORE INTO guild_configs (guild_id) VALUES (?)
@@ -2027,7 +1380,7 @@ The DarkLock Team`
                         autorole_enabled = COALESCE(autorole_enabled, 1)
                     WHERE guild_id = ?
                 `, [guildId]);
-
+                
                 // Create default bot settings (don't replace existing values)
                 await this.bot.database.run(`
                     INSERT OR IGNORE INTO guild_settings (guild_id) VALUES (?)
@@ -2038,18 +1391,12 @@ The DarkLock Team`
                         automod_enabled = COALESCE(automod_enabled, 1)
                     WHERE guild_id = ?
                 `, [guildId]);
-
+                
                 res.json({ success: true, message: `Created default config for guild ${guildId}` });
             } catch (e) {
-                res.status(500).json({ error: 'Debug operation failed' });
+                res.status(500).json({ error: e.message });
             }
-            });
-        } else {
-            // PRODUCTION: Debug endpoints return 404 - they don't exist
-            console.log('[Security] ✅ Debug endpoints DISABLED (production mode)');
-            this.app.use('/api/debug/*', (req, res) => res.status(404).json({ error: 'Not found' }));
-            this.app.use('/debug-*', (req, res) => res.status(404).json({ error: 'Not found' }));
-        }
+        });
 
         // Internal test endpoint to trigger a setting-change event for diagnostics
         // Protected by INTERNAL_API_KEY header; INTERNAL_API_KEY must be set
@@ -2061,10 +1408,7 @@ The DarkLock Team`
                     this.bot?.logger?.error && this.bot.logger.error('INTERNAL_API_KEY is not configured for /api/internal/test-setting-change');
                     return res.status(500).json({ error: 'Server misconfigured' });
                 }
-                // Timing-safe comparison to prevent timing attacks
-                if (!apiKey || apiKey.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(apiKey), Buffer.from(expected))) {
-                    return res.status(401).json({ error: 'Unauthorized' });
-                }
+                if (apiKey !== expected) return res.status(401).json({ error: 'Unauthorized' });
 
                 const { guildId, key, value, userId, category, oldValue } = req.body || {};
                 if (!guildId || !key) return res.status(400).json({ error: 'guildId and key required' });
@@ -2079,7 +1423,7 @@ The DarkLock Team`
                 return res.status(500).json({ error: 'emitSettingChange not available' });
             } catch (e) {
                 this.bot?.logger?.error && this.bot.logger.error('Test setting change error:', e?.message || e);
-                return res.status(500).json({ error: 'Internal error' });
+                return res.status(500).json({ error: e.message || String(e) });
             }
         });
 
@@ -2093,94 +1437,76 @@ The DarkLock Team`
         this.app.get('/images/logo.png', (req, res) => {
             res.redirect('https://cdn.discordapp.com/embed/avatars/0.png');
         });
-
+        
         // Protected API routes (require authentication) - MOVED BEFORE SETUP ENDPOINTS FOR SECURITY
-        // Skip /api/admin routes as they have their own authentication (Darklock)
-        this.app.use('/api', (req, res, next) => {
-            if (req.path.startsWith('/admin')) {
-                return next();
-            }
-            return this.authenticateToken(req, res, next);
-        });
-
+        this.app.use('/api', this.authenticateToken.bind(this));
+        
         // Setup API endpoints (now protected by authentication)
-        this.app.get('/api/channels', this.authenticateToken.bind(this), this.getChannels.bind(this));
-        this.app.get('/api/roles', this.authenticateToken.bind(this), this.getRoles.bind(this));
-        this.app.get('/api/settings/security', this.authenticateToken.bind(this), this.getSecuritySettings.bind(this));
-        this.app.post('/api/settings/security', this.authenticateToken.bind(this), this.saveSecuritySettings.bind(this));
-        this.app.get('/api/settings/tickets', this.authenticateToken.bind(this), this.getTicketSettings.bind(this));
-        this.app.post('/api/settings/tickets', this.authenticateToken.bind(this), this.saveTicketSettings.bind(this));
-        this.app.get('/api/settings/moderation', this.authenticateToken.bind(this), this.getModerationSettings.bind(this));
-        this.app.post('/api/settings/moderation', this.authenticateToken.bind(this), this.saveModerationSettings.bind(this));
-        this.app.get('/api/settings/features', this.authenticateToken.bind(this), this.getFeatureSettings.bind(this));
-        this.app.post('/api/settings/features', this.authenticateToken.bind(this), this.saveFeatureSettings.bind(this));
+        this.app.get('/api/channels', this.getChannels.bind(this));
+        this.app.get('/api/roles', this.getRoles.bind(this));
+        this.app.get('/api/settings/security', this.getSecuritySettings.bind(this));
+        this.app.post('/api/settings/security', this.saveSecuritySettings.bind(this));
+        this.app.get('/api/settings/tickets', this.getTicketSettings.bind(this));
+        this.app.post('/api/settings/tickets', this.saveTicketSettings.bind(this));
+        this.app.get('/api/settings/moderation', this.getModerationSettings.bind(this));
+        this.app.post('/api/settings/moderation', this.saveModerationSettings.bind(this));
+        this.app.get('/api/settings/features', this.getFeatureSettings.bind(this));
+        this.app.post('/api/settings/features', this.saveFeatureSettings.bind(this));
         // AI settings endpoints
-        this.app.get('/api/settings/ai', this.authenticateToken.bind(this), this.getAISettings.bind(this));
-        this.app.post('/api/settings/ai', this.authenticateToken.bind(this), this.saveAISettings.bind(this));
-
+        this.app.get('/api/settings/ai', this.getAISettings.bind(this));
+        this.app.post('/api/settings/ai', this.saveAISettings.bind(this));
+        
         // Theme customization endpoints
-        this.app.get('/api/settings/theme', this.authenticateToken.bind(this), this.getThemeSettings.bind(this));
-        this.app.post('/api/settings/theme', this.authenticateToken.bind(this), this.saveThemeSettings.bind(this));
-        this.app.post('/api/upload/image', this.authenticateToken.bind(this), express.json({ limit: '12mb' }), this.uploadThemeImage.bind(this));
-
+        this.app.get('/api/settings/theme', this.getThemeSettings.bind(this));
+        this.app.post('/api/settings/theme', this.saveThemeSettings.bind(this));
+        this.app.post('/api/upload/image', express.json({ limit: '12mb' }), this.uploadThemeImage.bind(this));
+        
         // XP settings endpoints
-        this.app.get('/api/settings/xp', this.authenticateToken.bind(this), this.getXPSettings.bind(this));
-        this.app.post('/api/settings/xp', this.authenticateToken.bind(this), this.saveXPSettings.bind(this));
-
+        this.app.get('/api/settings/xp', this.getXPSettings.bind(this));
+        this.app.post('/api/settings/xp', this.saveXPSettings.bind(this));
+        
         // Guild settings endpoints (for toggle persistence)
-        this.app.get('/api/guilds/:guildId/settings', this.authenticateToken.bind(this), this.getGuildSettings.bind(this));
-        this.app.patch('/api/guilds/:guildId/settings', this.authenticateToken.bind(this), this.updateGuildSettings.bind(this));
+        this.app.get('/api/guilds/:guildId/settings', this.getGuildSettings.bind(this));
+        this.app.patch('/api/guilds/:guildId/settings', this.updateGuildSettings.bind(this));
 
         // Command permissions endpoints
-        this.app.get('/api/guilds/:guildId/commands', this.authenticateToken.bind(this), this.getGuildCommands.bind(this));
-        this.app.get('/api/guilds/:guildId/permissions', this.authenticateToken.bind(this), this.getGuildCommandPermissions.bind(this));
-        this.app.post('/api/guilds/:guildId/permissions', this.authenticateToken.bind(this), this.saveGuildCommandPermissions.bind(this));
-
+        this.app.get('/api/guilds/:guildId/commands', this.getGuildCommands.bind(this));
+        this.app.get('/api/guilds/:guildId/permissions', this.getGuildCommandPermissions.bind(this));
+        this.app.post('/api/guilds/:guildId/permissions', this.saveGuildCommandPermissions.bind(this));
+        
         // Ticket system endpoints (per-guild tickets)
-        this.app.get('/api/guilds/:guildId/tickets', this.authenticateToken.bind(this), this.getGuildTickets.bind(this));
-
+        this.app.get('/api/guilds/:guildId/tickets', this.getGuildTickets.bind(this));
+        
         // AI chat proxy endpoint (requires internal API key, not user auth)
         this.app.post('/api/ai/chat', this.proxyAIChat.bind(this));
-
+        
         // Event system endpoint (requires internal API key for security)
         // Use the consolidated handler which validates keys and persists events
         this.app.post('/api/events', this.handleEventPost.bind(this));
-
+        
         // Guild settings endpoint for bot command sync
-        this.app.post('/api/guilds/:guildId/settings', this.authenticateToken.bind(this), this.updateGuildSettings.bind(this));
-        this.app.post('/api/guilds/:guildId/settings', this.authenticateToken.bind(this), this.updateGuildSettings.bind(this));
-
+        this.app.post('/api/guilds/:guildId/settings', this.updateGuildSettings.bind(this));
+        this.app.post('/api/guilds/:guildId/settings', this.updateGuildSettings.bind(this));
+        
         // Guild-specific routes (matching frontend pattern)
-        this.app.get('/api/guild/:guildId/channels', this.authenticateToken.bind(this), this.getGuildChannels.bind(this));
-        this.app.get('/api/guild/:guildId/roles', this.authenticateToken.bind(this), this.getGuildRoles.bind(this));
-        this.app.get('/api/guild/:guildId/settings', this.authenticateToken.bind(this), this.getGuildSpecificSettings.bind(this));
-        this.app.post('/api/guild/:guildId/settings', this.authenticateToken.bind(this), this.saveGuildSpecificSettings.bind(this));
-
-        this.app.get('/api/dashboard-data', this.authenticateToken.bind(this), this.getDashboardData.bind(this));
-
+        this.app.get('/api/guild/:guildId/channels', this.getGuildChannels.bind(this));
+        this.app.get('/api/guild/:guildId/roles', this.getGuildRoles.bind(this));
+        this.app.get('/api/guild/:guildId/settings', this.getGuildSpecificSettings.bind(this));
+        this.app.post('/api/guild/:guildId/settings', this.saveGuildSpecificSettings.bind(this));
+        
+        this.app.get('/api/dashboard-data', this.getDashboardData.bind(this));
+        
         // Admin stats endpoint
         this.app.get('/api/admin/stats', this.authenticateToken.bind(this), this.getAdminStats.bind(this));
-
-        // Quick fix endpoint to populate missing configs - REQUIRE ADMIN AUTH
-        this.app.post('/api/initialize-guild', this.authenticateToken.bind(this), async (req, res) => {
-            // Only allow admin users to initialize guilds
-            if (!this.canModifySettings(req.user)) {
-                return res.status(403).json({ error: 'Admin access required' });
-            }
-            
+        
+        // Quick fix endpoint to populate missing configs
+        this.app.post('/api/initialize-guild', async (req, res) => {
             try {
                 const guildId = req.query.guildId || req.body.guildId;
                 if (!guildId) {
                     return res.status(400).json({ error: 'Guild ID required' });
                 }
                 
-                // Verify admin has access to this guild
-                const userId = req.user?.discordId || req.user?.userId;
-                const access = await this.checkGuildAccess(userId, guildId, true);
-                if (!access.authorized) {
-                    return res.status(403).json({ error: access.error });
-                }
-
                 // Create default config
                 await this.bot.database.run(`
                     INSERT OR REPLACE INTO guild_configs (
@@ -2189,13 +1515,13 @@ The DarkLock Team`
                         tickets_enabled, auto_mod_enabled, autorole_enabled
                     ) VALUES (?, 1, 1, 1, 1, 1, 1, 1, 1, 1)
                 `, [guildId]);
-
+                
                 // Create default bot settings
                 await this.bot.database.run(`
                     INSERT OR REPLACE INTO guild_settings (guild_id, welcome_enabled, automod_enabled)
                     VALUES (?, 1, 1)
                 `, [guildId]);
-
+                
                 this.bot.logger.info(`Initialized guild config for ${guildId}`);
                 res.json({ success: true, message: `Guild ${guildId} initialized` });
             } catch (error) {
@@ -2203,21 +1529,21 @@ The DarkLock Team`
                 res.status(500).json({ error: error.message });
             }
         });
-
-        this.app.get('/api/security-status', this.authenticateToken.bind(this), this.getSecurityStatus.bind(this));
-
-        // Quick Actions - REQUIRE AUTHENTICATION
-        this.app.post('/api/lockdown', this.authenticateToken.bind(this), this.handleLockdown.bind(this));
-        this.app.post('/api/invites', this.authenticateToken.bind(this), this.handleInvites.bind(this));
-        this.app.post('/api/emergency', this.authenticateToken.bind(this), this.handleEmergency.bind(this));
-        this.app.delete('/api/raid-flags', this.authenticateToken.bind(this), this.clearRaidFlags.bind(this));
-        this.app.post('/api/threats/:id/resolve', this.authenticateToken.bind(this), this.resolveThreat.bind(this));
-
-        // Settings - REQUIRE AUTHENTICATION
-        this.app.post('/api/security-settings', this.authenticateToken.bind(this), this.updateSecuritySettings.bind(this));
-        this.app.post('/api/settings/update', this.authenticateToken.bind(this), this.updateOnboardingSettings.bind(this));
-        this.app.post('/api/advanced-settings', this.authenticateToken.bind(this), this.updateAdvancedSettings.bind(this));
-        this.app.post('/api/bot-settings', this.authenticateToken.bind(this), this.updateBotSettings.bind(this));
+        
+        this.app.get('/api/security-status', this.getSecurityStatus.bind(this));
+        
+        // Quick Actions
+        this.app.post('/api/lockdown', this.handleLockdown.bind(this));
+        this.app.post('/api/invites', this.handleInvites.bind(this));
+        this.app.post('/api/emergency', this.handleEmergency.bind(this));
+        this.app.delete('/api/raid-flags', this.clearRaidFlags.bind(this));
+        this.app.post('/api/threats/:id/resolve', this.resolveThreat.bind(this));
+        
+        // Settings
+        this.app.post('/api/security-settings', this.updateSecuritySettings.bind(this));
+        this.app.post('/api/settings/update', this.updateOnboardingSettings.bind(this));
+        this.app.post('/api/advanced-settings', this.updateAdvancedSettings.bind(this));
+        this.app.post('/api/bot-settings', this.updateBotSettings.bind(this));
         // Verification actions (dashboard)
         this.app.post('/api/verify/action', this.authenticateToken.bind(this), this.verifyAction.bind(this));
         this.app.get('/api/verify/queue', this.authenticateToken.bind(this), this.getVerifyQueue.bind(this));
@@ -2225,37 +1551,37 @@ The DarkLock Team`
         this.app.post('/api/verify/captcha/start', this.authenticateToken.bind(this), this.startCaptcha.bind(this));
         this.app.post('/api/verify/captcha/submit', this.authenticateToken.bind(this), this.submitCaptcha.bind(this));
         this.app.post('/api/verify/note', this.authenticateToken.bind(this), this.addVerificationNote.bind(this));
-        this.app.post('/api/api-keys', this.authenticateToken.bind(this), this.updateApiKeys.bind(this));
-        this.app.post('/api/settings/reset', this.authenticateToken.bind(this), this.resetSettings.bind(this));
-        this.app.get('/api/analytics', this.authenticateToken.bind(this), this.getAnalytics.bind(this));
-        this.app.get('/api/logs', this.authenticateToken.bind(this), this.getLogs.bind(this));
+        this.app.post('/api/api-keys', this.updateApiKeys.bind(this));
+        this.app.post('/api/settings/reset', this.resetSettings.bind(this));
+        this.app.get('/api/analytics', this.getAnalytics.bind(this));
+        this.app.get('/api/logs', this.getLogs.bind(this));
         this.app.get('/api/audit-logs', this.authenticateToken.bind(this), this.getAuditLogs.bind(this));
-
+        
         // XP Events endpoints
         this.app.get('/api/xp-events', this.authenticateToken.bind(this), this.getXPEvents.bind(this));
         this.app.post('/api/xp-events', this.authenticateToken.bind(this), this.createXPEvent.bind(this));
         this.app.delete('/api/xp-events/:id', this.authenticateToken.bind(this), this.deleteXPEvent.bind(this));
-
+        
         // Seasonal Leaderboard endpoints
         this.app.get('/api/seasons', this.authenticateToken.bind(this), this.getSeasons.bind(this));
         this.app.post('/api/seasons', this.authenticateToken.bind(this), this.createSeason.bind(this));
         this.app.post('/api/seasons/:id/reset', this.authenticateToken.bind(this), this.resetSeason.bind(this));
         this.app.get('/api/seasons/:id/leaderboard', this.authenticateToken.bind(this), this.getSeasonLeaderboard.bind(this));
         this.app.post('/api/seasons/:id/claim-reward', this.authenticateToken.bind(this), this.claimSeasonReward.bind(this));
-
+        
         // Setup
-        this.app.post('/api/setup', this.authenticateToken.bind(this), this.handleSetup.bind(this));
-
+        this.app.post('/api/setup', this.handleSetup.bind(this));
+        
         // Logs and Analytics
-        this.app.get('/api/logs', this.authenticateToken.bind(this), this.getLogs.bind(this));
-        this.app.get('/api/logs/export', this.authenticateToken.bind(this), this.exportLogs.bind(this));
-        this.app.delete('/api/logs', this.authenticateToken.bind(this), this.clearLogs.bind(this));
-
+        this.app.get('/api/logs', this.getLogs.bind(this));
+        this.app.get('/api/logs/export', this.exportLogs.bind(this));
+        this.app.delete('/api/logs', this.clearLogs.bind(this));
+        
         // Action Logs and Undo Endpoints
-        this.app.get('/api/actions', this.authenticateToken.bind(this), this.getActions.bind(this));
-        this.app.post('/api/actions/:id/undo', this.authenticateToken.bind(this), this.undoAction.bind(this));
-        this.app.get('/api/actions/stats', this.authenticateToken.bind(this), this.getActionStats.bind(this));
-        this.app.get('/api/incidents', this.authenticateToken.bind(this), this.getIncidents.bind(this));
+        this.app.get('/api/actions', this.getActions.bind(this));
+        this.app.post('/api/actions/:id/undo', this.undoAction.bind(this));
+        this.app.get('/api/actions/stats', this.getActionStats.bind(this));
+        this.app.get('/api/incidents', this.getIncidents.bind(this));
 
         // Ticket system routes (specific routes BEFORE parameterized routes)
         this.app.get('/api/tickets/list', this.authenticateToken.bind(this), this.getTicketsList.bind(this));
@@ -2269,58 +1595,53 @@ The DarkLock Team`
         this.app.post('/api/tickets/:id/claim', this.authenticateToken.bind(this), this.claimTicket.bind(this));
         this.app.post('/api/tickets/:id/notes', this.authenticateToken.bind(this), this.addTicketNote.bind(this));
         this.app.get('/api/tickets/:id/notes', this.authenticateToken.bind(this), this.getTicketNotes.bind(this));
-        this.app.post('/api/tickets/:id/escalate', this.authenticateToken.bind(this), this.escalateTicket.bind(this));
-        this.app.post('/api/tickets/:id/reopen', this.authenticateToken.bind(this), this.reopenTicket.bind(this));
-        this.app.post('/api/tickets/:id/dm-notify', this.authenticateToken.bind(this), this.updateTicketDMNotify.bind(this));
-        this.app.get('/api/tickets/stats', this.authenticateToken.bind(this), this.getTicketStats.bind(this));
-        this.app.get('/api/tickets/:id/transcript', this.authenticateToken.bind(this), this.getTicketTranscript.bind(this));
         this.app.get('/api/tickets/:id/history', this.authenticateToken.bind(this), this.getTicketHistory.bind(this));
         this.app.get('/api/server/staff', this.authenticateToken.bind(this), this.getServerStaff.bind(this));
         this.app.get('/api/tickets/:id', this.authenticateToken.bind(this), this.getTicketDetails.bind(this)); // Parameterized route LAST
 
         // Help Ticket endpoints
-        this.app.get('/api/help-tickets', this.authenticateToken.bind(this), this.getHelpTickets.bind(this));
-        this.app.get('/api/help-tickets/stats', this.authenticateToken.bind(this), this.getHelpTicketStats.bind(this));
-        this.app.get('/api/help-tickets/:ticketId', this.authenticateToken.bind(this), this.getHelpTicketDetails.bind(this));
-        this.app.post('/api/help-tickets/:ticketId/status', this.authenticateToken.bind(this), this.updateHelpTicketStatus.bind(this));
-        this.app.post('/api/help-tickets/:ticketId/assign', this.authenticateToken.bind(this), this.assignHelpTicket.bind(this));
-        this.app.post('/api/help-tickets/:ticketId/reply', this.authenticateToken.bind(this), this.replyToHelpTicket.bind(this));
-        this.app.post('/api/help-tickets/:ticketId/priority', this.authenticateToken.bind(this), this.updateHelpTicketPriority.bind(this));
-        this.app.post('/api/help-tickets/:ticketId/note', this.authenticateToken.bind(this), this.addHelpTicketNote.bind(this));
-        this.app.delete('/api/help-tickets/:ticketId', this.authenticateToken.bind(this), this.deleteHelpTicket.bind(this));
+        this.app.get('/api/help-tickets', this.getHelpTickets.bind(this));
+        this.app.get('/api/help-tickets/stats', this.getHelpTicketStats.bind(this));
+        this.app.get('/api/help-tickets/:ticketId', this.getHelpTicketDetails.bind(this));
+        this.app.post('/api/help-tickets/:ticketId/status', this.updateHelpTicketStatus.bind(this));
+        this.app.post('/api/help-tickets/:ticketId/assign', this.assignHelpTicket.bind(this));
+        this.app.post('/api/help-tickets/:ticketId/reply', this.replyToHelpTicket.bind(this));
+        this.app.post('/api/help-tickets/:ticketId/priority', this.updateHelpTicketPriority.bind(this));
+        this.app.post('/api/help-tickets/:ticketId/note', this.addHelpTicketNote.bind(this));
+        this.app.delete('/api/help-tickets/:ticketId', this.deleteHelpTicket.bind(this));
 
-        // Code Generator endpoints (Pro Plan Unlock) - Admin only
-        this.app.post('/api/generate-code', this.authenticateToken.bind(this), this.generateProCode.bind(this));
-        this.app.get('/api/codes/list', this.authenticateToken.bind(this), this.listGeneratedCodes.bind(this));
-        this.app.post('/api/codes/:code/redeem', this.authenticateToken.bind(this), this.redeemProCode.bind(this));
-        this.app.post('/api/codes/:code/revoke', this.authenticateToken.bind(this), this.revokeProCode.bind(this));
-        this.app.delete('/api/codes/:code/delete', this.authenticateToken.bind(this), this.deleteProCode.bind(this));
+        // Code Generator endpoints (Pro Plan Unlock)
+        this.app.post('/api/generate-code', this.generateProCode.bind(this));
+        this.app.get('/api/codes/list', this.listGeneratedCodes.bind(this));
+        this.app.post('/api/codes/:code/redeem', this.redeemProCode.bind(this));
+        this.app.post('/api/codes/:code/revoke', this.revokeProCode.bind(this));
+        this.app.delete('/api/codes/:code/delete', this.deleteProCode.bind(this));
 
         // Verification endpoints (dashboard control)
-        this.app.get('/api/guilds/:guildId/verification', this.authenticateToken.bind(this), this.getGuildVerificationQueue.bind(this));
-        this.app.post('/api/guilds/:guildId/verification/:id/approve', this.authenticateToken.bind(this), this.approveVerification.bind(this));
-        this.app.post('/api/guilds/:guildId/verification/:id/deny', this.authenticateToken.bind(this), this.denyVerification.bind(this));
+        this.app.get('/api/guilds/:guildId/verification', this.getGuildVerificationQueue.bind(this));
+        this.app.post('/api/guilds/:guildId/verification/:id/approve', this.approveVerification.bind(this));
+        this.app.post('/api/guilds/:guildId/verification/:id/deny', this.denyVerification.bind(this));
 
         // Logging & Audit endpoints
         this.app.get('/api/logs', this.authenticateToken.bind(this), this.getBotLogs.bind(this));
         this.app.get('/api/logs/audit', this.authenticateToken.bind(this), this.getDashboardAudit.bind(this));
 
         // Ticket claim endpoint (dashboard shorthand)
-        this.app.post('/api/guilds/:guildId/tickets/:ticketId/claim', this.authenticateToken.bind(this), this.claimTicketFromDashboard.bind(this));
+        this.app.post('/api/guilds/:guildId/tickets/:ticketId/claim', this.claimTicketFromDashboard.bind(this));
 
         // Quarantine and flagged content routes
-        this.app.get('/api/quarantine/list', this.authenticateToken.bind(this), this.getQuarantinedMessages.bind(this));
-        this.app.post('/api/quarantine/:id/approve', this.authenticateToken.bind(this), this.approveQuarantinedMessage.bind(this));
-        this.app.post('/api/quarantine/:id/delete', this.authenticateToken.bind(this), this.deleteQuarantinedMessage.bind(this));
-        this.app.get('/api/security/scan/history', this.authenticateToken.bind(this), this.getScanHistory.bind(this));
-        this.app.post('/api/security/scan/start', this.authenticateToken.bind(this), this.startSecurityScan.bind(this));
-        this.app.get('/api/settings/auto-delete', this.authenticateToken.bind(this), this.getAutoDeleteSettings.bind(this));
-        this.app.post('/api/settings/auto-delete', this.authenticateToken.bind(this), this.saveAutoDeleteSettings.bind(this));
+        this.app.get('/api/quarantine/list', this.getQuarantinedMessages.bind(this));
+        this.app.post('/api/quarantine/:id/approve', this.approveQuarantinedMessage.bind(this));
+        this.app.post('/api/quarantine/:id/delete', this.deleteQuarantinedMessage.bind(this));
+        this.app.get('/api/security/scan/history', this.getScanHistory.bind(this));
+        this.app.post('/api/security/scan/start', this.startSecurityScan.bind(this));
+        this.app.get('/api/settings/auto-delete', this.getAutoDeleteSettings.bind(this));
+        this.app.post('/api/settings/auto-delete', this.saveAutoDeleteSettings.bind(this));
 
         // Multi-server management routes
-        this.app.get('/api/servers/list', this.authenticateToken.bind(this), this.getUserServers.bind(this));
-        this.app.post('/api/servers/select', this.authenticateToken.bind(this), this.selectServer.bind(this));
-        this.app.get('/api/servers/current', this.authenticateToken.bind(this), this.getCurrentServer.bind(this));
+        this.app.get('/api/servers/list', this.getUserServers.bind(this));
+        this.app.post('/api/servers/select', this.selectServer.bind(this));
+        this.app.get('/api/servers/current', this.getCurrentServer.bind(this));
 
         // Shared access management routes
         this.app.get('/api/dashboard/:guildId/shared-access', this.authenticateToken.bind(this), this.getSharedAccessList.bind(this));
@@ -2332,7 +1653,7 @@ The DarkLock Team`
         this.app.post('/api/dashboard/:guildId/shared-access/delete-code', this.authenticateToken.bind(this), this.deleteAccessCode.bind(this));
         this.app.post('/api/dashboard/:guildId/shared-access/redeem-code', this.authenticateToken.bind(this), this.redeemAccessCode.bind(this));
         this.app.post('/api/access/recheck', this.authenticateToken.bind(this), this.recheckUserAccess.bind(this));
-
+        
         // Simple access code redemption (no guild ID required)
         this.app.post('/api/redeem-access-code', this.authenticateToken.bind(this), this.redeemAccessCodeSimple.bind(this));
         this.app.get('/api/user', this.authenticateToken.bind(this), this.getCurrentUser.bind(this));
@@ -2349,12 +1670,12 @@ The DarkLock Team`
         this.app.post('/api/moderation/:guildId/kick', this.authenticateToken.bind(this), this.kickUser.bind(this));
         this.app.post('/api/moderation/:guildId/ban', this.authenticateToken.bind(this), this.banUser.bind(this));
 
-        // Bug report route - authenticated to prevent abuse
-        this.app.post('/api/bug-report', this.authenticateToken.bind(this), this.submitBugReport.bind(this));
-
-        // Registration route (public - for new users)
+        // Bug report route
+        this.app.post('/api/bug-report', this.submitBugReport.bind(this));
+        
+        // Registration route
         this.app.post('/api/auth/register', this.registerUser.bind(this));
-
+        
         // Serve static website pages
         this.app.get('/bug-report', (req, res) => {
             res.sendFile(path.join(__dirname, '../website/bug-report.html'));
@@ -2363,15 +1684,12 @@ The DarkLock Team`
             res.sendFile(path.join(__dirname, '../website/register.html'));
         });
 
-        // 404 handler - MOVED to bot.js after mountOn() completes
-        // This ensures Darklock routes are registered before the catch-all 404
-
         // Error handler
         this.app.use((err, req, res, next) => {
             this.bot.logger.error('Dashboard error:', err);
             // Don't expose stack traces in production
             const isDev = process.env.NODE_ENV !== 'production';
-            res.status(err.status || 500).json({
+            res.status(err.status || 500).json({ 
                 error: 'Internal server error',
                 ...(isDev && { message: err.message })
             });
@@ -2407,7 +1725,7 @@ The DarkLock Team`
             `SELECT 1 FROM dashboard_access WHERE guild_id = ? AND user_id = ?`,
             [guildId, userId]
         );
-
+        
         if (hasExplicitAccess) {
             // If they have explicit access, no need to check manage permissions
             return { authorized: true, member: null, error: null, accessType: 'explicit_grant' };
@@ -2421,9 +1739,9 @@ The DarkLock Team`
 
         // Check 3: Does user have Discord admin/manage permissions?
         if (requireManage) {
-            const hasPerms = member.permissions.has('Administrator') ||
-                member.permissions.has('ManageGuild');
-
+            const hasPerms = member.permissions.has('Administrator') || 
+                           member.permissions.has('ManageGuild');
+            
             if (hasPerms) {
                 return { authorized: true, member, error: null, accessType: 'discord_permissions' };
             }
@@ -2437,12 +1755,12 @@ The DarkLock Team`
             `SELECT role_id FROM dashboard_role_access WHERE guild_id = ?`,
             [guildId]
         );
-
+        
         if (roleAccess.length > 0) {
             const grantedRoleIds = roleAccess.map(row => row.role_id);
             const userRoleIds = member.roles.cache.map(r => r.id);
             const hasGrantedRole = grantedRoleIds.some(roleId => userRoleIds.includes(roleId));
-
+            
             if (hasGrantedRole) {
                 return { authorized: true, member, error: null, accessType: 'role_grant' };
             }
@@ -2457,15 +1775,10 @@ The DarkLock Team`
     }
 
     async verifyAction(req, res) {
-        // Role check: Moderator+ can manage verification
-        if (!this.canModerate(req.user)) {
-            return res.status(403).json({ error: 'Moderator access required for verification actions' });
-        }
-
         try {
             const { guildId, userId, action } = req.body || {};
             if (!guildId || !userId || !action) return res.status(400).json({ error: 'guildId, userId and action required' });
-            const valid = ['verify', 'skip', 'kick', 'approve', 'reject', 'dequeue'];
+            const valid = ['verify','skip','kick','approve','reject','dequeue'];
             if (!valid.includes(action)) return res.status(400).json({ error: 'Invalid action' });
 
             const actorId = req.user?.discordId || req.user?.userId || 'dashboard';
@@ -2513,7 +1826,7 @@ The DarkLock Team`
             // derive flags
             const enriched = rows.map(r => {
                 const createdAt = r.account_created ? new Date(r.account_created) : null;
-                const accountAgeDays = createdAt ? Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)) : null;
+                const accountAgeDays = createdAt ? Math.floor((Date.now() - createdAt.getTime()) / (1000*60*60*24)) : null;
                 const flags = [];
                 if (!r.avatar_url) flags.push('no_avatar');
                 if (accountAgeDays !== null && accountAgeDays < 7) flags.push('new_account');
@@ -2570,15 +1883,10 @@ The DarkLock Team`
     }
 
     async batchVerifyQueue(req, res) {
-        // Role check: Moderator+ can manage verification
-        if (!this.canModerate(req.user)) {
-            return res.status(403).json({ error: 'Moderator access required for batch verification' });
-        }
-
         try {
             const { guildId, action, userIds } = req.body || {};
             if (!guildId || !action) return res.status(400).json({ error: 'guildId and action required' });
-            const valid = ['verify', 'skip', 'kick', 'approve', 'reject', 'dequeue'];
+            const valid = ['verify','skip','kick','approve','reject','dequeue'];
             if (!valid.includes(action)) return res.status(400).json({ error: 'Invalid action' });
 
             const Actions = require('../security/verificationActions');
@@ -2651,15 +1959,7 @@ The DarkLock Team`
     async getGuildCommands(req, res) {
         try {
             const guildId = req.params.guildId;
-            const userId = req.user?.discordId || req.user?.userId;
             if (!guildId) return res.status(400).json({ error: 'guildId required' });
-
-            // VULN-004 FIX: Verify user has access to this guild
-            const access = await this.checkGuildAccess(userId, guildId, false);
-            if (!access.authorized) {
-                this.bot.logger?.error(`[SECURITY] Unauthorized getGuildCommands attempt by ${userId} for guild ${guildId}`);
-                return res.status(403).json({ error: access.error });
-            }
 
             const commands = [];
             if (this.bot && this.bot.commands) {
@@ -2679,15 +1979,7 @@ The DarkLock Team`
     async getGuildVerificationQueue(req, res) {
         try {
             const guildId = req.params.guildId;
-            const userId = req.user?.discordId || req.user?.userId;
             if (!guildId) return res.status(400).json({ error: 'guildId required' });
-
-            // VULN-004 FIX: Verify user has access to this guild
-            const access = await this.checkGuildAccess(userId, guildId, true);
-            if (!access.authorized) {
-                this.bot.logger.error(`[SECURITY] Unauthorized getGuildVerificationQueue attempt by ${userId} for guild ${guildId}`);
-                return res.status(403).json({ error: access.error });
-            }
 
             const rows = await this.bot.database.all(
                 `SELECT id, user_id, verification_type, verification_data, status, attempts, expires_at, created_at FROM verification_queue WHERE guild_id = ? ORDER BY created_at DESC`,
@@ -2706,17 +1998,9 @@ The DarkLock Team`
         try {
             const guildId = req.params.guildId;
             const id = req.params.id;
-            const userId = req.user?.discordId || req.user?.userId;
             const moderator = req.user?.id || null;
 
             if (!guildId || !id) return res.status(400).json({ error: 'guildId and id required' });
-
-            // VULN-004 FIX: Verify user has manage permissions in this guild
-            const access = await this.checkGuildAccess(userId, guildId, true);
-            if (!access.authorized) {
-                this.bot.logger.error(`[SECURITY] Unauthorized approveVerification attempt by ${userId} for guild ${guildId}`);
-                return res.status(403).json({ error: access.error });
-            }
 
             const row = await this.bot.database.get('SELECT * FROM verification_queue WHERE id = ?', [id]);
             if (!row) return res.status(404).json({ error: 'Verification entry not found' });
@@ -2733,7 +2017,7 @@ The DarkLock Team`
                     if (roleId) {
                         const member = await guild.members.fetch(row.user_id).catch(() => null);
                         if (member) {
-                            await member.roles.add(roleId).catch(() => { });
+                            await member.roles.add(roleId).catch(() => {});
                         }
                     }
                 }
@@ -2746,7 +2030,7 @@ The DarkLock Team`
                 const payload = { type: 'verification', action: 'approved', guildId, id, userId: row.user_id, moderator };
                 if (this.bot.eventEmitter) await this.bot.eventEmitter.sendEvent(payload);
                 this.broadcastToGuild(guildId, { type: 'verification_update', data: payload });
-            } catch (e) { }
+            } catch (e) {}
 
             res.json({ ok: true, id, status: 'completed' });
         } catch (error) {
@@ -2760,18 +2044,10 @@ The DarkLock Team`
         try {
             const guildId = req.params.guildId;
             const id = req.params.id;
-            const userId = req.user?.discordId || req.user?.userId;
             const { action } = req.body || {}; // action: 'kick' | 'ban' | 'none'
             const moderator = req.user?.id || null;
 
             if (!guildId || !id) return res.status(400).json({ error: 'guildId and id required' });
-
-            // VULN-004 FIX: Verify user has manage permissions in this guild
-            const access = await this.checkGuildAccess(userId, guildId, true);
-            if (!access.authorized) {
-                this.bot.logger.error(`[SECURITY] Unauthorized denyVerification attempt by ${userId} for guild ${guildId}`);
-                return res.status(403).json({ error: access.error });
-            }
 
             const row = await this.bot.database.get('SELECT * FROM verification_queue WHERE id = ?', [id]);
             if (!row) return res.status(404).json({ error: 'Verification entry not found' });
@@ -2785,9 +2061,9 @@ The DarkLock Team`
                     const guild = this.bot.client.guilds.cache.get(guildId);
                     if (guild) {
                         if (action === 'kick') {
-                            await guild.members.kick(row.user_id, `Denied verification by dashboard`).catch(() => { });
+                            await guild.members.kick(row.user_id, `Denied verification by dashboard`).catch(() => {});
                         } else if (action === 'ban') {
-                            await guild.members.ban(row.user_id, { reason: `Denied verification by dashboard` }).catch(() => { });
+                            await guild.members.ban(row.user_id, { reason: `Denied verification by dashboard` }).catch(() => {});
                         }
                     }
                 }
@@ -2800,7 +2076,7 @@ The DarkLock Team`
                 const payload = { type: 'verification', action: 'denied', guildId, id, userId: row.user_id, moderator, method: action || 'none' };
                 if (this.bot.eventEmitter) await this.bot.eventEmitter.sendEvent(payload);
                 this.broadcastToGuild(guildId, { type: 'verification_update', data: payload });
-            } catch (e) { }
+            } catch (e) {}
 
             res.json({ ok: true, id, status: 'denied' });
         } catch (error) {
@@ -2813,15 +2089,7 @@ The DarkLock Team`
     async getGuildCommandPermissions(req, res) {
         try {
             const guildId = req.params.guildId;
-            const userId = req.user?.discordId || req.user?.userId;
             if (!guildId) return res.status(400).json({ error: 'guildId required' });
-
-            // VULN-004 FIX: Verify user has access to this guild
-            const access = await this.checkGuildAccess(userId, guildId, false);
-            if (!access.authorized) {
-                this.bot.logger?.error(`[SECURITY] Unauthorized getGuildCommandPermissions attempt by ${userId} for guild ${guildId}`);
-                return res.status(403).json({ error: access.error });
-            }
 
             const rows = await this.bot.database.all(
                 `SELECT scope, name, role_ids, created_at, updated_at FROM command_permissions WHERE guild_id = ?`,
@@ -2917,65 +2185,21 @@ The DarkLock Team`
         }
     }
 
-    // Middleware to block OAuth users from admin routes
-    // Admin routes ONLY accessible via username/password login
-    async requirePasswordAuth(req, res, next) {
-        const user = req.user;
-        
-        // Check if this is an OAuth login (has userId from Discord)
-        // OAuth users have userId (Discord ID), password auth users have different structure
-        if (user && user.userId && user.userId.length > 10) {
-            // This is likely a Discord OAuth user (Discord IDs are 17-19 digits)
-            this.bot.logger?.warn(`[Security] OAuth user ${user.username} attempted to access admin route: ${req.path}`);
-            return res.redirect('/dashboard?error=admin_access_denied');
-        }
-        
-        next();
-    }
-
-    // Auth middleware for HTML pages - redirects to login instead of JSON error
-    async authenticateTokenHTML(req, res, next) {
-        let token = req.cookies?.dashboardToken;
-
-        if (!token) {
-            const authHeader = req.headers['authorization'];
-            token = authHeader && authHeader.split(' ')[1];
-        }
-
-        if (!token) {
-            // No token - redirect to login for HTML pages
-            return res.redirect('/login?error=session_expired');
-        }
-
-        try {
-            if (!process.env.JWT_SECRET) {
-                throw new Error('JWT_SECRET not configured');
-            }
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            req.user = decoded;
-
-            // Set cache prevention headers for authenticated HTML pages
-            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
-            res.setHeader('Pragma', 'no-cache');
-            res.setHeader('Expires', '0');
-            res.setHeader('Surrogate-Control', 'no-store');
-
-            next();
-        } catch (error) {
-            // Invalid token - redirect to login
-            return res.redirect('/login?error=invalid_session');
-        }
-    }
-
     async authenticateToken(req, res, next) {
+        // Skip authentication for admin v3 API routes (they have their own auth)
+        if (req.url.startsWith('/v3/') || req.url.startsWith('/admin/')) {
+            console.log('[authenticateToken] Skipping for admin v3 route:', req.url);
+            return next();
+        }
+
         // Check for token in cookies first, then Authorization header
         console.log('\n======== AUTHENTICATE TOKEN MIDDLEWARE ========');
         console.log('[authenticateToken] Request URL:', req.url);
         console.log('[authenticateToken] ALL Cookies:', req.cookies);
         console.log('[authenticateToken] dashboardToken present?:', !!req.cookies?.dashboardToken);
-
+        
         let token = req.cookies?.dashboardToken;
-
+        
         if (!token) {
             const authHeader = req.headers['authorization'];
             token = authHeader && authHeader.split(' ')[1];
@@ -2983,7 +2207,7 @@ The DarkLock Team`
         }
 
         if (!token) {
-            console.error('[authenticateToken] âŒ NO TOKEN FOUND - Returning 401');
+            console.error('[authenticateToken] Ã¢ÂÅ’ NO TOKEN FOUND - Returning 401');
             console.log('================================================\n');
             return res.status(401).json({ error: 'Access token required' });
         }
@@ -2993,70 +2217,82 @@ The DarkLock Team`
                 throw new Error('JWT_SECRET not configured');
             }
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            console.log('[authenticateToken] âœ… TOKEN VERIFIED for user:', decoded.username);
+            console.log('[authenticateToken] Ã¢Å“â€¦ TOKEN VERIFIED for user:', decoded.username);
             console.log('================================================\n');
             req.user = decoded;
             next();
         } catch (error) {
-            console.error('[authenticateToken] âŒ TOKEN VERIFICATION FAILED:', error.message);
+            console.error('[authenticateToken] Ã¢ÂÅ’ TOKEN VERIFICATION FAILED:', error.message);
             console.log('================================================\n');
             return res.status(403).json({ error: 'Invalid or expired token' });
         }
     }
 
-    // SECURITY FIX (VULN-006): Session-bound CSRF validation
-    validateCSRF(req, res, next) {
-        const token = req.headers['x-csrf-token'];
-        const sessionId = req.sessionId || req.cookies?.sessionId;
-        const userId = req.user?.userId;
-
-        if (!sessionId) {
-            this.bot.logger?.warn(`[Security] CSRF validation failed - no session for ${getRealClientIP(req)}`);
-            return res.status(403).json({ error: 'Invalid session' });
-        }
-
-        const validation = validateSessionCSRFToken(sessionId, token, userId);
-        
-        if (!validation.valid) {
-            this.bot.logger?.warn(`[Security] CSRF token validation failed for ${getRealClientIP(req)}: ${validation.reason}`);
-            return res.status(403).json({ error: 'Invalid CSRF token' });
-        }
-
-        next();
-    }
-
-    // SECURITY FIX (VULN-001, VULN-003): Validate ALL required secrets at startup
-    // App MUST fail hard if secrets are missing or weak - NO FALLBACKS
+    // CRITICAL SECURITY: Validate required secrets at startup
     validateSecrets() {
-        console.log('[Security] Validating required secrets (fail-fast mode)...');
-        
-        // CRITICAL: These secrets MUST exist and be strong - no fallbacks allowed
-        try {
-            // VULN-001 FIX: JWT_SECRET is mandatory with minimum length
-            requireEnvSecret('JWT_SECRET', 32);
-            
-            // VULN-003 FIX: OAUTH_STATE_SECRET is now MANDATORY - no fallback
-            requireEnvSecret('OAUTH_STATE_SECRET', 32);
-            
-            // Other required secrets
-            requireEnvSecret('DISCORD_TOKEN', 50);
-            requireEnvSecret('DISCORD_CLIENT_SECRET', 20);
-            requireEnvSecret('INTERNAL_API_KEY', 32);
-            
-            // Stripe secrets only required if billing enabled
-            if (process.env.STRIPE_SECRET || process.env.STRIPE_PRO_PRICE_ID) {
-                requireEnvSecret('STRIPE_SECRET', 20);
-            }
-            
-            console.log('[Security] ✅ All required secrets validated - no weak fallbacks');
-            this.bot?.logger?.info('[Security] ✅ All required secrets validated successfully');
-            
-        } catch (error) {
-            // requireEnvSecret will call process.exit(1) by default
-            // This catch is for any other errors
-            console.error('[Security FATAL]', error.message);
-            throw error;
+        const requiredSecrets = [
+            'JWT_SECRET',
+            'DISCORD_TOKEN',
+            'DISCORD_CLIENT_SECRET',
+            'INTERNAL_API_KEY'
+        ];
+
+        // Stripe secrets are required only if billing is enabled
+        if (process.env.STRIPE_SECRET || process.env.STRIPE_PRO_PRICE_ID || process.env.STRIPE_ENTERPRISE_PRICE_ID) {
+            requiredSecrets.push('STRIPE_SECRET');
         }
+
+        // Strongly recommended but not hard-fatal: OAUTH_STATE_SECRET.
+        // If missing, OAuth state will be weaker but dashboard can still start.
+        if (!process.env.OAUTH_STATE_SECRET) {
+            const msg = '[Security Warning] OAUTH_STATE_SECRET is not set. OAuth state parameter will not be strongly bound.';
+            if (this.bot?.logger?.warn) this.bot.logger.warn(msg);
+            else console.warn(msg);
+        }
+        const missingSecrets = [];
+        const weakSecrets = [];
+
+        for (const secret of requiredSecrets) {
+            const value = process.env[secret];
+            
+            // Check if secret is missing
+            if (!value) {
+                missingSecrets.push(secret);
+                continue;
+            }
+
+            // Check for default/placeholder values
+            if (value.includes('change-this-key') || 
+                value.includes('your_') || 
+                value === 'change_me' ||
+                value.includes('placeholder')) {
+                weakSecrets.push(secret);
+            }
+
+            // Check JWT_SECRET length
+            if (secret === 'JWT_SECRET' && value.length < 64) {
+                const msg = `[Security Warning] JWT_SECRET is too short (${value.length} chars). Minimum recommended: 64 characters.`;
+                if (process.env.NODE_ENV === 'production') {
+                    throw new Error(msg);
+                }
+                this.bot?.logger?.warn(msg);
+            }
+        }
+
+        // Fail on missing required secrets
+        if (missingSecrets.length > 0) {
+            const msg = `CRITICAL: Missing required secrets: ${missingSecrets.join(', ')}. Please set environment variables.`;
+            throw new Error(msg);
+        }
+
+        // Fail on weak/default secrets
+        if (weakSecrets.length > 0) {
+            const msg = `[Security Warning] Weak/default secrets detected: ${weakSecrets.join(', ')}. Replace with secure values!`;
+            this.bot?.logger?.warn(msg);
+            throw new Error(msg);
+        }
+
+        this.bot?.logger?.info('[Security] Ã¢Å“â€¦ All required secrets validated');
     }
 
     // Input validation helpers
@@ -3092,202 +2328,54 @@ The DarkLock Team`
     async handleLogin(req, res) {
         try {
             const { username, password } = req.body;
-
+            
             if (!process.env.JWT_SECRET) {
                 return res.status(500).json({ error: 'JWT_SECRET not configured' });
             }
 
             // Basic validation
             if (!username || !password || typeof username !== 'string' || typeof password !== 'string') {
-                return res.status(400).json({ error: 'Invalid credentials' });
+                return res.status(400).json({ error: 'Invalid credentials format' });
             }
 
             if (username.length > 100 || password.length > 256) {
-                return res.status(400).json({ error: 'Invalid credentials' });
-            }
-
-            // Brute force protection - key by IP + username
-            const identifier = `${req.ip}:${username}`;
-            const bruteCheck = checkBruteForce(identifier);
-
-            if (bruteCheck.blocked) {
-                this.bot.logger.warn(`[Security] Login blocked for ${username} from ${req.ip}: ${bruteCheck.message}`);
-                return res.status(429).json({
-                    error: bruteCheck.message,
-                    remainingTime: bruteCheck.remainingTime
-                });
+                return res.status(400).json({ error: 'Invalid credentials format' });
             }
 
             // Admin credentials from environment variables
             const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
             const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
-            // First, try to find user in database
-            const dbUser = await this.bot.database.get(
-                'SELECT * FROM admin_users WHERE username = ? AND active = 1',
-                [username.toLowerCase()]
-            );
-
-            if (dbUser) {
-                // User found in database - verify password
-                const isValid = await bcrypt.compare(password, dbUser.password_hash);
-
-                if (isValid) {
-                    // Check if 2FA is enabled for this user
-                    if (dbUser.totp_enabled && dbUser.totp_secret) {
-                        const { token: totpToken, backupCode } = req.body;
-
-                        if (!totpToken && !backupCode) {
-                            return res.json({
-                                success: false,
-                                requires2FA: true,
-                                message: 'Two-factor authentication required'
-                            });
-                        }
-
-                        let tokenValid = false;
-
-                        if (backupCode) {
-                            tokenValid = await this.twoFactorAuth.verifyBackupCode(username, backupCode);
-                            if (tokenValid) {
-                                this.bot.logger.warn(`[Security] Backup code used by ${username} from ${req.ip}`);
-                            }
-                        } else if (totpToken) {
-                            tokenValid = this.twoFactorAuth.verifyToken(dbUser.totp_secret, totpToken);
-                        }
-
-                        if (!tokenValid) {
-                            recordFailedLogin(identifier);
-                            this.bot.logger.warn(`[Security] Failed 2FA attempt for ${username} from ${req.ip}`);
-                            return res.status(401).json({ error: 'Invalid two-factor authentication code' });
-                        }
-                    }
-
-                    // Update last login
-                    await this.bot.database.run(
-                        'UPDATE admin_users SET last_login = datetime("now"), login_attempts = 0 WHERE id = ?',
-                        [dbUser.id]
-                    );
-
-                    // Reset failed login attempts on success
-                    resetLoginAttempts(identifier);
-
-                    const token = jwt.sign(
-                        {
-                            userId: dbUser.id.toString(),
-                            role: dbUser.role,
-                            username: dbUser.username,
-                            globalName: dbUser.display_name || dbUser.username
-                        },
-                        process.env.JWT_SECRET,
-                        { expiresIn: '24h' }
-                    );
-
-                    res.cookie('dashboardToken', token, {
-                        httpOnly: true,
-                        secure: process.env.NODE_ENV === 'production',
-                        sameSite: 'lax',
-                        maxAge: 24 * 60 * 60 * 1000,
-                        path: '/'
-                    });
-
-                    this.bot.logger.info(`[Security] Database user ${username} (${dbUser.role}) login successful from ${req.ip}`);
-                    return res.json({
-                        success: true,
-                        user: {
-                            id: dbUser.id.toString(),
-                            role: dbUser.role,
-                            username: dbUser.username,
-                            globalName: dbUser.display_name || dbUser.username
-                        }
-                    });
-                }
+            if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+                return res.status(500).json({ error: 'Admin credentials not configured' });
             }
 
-            // Fallback: Check environment variable admin (for backwards compatibility)
-            if (ADMIN_USERNAME && ADMIN_PASSWORD && username === ADMIN_USERNAME) {
+            // Check username match and password with bcrypt
+            if (username === ADMIN_USERNAME) {
+                // Check if password is bcrypt hash (starts with $2b$)
                 const isPasswordHash = ADMIN_PASSWORD.startsWith('$2b$');
                 let isValid = false;
 
                 if (isPasswordHash) {
+                    // Use bcrypt comparison for hashed password
                     isValid = await bcrypt.compare(password, ADMIN_PASSWORD);
                 } else {
+                    // Fallback to plaintext comparison (for backwards compatibility)
                     console.warn('[Security Warning] Admin password is not hashed. Please hash it with bcrypt.');
                     isValid = password === ADMIN_PASSWORD;
                 }
 
                 if (isValid) {
-                    // Check if 2FA is enabled
-                    const is2FAEnabled = await this.twoFactorAuth.is2FAEnabled(username);
-
-                    if (is2FAEnabled) {
-                        // User has 2FA enabled - require token
-                        const { token: totpToken, backupCode } = req.body;
-
-                        if (!totpToken && !backupCode) {
-                            // First stage - password correct, need 2FA token
-                            return res.json({
-                                success: false,
-                                requires2FA: true,
-                                message: 'Two-factor authentication required'
-                            });
-                        }
-
-                        // Verify 2FA token or backup code
-                        let tokenValid = false;
-
-                        if (backupCode) {
-                            // Verify backup code
-                            tokenValid = await this.twoFactorAuth.verifyBackupCode(username, backupCode);
-                            if (tokenValid) {
-                                this.bot.logger.warn(`[Security] Backup code used by ${username} from ${req.ip}`);
-                            }
-                        } else if (totpToken) {
-                            // Verify TOTP token
-                            const secret = await this.twoFactorAuth.getSecret(username);
-                            tokenValid = this.twoFactorAuth.verifyToken(secret, totpToken);
-                        }
-
-                        if (!tokenValid) {
-                            recordFailedLogin(identifier);
-                            this.bot.logger.warn(`[Security] Failed 2FA attempt for ${username} from ${req.ip}`);
-                            return res.status(401).json({ error: 'Invalid two-factor authentication code' });
-                        }
-                    }
-
-                    // Reset failed login attempts on success
-                    resetLoginAttempts(identifier);
-
-                    // Get role from database if exists
-                    const dbAdminUser = await this.bot.database.get(
-                        'SELECT role FROM admin_users WHERE username = ?',
-                        [username.toLowerCase()]
-                    );
-                    const role = dbAdminUser?.role || 'owner';
-
                     const token = jwt.sign(
-                        { userId: 'admin', role: role, username: username },
+                        { userId: 'admin', role: 'admin', username: 'admin' },
                         process.env.JWT_SECRET,
                         { expiresIn: '24h' }
                     );
 
-                    // Set secure HTTP-only cookie (no token in response body)
-                    res.cookie('dashboardToken', token, {
-                        httpOnly: true,
-                        secure: process.env.NODE_ENV === 'production',
-                        sameSite: 'lax', // Lax allows cookie on top-level navigation (e.g., Stripe redirects)
-                        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-                        path: '/'
-                    });
-
-                    this.bot.logger.info(`[Security] Admin login successful from ${req.ip}`);
-                    return res.json({ success: true, user: { id: 'admin', role: role, username: username } });
+                    return res.json({ token, user: { id: 'admin', role: 'admin', username: 'admin' } });
                 }
             }
 
-            // Record failed login attempt (prevents user enumeration - same error for invalid username or password)
-            recordFailedLogin(identifier);
-            this.bot.logger.warn(`[Security] Failed login attempt for ${username} from ${req.ip}`);
             res.status(401).json({ error: 'Invalid credentials' });
         } catch (error) {
             this.bot.logger.error('Login error:', error);
@@ -3298,10 +2386,10 @@ The DarkLock Team`
     async getAdminStats(req, res) {
         try {
             const user = req.user;
-
-            // Verify user has at least moderator role to view admin stats
-            if (!this.canModerate(user)) {
-                return res.status(403).json({ error: 'Unauthorized - moderator access required' });
+            
+            // Verify admin role
+            if (user.role !== 'admin') {
+                return res.status(403).json({ error: 'Unauthorized' });
             }
 
             // Get all bot guilds
@@ -3381,7 +2469,7 @@ The DarkLock Team`
             return res.redirect(authUrl);
         }
         const state = jwt.sign({ n: nonce, ts: Date.now(), ip: req.ip, ua: req.headers['user-agent'] || '' }, stateSecret, { expiresIn: '10m' });
-
+        
         const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${this.discordConfig.clientId}&redirect_uri=${encodeURIComponent(this.discordConfig.redirectUri)}&response_type=code&scope=${encodeURIComponent(this.discordConfig.scope)}&state=${state}`;
         res.redirect(authUrl);
     }
@@ -3389,7 +2477,7 @@ The DarkLock Team`
     async handleDiscordCallback(req, res) {
         try {
             const { code, state } = req.query;
-
+            
             // Validate OAuth state to prevent CSRF attacks (stateless only)
             if (!state) {
                 return res.status(403).send('Invalid OAuth state - possible CSRF attack detected');
@@ -3417,15 +2505,15 @@ The DarkLock Team`
             if (decodedState.ua && ua && decodedState.ua !== ua) {
                 return res.status(403).send('OAuth state user-agent mismatch');
             }
-
+            
             if (!code) {
                 return res.status(400).send('Authorization code required');
             }
 
             this.bot.logger.info('Discord OAuth: Exchanging code for token...');
-
+            
             // Exchange code for access token
-            const tokenResponse = await axios.post('https://discord.com/api/oauth2/token',
+            const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', 
                 new URLSearchParams({
                     client_id: this.discordConfig.clientId,
                     client_secret: this.discordConfig.clientSecret,
@@ -3433,7 +2521,7 @@ The DarkLock Team`
                     code: code,
                     redirect_uri: this.discordConfig.redirectUri,
                     scope: this.discordConfig.scope
-                }),
+                }), 
                 {
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'
@@ -3460,7 +2548,7 @@ The DarkLock Team`
             let accessGuild = null;
             let userGuilds = [];
             let botGuilds = this.bot.client.guilds.cache;
-
+            
             try {
                 const guildsResponse = await axios.get('https://discord.com/api/users/@me/guilds', {
                     headers: {
@@ -3469,26 +2557,26 @@ The DarkLock Team`
                 });
 
                 userGuilds = guildsResponse.data;
-
+                
                 this.bot.logger.info(`[OAuth Security] User ${user.username} in ${userGuilds.length} guilds, bot in ${botGuilds.size} guilds`);
-
+                
                 // User MUST have admin permissions in at least one mutual guild
                 for (const guild of userGuilds) {
                     const botGuild = botGuilds.get(guild.id);
                     const isAdmin = botGuild && (guild.permissions & 0x8) === 0x8;
-
+                    
                     if (isAdmin) {
                         hasAccess = true;
                         accessGuild = { id: guild.id, name: guild.name };
-                        this.bot.logger.info(`[OAuth Security] âœ… Admin access GRANTED for ${user.username} in guild: ${guild.name}`);
+                        this.bot.logger.info(`[OAuth Security] Ã¢Å“â€¦ Admin access GRANTED for ${user.username} in guild: ${guild.name}`);
                         break; // Found admin guild, stop checking
                     }
                 }
-
+                
                 if (!hasAccess) {
-                    this.bot.logger.warn(`[OAuth Security] âŒ Access DENIED - ${user.username} is not admin in any mutual guild`);
+                    this.bot.logger.warn(`[OAuth Security] Ã¢ÂÅ’ Access DENIED - ${user.username} is not admin in any mutual guild`);
                 }
-
+                
             } catch (guildError) {
                 this.bot.logger.error('[OAuth Security] CRITICAL: Could not check guild permissions:', guildError.message);
                 return res.redirect('/login?error=' + encodeURIComponent('Failed to verify permissions - security check required'));
@@ -3497,7 +2585,7 @@ The DarkLock Team`
             // Create JWT for all users (admin or not)
             // Non-admin users will be redirected to access code page
             const userRole = hasAccess ? 'admin' : 'user';
-
+            
             if (!hasAccess) {
                 this.bot.logger.info(`[OAuth Security] Non-admin user ${user.username} (${user.id}) logged in - will see access code page`);
             }
@@ -3505,7 +2593,7 @@ The DarkLock Team`
             // CRITICAL FIX: Create JWT WITHOUT Discord access token
             // Keep access token server-side only to prevent disclosure
             const token = jwt.sign(
-                {
+                { 
                     userId: user.id,
                     username: user.username,
                     globalName: user.global_name || user.username,
@@ -3531,7 +2619,7 @@ The DarkLock Team`
                 expiresAt: Date.now() + (tokenResponse.data.expires_in * 1000) || (3600 * 1000)
             });
 
-            this.bot.logger.info(`[OAuth Security] âœ… JWT token created for ${user.username} (token kept server-side)`);
+            this.bot.logger.info(`[OAuth Security] Ã¢Å“â€¦ JWT token created for ${user.username} (token kept server-side)`);
 
             // CRITICAL FIX: Set cookie with HttpOnly, Secure, SameSite flags
             console.log('\n========================================');
@@ -3543,32 +2631,34 @@ The DarkLock Team`
                 maxAge: 24 * 60 * 60 * 1000,
                 path: '/'
             });
-
+            
             res.cookie('dashboardToken', token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax', // allow cookie on top-level navigations (Stripe/payment pages)
-                maxAge: 24 * 60 * 60 * 1000,
-                path: '/'
+                httpOnly: true, // CRITICAL: Prevents JavaScript from accessing the token
+                secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
+                sameSite: 'strict', // CSRF protection - only send on same-site requests
+                maxAge: 24 * 60 * 60 * 1000, // 24 hours
+                path: '/' // Available to entire domain
             });
-
-            console.log('[OAuth Callback] âœ… Cookie set successfully!');
+            
+            console.log('[OAuth Callback] Ã¢Å“â€¦ Cookie set successfully!');
             console.log('[OAuth Callback] Redirecting to /dashboard...');
             console.log('========================================\n');
-
+            
             // Clear oauth cookies
             try {
                 res.clearCookie?.('oauth_state', { path: '/', sameSite: 'lax' });
                 res.clearCookie?.('oauth_state_ts', { path: '/', sameSite: 'lax' });
-            } catch (_) { }
+            } catch (_) {}
 
-            // Discord OAuth ALWAYS redirects to user dashboard
-            // Admin dashboard is ONLY accessible via username/password login
-            this.bot.logger.info(`Discord OAuth: Redirecting ${user.username} to user dashboard (hasAccess: ${hasAccess})`);
-            res.redirect('/dashboard'); // Always redirect to user dashboard
+            // Redirect based on access level
+            if (hasAccess) {
+                res.redirect('/dashboard');
+            } else {
+                res.redirect('/access-code'); // Non-admin users see access code page
+            }
         } catch (error) {
             this.bot.logger.error('Discord OAuth error:', error.response?.data || error.message);
-
+            
             // Provide more specific error messages
             let errorMessage = 'Authentication failed';
             if (error.response) {
@@ -3580,60 +2670,40 @@ The DarkLock Team`
                     errorMessage = `Discord API error: ${error.response.status}`;
                 }
             }
-
+            
             res.redirect(`/login?error=${encodeURIComponent(errorMessage)}`);
         }
     }
 
     async handleLogout(req, res) {
-        const userId = req.user?.userId || req.user?.id || 'unknown';
-        this.bot.logger.info(`[AUTH] User ${userId} logging out`);
-
-        // CLEAR AUTHENTICATION COOKIES (JWT-based, no sessions)
+        this.bot.logger.info(`[AUTH] User logged out`);
+        
+        // Clear the dashboardToken cookie
         res.clearCookie('dashboardToken', {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             path: '/'
         });
-
-        res.clearCookie('authToken', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/'
-        });
-
-        res.clearCookie('darklock_token', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/'
-        });
-
+        
+        // Clear any other auth cookies
+        res.clearCookie('authToken', { path: '/' });
         res.clearCookie('userId', { path: '/' });
-
-        // 3) DISABLE BROWSER CACHING (prevents Back button bypass)
-        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-
-        this.bot.logger.info(`[AUTH] User ${userId} logout complete - session destroyed, cookies cleared`);
-
-        // 4) REDIRECT TO LOGIN
-        return res.redirect('/login?logout=true');
+        
+        // Redirect to login page instead of JSON response
+        res.redirect('/login.html');
     }
 
     async debugDatabase(req, res) {
         try {
             const tables = [];
-
+            
             // Check if tables exist
             const tableQueries = [
                 "SELECT name FROM sqlite_master WHERE type='table' AND name='guild_configs'",
                 "SELECT name FROM sqlite_master WHERE type='table' AND name='guild_settings'"
             ];
-
+            
             for (const query of tableQueries) {
                 const result = await this.bot.database.get(query);
                 tables.push({
@@ -3641,15 +2711,15 @@ The DarkLock Team`
                     exists: !!result
                 });
             }
-
+            
             // Get schema info
             const guildConfigsSchema = await this.bot.database.all("PRAGMA table_info(guild_configs)");
             const guildSettingsSchema = await this.bot.database.all("PRAGMA table_info(guild_settings)");
-
+            
             // Count rows
             const guildConfigsCount = await this.bot.database.get("SELECT COUNT(*) as count FROM guild_configs");
             const guildSettingsCount = await this.bot.database.get("SELECT COUNT(*) as count FROM guild_settings");
-
+            
             res.json({
                 tables,
                 schema: {
@@ -3687,23 +2757,23 @@ The DarkLock Team`
             // Map allowed keys to columns in guild_configs; ignore unknown
             const allowedKeys = [
                 // raid
-                'raid_threshold', 'raid_timeout_minutes', 'raid_action', 'raid_dm_notify',
+                'raid_threshold','raid_timeout_minutes','raid_action','raid_dm_notify',
                 // spam
-                'spam_threshold', 'spam_timeout_seconds', 'spam_delete_messages', 'spam_mute_duration',
+                'spam_threshold','spam_timeout_seconds','spam_delete_messages','spam_mute_duration',
                 // phishing
-                'phishing_check_links', 'phishing_delete_messages', 'phishing_ban_user',
+                'phishing_check_links','phishing_delete_messages','phishing_ban_user',
                 // antinuke
-                'antinuke_role_limit', 'antinuke_channel_limit', 'antinuke_ban_limit', 'antinuke_auto_ban', 'antinuke_reverse_actions',
+                'antinuke_role_limit','antinuke_channel_limit','antinuke_ban_limit','antinuke_auto_ban','antinuke_reverse_actions',
                 // verification (actual DB columns)
-                'verification_profile', 'verification_timeout_minutes', 'auto_kick_unverified', 'verification_min_account_age_days', 'enable_ai_scan', 'enable_dashboard_buttons', 'enable_staff_dm', 'verification_language',
+                'verification_profile','verification_timeout_minutes','auto_kick_unverified','verification_min_account_age_days','enable_ai_scan','enable_dashboard_buttons','enable_staff_dm','verification_language',
                 // welcome
-                'welcome_embed_enabled', 'welcome_ping_user', 'welcome_delete_after',
+                'welcome_embed_enabled','welcome_ping_user','welcome_delete_after',
                 // tickets
-                'ticket_max_open', 'ticket_auto_close_hours', 'ticket_transcript_enabled', 'ticket_rating_enabled',
+                'ticket_max_open','ticket_auto_close_hours','ticket_transcript_enabled','ticket_rating_enabled',
                 // automod
-                'automod_toxicity_threshold', 'automod_caps_percentage', 'automod_emoji_limit', 'automod_mention_limit',
+                'automod_toxicity_threshold','automod_caps_percentage','automod_emoji_limit','automod_mention_limit',
                 // autorole
-                'autorole_delay_seconds', 'autorole_remove_on_leave', 'autorole_bypass_bots'
+                'autorole_delay_seconds','autorole_remove_on_leave','autorole_bypass_bots'
             ];
 
             const updates = [];
@@ -3711,7 +2781,7 @@ The DarkLock Team`
             for (const [key, value] of Object.entries(settings)) {
                 // Map frontend field name to DB column name if mapping exists
                 const dbColumn = fieldMapping[key] || key;
-
+                
                 if (allowedKeys.includes(dbColumn)) {
                     updates.push(`${dbColumn} = ?`);
                     params.push(value);
@@ -3740,19 +2810,19 @@ The DarkLock Team`
     async debugGuild(req, res) {
         try {
             const guildId = req.params.guildId;
-
+            
             // Get guild config
             const guildConfig = await this.bot.database.get('SELECT * FROM guild_configs WHERE guild_id = ?', [guildId]);
-
+            
             // Get guild settings
             const guildSettings = await this.bot.database.get('SELECT * FROM guild_settings WHERE guild_id = ?', [guildId]);
-
+            
             // Get all guild configs for comparison
             const allConfigs = await this.bot.database.all('SELECT guild_id, anti_raid_enabled, anti_spam_enabled FROM guild_configs LIMIT 10');
-
+            
             // Get all guild settings for comparison
             const allSettings = await this.bot.database.all('SELECT guild_id, log_channel_id, mod_role_id FROM guild_settings LIMIT 10');
-
+            
             res.json({
                 guildId,
                 guildConfig: guildConfig || null,
@@ -3769,7 +2839,7 @@ The DarkLock Team`
         try {
             // Get all tables
             const tables = await this.bot.database.all("SELECT name FROM sqlite_master WHERE type='table'");
-
+            
             const result = {};
             for (const table of tables) {
                 const tableName = table.name;
@@ -3784,7 +2854,7 @@ The DarkLock Team`
                     result[tableName] = { error: e.message };
                 }
             }
-
+            
             res.json(result);
         } catch (error) {
             res.status(500).json({ error: error.message, stack: error.stack });
@@ -3804,7 +2874,7 @@ The DarkLock Team`
             botGuilds: this.bot.client.guilds.cache.size,
             botGuildNames: this.bot.client.guilds.cache.map(g => g.name)
         };
-
+        
         res.json({
             message: 'Discord OAuth Debug Information',
             config: config,
@@ -3994,7 +3064,7 @@ The DarkLock Team`
         console.log('[Stripe Webhook] Parsed data:', { guildId, userId, plan, status });
 
         if (!guildId) {
-            console.warn('[Stripe Webhook] âš ï¸ No guildId in subscription metadata - user will need to link manually');
+            console.warn('[Stripe Webhook] Ã¢Å¡Â Ã¯Â¸Â No guildId in subscription metadata - user will need to link manually');
         }
 
         await this.bot.applySubscriptionUpdate({
@@ -4047,9 +3117,9 @@ The DarkLock Team`
         try {
             const guildId = req.query.guildId || this.getDefaultGuildId();
             const userId = req.user?.discordId || req.user?.userId;
-
+            
             this.bot.logger.info(`[SETTINGS] Loading dashboard data for guild: ${guildId}, user: ${userId}`);
-
+            
             // CRITICAL: Verify user has access to this guild
             if (userId && userId !== 'admin') {
                 const guild = this.bot.client.guilds.cache.get(guildId);
@@ -4057,25 +3127,25 @@ The DarkLock Team`
                     this.bot.logger.warn(`[SECURITY] User ${userId} attempted to access non-existent guild ${guildId}`);
                     return res.status(404).json({ error: 'Guild not found' });
                 }
-
+                
                 // Verify user is a member of this guild
                 const member = await guild.members.fetch(userId).catch(() => null);
                 if (!member) {
                     this.bot.logger.error(`[SECURITY] User ${userId} attempted unauthorized access to guild ${guildId}`);
                     return res.status(403).json({ error: 'Unauthorized: You are not a member of this server' });
                 }
-
+                
                 // Verify user has manage permissions
-                const hasManagePerms = member.permissions.has('Administrator') ||
-                    member.permissions.has('ManageGuild');
+                const hasManagePerms = member.permissions.has('Administrator') || 
+                                      member.permissions.has('ManageGuild');
                 if (!hasManagePerms && guild.ownerId !== userId) {
                     this.bot.logger.error(`[SECURITY] User ${userId} lacks permissions for guild ${guildId}`);
                     return res.status(403).json({ error: 'Unauthorized: You do not have manage permissions in this server' });
                 }
-
+                
                 this.bot.logger.info(`[SECURITY] Authorized: User ${userId} has access to guild ${guildId}`);
             }
-
+            
             // Load guild configuration - with advanced settings
             let config = {
                 // Security toggles
@@ -4148,14 +3218,14 @@ The DarkLock Team`
                 mute_role_id: null,
                 autorole_id: null
             };
-
+            
             try {
                 // Load security settings from guild_configs
                 const securityConfig = await this.bot.database.get(
-                    'SELECT * FROM guild_configs WHERE guild_id = ?',
+                    'SELECT * FROM guild_configs WHERE guild_id = ?', 
                     [guildId]
                 );
-
+                
                 if (securityConfig) {
                     this.bot.logger.info(`[SETTINGS] Found security config for ${guildId}`);
                     // Override defaults with saved values
@@ -4166,9 +3236,9 @@ The DarkLock Team`
                     });
                 } else {
                     this.bot.logger.info(`[SETTINGS] Creating default security config for ${guildId}`);
-                    // Create default entry but avoid replacing an existing row
-                    await this.bot.database.run(`INSERT OR IGNORE INTO guild_configs (guild_id) VALUES (?)`, [guildId]);
-                    await this.bot.database.run(`
+                        // Create default entry but avoid replacing an existing row
+                        await this.bot.database.run(`INSERT OR IGNORE INTO guild_configs (guild_id) VALUES (?)`, [guildId]);
+                        await this.bot.database.run(`
                             UPDATE guild_configs SET
                                 anti_raid_enabled = COALESCE(anti_raid_enabled, 1),
                                 anti_spam_enabled = COALESCE(anti_spam_enabled, 1),
@@ -4186,13 +3256,13 @@ The DarkLock Team`
                             WHERE guild_id = ?
                         `, [guildId]);
                 }
-
+                
                 // Load bot settings from guild_settings (server-specific)
                 const botSettings = await this.bot.database.get(
-                    'SELECT * FROM guild_settings WHERE guild_id = ?',
+                    'SELECT * FROM guild_settings WHERE guild_id = ?', 
                     [guildId]
                 );
-
+                
                 if (botSettings) {
                     this.bot.logger.info(`[SETTINGS] Found bot settings for ${guildId}`);
                     // Map database fields to config fields with fallbacks
@@ -4206,7 +3276,7 @@ The DarkLock Team`
                     config.ticket_category = botSettings.ticket_category;
                     config.mute_role_id = botSettings.mute_role_id;
                     config.autorole_id = botSettings.autorole_id;
-
+                    
                     // Parse additional settings from JSON
                     if (botSettings.settings_json) {
                         try {
@@ -4216,7 +3286,7 @@ The DarkLock Team`
                             this.bot.logger.warn('Could not parse settings JSON:', e.message);
                         }
                     }
-
+                    
                     this.bot.logger.debug(`[SETTINGS] Bot settings mapped:`, {
                         log_channel_id: config.log_channel_id,
                         welcome_channel: config.welcome_channel,
@@ -4230,11 +3300,11 @@ The DarkLock Team`
                         VALUES (?, 1, 1)
                     `, [guildId]);
                 }
-
+                
             } catch (dbError) {
                 this.bot.logger.error(`[SETTINGS] Database error for ${guildId}:`, dbError);
             }
-
+            
             // Get real-time security stats for this specific guild
             let securityStats;
             try {
@@ -4260,7 +3330,7 @@ The DarkLock Team`
                     is_active: false
                 };
             }
-
+            
             this.bot.logger.info(`[SETTINGS] Final config for ${guildId} loaded successfully`);
             // Include basic role list for UI dropdowns (e.g., Shared Access)
             let roles = [];
@@ -4308,7 +3378,7 @@ The DarkLock Team`
         try {
             const guildId = req.query.guildId || this.getDefaultGuildId();
             const config = await this.bot.database.getGuildConfig(guildId);
-
+            
             res.json({
                 antiRaidEnabled: config.anti_raid_enabled,
                 antiSpamEnabled: config.anti_spam_enabled,
@@ -4335,11 +3405,6 @@ The DarkLock Team`
     }
 
     async handleLockdown(req, res) {
-        // Role check: Only admin+ can control lockdown
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required for lockdown control' });
-        }
-
         try {
             const { action, reason, duration } = req.body;
             const guildId = req.query.guildId || this.getDefaultGuildId();
@@ -4351,8 +3416,8 @@ The DarkLock Team`
 
             if (action === 'enable') {
                 await this.bot.antiRaid.manualLockdown(
-                    guild,
-                    reason || 'Dashboard activation',
+                    guild, 
+                    reason || 'Dashboard activation', 
                     duration || 300000
                 );
             } else if (action === 'disable') {
@@ -4367,15 +3432,10 @@ The DarkLock Team`
     }
 
     async handleInvites(req, res) {
-        // Role check: Only admin+ can control invites
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required for invite control' });
-        }
-
         try {
             const { action } = req.body;
             const guildId = req.query.guildId || this.getDefaultGuildId();
-
+            
             // This would integrate with Discord's invite management
             // For now, just return success
             res.json({ success: true, action });
@@ -4386,14 +3446,9 @@ The DarkLock Team`
     }
 
     async clearRaidFlags(req, res) {
-        // Role check: Only admin+ can clear raid flags
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required to clear raid flags' });
-        }
-
         try {
             const guildId = req.query.guildId || this.getDefaultGuildId();
-
+            
             // Clear raid flags from database
             await this.bot.database.run(
                 'UPDATE user_records SET flags = NULL WHERE guild_id = ? AND flags LIKE ?',
@@ -4411,9 +3466,9 @@ The DarkLock Team`
         try {
             const guildId = req.query.guildId || this.getDefaultGuildId();
             const updates = req.body;
-
+            
             await this.bot.database.updateGuildConfig(guildId, updates);
-
+            
             res.json({ success: true });
         } catch (error) {
             this.bot.logger.error('Config update error:', error);
@@ -4425,13 +3480,13 @@ The DarkLock Team`
         try {
             const { serverType, memberSettings } = req.body;
             const guildId = this.getDefaultGuildId();
-
+            
             // Apply setup based on server type
             const presetConfig = this.getPresetConfig(serverType);
             const finalConfig = { ...presetConfig, ...memberSettings };
-
+            
             await this.bot.database.updateGuildConfig(guildId, finalConfig);
-
+            
             res.json({ success: true });
         } catch (error) {
             this.bot.logger.error('Setup error:', error);
@@ -4444,18 +3499,18 @@ The DarkLock Team`
             const guildId = req.query.guildId || this.getDefaultGuildId();
             const limit = parseInt(req.query.limit) || 100;
             const type = req.query.type;
-
+            
             let query = 'SELECT * FROM message_logs WHERE guild_id = ?';
             const params = [guildId];
-
+            
             if (type) {
                 query += ' AND type = ?';
                 params.push(type);
             }
-
+            
             query += ' ORDER BY created_at DESC LIMIT ?';
             params.push(limit);
-
+            
             const logs = await this.bot.database.all(query, params);
             res.json(logs);
         } catch (error) {
@@ -4468,14 +3523,14 @@ The DarkLock Team`
         try {
             const guildId = req.query.guildId || this.getDefaultGuildId();
             const limit = parseInt(req.query.limit) || 50;
-
+            
             const incidents = await this.bot.database.all(`
                 SELECT * FROM security_incidents 
                 WHERE guild_id = ? 
                 ORDER BY created_at DESC 
                 LIMIT ?
             `, [guildId, limit]);
-
+            
             res.json(incidents);
         } catch (error) {
             this.bot.logger.error('Incidents error:', error);
@@ -4487,13 +3542,13 @@ The DarkLock Team`
         try {
             const guildId = req.query.guildId || this.getDefaultGuildId();
             const days = parseInt(req.query.days) || 7;
-
+            
             const analytics = await this.bot.database.all(`
                 SELECT * FROM analytics 
                 WHERE guild_id = ? AND date >= date('now', '-${days} days')
                 ORDER BY date DESC, hour DESC
             `, [guildId]);
-
+            
             res.json(analytics);
         } catch (error) {
             this.bot.logger.error('Analytics error:', error);
@@ -4506,22 +3561,22 @@ The DarkLock Team`
         try {
             const config = await this.bot.database.getGuildConfig(guildId);
             let score = 0;
-
+            
             if (config.anti_raid_enabled) score += 20;
             if (config.anti_spam_enabled) score += 20;
             if (config.anti_links_enabled) score += 15;
             if (config.anti_phishing_enabled) score += 15;
             if (config.verification_enabled) score += 10;
-
+            
             // Check for recent incidents
             const recentIncidents = await this.bot.database.get(`
                 SELECT COUNT(*) as count FROM security_incidents 
                 WHERE guild_id = ? AND created_at > datetime('now', '-24 hours')
             `, [guildId]);
-
+            
             const incidentPenalty = Math.min(20, recentIncidents.count * 2);
             score = Math.max(0, score + 20 - incidentPenalty);
-
+            
             return Math.round(score);
         } catch (error) {
             return 50; // Default score if calculation fails
@@ -4536,7 +3591,7 @@ The DarkLock Team`
                 WHERE guild_id = ? AND created_at > datetime('now', '-1 hour') AND resolved = 0
                 GROUP BY incident_type
             `, [guildId]);
-
+            
             return incidents.map(incident => ({
                 id: incident.incident_type,
                 title: this.formatIncidentType(incident.incident_type),
@@ -4557,7 +3612,7 @@ The DarkLock Team`
                 ORDER BY created_at DESC 
                 LIMIT 5
             `, [guildId]);
-
+            
             return incidents.map(incident => ({
                 id: incident.id,
                 time: new Date(incident.created_at).getTime(),
@@ -4579,18 +3634,18 @@ The DarkLock Team`
                 GROUP BY hour, metric_type
                 ORDER BY hour
             `, [guildId]);
-
+            
             const joins = [];
             const messages = [];
-
+            
             for (let i = 0; i < 24; i += 4) {
                 const joinData = analytics.find(a => a.hour === i && a.metric_type === 'joins');
                 const messageData = analytics.find(a => a.hour === i && a.metric_type === 'messages');
-
+                
                 joins.push(joinData ? joinData.total : 0);
                 messages.push(messageData ? messageData.total : 0);
             }
-
+            
             return { joins, messages };
         } catch (error) {
             return { joins: [0, 0, 0, 0, 0, 0], messages: [0, 0, 0, 0, 0, 0] };
@@ -4605,21 +3660,21 @@ The DarkLock Team`
                 WHERE guild_id = ? AND created_at > datetime('now', '-24 hours')
                 GROUP BY incident_type
             `, [guildId]);
-
+            
             const result = {
                 spamBlocked: 0,
                 raidsStopped: 0,
                 linksFiltered: 0,
                 usersVerified: 0
             };
-
+            
             events.forEach(event => {
                 if (event.incident_type === 'SPAM_DETECTED') result.spamBlocked = event.count;
                 if (event.incident_type === 'RAID_DETECTED') result.raidsStopped = event.count;
                 if (event.incident_type === 'MALICIOUS_LINK') result.linksFiltered = event.count;
                 if (event.incident_type.includes('VERIFICATION')) result.usersVerified = event.count;
             });
-
+            
             return result;
         } catch (error) {
             return { spamBlocked: 0, raidsStopped: 0, linksFiltered: 0, usersVerified: 0 };
@@ -4691,24 +3746,19 @@ The DarkLock Team`
                 verification_enabled: true
             }
         };
-
+        
         return presets[serverType] || presets.gaming;
     }
 
     // New API handlers
     async handleEmergency(req, res) {
-        // Role check: Only admin+ can control emergency mode
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required for emergency mode' });
-        }
-
         try {
             const { action } = req.body;
             const guildId = req.query.guildId || this.getDefaultGuildId();
-
+            
             if (action === 'enable') {
                 // Enable emergency mode - lock all channels, pause invites, enable strict verification
-                this.bot.logger.warn(`ðŸš¨ Emergency mode activated for guild ${guildId}`);
+                this.bot.logger.warn(`Ã°Å¸Å¡Â¨ Emergency mode activated for guild ${guildId}`);
                 this.broadcast({
                     type: 'notification',
                     message: 'Emergency mode activated - Server locked down',
@@ -4716,14 +3766,14 @@ The DarkLock Team`
                 });
             } else {
                 // Disable emergency mode
-                this.bot.logger.info(`âœ… Emergency mode deactivated for guild ${guildId}`);
+                this.bot.logger.info(`Ã¢Å“â€¦ Emergency mode deactivated for guild ${guildId}`);
                 this.broadcast({
                     type: 'notification',
                     message: 'Emergency mode deactivated - Normal operations resumed',
                     level: 'success'
                 });
             }
-
+            
             res.json({ success: true, emergencyMode: action === 'enable' });
         } catch (error) {
             this.bot.logger.error('Emergency mode error:', error);
@@ -4732,29 +3782,24 @@ The DarkLock Team`
     }
 
     async resolveThreat(req, res) {
-        // Role check: Moderator+ can resolve threats
-        if (!this.canModerate(req.user)) {
-            return res.status(403).json({ error: 'Moderator access required to resolve threats' });
-        }
-
         try {
             const { id } = req.params;
             const guildId = req.query.guildId || this.getDefaultGuildId();
-
+            
             // Mark threat as resolved in database
             await this.bot.database.run(`
                 UPDATE security_incidents 
                 SET resolved = 1, resolved_at = datetime('now')
                 WHERE id = ? AND guild_id = ?
             `, [id, guildId]);
-
-            this.bot.logger.info(`âœ… Threat ${id} resolved by dashboard user`);
-
+            
+            this.bot.logger.info(`Ã¢Å“â€¦ Threat ${id} resolved by dashboard user`);
+            
             this.broadcast({
                 type: 'security_update',
                 payload: { threatResolved: id }
             });
-
+            
             res.json({ success: true });
         } catch (error) {
             this.bot.logger.error('Resolve threat error:', error);
@@ -4763,32 +3808,27 @@ The DarkLock Team`
     }
 
     async updateSecuritySettings(req, res) {
-        // Role check: Only admin+ can modify settings
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required to modify settings' });
-        }
-
         try {
             const guildId = req.query.guildId || this.getDefaultGuildId();
             if (!guildId) {
                 return res.status(400).json({ error: 'Missing guildId' });
             }
-
+            
             const settings = req.body;
             if (!settings || typeof settings !== 'object') {
                 return res.status(400).json({ error: 'No settings provided' });
             }
-
+            
             this.bot.logger.info(`[SETTINGS] Saving security settings for guild ${guildId}:`, settings);
-
+            
             // Valid security setting fields
             const validFields = [
-                'anti_raid_enabled', 'anti_spam_enabled', 'anti_links_enabled',
-                'anti_phishing_enabled', 'antinuke_enabled', 'verification_enabled',
+                'anti_raid_enabled', 'anti_spam_enabled', 'anti_links_enabled', 
+                'anti_phishing_enabled', 'antinuke_enabled', 'verification_enabled', 
                 'welcome_enabled', 'tickets_enabled', 'auto_mod_enabled', 'autorole_enabled',
                 'xp_enabled'
             ];
-
+            
             // Filter to only valid fields
             const updates = {};
             Object.keys(settings).forEach(key => {
@@ -4796,11 +3836,11 @@ The DarkLock Team`
                     updates[key] = Boolean(settings[key]);
                 }
             });
-
+            
             if (Object.keys(updates).length === 0) {
                 return res.status(400).json({ error: 'No valid security settings provided' });
             }
-
+            
             // Enforce mutual exclusivity
             if (updates.verification_enabled === true) {
                 updates.welcome_enabled = false;
@@ -4813,19 +3853,19 @@ The DarkLock Team`
                 'SELECT * FROM guild_configs WHERE guild_id = ?',
                 [guildId]
             );
-
+            
             // Ensure guild config row exists
             await this.bot.database.run(
-                'INSERT OR IGNORE INTO guild_configs (guild_id) VALUES (?)',
+                'INSERT OR IGNORE INTO guild_configs (guild_id) VALUES (?)', 
                 [guildId]
             );
-
+            
             // Update each field individually and send confirmations
             const userId = req.user?.id || 'Dashboard User';
-
+            
             for (const [field, value] of Object.entries(updates)) {
                 const oldValue = currentSettings ? currentSettings[field] : null;
-
+                
                 await this.bot.database.run(
                     `UPDATE guild_configs SET ${field} = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`,
                     [value ? 1 : 0, guildId]
@@ -4848,7 +3888,7 @@ The DarkLock Team`
                 } catch (auditErr) {
                     this.bot.logger?.warn && this.bot.logger.warn('Failed to insert audit log:', auditErr.message);
                 }
-
+                
                 // Send confirmation if ConfirmationManager is available
                 if (this.bot.confirmationManager && oldValue !== (value ? 1 : 0)) {
                     const settingNames = {
@@ -4864,7 +3904,7 @@ The DarkLock Team`
                         'autorole_enabled': 'Auto-Role Assignment',
                         'xp_enabled': 'XP & Leveling System'
                     };
-
+                    
                     await this.bot.confirmationManager.sendConfirmation(
                         guildId,
                         'security',
@@ -4874,7 +3914,7 @@ The DarkLock Team`
                         userId
                     );
                 }
-
+                
                 // Log to dashboard logger
                 if (this.bot.dashboardLogger) {
                     const guild = this.bot.client.guilds.cache.get(guildId);
@@ -4919,7 +3959,7 @@ The DarkLock Team`
                     });
                 }
             }
-
+            
             this.bot.logger.info(`[SETTINGS] Security settings saved for guild ${guildId}`);
 
             // Log to guild log channel with embed for each changed setting
@@ -4943,14 +3983,14 @@ The DarkLock Team`
             } catch (logErr) {
                 this.bot.logger.warn('Failed to send setting update embed:', logErr.message);
             }
-
+            
             // Invalidate config cache
             if (this.bot.database.invalidateConfigCache) {
                 this.bot.database.invalidateConfigCache(guildId);
             }
-
+            
             res.json({ success: true, message: 'Security settings updated. Confirmation sent to Discord.', settings: { ...currentSettings, ...updates } });
-
+            
         } catch (error) {
             this.bot.logger.error('[SETTINGS] updateSecuritySettings error:', error);
             res.status(500).json({ error: `Failed to update security settings: ${error.message}` });
@@ -5060,9 +4100,9 @@ The DarkLock Team`
                 after: value,
                 changedBy: userId
             }));
-
+            
             packets.forEach(p => this.broadcastToGuild(guildId, p));
-
+            
             if (updates.verification_enabled === 1) {
                 this.broadcastToGuild(guildId, { type: 'verification_instructions', guildId });
             }
@@ -5073,10 +4113,10 @@ The DarkLock Team`
             if (logChannel?.isTextBased()) {
                 for (const packet of packets) {
                     const embed = this.buildSettingEmbed(packet.setting, packet.before, packet.after, packet.changedBy);
-                    if (embed) await logChannel.send({ embeds: [embed] }).catch(() => { });
+                    if (embed) await logChannel.send({ embeds: [embed] }).catch(() => {});
                 }
                 if (updates.verification_enabled === 1) {
-                    await logChannel.send({ embeds: [this.buildVerificationInstructionsEmbed()] }).catch(() => { });
+                    await logChannel.send({ embeds: [this.buildVerificationInstructionsEmbed()] }).catch(() => {});
                 }
             }
 
@@ -5116,13 +4156,13 @@ The DarkLock Team`
         const afterText = after ? 'Enabled' : 'Disabled';
         const beforeText = before ? 'Enabled' : 'Disabled';
         return new (require('discord.js').EmbedBuilder)()
-            .setTitle('âš™ï¸ Dashboard Setting Updated')
-            .setDescription(`${label} updated to **${afterText}**\n\nâœ… Dashboard and bot are synchronized`)
+            .setTitle('Ã¢Å¡â„¢Ã¯Â¸Â Dashboard Setting Updated')
+            .setDescription(`${label} updated to **${afterText}**\n\nÃ¢Å“â€¦ Dashboard and bot are synchronized`)
             .addFields(
-                { name: 'ðŸ·ï¸ Category', value: 'Security Settings', inline: true },
-                { name: 'ðŸ“‹ Setting', value: label, inline: true },
-                { name: 'ðŸ‘¤ Changed By', value: changedBy || 'Dashboard', inline: true },
-                { name: 'ðŸ”„ Changes', value: `Before: ${beforeText}\nAfter: ${afterText}`, inline: false }
+                { name: 'Ã°Å¸ÂÂ·Ã¯Â¸Â Category', value: 'Security Settings', inline: true },
+                { name: 'Ã°Å¸â€œâ€¹ Setting', value: label, inline: true },
+                { name: 'Ã°Å¸â€˜Â¤ Changed By', value: changedBy || 'Dashboard', inline: true },
+                { name: 'Ã°Å¸â€â€ž Changes', value: `Before: ${beforeText}\nAfter: ${afterText}`, inline: false }
             )
             .setColor(after ? 0x00d4ff : 0xffa200)
             .setTimestamp();
@@ -5130,7 +4170,7 @@ The DarkLock Team`
 
     buildVerificationInstructionsEmbed() {
         return new (require('discord.js').EmbedBuilder)()
-            .setTitle('ðŸ” Verification System Enabled')
+            .setTitle('Ã°Å¸â€Â Verification System Enabled')
             .setDescription('New members must now verify before accessing channels.')
             .addFields({
                 name: 'Next Steps',
@@ -5141,29 +4181,24 @@ The DarkLock Team`
     }
 
     async updateBotSettings(req, res) {
-        // Role check: Only admin+ can modify settings
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required to modify settings' });
-        }
-
         try {
             const guildId = req.query.guildId || this.getDefaultGuildId();
             if (!guildId) {
                 return res.status(400).json({ error: 'Missing guildId' });
             }
-
+            
             const settings = req.body;
             if (!settings || typeof settings !== 'object') {
                 return res.status(400).json({ error: 'No settings provided' });
             }
-
+            
             this.bot.logger.info(`[SETTINGS] Saving bot settings for guild ${guildId}:`, settings);
-
+            
             // Valid bot setting fields and their database column mapping
             const fieldMapping = {
                 'log_channel_id': 'log_channel_id',
                 'alert_channel': 'log_channel_id',
-                'mod_role_id': 'mod_role_id',
+                'mod_role_id': 'mod_role_id', 
                 'admin_role_id': 'admin_role_id',
                 'welcome_channel': 'welcome_channel_id',
                 'welcome_channel_id': 'welcome_channel_id',
@@ -5182,36 +4217,36 @@ The DarkLock Team`
                 'verification_require_captcha': 'verification_require_captcha',
                 'verification_log_attempts': 'verification_log_attempts'
             };
-
+            
             const updates = {};
             Object.keys(settings).forEach(key => {
                 if (fieldMapping[key] && settings[key] !== undefined) {
                     updates[fieldMapping[key]] = settings[key];
                 }
             });
-
+            
             if (Object.keys(updates).length === 0) {
                 return res.status(400).json({ error: 'No valid bot settings provided' });
             }
-
+            
             // Get current settings
             const currentSettings = await this.bot.database.get(
                 'SELECT * FROM guild_settings WHERE guild_id = ?',
                 [guildId]
             );
-
+            
             // Ensure guild settings row exists
             await this.bot.database.run(
-                'INSERT OR IGNORE INTO guild_settings (guild_id) VALUES (?)',
+                'INSERT OR IGNORE INTO guild_settings (guild_id) VALUES (?)', 
                 [guildId]
             );
-
+            
             // Update each field individually and send confirmations
             const userId = req.user?.id || 'Dashboard User';
-
+            
             for (const [field, value] of Object.entries(updates)) {
                 const oldValue = currentSettings ? currentSettings[field] : null;
-
+                
                 await this.bot.database.run(
                     `UPDATE guild_settings SET ${field} = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`,
                     [value, guildId]
@@ -5234,7 +4269,7 @@ The DarkLock Team`
                 } catch (auditErr) {
                     this.bot.logger?.warn && this.bot.logger.warn('Failed to insert audit log:', auditErr.message);
                 }
-
+                
                 // Send confirmation for channel/role changes
                 if (this.bot.confirmationManager && oldValue !== value) {
                     const settingNames = {
@@ -5247,11 +4282,11 @@ The DarkLock Team`
                         'mute_role_id': 'Mute Role',
                         'autorole_id': 'Auto-Role'
                     };
-
+                    
                     // Format values for display
                     let displayValue = value;
                     let displayOldValue = oldValue;
-
+                    
                     if (field.includes('channel') && value) {
                         displayValue = `<#${value}>`;
                         displayOldValue = oldValue ? `<#${oldValue}>` : 'None';
@@ -5259,7 +4294,7 @@ The DarkLock Team`
                         displayValue = `<@&${value}>`;
                         displayOldValue = oldValue ? `<@&${oldValue}>` : 'None';
                     }
-
+                    
                     await this.bot.confirmationManager.sendConfirmation(
                         guildId,
                         'configuration',
@@ -5269,7 +4304,7 @@ The DarkLock Team`
                         userId
                     );
                 }
-
+                
                 // Log to dashboard logger
                 if (this.bot.dashboardLogger) {
                     const guild = this.bot.client.guilds.cache.get(guildId);
@@ -5293,16 +4328,16 @@ The DarkLock Team`
                     }
                 }
             }
-
+            
             this.bot.logger.info(`[SETTINGS] Bot settings saved for guild ${guildId}`);
-
+            
             // Invalidate config cache
             if (this.bot.database.invalidateConfigCache) {
                 this.bot.database.invalidateConfigCache(guildId);
             }
-
+            
             res.json({ success: true, message: 'Bot configuration updated. Confirmation sent to Discord.' });
-
+            
         } catch (error) {
             this.bot.logger.error('[SETTINGS] updateBotSettings error:', error);
             res.status(500).json({ error: `Failed to update bot settings: ${error.message}` });
@@ -5313,19 +4348,19 @@ The DarkLock Team`
         try {
             const { guildId, feature, settings: nestedSettings } = req.body;
             const targetGuildId = guildId || req.query.guildId || this.getDefaultGuildId();
-
+            
             if (!targetGuildId) {
                 return res.status(400).json({ error: 'Missing guildId' });
             }
-
+            
             // Extract settings from nested structure if present, otherwise use req.body directly
             const settings = nestedSettings || req.body;
             if (!settings || typeof settings !== 'object') {
                 return res.status(400).json({ error: 'No advanced settings provided' });
             }
-
+            
             this.bot.logger.info(`[SETTINGS] Saving advanced settings for guild ${targetGuildId} (feature: ${feature || 'unknown'}):`, settings);
-
+            
             // Valid advanced setting fields
             const validFields = [
                 'raid_threshold', 'raid_timeout_minutes', 'raid_action', 'raid_dm_notify',
@@ -5338,39 +4373,39 @@ The DarkLock Team`
                 'automod_toxicity_threshold', 'automod_caps_percentage', 'automod_emoji_limit', 'automod_mention_limit',
                 'antinuke_role_limit', 'antinuke_channel_limit', 'antinuke_ban_limit', 'antinuke_auto_ban', 'antinuke_reverse_actions'
             ];
-
+            
             const updates = {};
             Object.keys(settings).forEach(key => {
                 if (validFields.includes(key)) {
                     updates[key] = settings[key];
                 }
             });
-
+            
             if (Object.keys(updates).length === 0) {
                 // Accept request even if no known fields matched to avoid blocking UI
                 this.bot.logger.warn('[SETTINGS] No valid advanced settings matched known fields; echoing settings and returning success');
                 return res.json({ success: true, updated: {}, received: settings });
             }
-
+            
             // Ensure guild config row exists WITHOUT overwriting existing values
             const existing = await this.bot.database.get(
                 'SELECT * FROM guild_configs WHERE guild_id = ?',
                 [targetGuildId]
             );
-
+            
             if (!existing) {
                 // Create minimal row - don't set any defaults that would override existing settings
                 await this.bot.database.run(
-                    'INSERT INTO guild_configs (guild_id) VALUES (?)',
+                    'INSERT INTO guild_configs (guild_id) VALUES (?)', 
                     [targetGuildId]
                 );
             }
-
+            
             // Update ONLY the fields that were explicitly provided
             const userId = req.user?.id || 'Dashboard';
             for (const [field, value] of Object.entries(updates)) {
                 const oldValue = existing ? existing[field] : null;
-
+                
                 await this.bot.database.run(
                     `UPDATE guild_configs SET ${field} = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`,
                     [value, targetGuildId]
@@ -5403,22 +4438,22 @@ The DarkLock Team`
                     this.bot.logger?.warn && this.bot.logger.warn('emitSettingChange failed in updateAdvancedSettings:', e?.message || e);
                 }
             }
-
+            
             this.bot.logger.info(`[SETTINGS] Advanced settings saved for guild ${targetGuildId}:`, Object.keys(updates));
-
+            
             // Invalidate config cache
             if (this.bot.database.invalidateConfigCache) {
                 this.bot.database.invalidateConfigCache(targetGuildId);
             }
-
+            
             res.json({ success: true, updated: Object.keys(updates) });
-
+            
         } catch (error) {
             this.bot.logger.error('[SETTINGS] updateAdvancedSettings error:', error);
             res.status(500).json({ error: `Failed to update advanced settings: ${error.message}` });
         }
     }
-
+    
     async getSecurityStatsForGuild(guildId) {
         try {
             // Ensure database is available
@@ -5426,7 +4461,7 @@ The DarkLock Team`
                 this.bot?.logger?.warn(`[STATS] Database not available for guild ${guildId}`);
                 return this.getDefaultSecurityStats();
             }
-
+            
             // Get real-time moderation stats from database
             const stats = await this.bot.database.get(`
                 SELECT 
@@ -5438,7 +4473,7 @@ The DarkLock Team`
                 FROM mod_actions 
                 WHERE guild_id = ? AND created_at > datetime('now', '-24 hours')
             `, [guildId]);
-
+            
             // Get recent incidents
             const incidents = await this.bot.database.all(`
                 SELECT action, reason, target_tag, moderator_tag, created_at
@@ -5447,7 +4482,7 @@ The DarkLock Team`
                 ORDER BY created_at DESC 
                 LIMIT 10
             `, [guildId]);
-
+            
             // Get current threats (active issues)
             const threats = [];
             if (stats && stats.raids > 0) {
@@ -5459,7 +4494,7 @@ The DarkLock Team`
                     icon: 'fas fa-shield-alt'
                 });
             }
-
+            
             if (stats && stats.warnings > 10) {
                 threats.push({
                     id: 'high_warnings',
@@ -5469,7 +4504,7 @@ The DarkLock Team`
                     icon: 'fas fa-exclamation-triangle'
                 });
             }
-
+            
             // Calculate security score based on activity
             let score = 95;
             if (stats) {
@@ -5478,7 +4513,7 @@ The DarkLock Team`
                 if (stats.warnings > 20) score -= 5;
             }
             score = Math.max(score, 50); // Minimum score of 50
-
+            
             // Format incidents for display
             const formattedIncidents = (incidents || []).map(incident => ({
                 id: `incident_${Date.now()}_${Math.random()}`,
@@ -5488,7 +4523,7 @@ The DarkLock Team`
                 statusIcon: 'fas fa-check',
                 moderator: incident.moderator_tag
             }));
-
+            
             return {
                 score,
                 threats,
@@ -5500,13 +4535,13 @@ The DarkLock Team`
                 ],
                 events: (incidents || []).slice(0, 5)
             };
-
+            
         } catch (error) {
             this.bot?.logger?.error(`[STATS] Error getting security stats for guild ${guildId}:`, error);
             return this.getDefaultSecurityStats();
         }
     }
-
+    
     getDefaultSecurityStats() {
         return {
             score: 85,
@@ -5524,7 +4559,7 @@ The DarkLock Team`
             ]
         };
     }
-
+    
     async getServerName(guildId) {
         try {
             if (!this.bot || !this.bot.client || !this.bot.client.guilds) {
@@ -5536,7 +4571,7 @@ The DarkLock Team`
             return 'Discord Server';
         }
     }
-
+    
     async getServerIcon(guildId) {
         try {
             if (!this.bot || !this.bot.client || !this.bot.client.guilds) {
@@ -5548,7 +4583,7 @@ The DarkLock Team`
             return 'https://cdn.discordapp.com/embed/avatars/0.png';
         }
     }
-
+    
     async getMemberCount(guildId) {
         try {
             if (!this.bot || !this.bot.client || !this.bot.client.guilds) {
@@ -5565,7 +4600,7 @@ The DarkLock Team`
         try {
             const keys = req.body;
             const guildId = req.query.guildId || this.getDefaultGuildId();
-
+            
             // Store API keys securely
             for (const [key, value] of Object.entries(keys)) {
                 if (value) { // Only update if value is provided
@@ -5575,8 +4610,8 @@ The DarkLock Team`
                     `, [guildId, `api_${key}`, value]);
                 }
             }
-
-            this.bot.logger.info(`ðŸ”‘ API keys updated for guild ${guildId}`);
+            
+            this.bot.logger.info(`Ã°Å¸â€â€˜ API keys updated for guild ${guildId}`);
             res.json({ success: true });
         } catch (error) {
             this.bot.logger.error('Update API keys error:', error);
@@ -5585,32 +4620,27 @@ The DarkLock Team`
     }
 
     async resetSettings(req, res) {
-        // Role check: Only admin+ can reset settings
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required to reset settings' });
-        }
-
         try {
             const guildId = req.query.guildId || this.getDefaultGuildId();
             if (!guildId) {
                 return res.status(400).json({ error: 'Guild ID required' });
             }
-
+            
             // Safety check: require explicit confirmation to prevent accidental resets
             const confirmToken = req.query.confirm;
             if (!confirmToken || confirmToken !== 'RESET_' + guildId) {
-                return res.status(400).json({
+                return res.status(400).json({ 
                     error: 'Reset requires confirmation token',
                     hint: 'Pass ?confirm=RESET_GUILDID to confirm'
                 });
             }
-
+            
             this.bot.logger.warn(`[SETTINGS] User confirmed reset for guild ${guildId}`);
-
+            
             // IMPORTANT: Do NOT delete guild_subscriptions - they contain pro plan info!
             // Only reset guild_configs to defaults
             await this.bot.database.run('DELETE FROM guild_configs WHERE guild_id = ?', [guildId]);
-
+            
             // Re-create default guild_configs with safe defaults
             await this.bot.database.run(`
                 INSERT OR REPLACE INTO guild_configs (
@@ -5621,10 +4651,10 @@ The DarkLock Team`
                     created_at, updated_at
                 ) VALUES (?, 1, 1, 1, 1, 1, 0, 0, 0, 0, 10, 5, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             `, [guildId]);
-
-            this.bot.logger.info(`âœ… Guild settings reset to defaults for ${guildId} (subscriptions preserved)`);
-            res.json({
-                success: true,
+            
+            this.bot.logger.info(`Ã¢Å“â€¦ Guild settings reset to defaults for ${guildId} (subscriptions preserved)`);
+            res.json({ 
+                success: true, 
                 message: 'Settings reset to defaults',
                 note: 'Pro subscriptions and user records were preserved'
             });
@@ -5637,19 +4667,19 @@ The DarkLock Team`
     async exportLogs(req, res) {
         try {
             const guildId = req.query.guildId || this.getDefaultGuildId();
-
+            
             const logs = await this.bot.database.all(`
                 SELECT * FROM security_incidents 
                 WHERE guild_id = ? 
                 ORDER BY created_at DESC
             `, [guildId]);
-
+            
             // Convert to CSV
             const csvHeader = 'Date,Event,User,Action,Status,Details\n';
-            const csvData = logs.map(log =>
+            const csvData = logs.map(log => 
                 `"${log.created_at}","${log.incident_type}","${log.user_id || 'System'}","${log.action_taken || 'None'}","${log.resolved ? 'Resolved' : 'Open'}","${log.description || ''}"`
             ).join('\n');
-
+            
             res.setHeader('Content-Type', 'text/csv');
             res.setHeader('Content-Disposition', 'attachment; filename="security-logs.csv"');
             res.send(csvHeader + csvData);
@@ -5662,13 +4692,13 @@ The DarkLock Team`
     async clearLogs(req, res) {
         try {
             const guildId = req.query.guildId || this.getDefaultGuildId();
-
+            
             await this.bot.database.run(`
                 DELETE FROM security_incidents 
                 WHERE guild_id = ? AND resolved = 1
             `, [guildId]);
-
-            this.bot.logger.info(`ðŸ§¹ Resolved logs cleared for guild ${guildId}`);
+            
+            this.bot.logger.info(`Ã°Å¸Â§Â¹ Resolved logs cleared for guild ${guildId}`);
             res.json({ success: true });
         } catch (error) {
             this.bot.logger.error('Clear logs error:', error);
@@ -5680,7 +4710,7 @@ The DarkLock Team`
         try {
             const timeframe = req.query.timeframe || '24h';
             const guildId = req.query.guildId || this.getDefaultGuildId();
-
+            
             // Return sample analytics data
             res.json({
                 threatsBlocked: 45,
@@ -5705,7 +4735,7 @@ The DarkLock Team`
         try {
             const filter = req.query.filter || 'all';
             const guildId = req.query.guildId || this.getDefaultGuildId();
-
+            
             // Return sample logs data
             const logs = [
                 {
@@ -5715,7 +4745,7 @@ The DarkLock Team`
                     user: 'System',
                     action: 'Initialization',
                     status: 'Success',
-                    details: 'DarkLock started successfully'
+                    details: 'GuardianBot started successfully'
                 },
                 {
                     id: 2,
@@ -5727,7 +4757,7 @@ The DarkLock Team`
                     details: 'Admin user logged into dashboard'
                 }
             ];
-
+            
             res.json(logs);
         } catch (error) {
             this.bot.logger.error('Logs error:', error);
@@ -5741,7 +4771,7 @@ The DarkLock Team`
             const limit = parseInt(req.query.limit) || 50;
             const offset = parseInt(req.query.offset) || 0;
             const category = req.query.category || 'all';
-
+            
             if (!guildId) {
                 return res.status(400).json({ error: 'Missing guildId' });
             }
@@ -5749,7 +4779,7 @@ The DarkLock Team`
             // Build WHERE clause based on filters
             let whereClause = 'guild_id = ?';
             const params = [guildId];
-
+            
             if (category !== 'all') {
                 whereClause += ' AND event_category = ?';
                 params.push(category);
@@ -5809,11 +4839,6 @@ The DarkLock Team`
     }
 
     async createXPEvent(req, res) {
-        // Role check: Only admin+ can create XP events
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required to create XP events' });
-        }
-
         try {
             const guildId = req.body.guildId || req.query.guildId || this.getDefaultGuildId();
             if (!guildId) {
@@ -5821,7 +4846,7 @@ The DarkLock Team`
             }
 
             const { event_name, multiplier, start_time, end_time, description } = req.body;
-
+            
             if (!event_name || !multiplier || !start_time || !end_time) {
                 return res.status(400).json({ error: 'Missing required fields' });
             }
@@ -5834,7 +4859,7 @@ The DarkLock Team`
             }
 
             const userId = req.user?.id || 'Dashboard User';
-
+            
             await this.bot.database.createXPEvent({
                 guild_id: guildId,
                 event_name,
@@ -5870,11 +4895,6 @@ The DarkLock Team`
     }
 
     async deleteXPEvent(req, res) {
-        // Role check: Only admin+ can delete XP events
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required to delete XP events' });
-        }
-
         try {
             const eventId = req.params.id;
             if (!eventId) {
@@ -5929,7 +4949,7 @@ The DarkLock Team`
             }
 
             const { season_name, start_date, end_date } = req.body;
-
+            
             if (!season_name || !start_date || !end_date) {
                 return res.status(400).json({ error: 'Missing required fields' });
             }
@@ -6116,16 +5136,16 @@ The DarkLock Team`
     async calculateSecurityScore(guildId) {
         // Simple security score calculation
         let score = 50; // Base score
-
+        
         try {
             const config = await this.bot.database.getGuildConfig?.(guildId) || {};
-
+            
             // Add points for each enabled feature
             if (config.anti_raid_enabled) score += 15;
             if (config.anti_spam_enabled) score += 15;
             if (config.anti_links_enabled) score += 10;
             if (config.anti_phishing_enabled) score += 10;
-
+            
             return Math.min(score, 100);
         } catch (error) {
             return 75; // Default score if database fails
@@ -6191,7 +5211,7 @@ The DarkLock Team`
     }
 
     formatThreatTitle(type) {
-        switch (type) {
+        switch(type) {
             case 'raid': return 'Raid Attempt';
             case 'spam': return 'Spam Messages';
             case 'suspicious_link': return 'Malicious Links';
@@ -6201,7 +5221,7 @@ The DarkLock Team`
     }
 
     getThreatLevel(type) {
-        switch (type) {
+        switch(type) {
             case 'raid': return 'high';
             case 'phishing': return 'high';
             case 'suspicious_link': return 'medium';
@@ -6211,7 +5231,7 @@ The DarkLock Team`
     }
 
     getThreatIcon(type) {
-        switch (type) {
+        switch(type) {
             case 'raid': return 'fas fa-user-shield';
             case 'spam': return 'fas fa-comment-slash';
             case 'suspicious_link': return 'fas fa-link';
@@ -6220,7 +5240,7 @@ The DarkLock Team`
         }
     }
 
-
+    
 
     // Action Logging API Endpoints
     async getActions(req, res) {
@@ -6230,7 +5250,7 @@ The DarkLock Team`
             const category = req.query.category;
 
             const actions = await this.bot.database.getRecentActions(guildId, limit, category);
-
+            
             res.json({
                 success: true,
                 actions: actions.map(action => ({
@@ -6252,13 +5272,13 @@ The DarkLock Team`
 
             // Get the action details
             const action = await this.bot.database.getActionById(actionId);
-
+            
             if (!action) {
                 return res.status(404).json({ error: 'Action not found' });
             }
 
             if (!action.can_undo || action.undone) {
-                return res.status(400).json({
+                return res.status(400).json({ 
                     error: action.undone ? 'Action already undone' : 'Action cannot be undone'
                 });
             }
@@ -6325,14 +5345,14 @@ The DarkLock Team`
                         // Get channel from action details or target
                         const channelId = action.target_user_id; // For lock, target is the channel
                         const channel = guild.channels.cache.get(channelId);
-
+                        
                         if (channel && channel.isTextBased()) {
                             await channel.permissionOverwrites.edit(guild.roles.everyone, {
                                 SendMessages: null,
                                 AddReactions: null
                             });
                             await channel.send({
-                                content: `ðŸ”“ **Channel Unlocked**\nThis channel has been unlocked from the dashboard.\n**Reason:** ${reason || 'Lockdown undone'}`
+                                content: `Ã°Å¸â€â€œ **Channel Unlocked**\nThis channel has been unlocked from the dashboard.\n**Reason:** ${reason || 'Lockdown undone'}`
                             });
                             undoResult = { success: true, message: `Channel ${channel.name} unlocked successfully` };
                         } else {
@@ -6372,8 +5392,8 @@ The DarkLock Team`
                     message: undoResult.message
                 });
 
-                res.json({
-                    success: true,
+                res.json({ 
+                    success: true, 
                     message: undoResult.message,
                     action: await this.bot.database.getActionById(actionId)
                 });
@@ -6392,7 +5412,7 @@ The DarkLock Team`
             const days = parseInt(req.query.days) || 7;
 
             const stats = await this.bot.database.getActionStats(guildId, days);
-
+            
             res.json({
                 success: true,
                 stats: stats
@@ -6496,7 +5516,7 @@ The DarkLock Team`
                     await member.send({
                         embeds: [{
                             color: 0xFFA500,
-                            title: 'âš ï¸ Warning',
+                            title: 'Ã¢Å¡Â Ã¯Â¸Â Warning',
                             description: `You have been warned in **${guild.name}**\n\n**Reason:** ${reason || 'No reason provided'}`,
                             timestamp: new Date()
                         }]
@@ -6618,7 +5638,7 @@ The DarkLock Team`
             // Get last 7 days of data
             const sevenDaysAgo = new Date();
             sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
+            
             // Query threats by day
             const threatQuery = `
                 SELECT 
@@ -6630,13 +5650,13 @@ The DarkLock Team`
                 GROUP BY DATE(timestamp), type
                 ORDER BY date ASC
             `;
-
+            
             const threatResults = this.db.prepare(threatQuery).all(sevenDaysAgo.toISOString());
-
+            
             // Process threat data by day
-            const threatsByDay = [0, 0, 0, 0, 0, 0, 0];
-            const filteredByDay = [0, 0, 0, 0, 0, 0, 0];
-
+            const threatsByDay = [0,0,0,0,0,0,0];
+            const filteredByDay = [0,0,0,0,0,0,0];
+            
             threatResults.forEach(row => {
                 const dayIndex = Math.floor((new Date(row.date) - sevenDaysAgo) / (1000 * 60 * 60 * 24));
                 if (dayIndex >= 0 && dayIndex < 7) {
@@ -6647,11 +5667,11 @@ The DarkLock Team`
                     }
                 }
             });
-
+            
             // Get hourly message activity (last 6 hours)
             const sixHoursAgo = new Date();
             sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
-
+            
             const activityQuery = `
                 SELECT 
                     strftime('%H', timestamp) as hour,
@@ -6661,10 +5681,10 @@ The DarkLock Team`
                 GROUP BY strftime('%H', timestamp)
                 ORDER BY hour ASC
             `;
-
+            
             const activityResults = this.db.prepare(activityQuery).all(sixHoursAgo.toISOString());
-            const activityByHour = [0, 0, 0, 0, 0, 0];
-
+            const activityByHour = [0,0,0,0,0,0];
+            
             // Fill in activity data
             activityResults.forEach(row => {
                 const currentHour = new Date().getHours();
@@ -6673,7 +5693,7 @@ The DarkLock Team`
                     activityByHour[hourIndex] = row.count;
                 }
             });
-
+            
             return {
                 threatTrends: {
                     threats: threatsByDay,
@@ -6691,8 +5711,8 @@ The DarkLock Team`
         } catch (error) {
             this.bot.logger.error('Error getting analytics data:', error);
             return {
-                threatTrends: { threats: [3, 1, 5, 2, 1, 0, 2], filtered: [15, 8, 22, 12, 7, 3, 11] },
-                activity: { messages: [45, 67, 123, 89, 156, 234] },
+                threatTrends: { threats: [3,1,5,2,1,0,2], filtered: [15,8,22,12,7,3,11] },
+                activity: { messages: [45,67,123,89,156,234] },
                 stats: { threatsBlocked: 14, messagesFiltered: 66, totalIncidents: 80 }
             };
         }
@@ -6758,7 +5778,7 @@ The DarkLock Team`
                 ticketData.recentTickets = await Promise.all(recentTickets.map(async ticket => {
                     let userName = 'Unknown User';
                     let userAvatar = '/images/default-avatar.png';
-
+                    
                     try {
                         const user = await this.bot.client.users.fetch(ticket.user_id);
                         if (user) {
@@ -6771,7 +5791,7 @@ The DarkLock Team`
                     } catch (e) {
                         console.warn(`Could not fetch user ${ticket.user_id} for ticket stats`);
                     }
-
+                    
                     return {
                         id: `ticket-${ticket.id}`,
                         title: ticket.subject || 'Support Ticket',
@@ -6861,7 +5881,7 @@ The DarkLock Team`
             }
 
             const limit = parseInt(req.query.limit) || 10;
-
+            
             const query = `
                 SELECT *
                 FROM tickets
@@ -6871,11 +5891,11 @@ The DarkLock Team`
             `;
 
             const tickets = await this.bot.database.all(query, [guild.id, limit]);
-
+            
             // Format tickets for dashboard
             const formattedTickets = await Promise.all(tickets.map(async ticket => {
                 let userName = 'Unknown User';
-
+                
                 try {
                     const user = await this.bot.client.users.fetch(ticket.user_id);
                     if (user) {
@@ -6884,7 +5904,7 @@ The DarkLock Team`
                 } catch (e) {
                     // User not found, use stored name or Unknown
                 }
-
+                
                 return {
                     id: `ticket-${ticket.id}`,
                     user: userName,
@@ -6910,32 +5930,32 @@ The DarkLock Team`
             }
 
             const { status, limit = 50 } = req.query;
-
+            
             let query = `
                 SELECT *
                 FROM tickets
                 WHERE guild_id = ?
             `;
-
+            
             const params = [guild.id];
-
+            
             if (status) {
                 query += ' AND status = ?';
                 params.push(status);
             }
-
+            
             query += ' ORDER BY created_at DESC LIMIT ?';
             params.push(parseInt(limit));
 
             const tickets = await this.bot.database.all(query, params);
-
+            
             // Fetch user details for each ticket
             const formattedTickets = await Promise.all(tickets.map(async ticket => {
                 let user = null;
                 let userAvatar = '/images/default-avatar.png';
                 let userName = 'Unknown User';
                 let userTag = '';
-
+                
                 try {
                     user = await this.bot.client.users.fetch(ticket.user_id);
                     if (user) {
@@ -6946,7 +5966,7 @@ The DarkLock Team`
                 } catch (e) {
                     console.warn('Could not fetch user for ticket:', ticket.id);
                 }
-
+                
                 return {
                     id: `ticket-${ticket.id}`,
                     channelId: ticket.channel_id,
@@ -6975,14 +5995,9 @@ The DarkLock Team`
     }
 
     async closeTicketAPI(req, res) {
-        // Role check: Moderator+ can close tickets
-        if (!this.canModerate(req.user)) {
-            return res.status(403).json({ error: 'Moderator access required to close tickets' });
-        }
-
         try {
             const ticketId = req.params.id.replace('ticket-', '');
-
+            
             if (this.bot.database) {
                 // Update ticket status in both old tables
                 await this.bot.database.run(`
@@ -6990,18 +6005,18 @@ The DarkLock Team`
                     SET status = 'closed', closed_at = CURRENT_TIMESTAMP 
                     WHERE id = ?
                 `, [ticketId]);
-
+                
                 await this.bot.database.run(`
                     UPDATE active_tickets 
                     SET status = 'closed', closed_at = CURRENT_TIMESTAMP 
                     WHERE id = ?
                 `, [ticketId]);
-
+                
                 // Also close DM ticket if exists
                 if (this.bot.dmTicketManager) {
                     await this.bot.dmTicketManager.closeTicket(ticketId, req.user?.id || 'staff', 'Closed via dashboard');
                 }
-
+                
                 res.json({ success: true, message: 'Ticket closed successfully' });
             } else {
                 res.status(500).json({ error: 'Database not available' });
@@ -7081,7 +6096,7 @@ The DarkLock Team`
                 })));
             }
 
-            // Channel-based tickets: no stored transcript yet â€” return empty list instead of error
+            // Channel-based tickets: no stored transcript yet Ã¢â‚¬â€ return empty list instead of error
             return res.json([]);
         } catch (error) {
             this.bot.logger.error('Error getting ticket messages:', error);
@@ -7137,7 +6152,7 @@ The DarkLock Team`
             } catch (e) {
                 // dm_tickets might not exist or row might not be there
             }
-
+            
             try {
                 await this.bot.database.run(`
                     UPDATE tickets SET assigned_to = ? WHERE id = ?
@@ -7172,7 +6187,7 @@ The DarkLock Team`
                                 }) || null;
                             }
                             if (logChannel && (typeof logChannel.isTextBased === 'function' ? logChannel.isTextBased() : true)) {
-                                await logChannel.send(`ðŸ“¬ Ticket ${ticketId} assigned to <@${staffId}>. DMs are off, notifying here.`).catch(() => { });
+                                await logChannel.send(`Ã°Å¸â€œÂ¬ Ticket ${ticketId} assigned to <@${staffId}>. DMs are off, notifying here.`).catch(() => {});
                             }
                         }
                     }
@@ -7226,13 +6241,13 @@ The DarkLock Team`
                     await this.bot.database.run(`
                         UPDATE tickets SET closed_at = CURRENT_TIMESTAMP WHERE id = ?
                     `, [ticketId]);
-                } catch (e) { }
-
+                } catch (e) {}
+                
                 try {
                     await this.bot.database.run(`
                         UPDATE dm_tickets SET closed_at = CURRENT_TIMESTAMP WHERE id = ?
                     `, [ticketId]);
-                } catch (e) { }
+                } catch (e) {}
             }
 
             await this.addTicketHistoryEntry(ticketId, req.user?.username || 'Staff', `Changed status to ${status}`);
@@ -7332,7 +6347,7 @@ The DarkLock Team`
                                 }) || null;
                             }
                             if (logChannel && (typeof logChannel.isTextBased === 'function' ? logChannel.isTextBased() : true)) {
-                                await logChannel.send(`ðŸ“¬ <@${staffId}> claimed ticket ${ticketId}. DMs are off, notifying here.`).catch(() => { });
+                                await logChannel.send(`Ã°Å¸â€œÂ¬ <@${staffId}> claimed ticket ${ticketId}. DMs are off, notifying here.`).catch(() => {});
                             }
                         }
                     }
@@ -7448,257 +6463,6 @@ The DarkLock Team`
         }
     }
 
-    async escalateTicket(req, res) {
-        try {
-            const ticketId = req.params.id.replace('ticket-', '');
-            const { escalatedBy, reason } = req.body;
-
-            if (!escalatedBy) {
-                return res.status(400).json({ error: 'Escalated by user required' });
-            }
-
-            // Update ticket - set priority to urgent and escalated flag
-            await this.bot.database.run(`
-                UPDATE tickets 
-                SET priority = 'urgent', 
-                    escalated = 1,
-                    status = 'escalated',
-                    escalated_at = CURRENT_TIMESTAMP,
-                    escalated_by = ?
-                WHERE id = ?
-            `, [escalatedBy, ticketId]);
-
-            // Add internal note
-            const noteText = `?? ESCALATED by ${escalatedBy}\nReason: ${reason || 'Requires admin attention'}`;
-            await this.bot.database.run(`
-                CREATE TABLE IF NOT EXISTS ticket_notes (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    ticket_id TEXT NOT NULL,
-                    staff_id TEXT NOT NULL,
-                    staff_name TEXT NOT NULL,
-                    note TEXT NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            `);
-            await this.bot.database.run(`
-                INSERT INTO ticket_notes (ticket_id, staff_id, staff_name, note)
-                VALUES (?, ?, ?, ?)
-            `, [ticketId, 'system', 'System', noteText]);
-
-            // Add history entry
-            await this.addTicketHistoryEntry(ticketId, escalatedBy, 'Escalated to administrators');
-
-            // Get ticket details to notify admins
-            const ticket = await this.bot.database.get('SELECT * FROM tickets WHERE id = ?', [ticketId]);
-
-            // Notify all admins via DM
-            if (ticket) {
-                try {
-                    const guild = this.bot.client.guilds.cache.get(ticket.guild_id);
-                    if (guild) {
-                        const members = await guild.members.fetch();
-                        const admins = members.filter(member =>
-                            member.permissions.has('ADMINISTRATOR') && !member.user.bot
-                        );
-
-                        for (const [, admin] of admins) {
-                            try {
-                                await admin.send({
-                                    embeds: [{
-                                        title: '?? Ticket Escalated',
-                                        description: `A ticket has been escalated to your attention by **${escalatedBy}**`,
-                                        fields: [
-                                            { name: 'Ticket ID', value: ticketId, inline: true },
-                                            { name: 'User', value: ticket.user_tag || 'Unknown', inline: true },
-                                            { name: 'Category', value: ticket.category || 'Support', inline: true },
-                                            { name: 'Reason', value: reason || 'Requires admin attention' }
-                                        ],
-                                        color: 0xff5252,
-                                        timestamp: new Date()
-                                    }]
-                                });
-                            } catch (dmError) {
-                                this.bot.logger.warn(`Could not DM admin ${admin.user.tag}:`, dmError.message);
-                            }
-                        }
-                    }
-                } catch (notifyError) {
-                    this.bot.logger.error('Error notifying admins:', notifyError);
-                }
-            }
-
-            res.json({ success: true, message: 'Ticket escalated successfully' });
-        } catch (error) {
-            this.bot.logger.error('Error escalating ticket:', error);
-            res.status(500).json({ error: 'Failed to escalate ticket' });
-        }
-    }
-
-    async reopenTicket(req, res) {
-        try {
-            const ticketId = req.params.id.replace('ticket-', '');
-            const staffName = req.user?.username || 'Staff Member';
-
-            await this.bot.database.run(`
-                UPDATE tickets SET status = 'open', closed_at = NULL WHERE id = ?
-            `, [ticketId]);
-
-            await this.addTicketHistoryEntry(ticketId, staffName, 'Reopened ticket');
-
-            res.json({ success: true, message: 'Ticket reopened successfully' });
-        } catch (error) {
-            this.bot.logger.error('Error reopening ticket:', error);
-            res.status(500).json({ error: 'Failed to reopen ticket' });
-        }
-    }
-
-    async updateTicketDMNotify(req, res) {
-        try {
-            const ticketId = req.params.id.replace('ticket-', '');
-            const { enabled } = req.body;
-
-            await this.bot.database.run(`
-                UPDATE tickets SET dm_notify = ? WHERE id = ?
-            `, [enabled ? 1 : 0, ticketId]);
-
-            res.json({ success: true });
-        } catch (error) {
-            this.bot.logger.error('Error updating DM notify:', error);
-            res.status(500).json({ error: 'Failed to update DM notification setting' });
-        }
-    }
-
-    async getTicketStats(req, res) {
-        try {
-            const guildId = req.headers['x-guild-id'] || req.query.guildId;
-
-            if (!guildId) {
-                return res.status(400).json({ error: 'Guild ID required' });
-            }
-
-            // Get open ticket count
-            const openResult = await this.bot.database.get(`
-                SELECT COUNT(*) as count FROM tickets 
-                WHERE guild_id = ? AND status IN ('open', 'in-progress')
-            `, [guildId]);
-
-            // Get escalated count
-            const escalatedResult = await this.bot.database.get(`
-                SELECT COUNT(*) as count FROM tickets 
-                WHERE guild_id = ? AND escalated = 1
-            `, [guildId]);
-
-            // Get resolved today count
-            const resolvedTodayResult = await this.bot.database.get(`
-                SELECT COUNT(*) as count FROM tickets 
-                WHERE guild_id = ? 
-                AND status = 'closed' 
-                AND DATE(closed_at) = DATE('now')
-            `, [guildId]);
-
-            // Calculate average response time (in minutes)
-            const avgResponseResult = await this.bot.database.get(`
-                SELECT AVG(
-                    CAST((julianday(first_response_at) - julianday(created_at)) * 24 * 60 AS INTEGER)
-                ) as avg_minutes
-                FROM tickets 
-                WHERE guild_id = ? 
-                AND first_response_at IS NOT NULL
-            `, [guildId]);
-
-            const avgMinutes = avgResponseResult?.avg_minutes || 0;
-            let avgResponseTime = '--';
-            if (avgMinutes > 60) {
-                avgResponseTime = Math.round(avgMinutes / 60) + 'h';
-            } else if (avgMinutes > 0) {
-                avgResponseTime = Math.round(avgMinutes) + 'm';
-            }
-
-            res.json({
-                openCount: openResult?.count || 0,
-                escalatedCount: escalatedResult?.count || 0,
-                resolvedToday: resolvedTodayResult?.count || 0,
-                avgResponseTime
-            });
-        } catch (error) {
-            this.bot.logger.error('Error getting ticket stats:', error);
-            res.json({
-                openCount: 0,
-                escalatedCount: 0,
-                resolvedToday: 0,
-                avgResponseTime: '--'
-            });
-        }
-    }
-
-    async getTicketTranscript(req, res) {
-        try {
-            const ticketId = req.params.id.replace('ticket-', '');
-
-            // Get ticket details
-            const ticket = await this.bot.database.get('SELECT * FROM tickets WHERE id = ?', [ticketId]);
-
-            if (!ticket) {
-                return res.status(404).json({ error: 'Ticket not found' });
-            }
-
-            // Get messages from the ticket channel
-            let transcript = `TICKET TRANSCRIPT\n`;
-            transcript += `================\n\n`;
-            transcript += `Ticket ID: ${ticketId}\n`;
-            transcript += `User: ${ticket.user_tag || 'Unknown'}\n`;
-            transcript += `Category: ${ticket.category || 'Support'}\n`;
-            transcript += `Status: ${ticket.status || 'open'}\n`;
-            transcript += `Priority: ${ticket.priority || 'medium'}\n`;
-            transcript += `Created: ${ticket.created_at}\n`;
-            if (ticket.closed_at) transcript += `Closed: ${ticket.closed_at}\n`;
-            if (ticket.assigned_to) transcript += `Assigned To: ${ticket.assigned_to_name || ticket.assigned_to}\n`;
-            transcript += `\n${'='.repeat(50)}\n\n`;
-
-            // Try to fetch messages from Discord channel
-            try {
-                if (ticket.channel_id) {
-                    const channel = await this.bot.client.channels.fetch(ticket.channel_id);
-                    if (channel && channel.isTextBased()) {
-                        const messages = await channel.messages.fetch({ limit: 100 });
-                        const sortedMessages = Array.from(messages.values()).reverse();
-
-                        for (const msg of sortedMessages) {
-                            const timestamp = msg.createdAt.toLocaleString();
-                            transcript += `[${timestamp}] ${msg.author.tag}:\n`;
-                            transcript += `${msg.content}\n\n`;
-                        }
-                    }
-                }
-            } catch (channelError) {
-                transcript += `(Could not fetch messages from Discord channel)\n\n`;
-            }
-
-            // Add internal notes if any
-            const notes = await this.bot.database.all(`
-                SELECT * FROM ticket_notes WHERE ticket_id = ? ORDER BY created_at ASC
-            `, [ticketId]);
-
-            if (notes && notes.length > 0) {
-                transcript += `\n${'='.repeat(50)}\n`;
-                transcript += `INTERNAL NOTES (STAFF ONLY)\n`;
-                transcript += `${'='.repeat(50)}\n\n`;
-
-                for (const note of notes) {
-                    transcript += `[${note.created_at}] ${note.staff_name}:\n`;
-                    transcript += `${note.note}\n\n`;
-                }
-            }
-
-            res.setHeader('Content-Type', 'text/plain');
-            res.setHeader('Content-Disposition', `attachment; filename="ticket-${ticketId}-transcript.txt"`);
-            res.send(transcript);
-        } catch (error) {
-            this.bot.logger.error('Error generating transcript:', error);
-            res.status(500).json({ error: 'Failed to generate transcript' });
-        }
-    }
-
     async getServerStaff(req, res) {
         try {
             const guild = this.getGuildFromRequest(req);
@@ -7708,13 +6472,13 @@ The DarkLock Team`
 
             // Fetch all members with moderation permissions
             const staffMembers = [];
-
+            
             for (const [memberId, member] of guild.members.cache) {
-                const hasModPerms = member.permissions.has('ManageMessages') ||
-                    member.permissions.has('KickMembers') ||
-                    member.permissions.has('BanMembers') ||
-                    member.permissions.has('Administrator');
-
+                const hasModPerms = member.permissions.has('ManageMessages') || 
+                                  member.permissions.has('KickMembers') || 
+                                  member.permissions.has('BanMembers') ||
+                                  member.permissions.has('Administrator');
+                
                 if (hasModPerms && !member.user.bot) {
                     let role = 'Moderator';
                     if (member.permissions.has('Administrator')) {
@@ -7745,11 +6509,11 @@ The DarkLock Team`
         const now = new Date();
         const time = new Date(timestamp);
         const diff = now - time;
-
+        
         const minutes = Math.floor(diff / (1000 * 60));
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
+        
         if (days > 0) return `${days}d ago`;
         if (hours > 0) return `${hours}h ago`;
         return `${minutes}m ago`;
@@ -7791,11 +6555,11 @@ The DarkLock Team`
 
             // Get guild from request (supports multi-server)
             const guild = this.getGuildFromRequest(req);
-
+            
             if (guild) {
                 // Count bots in the server
                 const botCount = guild.members.cache.filter(member => member.user.bot).size;
-
+                
                 serverData = {
                     name: guild.name,
                     iconURL: guild.iconURL({ size: 128 }),
@@ -8093,7 +6857,7 @@ The DarkLock Team`
                 // Merge join/leave data by date
                 const dateSet = new Set([...joinData.map(d => d.date), ...leaveData.map(d => d.date)]);
                 const sortedDates = Array.from(dateSet).sort();
-
+                
                 analytics.memberActivity = sortedDates.map(date => ({
                     date,
                     joins: joinData.find(d => d.date === date)?.joins || 0,
@@ -8127,7 +6891,7 @@ The DarkLock Team`
 
                 // Total commands in period
                 analytics.overview.totalCommands = commandData.reduce((sum, d) => sum + (d.count || 0), 0);
-
+                
                 // Commands today
                 const todayCommands = commandData.find(d => d.date === today);
                 analytics.overview.commandsToday = todayCommands?.count || 0;
@@ -8202,10 +6966,10 @@ The DarkLock Team`
                     else if (type.includes('timeout') || type.includes('mute')) analytics.moderation.timeouts += action.count;
                 });
 
-                analytics.overview.totalModActions =
-                    analytics.moderation.warns +
-                    analytics.moderation.kicks +
-                    analytics.moderation.bans +
+                analytics.overview.totalModActions = 
+                    analytics.moderation.warns + 
+                    analytics.moderation.kicks + 
+                    analytics.moderation.bans + 
                     analytics.moderation.timeouts;
 
                 // Mod actions today
@@ -8263,7 +7027,7 @@ The DarkLock Team`
             const guildId = req.query.guildId || req.user?.guilds?.[0]?.id || this.getDefaultGuildId();
             const now = new Date();
             const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-
+            
             // Initialize response with empty arrays (never null/undefined)
             const liveData = {
                 messages: [],
@@ -8413,7 +7177,7 @@ The DarkLock Team`
             }
 
             // Determine if there's any data
-            liveData.hasData =
+            liveData.hasData = 
                 liveData.messages.length > 0 ||
                 liveData.joins.length > 0 ||
                 liveData.leaves.length > 0 ||
@@ -8427,7 +7191,7 @@ The DarkLock Team`
 
         } catch (error) {
             this.bot.logger.error('Error getting live analytics:', error);
-            res.status(500).json({
+            res.status(500).json({ 
                 error: 'Failed to retrieve live analytics',
                 messages: [],
                 joins: [],
@@ -8514,7 +7278,7 @@ The DarkLock Team`
                     status: health.status === 'healthy' ? 'operational' : 'degraded',
                     statusText: health.status === 'healthy' ? 'Operational' : 'Degraded',
                     icon: 'fas fa-robot',
-                    responseTime: health.gatewayPing ? `${Math.round(health.gatewayPing)}ms` : 'â€”',
+                    responseTime: health.gatewayPing ? `${Math.round(health.gatewayPing)}ms` : 'Ã¢â‚¬â€',
                     uptime: '99.9%'
                 },
                 {
@@ -8523,7 +7287,7 @@ The DarkLock Team`
                     status: 'operational',
                     statusText: 'Operational',
                     icon: 'fas fa-gauge-high',
-                    responseTime: 'â€”',
+                    responseTime: 'Ã¢â‚¬â€',
                     uptime: '99.9%'
                 },
                 {
@@ -8532,7 +7296,7 @@ The DarkLock Team`
                     status: 'operational',
                     statusText: 'Operational',
                     icon: 'fas fa-database',
-                    responseTime: 'â€”',
+                    responseTime: 'Ã¢â‚¬â€',
                     uptime: '99.99%'
                 },
                 {
@@ -8541,7 +7305,7 @@ The DarkLock Team`
                     status: 'operational',
                     statusText: 'Operational',
                     icon: 'fas fa-shield-halved',
-                    responseTime: 'â€”',
+                    responseTime: 'Ã¢â‚¬â€',
                     uptime: '99.9%'
                 }
             ];
@@ -8623,13 +7387,13 @@ The DarkLock Team`
             if (userId && userId !== 'admin') {
                 const guild = this.bot.client.guilds.cache.get(guildId);
                 if (!guild) return res.status(404).json({ error: 'Guild not found' });
-
+                
                 // Check if user has explicit database access
                 const hasExplicitAccess = await this.bot.database.get(
                     `SELECT 1 FROM dashboard_access WHERE guild_id = ? AND user_id = ? LIMIT 1`,
                     [guildId, userId]
                 );
-
+                
                 // If no explicit access, check guild membership
                 if (!hasExplicitAccess) {
                     const member = await guild.members.fetch(userId).catch(() => null);
@@ -8637,7 +7401,7 @@ The DarkLock Team`
                 }
             }
 
-            const stats = { warnings: 0, bans: 0, kicks: 0, timeouts: 0, raidsBlocked: 0 };
+            const stats = { warnings:0, bans:0, kicks:0, timeouts:0, raidsBlocked:0 };
 
             if (this.bot.database) {
                 // Counts from action_logs
@@ -8728,7 +7492,7 @@ The DarkLock Team`
                 // Determine severity based on event type
                 let severity = 'MEDIUM';
                 const eventType = parsedPayload.eventType || event.eventType || 'unknown';
-
+                
                 if (eventType.includes('BAN') || eventType.includes('RAID') || eventType.includes('ANTINUKE')) {
                     severity = 'HIGH';
                 } else if (eventType.includes('KICK') || eventType.includes('TIMEOUT')) {
@@ -8783,41 +7547,41 @@ The DarkLock Team`
             }
 
             const guildId = guild.id;
-
+            
             // Get ticket statistics from database
             const totalTickets = await this.bot.database.get(
                 'SELECT COUNT(*) as count FROM tickets WHERE guild_id = ?',
                 [guildId]
             );
-
+            
             const activeTickets = await this.bot.database.get(
                 'SELECT COUNT(*) as count FROM tickets WHERE guild_id = ? AND status = ?',
                 [guildId, 'open']
             );
-
+            
             const closedToday = await this.bot.database.get(
                 `SELECT COUNT(*) as count FROM tickets 
                  WHERE guild_id = ? AND status = 'closed' 
                  AND date(closed_at) = date('now')`,
                 [guildId]
             );
-
+            
             // Get status distribution
             const openCount = await this.bot.database.get(
                 'SELECT COUNT(*) as count FROM tickets WHERE guild_id = ? AND status = ?',
                 [guildId, 'open']
             );
-
+            
             const pendingCount = await this.bot.database.get(
                 'SELECT COUNT(*) as count FROM tickets WHERE guild_id = ? AND status = ?',
                 [guildId, 'pending']
             );
-
+            
             const resolvedCount = await this.bot.database.get(
                 'SELECT COUNT(*) as count FROM tickets WHERE guild_id = ? AND status = ?',
                 [guildId, 'resolved']
             );
-
+            
             // Get recent tickets with user info
             const recentTicketsRaw = await this.bot.database.all(
                 `SELECT * FROM tickets 
@@ -8826,13 +7590,13 @@ The DarkLock Team`
                  LIMIT 10`,
                 [guildId]
             );
-
+            
             // Fetch user details for each ticket
             const recentTickets = await Promise.all(recentTicketsRaw.map(async ticket => {
                 let user = null;
                 let userAvatar = '/images/default-avatar.png';
                 let userName = 'Unknown User';
-
+                
                 try {
                     user = await this.bot.client.users.fetch(ticket.user_id);
                     if (user) {
@@ -8842,7 +7606,7 @@ The DarkLock Team`
                 } catch (e) {
                     console.warn('Could not fetch user for ticket:', ticket.id);
                 }
-
+                
                 return {
                     id: `ticket-${ticket.id}`,
                     title: ticket.subject || 'Support Ticket',
@@ -8855,7 +7619,7 @@ The DarkLock Team`
                     lastResponse: ticket.last_message_at ? this.formatTimeAgo(new Date(ticket.last_message_at)) : 'No response yet'
                 };
             }));
-
+            
             // Calculate average response time
             const avgResponseRaw = await this.bot.database.get(
                 `SELECT AVG((julianday(last_message_at) - julianday(created_at)) * 24 * 60) as avg_minutes
@@ -8863,9 +7627,9 @@ The DarkLock Team`
                  WHERE guild_id = ? AND last_message_at IS NOT NULL`,
                 [guildId]
             );
-
+            
             const avgMinutes = avgResponseRaw?.avg_minutes || 0;
-            const avgResponseTime = avgMinutes > 60
+            const avgResponseTime = avgMinutes > 60 
                 ? `${Math.round(avgMinutes / 60)}h`
                 : `${Math.round(avgMinutes)}m`;
 
@@ -8897,7 +7661,7 @@ The DarkLock Team`
     // Helper function to format time ago
     formatTimeAgo(date) {
         const seconds = Math.floor((new Date() - date) / 1000);
-
+        
         if (seconds < 60) return `${seconds}s ago`;
         if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
         if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
@@ -8915,7 +7679,7 @@ The DarkLock Team`
             // Get guild ID from query parameter or default to first guild
             const guildId = req.query.guildId || req.user?.guilds?.[0]?.id;
             const guild = guildId ? this.bot.client.guilds.cache.get(guildId) : this.bot.client.guilds.cache.first();
-
+            
             if (!guild) {
                 return res.json({ channels: [], categories: [] });
             }
@@ -8944,7 +7708,7 @@ The DarkLock Team`
             // Get guild ID from query parameter or default to first guild
             const guildId = req.query.guildId || req.user?.guilds?.[0]?.id;
             const guild = guildId ? this.bot.client.guilds.cache.get(guildId) : this.bot.client.guilds.cache.first();
-
+            
             if (!guild) {
                 return res.json({ roles: [] });
             }
@@ -9007,11 +7771,6 @@ The DarkLock Team`
     }
 
     async saveSecuritySettings(req, res) {
-        // Role check: Only admin+ can modify settings
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required to modify settings' });
-        }
-
         try {
             const guild = this.bot.client.guilds.cache.first();
             if (!guild) {
@@ -9019,7 +7778,7 @@ The DarkLock Team`
             }
 
             const settings = req.body;
-
+            
             // Validate settings
             if (!settings || typeof settings !== 'object') {
                 return res.status(400).json({ error: 'Invalid settings format' });
@@ -9056,7 +7815,7 @@ The DarkLock Team`
                 this.sanitizeString(settings.antiRaid?.alertChannel || '', 20),
                 guild.id
             ]);
-
+            
             // Broadcast settings update via WebSocket
             if (this.wss) {
                 this.broadcastToGuild(guild.id, {
@@ -9065,7 +7824,7 @@ The DarkLock Team`
                         antiRaid: { enabled: settings.antiRaid?.enabled || false },
                         antiSpam: { enabled: settings.antiSpam?.enabled || false },
                         antiPhishing: { enabled: settings.antiPhishing?.enabled || false },
-                        antiNuke: {
+                        antiNuke: { 
                             enabled: settings.antiNuke?.enabled || false,
                             roleLimit,
                             channelLimit,
@@ -9087,38 +7846,22 @@ The DarkLock Team`
     async getGuildChannels(req, res) {
         try {
             const { guildId } = req.params;
-            const userId = req.user?.discordId || req.user?.userId;
-
+            
             if (!guildId) {
                 return res.status(400).json({ error: 'Guild ID required' });
             }
 
-            // VULN-004 FIX: Verify user has access to this guild
-            const access = await this.checkGuildAccess(userId, guildId, false);
-            if (!access.authorized) {
-                this.bot.logger.error(`[SECURITY] Unauthorized getGuildChannels attempt by ${userId} for guild ${guildId}`);
-                return res.status(403).json({ error: access.error });
-            }
-
             const guild = this.bot.client.guilds.cache.get(guildId);
             if (!guild) {
-                return res.json({ channels: [], categories: [] });
+                return res.json([]);
             }
 
-            // Text and voice channels (most selectors use text channels)
             const channels = guild.channels.cache
-                .filter(c => c.type === 0 || c.type === 2)
+                .filter(c => c.type === 0 || c.type === 2) // Text and voice channels
                 .map(c => ({ id: c.id, name: c.name, type: c.type }))
                 .sort((a, b) => a.name.localeCompare(b.name));
 
-            // Categories for ticket setup and similar UIs
-            const categories = guild.channels.cache
-                .filter(c => c.type === 4)
-                .map(c => ({ id: c.id, name: c.name, type: c.type }))
-                .sort((a, b) => a.name.localeCompare(b.name));
-
-            // Return a consistent object shape used across the dashboard
-            res.json({ channels, categories });
+            res.json(channels);
         } catch (error) {
             this.bot.logger.error('Error getting guild channels:', error);
             res.status(500).json({ error: 'Failed to get channels' });
@@ -9129,17 +7872,9 @@ The DarkLock Team`
     async getGuildRoles(req, res) {
         try {
             const { guildId } = req.params;
-            const userId = req.user?.discordId || req.user?.userId;
-
+            
             if (!guildId) {
                 return res.status(400).json({ error: 'Guild ID required' });
-            }
-
-            // VULN-004 FIX: Verify user has access to this guild
-            const access = await this.checkGuildAccess(userId, guildId, false);
-            if (!access.authorized) {
-                this.bot.logger.error(`[SECURITY] Unauthorized getGuildRoles attempt by ${userId} for guild ${guildId}`);
-                return res.status(403).json({ error: access.error });
             }
 
             const guild = this.bot.client.guilds.cache.get(guildId);
@@ -9163,21 +7898,9 @@ The DarkLock Team`
     async getGuildSpecificSettings(req, res) {
         try {
             const { guildId } = req.params;
-            const userId = req.user?.userId;
-
+            
             if (!guildId) {
                 return res.status(400).json({ error: 'Guild ID required' });
-            }
-
-            if (!userId) {
-                return res.status(401).json({ error: 'Unauthorized' });
-            }
-
-            // Verify user has access to this guild
-            const access = await this.checkGuildAccess(userId, guildId, false);
-            if (!access?.authorized) {
-                this.bot.logger.warn(`[SECURITY] Unauthorized getGuildSpecificSettings attempt by ${userId} for guild ${guildId}`);
-                return res.status(403).json({ error: 'Unauthorized to access this guild' });
             }
 
             const config = await this.bot.database.get(
@@ -9196,90 +7919,27 @@ The DarkLock Team`
     async saveGuildSpecificSettings(req, res) {
         try {
             const { guildId } = req.params;
-            const userId = req.user?.userId;
             const settings = req.body;
-
+            
             if (!guildId) {
                 return res.status(400).json({ error: 'Guild ID required' });
-            }
-
-            if (!userId) {
-                return res.status(401).json({ error: 'Unauthorized' });
-            }
-
-            // Verify user has manage access to this guild
-            const access = await this.checkGuildAccess(userId, guildId, true);
-            if (!access?.authorized) {
-                this.bot.logger.warn(`[SECURITY] Unauthorized saveGuildSpecificSettings attempt by ${userId} for guild ${guildId}`);
-                return res.status(403).json({ error: 'Unauthorized to modify this guild settings' });
             }
 
             // Build dynamic update query based on provided settings
             const updates = [];
             const values = [];
-
+            
             for (const [key, value] of Object.entries(settings)) {
                 updates.push(key + ' = ?');
                 values.push(typeof value === 'object' ? JSON.stringify(value) : value);
             }
-
+            
             if (updates.length > 0) {
                 values.push(guildId);
                 await this.bot.database.run(
                     'UPDATE guild_configs SET ' + updates.join(', ') + ' WHERE guild_id = ?',
                     values
                 );
-            }
-
-            // Send confirmation message to guild if log channel exists
-            try {
-                const guild = this.bot.client.guilds.cache.get(guildId);
-                if (guild) {
-                    const config = await this.bot.database.get(
-                        'SELECT log_channel_id FROM guild_configs WHERE guild_id = ?',
-                        [guildId]
-                    );
-
-                    if (config?.log_channel_id) {
-                        const logChannel = guild.channels.cache.get(config.log_channel_id);
-                        if (logChannel && logChannel.isTextBased()) {
-                            const user = await this.bot.client.users.fetch(userId).catch(() => null);
-                            const username = user ? `${user.username}` : 'Admin';
-
-                            // Determine what was updated
-                            const settingNames = Object.keys(settings).map(key =>
-                                key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                            ).join(', ');
-
-                            const embed = {
-                                color: 0x10b981,
-                                title: '?? Guild Settings Updated',
-                                description: `Settings have been updated from the dashboard`,
-                                fields: [
-                                    {
-                                        name: 'Updated By',
-                                        value: username,
-                                        inline: true
-                                    },
-                                    {
-                                        name: 'Settings Modified',
-                                        value: settingNames || 'Multiple settings',
-                                        inline: false
-                                    }
-                                ],
-                                timestamp: new Date().toISOString(),
-                                footer: { text: 'Dashboard Settings Update' }
-                            };
-
-                            await logChannel.send({ embeds: [embed] }).catch(err =>
-                                this.bot.logger?.warn('Failed to send settings confirmation:', err.message)
-                            );
-                        }
-                    }
-                }
-            } catch (confirmError) {
-                // Don't fail the request if confirmation fails
-                this.bot.logger?.warn('Failed to send settings update confirmation:', confirmError.message);
             }
 
             res.json({ success: true, message: 'Settings saved' });
@@ -9307,7 +7967,7 @@ The DarkLock Team`
                 transcriptChannel: config?.ticket_transcript_channel || '',
                 supportRoles: this.safeJsonParse(config?.ticket_support_roles, []),
                 welcomeMessage: config?.ticket_welcome_message || 'Thank you for creating a ticket! A support team member will be with you shortly.',
-                ticketCategories: this.safeJsonParse(config?.ticket_categories, ["General Support", "Technical Issue", "Billing", "Report User", "Other"]),
+                ticketCategories: this.safeJsonParse(config?.ticket_categories, ["General Support","Technical Issue","Billing","Report User","Other"]),
                 autoClose: {
                     enabled: config?.ticket_autoclose || false,
                     hours: config?.ticket_autoclose_hours || 48
@@ -9322,11 +7982,6 @@ The DarkLock Team`
     }
 
     async saveTicketSettings(req, res) {
-        // Role check: Only admin+ can modify settings
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required to modify settings' });
-        }
-
         try {
             const guild = this.bot.client.guilds.cache.first();
             if (!guild) {
@@ -9334,20 +7989,20 @@ The DarkLock Team`
             }
 
             const settings = req.body;
-
+            
             // Validate settings
             if (!settings || typeof settings !== 'object') {
                 return res.status(400).json({ error: 'Invalid settings format' });
             }
 
             // Validate and sanitize arrays
-            const supportRoles = Array.isArray(settings.supportRoles)
+            const supportRoles = Array.isArray(settings.supportRoles) 
                 ? settings.supportRoles.filter(id => typeof id === 'string' && /^\d{17,19}$/.test(id)).slice(0, 20)
                 : [];
-
+            
             const ticketCategories = Array.isArray(settings.ticketCategories)
                 ? settings.ticketCategories.filter(cat => typeof cat === 'string').slice(0, 25).map(cat => this.sanitizeString(cat, 100))
-                : ["General Support", "Technical Issue", "Billing", "Report User", "Other"];
+                : ["General Support","Technical Issue","Billing","Report User","Other"];
 
             const welcomeMessage = this.sanitizeString(settings.welcomeMessage || 'Thank you for creating a ticket!', 2000);
             const autoCloseHours = this.validateLimit(settings.autoClose?.hours || 48, 720);
@@ -9470,11 +8125,6 @@ The DarkLock Team`
     }
 
     async saveModerationSettings(req, res) {
-        // Role check: Only admin+ can modify settings
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required to modify settings' });
-        }
-
         try {
             const guild = this.bot.client.guilds.cache.first();
             if (!guild) {
@@ -9482,7 +8132,7 @@ The DarkLock Team`
             }
 
             const settings = req.body;
-
+            
             // Validate settings
             if (!settings || typeof settings !== 'object') {
                 return res.status(400).json({ error: 'Invalid settings format' });
@@ -9611,11 +8261,6 @@ The DarkLock Team`
     }
 
     async saveFeatureSettings(req, res) {
-        // Role check: Only admin+ can modify settings
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required to modify settings' });
-        }
-
         try {
             const guild = this.bot.client.guilds.cache.first();
             if (!guild) {
@@ -9623,7 +8268,7 @@ The DarkLock Team`
             }
 
             const settings = req.body;
-
+            
             // Validate settings
             if (!settings || typeof settings !== 'object') {
                 return res.status(400).json({ error: 'Invalid settings format' });
@@ -9728,11 +8373,6 @@ The DarkLock Team`
     }
 
     async saveAISettings(req, res) {
-        // Role check: Only admin+ can modify settings
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required to modify settings' });
-        }
-
         try {
             const guild = this.bot.client.guilds.cache.first();
             if (!guild) return res.status(400).json({ error: 'No guild found' });
@@ -9855,11 +8495,6 @@ The DarkLock Team`
     }
 
     async saveThemeSettings(req, res) {
-        // Role check: Only admin+ can modify settings
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required to modify settings' });
-        }
-
         try {
             const guildId = req.body.guildId;
             const theme = req.body.theme;
@@ -9984,7 +8619,7 @@ The DarkLock Team`
                 xp_levelup_channel: settings?.xp_levelup_channel || '',
                 xp_levelup_message: settings?.xp_levelup_message || 'Congratulations {user}! You\'ve reached **Level {level}**!',
                 xp_levelup_embed_color: settings?.xp_levelup_embed_color || '#00ff41',
-                xp_levelup_title: settings?.xp_levelup_title || 'ðŸŽ‰ Level Up!',
+                xp_levelup_title: settings?.xp_levelup_title || 'Ã°Å¸Å½â€° Level Up!',
                 xp_levelup_show_xp: settings?.xp_levelup_show_xp !== 0,
                 xp_levelup_show_messages: settings?.xp_levelup_show_messages !== 0
             });
@@ -9995,14 +8630,9 @@ The DarkLock Team`
     }
 
     async saveXPSettings(req, res) {
-        // Role check: Only admin+ can modify settings
-        if (!this.canModifySettings(req.user)) {
-            return res.status(403).json({ error: 'Admin access required to modify settings' });
-        }
-
         try {
             const guildId = req.query.guildId;
-            const {
+            const { 
                 xp_message, xp_voice, xp_cooldown, xp_levelup_channel,
                 xp_levelup_message, xp_levelup_embed_color, xp_levelup_title,
                 xp_levelup_show_xp, xp_levelup_show_messages
@@ -10019,7 +8649,7 @@ The DarkLock Team`
             const levelupChannel = xp_levelup_channel || '';
             const levelupMessage = xp_levelup_message || 'Congratulations {user}! You\'ve reached **Level {level}**!';
             const embedColor = xp_levelup_embed_color || '#00ff41';
-            const embedTitle = xp_levelup_title || 'ðŸŽ‰ Level Up!';
+            const embedTitle = xp_levelup_title || 'Ã°Å¸Å½â€° Level Up!';
             const showXP = xp_levelup_show_xp === true || xp_levelup_show_xp === 1 ? 1 : 0;
             const showMessages = xp_levelup_show_messages === true || xp_levelup_show_messages === 1 ? 1 : 0;
 
@@ -10090,15 +8720,6 @@ The DarkLock Team`
     async getGuildCommands(req, res) {
         try {
             const guildId = req.params.guildId;
-            const userId = req.user?.discordId || req.user?.userId;
-
-            // VULN-004 FIX: Verify user has access to this guild
-            const access = await this.checkGuildAccess(userId, guildId, false);
-            if (!access.authorized) {
-                this.bot.logger?.error(`[SECURITY] Unauthorized getGuildCommands attempt by ${userId} for guild ${guildId}`);
-                return res.status(403).json({ error: access.error });
-            }
-
             // Validate guild presence
             const guild = this.bot.client.guilds.cache.get(guildId) || this.bot.client.guilds.cache.first();
             if (!guild) return res.status(404).json({ error: 'Guild not found' });
@@ -10122,15 +8743,6 @@ The DarkLock Team`
     async getGuildCommandPermissions(req, res) {
         try {
             const guildId = req.params.guildId;
-            const userId = req.user?.discordId || req.user?.userId;
-
-            // VULN-004 FIX: Verify user has access to this guild
-            const access = await this.checkGuildAccess(userId, guildId, false);
-            if (!access.authorized) {
-                this.bot.logger?.error(`[SECURITY] Unauthorized getGuildCommandPermissions attempt by ${userId} for guild ${guildId}`);
-                return res.status(403).json({ error: access.error });
-            }
-
             const list = await this.bot.permissionManager.list(guildId);
             res.json({ entries: list });
         } catch (error) {
@@ -10205,7 +8817,7 @@ The DarkLock Team`
         try {
             const status = req.query.status || 'pending';
             const limit = this.validateLimit(req.query.limit, 100) || 50;
-
+            
             const guild = this.bot.client.guilds.cache.first();
             if (!guild) {
                 return res.json({ messages: [] });
@@ -10347,9 +8959,9 @@ The DarkLock Team`
                 this.bot.logger.error('Error during manual security scan:', error);
             });
 
-            res.json({
-                success: true,
-                message: 'Security scan started. Check back in a few minutes for results.'
+            res.json({ 
+                success: true, 
+                message: 'Security scan started. Check back in a few minutes for results.' 
             });
         } catch (error) {
             this.bot.logger.error('Error starting security scan:', error);
@@ -10396,7 +9008,7 @@ The DarkLock Team`
             }
 
             const settings = req.body;
-
+            
             if (!settings || typeof settings !== 'object') {
                 return res.status(400).json({ error: 'Invalid settings format' });
             }
@@ -10438,9 +9050,9 @@ The DarkLock Team`
             // Get user ID and access token from JWT token
             const userId = req.user?.discordId || req.user?.userId;
             const accessToken = req.user?.accessToken;
-
+            
             this.bot.logger.info(`[SERVERS] Getting servers for user: ${userId}`);
-
+            
             if (!userId || userId === 'admin') {
                 // For admin login, return all bot guilds
                 const botGuilds = Array.from(this.bot.client.guilds.cache.values()).map(guild => ({
@@ -10452,7 +9064,7 @@ The DarkLock Team`
                     hasBot: true,
                     isAdmin: true
                 }));
-
+                
                 this.bot.logger.info(`[SERVERS] Admin login, returning ${botGuilds.length} servers`);
                 return res.json({ servers: botGuilds });
             }
@@ -10520,12 +9132,12 @@ The DarkLock Team`
 
                     // Check 3: Verify user is a member and check permissions
                     const member = await guild.members.fetch(userId).catch(() => null);
-
+                    
                     if (member) {
                         // Check 4: Does user have Discord admin/manage permissions?
                         if (!hasAccess) {
-                            const hasManagePerms = member.permissions.has('Administrator') ||
-                                member.permissions.has('ManageGuild');
+                            const hasManagePerms = member.permissions.has('Administrator') || 
+                                                  member.permissions.has('ManageGuild');
                             if (hasManagePerms) {
                                 hasAccess = true;
                                 isAdmin = true;
@@ -10538,7 +9150,7 @@ The DarkLock Team`
                             const grantedRoles = roleAccessMap.get(guildId);
                             const userRoleIds = member.roles.cache.map(r => r.id);
                             const hasGrantedRole = grantedRoles.some(roleId => userRoleIds.includes(roleId));
-
+                            
                             if (hasGrantedRole) {
                                 hasAccess = true;
                                 accessReason = 'role_grant';
@@ -10557,7 +9169,7 @@ The DarkLock Team`
                                 canManage: isAdmin,
                                 accessType: accessReason
                             });
-
+                            
                             this.bot.logger.debug(`[SERVERS] User ${userId} has access to ${guild.name} (${accessReason})`);
                         } else {
                             this.bot.logger.debug(`[SERVERS] User ${userId} is member of ${guild.name} but has no dashboard access`);
@@ -10576,7 +9188,7 @@ The DarkLock Team`
                             accessType: accessReason,
                             notMember: true
                         });
-
+                        
                         this.bot.logger.debug(`[SERVERS] User ${userId} has ${accessReason} for ${guild.name} but is not a member`);
                     }
                 } catch (error) {
@@ -10596,24 +9208,24 @@ The DarkLock Team`
     async selectServer(req, res) {
         try {
             const { serverId } = req.body;
-
+            
             if (!serverId) {
                 return res.status(400).json({ error: 'Server ID required' });
             }
 
             // Verify server exists and user has access
             const guild = this.bot.client.guilds.cache.get(serverId);
-
+            
             if (!guild) {
                 return res.status(404).json({ error: 'Server not found or bot not in server' });
             }
 
             const userId = req.user?.discordId || req.user?.userId;
-
+            
             // For admin, allow access to all servers
             if (userId === 'admin') {
-                return res.json({
-                    success: true,
+                return res.json({ 
+                    success: true, 
                     server: {
                         id: guild.id,
                         name: guild.name,
@@ -10625,9 +9237,9 @@ The DarkLock Team`
             // Verify user has admin permissions in this guild
             try {
                 const member = await guild.members.fetch(userId);
-                const hasAccess = member.permissions.has('Administrator') ||
-                    member.permissions.has('ManageGuild');
-
+                const hasAccess = member.permissions.has('Administrator') || 
+                                member.permissions.has('ManageGuild');
+                
                 if (!hasAccess) {
                     return res.status(403).json({ error: 'You do not have permission to manage this server' });
                 }
@@ -10635,8 +9247,8 @@ The DarkLock Team`
                 return res.status(403).json({ error: 'You are not a member of this server' });
             }
 
-            res.json({
-                success: true,
+            res.json({ 
+                success: true, 
                 server: {
                     id: guild.id,
                     name: guild.name,
@@ -10653,14 +9265,14 @@ The DarkLock Team`
     async getCurrentServer(req, res) {
         try {
             const serverId = req.query.serverId || req.headers['x-server-id'];
-
+            
             if (!serverId) {
                 // Return first server as default
                 const guild = this.bot.client.guilds.cache.first();
                 if (!guild) {
                     return res.status(404).json({ error: 'No servers available' });
                 }
-
+                
                 return res.json({
                     id: guild.id,
                     name: guild.name,
@@ -10670,7 +9282,7 @@ The DarkLock Team`
             }
 
             const guild = this.bot.client.guilds.cache.get(serverId);
-
+            
             if (!guild) {
                 return res.status(404).json({ error: 'Server not found' });
             }
@@ -10773,13 +9385,13 @@ The DarkLock Team`
             // Verify internal API key
             const apiKey = req.headers['x-api-key'];
             const expectedKey = process.env.INTERNAL_API_KEY || 'change-this-key';
-
+            
             if (apiKey !== expectedKey) {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
 
             const event = req.body;
-
+            
             // Validate event structure
             if (!event.type || !event.guildId) {
                 return res.status(400).json({ error: 'Invalid event: missing type or guildId' });
@@ -10792,13 +9404,13 @@ The DarkLock Team`
                 }
             }
 
-            this.bot.logger.info(`ðŸ“¨ Received bot event: ${event.type} for guild ${event.guildId}`);
+            this.bot.logger.info(`Ã°Å¸â€œÂ¨ Received bot event: ${event.type} for guild ${event.guildId}`);
 
             // Save event to database based on type
             if (event.type === 'security_event' || event.type === 'moderation_action') {
                 await this.saveEventToDB(event);
             }
-
+            
             // Update analytics in database
             if (event.type === 'member_join' || event.type === 'member_leave' || event.type === 'command_used') {
                 await this.updateAnalytics(event);
@@ -10813,7 +9425,7 @@ The DarkLock Team`
             res.status(500).json({ error: 'Failed to handle event' });
         }
     }
-
+    
     /**
      * Update analytics in database based on event
      */
@@ -10823,10 +9435,10 @@ The DarkLock Team`
             const date = now.toISOString().split('T')[0];
             const hour = now.getHours();
             const guildId = event.guildId;
-
+            
             let metricType = null;
             let metricValue = 1;
-
+            
             switch (event.type) {
                 case 'member_join':
                     metricType = 'joins';
@@ -10838,21 +9450,21 @@ The DarkLock Team`
                     metricType = 'commands';
                     break;
             }
-
+            
             if (metricType) {
                 await this.bot.database.run(`
                     INSERT OR IGNORE INTO analytics 
                     (guild_id, metric_type, metric_value, date, hour)
                     VALUES (?, ?, 0, ?, ?)
                 `, [guildId, metricType, date, hour]);
-
+                
                 await this.bot.database.run(`
                     UPDATE analytics 
                     SET metric_value = metric_value + 1
                     WHERE guild_id = ? AND metric_type = ? AND date = ? AND hour = ?
                 `, [guildId, metricType, date, hour]);
-
-                this.bot.logger.debug(`ðŸ“Š Updated ${metricType} analytics for guild ${guildId}`);
+                
+                this.bot.logger.debug(`Ã°Å¸â€œÅ  Updated ${metricType} analytics for guild ${guildId}`);
             }
         } catch (error) {
             this.bot.logger.error('Error updating analytics:', error);
@@ -10870,7 +9482,7 @@ The DarkLock Team`
             const apiKey = req.headers['x-api-key'];
             const authHeader = req.headers['authorization'];
             const expectedKey = process.env.INTERNAL_API_KEY || 'change-this-key';
-
+            
             let authenticated = false;
             let isInternalCall = false;
             let userId = null;
@@ -10890,13 +9502,6 @@ The DarkLock Team`
                     isInternalCall = false;
                     userId = decoded.userId;
                     userTag = decoded.username;
-
-                    // Role check: Only admin+ can modify guild settings
-                    const userRole = decoded.role || 'viewer';
-                    if (userRole !== 'admin' && userRole !== 'super_admin') {
-                        return res.status(403).json({ error: 'Admin access required to modify settings' });
-                    }
-
                     // User must have permissions for this guild
                     const userGuilds = decoded.guilds || [];
                     const guildId = req.params.guildId;
@@ -10908,7 +9513,7 @@ The DarkLock Team`
                     return res.status(401).json({ error: 'Invalid or expired token' });
                 }
             }
-
+            
             if (!authenticated) {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
@@ -10929,39 +9534,26 @@ The DarkLock Team`
             // Build UPDATE query dynamically
             const updates = [];
             const values = [];
-
+            
             for (const [key, value] of Object.entries(settings)) {
                 updates.push(`${key} = ?`);
                 values.push(value);
             }
-
+            
             if (updates.length === 0) {
                 return res.status(400).json({ error: 'No settings provided' });
             }
 
             values.push(guildId);
 
-            // Build update object
-            const updateObject = {};
-            for (const [key, value] of Object.entries(settings)) {
-                updateObject[key] = value;
-            }
+            // Update database
+            await this.bot.database.run(`
+                UPDATE guild_configs 
+                SET ${updates.join(', ')}
+                WHERE guild_id = ?
+            `, values);
 
-            // Sync duplicate field names for backward compatibility
-            if ('anti_spam_enabled' in updateObject) {
-                updateObject.antispam_enabled = updateObject.anti_spam_enabled;
-            }
-            if ('anti_raid_enabled' in updateObject) {
-                updateObject.antiraid_enabled = updateObject.anti_raid_enabled;
-            }
-            if ('anti_phishing_enabled' in updateObject) {
-                updateObject.antiphishing_enabled = updateObject.anti_phishing_enabled;
-            }
-
-            // Update database using helper method to properly invalidate cache
-            await this.bot.database.updateGuildConfig(guildId, updateObject);
-
-            console.log(`âœ… Guild settings updated${isInternalCall ? ' from bot command' : ' from dashboard'} for ${guildId}:`, Object.keys(settings));
+            console.log(`Ã¢Å“â€¦ Guild settings updated${isInternalCall ? ' from bot command' : ' from dashboard'} for ${guildId}:`, Object.keys(settings));
 
             // Log dashboard action
             if (this.bot.logger && !isInternalCall) {
@@ -11017,17 +9609,9 @@ The DarkLock Team`
     async getGuildTickets(req, res) {
         try {
             const guildId = req.params.guildId;
-            const userId = req.user?.discordId || req.user?.userId;
-
+            
             if (!guildId) {
                 return res.status(400).json({ error: 'Guild ID required' });
-            }
-
-            // VULN-004 FIX: Verify user has access to this guild
-            const access = await this.checkGuildAccess(userId, guildId, true);
-            if (!access.authorized) {
-                this.bot.logger?.error(`[SECURITY] Unauthorized getGuildTickets attempt by ${userId} for guild ${guildId}`);
-                return res.status(403).json({ error: access.error });
             }
 
             // Get all tickets for guild
@@ -11058,7 +9642,7 @@ The DarkLock Team`
     async getTicket(req, res) {
         try {
             const ticketId = req.params.ticketId;
-
+            
             if (!ticketId) {
                 return res.status(400).json({ error: 'Ticket ID required' });
             }
@@ -11083,7 +9667,7 @@ The DarkLock Team`
         try {
             const ticketId = req.params.ticketId;
             const { message, senderId } = req.body;
-
+            
             if (!ticketId || !message || !senderId) {
                 return res.status(400).json({ error: 'Ticket ID, message, and sender ID required' });
             }
@@ -11144,9 +9728,9 @@ The DarkLock Team`
                 if (result.ok) {
                     // Confirmation log
                     try {
-                        if (this.bot.confirmationManager && typeof this.bot.confirmationManager.sendConfirmation === 'function') {
-                            await this.bot.confirmationManager.sendConfirmation(ticket.guild_id, 'tickets', `ticket.${ticketId}.reply`, message, null, actingUserId || 'dashboard');
-                        }
+                            if (this.bot.confirmationManager && typeof this.bot.confirmationManager.sendConfirmation === 'function') {
+                                await this.bot.confirmationManager.sendConfirmation(ticket.guild_id, 'tickets', `ticket.${ticketId}.reply`, message, null, actingUserId || 'dashboard');
+                            }
                     } catch (e) { this.bot.logger?.warn('Failed to send confirmation for ticket reply:', e.message || e); }
                     return res.json({ success: true, message: 'Reply sent' });
                 }
@@ -11167,7 +9751,7 @@ The DarkLock Team`
             try {
                 const ticketOwner = await this.bot.client.users.fetch(ticket.user_id);
                 const dmEmbed = new EmbedBuilder()
-                    .setTitle(`ðŸ’¬ Reply to Ticket #${ticket.ticket_id}`)
+                    .setTitle(`Ã°Å¸â€™Â¬ Reply to Ticket #${ticket.ticket_id}`)
                     .setDescription(message)
                     .setFooter({ text: `From: ${sender.user.tag}` })
                     .setColor('#00d4ff')
@@ -11196,7 +9780,7 @@ The DarkLock Team`
         try {
             const ticketId = req.params.ticketId;
             const { closerId } = req.body;
-
+            
             if (!ticketId || !closerId) {
                 return res.status(400).json({ error: 'Ticket ID and closer ID required' });
             }
@@ -11262,7 +9846,7 @@ The DarkLock Team`
                     // Send closing message
                     const { EmbedBuilder } = require('discord.js');
                     const closeEmbed = new EmbedBuilder()
-                        .setTitle('ðŸ”’ Ticket Closed')
+                        .setTitle('Ã°Å¸â€â€™ Ticket Closed')
                         .setDescription(`This ticket has been closed from the dashboard.\n\nThe channel will be deleted in 10 seconds...`)
                         .setColor('#ff4757')
                         .setTimestamp();
@@ -11326,19 +9910,27 @@ The DarkLock Team`
 
             if (!guildId || !ticketId || !staffId) return res.status(400).json({ error: 'guildId, ticketId and staffId are required' });
 
-            // VULN-004 FIX: Use centralized checkGuildAccess for authorization
+            // Authorization: require dashboard user to be admin or staff
             const actingUserId = req.user?.discordId || req.user?.userId || req.user?.id || req.user?.sub || null;
             if (!actingUserId) return res.status(401).json({ error: 'Unauthorized' });
-
-            const access = await this.checkGuildAccess(actingUserId, guildId, true);
-            if (!access.authorized) {
-                this.bot.logger.error(`[SECURITY] Unauthorized claimTicketFromDashboard attempt by ${actingUserId} for guild ${guildId}`);
-                return res.status(403).json({ error: access.error });
-            }
 
             const ticket = await this.bot.database.get(`SELECT * FROM active_tickets WHERE id = ? OR ticket_id = ?`, [ticketId, ticketId]);
             if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
             if (ticket.status === 'closed') return res.status(400).json({ error: 'Ticket already closed' });
+
+            const guildObj = this.bot.client.guilds.cache.get(guildId);
+            let allowed = false;
+            if (req.user?.role === 'admin' || actingUserId === 'admin') allowed = true;
+            if (guildObj) {
+                const member = await guildObj.members.fetch(actingUserId).catch(() => null);
+                if (member) {
+                    if (member.permissions.has('Administrator') || member.permissions.has('ManageGuild')) allowed = true;
+                }
+                const cfg = await this.bot.database.get('SELECT ticket_staff_role FROM guild_configs WHERE guild_id = ?', [guildObj.id]);
+                if (!allowed && cfg?.ticket_staff_role && member && member.roles.cache.has(cfg.ticket_staff_role)) allowed = true;
+            }
+
+            if (!allowed) return res.status(403).json({ error: 'Forbidden' });
 
             // Prefer bot-side handling
             if (this.bot.ticketSystem && typeof this.bot.ticketSystem.claimFromDashboard === 'function') {
@@ -11367,12 +9959,12 @@ The DarkLock Team`
                     if (channel && channel.isTextBased && channel.isTextBased()) {
                         const { EmbedBuilder } = require('discord.js');
                         const embed = new EmbedBuilder()
-                            .setTitle('ðŸŽ« Ticket Claimed')
+                            .setTitle('Ã°Å¸Å½Â« Ticket Claimed')
                             .setDescription(`This ticket has been claimed by <@${staffId}>.`)
                             .setColor('#00d4ff')
                             .setTimestamp();
 
-                        await channel.send({ embeds: [embed] }).catch(() => { });
+                        await channel.send({ embeds: [embed] }).catch(() => {});
                     }
                 }
             } catch (e) {
@@ -11384,7 +9976,7 @@ The DarkLock Team`
                 const payload = { type: 'ticket', action: 'claimed', guildId, ticketId: ticket.id || ticket.ticket_id, staffId };
                 if (this.bot.eventEmitter) await this.bot.eventEmitter.sendEvent(payload);
                 this.broadcastToGuild(guildId, { type: 'ticket_update', data: payload });
-            } catch (e) { }
+            } catch (e) {}
 
             // Fallback confirmation for claim
             try {
@@ -11429,7 +10021,7 @@ The DarkLock Team`
                 eventData.timestamp
             ]);
 
-            this.bot.logger.debug(`ðŸ’¾ Event saved to DB: ${event.type} / ${event.data.action}`);
+            this.bot.logger.debug(`Ã°Å¸â€™Â¾ Event saved to DB: ${event.type} / ${event.data.action}`);
         } catch (error) {
             // Table might not exist yet - create it
             if (error.message.includes('no such table')) {
@@ -11459,7 +10051,7 @@ The DarkLock Team`
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        this.bot.logger.info('âœ… Created security_events table');
+        this.bot.logger.info('Ã¢Å“â€¦ Created security_events table');
     }
 
     /**
@@ -11475,7 +10067,7 @@ The DarkLock Team`
                 this.bot?.logger?.error && this.bot.logger.error('INTERNAL_API_KEY is not configured for proxyAIChat');
                 return res.status(500).json({ error: 'Server misconfigured' });
             }
-
+            
             if (apiKey !== expectedKey) {
                 return res.status(401).json({ error: 'Unauthorized' });
             }
@@ -11490,9 +10082,9 @@ The DarkLock Team`
             // Check if OpenAI key is configured
             const openaiKey = process.env.OPENAI_API_KEY;
             if (!openaiKey || openaiKey.startsWith('sk-your') || openaiKey === 'sk-...') {
-                return res.status(503).json({
+                return res.status(503).json({ 
                     error: 'OpenAI API key not configured',
-                    userMessage: 'âš™ï¸ AI features are not configured. Please contact the server administrator.'
+                    userMessage: 'Ã¢Å¡â„¢Ã¯Â¸Â AI features are not configured. Please contact the server administrator.'
                 });
             }
 
@@ -11514,12 +10106,12 @@ The DarkLock Team`
 
             if (!response.ok) {
                 const error = await response.text();
-
+                
                 // Handle rate limiting
                 if (response.status === 429) {
                     return res.status(429).json({
                         error: 'Rate limit exceeded',
-                        userMessage: 'â° AI is currently rate-limited. Please try again in a few moments.'
+                        userMessage: 'Ã¢ÂÂ° AI is currently rate-limited. Please try again in a few moments.'
                     });
                 }
 
@@ -11527,14 +10119,14 @@ The DarkLock Team`
                 if (error.includes('insufficient_quota')) {
                     return res.status(402).json({
                         error: 'Quota exceeded',
-                        userMessage: 'ðŸ’³ AI quota has been exceeded. Please contact the administrator.'
+                        userMessage: 'Ã°Å¸â€™Â³ AI quota has been exceeded. Please contact the administrator.'
                     });
                 }
 
                 this.bot.logger.error('OpenAI API error:', error);
                 return res.status(response.status).json({
                     error: 'OpenAI API error',
-                    userMessage: 'âŒ An error occurred while processing your request.'
+                    userMessage: 'Ã¢ÂÅ’ An error occurred while processing your request.'
                 });
             }
 
@@ -11543,17 +10135,17 @@ The DarkLock Team`
 
         } catch (error) {
             this.bot.logger.error('Error in AI proxy:', error);
-
+            
             if (error.name === 'AbortError') {
                 return res.status(504).json({
                     error: 'Request timeout',
-                    userMessage: 'â° Request took too long. Please try a simpler query.'
+                    userMessage: 'Ã¢ÂÂ° Request took too long. Please try a simpler query.'
                 });
             }
 
             res.status(500).json({
                 error: 'Internal server error',
-                userMessage: 'âŒ An unexpected error occurred.'
+                userMessage: 'Ã¢ÂÅ’ An unexpected error occurred.'
             });
         }
     }
@@ -11563,7 +10155,7 @@ The DarkLock Team`
         try {
             const guildId = req.params.guildId;
             const userId = req.user?.discordId || req.user?.userId;
-
+            
             if (!guildId) {
                 return res.status(400).json({ error: 'guildId required' });
             }
@@ -11576,7 +10168,7 @@ The DarkLock Team`
             }
 
             const settings = await this.bot.database.getGuildConfig(guildId);
-
+            
             if (!settings) {
                 return res.status(404).json({ error: 'Guild not found' });
             }
@@ -11632,35 +10224,27 @@ The DarkLock Team`
             // Read previous settings for confirmation messages
             const previous = await this.bot.database.get('SELECT * FROM guild_configs WHERE guild_id = ?', [guildId]);
 
-            // Sync duplicate field names for backward compatibility
-            // anti_spam_enabled <-> antispam_enabled
-            // anti_raid_enabled <-> antiraid_enabled
-            // anti_phishing_enabled <-> antiphishing_enabled
-            if ('anti_spam_enabled' in validUpdates) {
-                validUpdates.antispam_enabled = validUpdates.anti_spam_enabled;
-            }
-            if ('anti_raid_enabled' in validUpdates) {
-                validUpdates.antiraid_enabled = validUpdates.anti_raid_enabled;
-            }
-            if ('anti_phishing_enabled' in validUpdates) {
-                validUpdates.antiphishing_enabled = validUpdates.anti_phishing_enabled;
-            }
+            // Update database
+            const setClauses = Object.keys(validUpdates).map(key => `${key} = ?`).join(', ');
+            const values = [...Object.values(validUpdates), guildId];
 
-            // Update database using helper method to properly invalidate cache
-            await this.bot.database.updateGuildConfig(guildId, validUpdates);
+            await this.bot.database.run(
+                `UPDATE guild_configs SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`,
+                values
+            );
 
-            // Apply certain updates to in-memory modules immediately (e.g., AI toggle)
-            try {
-                if (typeof validUpdates.ai_enabled !== 'undefined' && this.bot.aiAssistant) {
-                    this.bot.aiAssistant.enabled = !!validUpdates.ai_enabled && !!this.bot.aiAssistant.openai;
-                    // Optionally persist into ai_settings table for assistant; keep in sync
-                    if (typeof this.bot.aiAssistant.updateGuildSettings === 'function') {
-                        await this.bot.aiAssistant.updateGuildSettings(guildId, { enabled: validUpdates.ai_enabled ? 1 : 0 });
+                // Apply certain updates to in-memory modules immediately (e.g., AI toggle)
+                try {
+                    if (typeof validUpdates.ai_enabled !== 'undefined' && this.bot.aiAssistant) {
+                        this.bot.aiAssistant.enabled = !!validUpdates.ai_enabled && !!this.bot.aiAssistant.openai;
+                        // Optionally persist into ai_settings table for assistant; keep in sync
+                        if (typeof this.bot.aiAssistant.updateGuildSettings === 'function') {
+                            await this.bot.aiAssistant.updateGuildSettings(guildId, { enabled: validUpdates.ai_enabled ? 1 : 0 });
+                        }
                     }
+                } catch (e) {
+                    this.bot.logger?.warn('Failed to apply in-memory AI enabled update:', e.message || e);
                 }
-            } catch (e) {
-                this.bot.logger?.warn('Failed to apply in-memory AI enabled update:', e.message || e);
-            }
 
             // Emit event for real-time updates using unified helper
             try {
@@ -11727,36 +10311,32 @@ The DarkLock Team`
             await this.integrityMonitor.verify();
         }
 
+        // Mount Darklock Platform at /platform/*
+        try {
+            const darklock = new DarklockPlatform();
+            await darklock.mountOn(this.app, this.bot);
+            this.bot?.logger?.info && this.bot.logger.info('✅ Darklock Platform mounted at /platform');
+        } catch (error) {
+            this.bot?.logger?.error && this.bot.logger.error('Failed to mount Darklock Platform:', error.message || error);
+        }
+
+        // 404 handler (must be after all route registrations including Darklock)
+        this.app.use('*', (req, res) => {
+            res.status(404).json({ error: 'Not found' });
+        });
+
         // Create HTTP server for the Express app and attach WebSocket server
         this.server = http.createServer(this.app);
 
         // Attach WebSocket server
         this.wss = new WebSocket.Server({ server: this.server, path: '/ws' });
 
-        // Helper to parse cookies from request
-        const parseCookies = (cookieHeader) => {
-            const cookies = {};
-            if (cookieHeader) {
-                cookieHeader.split(';').forEach(cookie => {
-                    const parts = cookie.trim().split('=');
-                    if (parts.length >= 2) {
-                        cookies[parts[0]] = parts.slice(1).join('=');
-                    }
-                });
-            }
-            return cookies;
-        };
-
-        // Handle connections (authenticated via cookie, header, or protocol)
+        // Handle connections (authenticated only)
         this.wss.on('connection', (ws, req) => {
             try {
                 const fullUrl = req.url || '/';
                 const params = new URL(fullUrl, `http://${req.headers.host}`);
-
-                // Try multiple auth sources: header, protocol, or cookie
-                const cookies = parseCookies(req.headers.cookie);
-                const cookieToken = cookies['auth_token'] || cookies['jwt'] || cookies['token'];
-                const token = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '') || req.headers['sec-websocket-protocol'] || cookieToken;
+                const token = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '') || req.headers['sec-websocket-protocol'];
                 let guildId = params.searchParams.get('guildId') || null;
 
                 const internalKey = process.env.INTERNAL_API_KEY;
@@ -11764,26 +10344,12 @@ The DarkLock Team`
 
                 if (!internalKey || !jwtSecret) {
                     this.bot?.logger?.error && this.bot.logger.error('Dashboard WebSocket misconfigured: INTERNAL_API_KEY or JWT secret missing');
-                    try { ws.close(1011, 'Server configuration error'); } catch (e) { }
+                    try { ws.close(1011, 'Server configuration error'); } catch (e) {}
                     return;
                 }
 
-                // Allow unauthenticated connections for read-only console viewing (limited to global events only)
                 if (!token) {
-                    ws.isServerConnection = false;
-                    ws.isReadOnly = true;
-                    ws.user = null;
-                    ws.allowedGuilds = new Set();
-                    ws.isAlive = true;
-                    ws.id = `anon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-                    ws.subscriptions = new Set();
-                    this.clients.add(ws);
-                    // Anonymous users cannot subscribe to specific guilds
-                    this.bot?.logger?.debug && this.bot.logger.debug('[WS] Anonymous read-only connection established');
-
-                    ws.on('pong', () => { ws.isAlive = true; });
-                    ws.on('close', () => { this.clients.delete(ws); });
-                    ws.on('error', () => { this.clients.delete(ws); });
+                    try { ws.close(4401, 'Authentication required'); } catch (e) {}
                     return;
                 }
 
@@ -11793,7 +10359,7 @@ The DarkLock Team`
                     ws.allowedGuilds = null;
                     ws.user = null;
                     ws.isAlive = true;
-                    ws.id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                    ws.id = `${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
                     ws.subscriptions = new Set();
                     this.clients.add(ws);
                     if (guildId) ws.subscriptions.add(String(guildId));
@@ -11803,46 +10369,27 @@ The DarkLock Team`
                         const payload = jwt.verify(token, jwtSecret);
                         ws.user = payload;
                         ws.allowedGuilds = new Set();
-
                         // Determine allowed guild id from payload or query
                         const allowedGuildId = payload.accessGuild?.id || payload.guildId || null;
                         const primaryGuildId = guildId || allowedGuildId || null;
-
-                        // Add all admin guilds from token to allowed list
-                        if (payload.adminGuilds && Array.isArray(payload.adminGuilds)) {
-                            payload.adminGuilds.forEach(g => ws.allowedGuilds.add(String(g)));
-                        }
-
-                        // If requesting a specific guild, verify access
                         if (guildId && allowedGuildId && String(guildId) !== String(allowedGuildId)) {
-                            // Check if user has access via adminGuilds
-                            if (!ws.allowedGuilds.has(String(guildId))) {
-                                try { ws.close(4403, 'Guild not permitted'); } catch (e) { }
-                                return;
-                            }
+                            try { ws.close(4403, 'Guild not permitted'); } catch (e) {}
+                            return;
                         }
-
-                        // Allow connections without specific guild (for global console viewing)
-                        // These will only receive global events and events from their admin guilds
-                        if (primaryGuildId) {
-                            ws.allowedGuilds.add(String(primaryGuildId));
+                        if (!primaryGuildId) {
+                            try { ws.close(4403, 'No guild access'); } catch (e) {}
+                            return;
                         }
+                        guildId = primaryGuildId;
+                        ws.allowedGuilds.add(String(guildId));
 
                         ws.isServerConnection = false;
                         ws.isAlive = true;
-                        ws.id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-                        ws.subscriptions = primaryGuildId ? new Set([String(primaryGuildId)]) : new Set();
-
-                        // Auto-subscribe to all admin guilds for console view
-                        if (payload.adminGuilds && Array.isArray(payload.adminGuilds)) {
-                            payload.adminGuilds.forEach(g => ws.subscriptions.add(String(g)));
-                        }
-
+                        ws.id = `${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+                        ws.subscriptions = new Set([String(guildId)]);
                         this.clients.add(ws);
-                        this.bot?.logger?.debug && this.bot.logger.debug(`[WS] Client connected: ${payload.username}, guilds: ${ws.subscriptions.size}`);
                     } catch (e) {
-                        this.bot?.logger?.warn && this.bot.logger.warn('[WS] JWT verification failed:', e.message);
-                        try { ws.close(4401, 'Invalid token'); } catch (e2) { }
+                        try { ws.close(4401, 'Invalid token'); } catch (e2) {}
                         return;
                     }
                 }
@@ -11856,7 +10403,7 @@ The DarkLock Team`
 
                         // All messages require an authenticated context (either server or user)
                         if (!ws.isServerConnection && !ws.user) {
-                            try { ws.close(4401, 'Auth required'); } catch (e) { }
+                            try { ws.close(4401, 'Auth required'); } catch (e) {}
                             return;
                         }
 
@@ -11903,11 +10450,11 @@ The DarkLock Team`
             if (!this.wss) return clearInterval(interval);
             for (const client of this.wss.clients) {
                 if (client.isAlive === false) {
-                    try { client.terminate(); } catch (e) { }
+                    try { client.terminate(); } catch (e) {}
                     continue;
                 }
                 client.isAlive = false;
-                try { client.ping(); } catch (e) { }
+                try { client.ping(); } catch (e) {}
             }
         }, 30000);
 
@@ -11916,7 +10463,7 @@ The DarkLock Team`
             try {
                 clearInterval(interval);
                 if (this.wss) {
-                    try { this.wss.close(); } catch (e) { }
+                    try { this.wss.close(); } catch (e) {}
                 }
                 if (this.server && this.server.listening) {
                     await new Promise(res => this.server.close(() => res()));
@@ -11939,7 +10486,7 @@ The DarkLock Team`
                 const addr = this.server.address();
                 const boundHost = addr && addr.address ? addr.address : host;
                 const boundPort = addr && addr.port ? addr.port : port;
-                this.bot?.logger?.info && this.bot.logger.info(`âœ… Dashboard listening on http://${boundHost}:${boundPort}`);
+                this.bot?.logger?.info && this.bot.logger.info(`Ã¢Å“â€¦ Dashboard listening on http://${boundHost}:${boundPort}`);
                 resolve();
             });
         });
@@ -12030,7 +10577,7 @@ The DarkLock Team`
                     client.send(message);
                 }
             } catch (e) {
-                try { client.terminate(); } catch (_) { }
+                try { client.terminate(); } catch (_) {}
                 this.clients.delete(client);
             }
         }
@@ -12047,47 +10594,6 @@ The DarkLock Team`
         } catch (error) {
             this.bot?.logger?.error && this.bot.logger.error('Error getting console messages:', error);
             res.status(500).json({ error: 'Internal server error' });
-        }
-    }
-
-    /**
-     * Get a WebSocket token for authenticated users
-     * This allows the console page to connect to WebSocket with proper authentication
-     */
-    getWebSocketToken(req, res) {
-        try {
-            if (!req.user) {
-                return res.status(401).json({ error: 'Authentication required' });
-            }
-
-            const jwtSecret = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY;
-            if (!jwtSecret) {
-                return res.status(500).json({ error: 'Server configuration error' });
-            }
-
-            // Get user's accessible guilds
-            const userGuilds = req.user.guilds || [];
-            const adminGuilds = userGuilds.filter(g => (g.permissions & 0x8) === 0x8).map(g => g.id);
-            const guildId = req.query.guildId || (adminGuilds.length > 0 ? adminGuilds[0] : null);
-
-            // Generate a short-lived WebSocket token (15 minutes)
-            const wsToken = jwt.sign({
-                userId: req.user.id,
-                username: req.user.username,
-                guildId: guildId,
-                adminGuilds: adminGuilds,
-                type: 'websocket'
-            }, jwtSecret, { expiresIn: '15m' });
-
-            res.json({
-                success: true,
-                token: wsToken,
-                guildId: guildId,
-                expiresIn: 15 * 60 * 1000 // 15 minutes in ms
-            });
-        } catch (error) {
-            this.bot?.logger?.error && this.bot.logger.error('Error generating WebSocket token:', error);
-            res.status(500).json({ error: 'Failed to generate token' });
         }
     }
 
@@ -12110,25 +10616,6 @@ The DarkLock Team`
                 offset: parseInt(req.query.offset) || 0
             };
 
-            // If no guildId specified but user is logged in, get all logs from user's accessible guilds
-            if (!filters.guildId && req.user) {
-                const userGuilds = req.user.guilds || [];
-                const adminGuilds = userGuilds.filter(g => (g.permissions & 0x8) === 0x8).map(g => g.id);
-
-                if (adminGuilds.length > 0) {
-                    // Get logs from all guilds user has admin access to
-                    const allLogs = [];
-                    for (const gId of adminGuilds.slice(0, 10)) { // Limit to 10 guilds
-                        const guildLogs = await this.bot.logger.getLogs({ ...filters, guildId: gId });
-                        allLogs.push(...guildLogs);
-                    }
-                    // Sort by created_at desc and limit
-                    allLogs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                    const logs = allLogs.slice(filters.offset, filters.offset + filters.limit);
-                    return res.json({ success: true, logs, count: logs.length });
-                }
-            }
-
             // Verify user has access to the guild if guildId is specified
             if (filters.guildId && req.user) {
                 const userGuilds = req.user.guilds || [];
@@ -12141,7 +10628,7 @@ The DarkLock Team`
             const logs = await this.bot.logger.getLogs(filters);
             res.json({ success: true, logs, count: logs.length });
         } catch (error) {
-            this.bot?.logger?.error && this.bot.logger.error('Error fetching bot logs:', error);
+            console.error('Error fetching bot logs:', error);
             res.status(500).json({ error: 'Failed to fetch logs' });
         }
     }
@@ -12151,8 +10638,6 @@ The DarkLock Team`
      */
     async getDashboardAudit(req, res) {
         try {
-            console.log('[getDashboardAudit] Request received with query:', req.query);
-
             if (!this.bot.logger) {
                 return res.status(503).json({ error: 'Logger not initialized' });
             }
@@ -12165,24 +10650,6 @@ The DarkLock Team`
                 offset: parseInt(req.query.offset) || 0
             };
 
-            // If no guildId specified but user is logged in, get audit logs from user's accessible guilds
-            if (!filters.guildId && req.user) {
-                const userGuilds = req.user.guilds || [];
-                const adminGuilds = userGuilds.filter(g => (g.permissions & 0x8) === 0x8).map(g => g.id);
-
-                if (adminGuilds.length > 0) {
-                    const allLogs = [];
-                    for (const gId of adminGuilds.slice(0, 10)) {
-                        const guildLogs = await this.bot.logger.getDashboardAudit({ ...filters, guildId: gId });
-                        allLogs.push(...guildLogs);
-                    }
-                    allLogs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                    const logs = allLogs.slice(filters.offset, filters.offset + filters.limit);
-                    console.log('[getDashboardAudit] Returning', logs.length, 'audit logs');
-                    return res.json({ success: true, logs, count: logs.length });
-                }
-            }
-
             // Verify user has access to the guild if guildId is specified
             if (filters.guildId && req.user) {
                 const userGuilds = req.user.guilds || [];
@@ -12193,7 +10660,6 @@ The DarkLock Team`
             }
 
             const logs = await this.bot.logger.getDashboardAudit(filters);
-            console.log('[getDashboardAudit] Returning', logs.length, 'audit logs');
             res.json({ success: true, logs, count: logs.length });
         } catch (error) {
             console.error('Error fetching dashboard audit logs:', error);
@@ -12205,7 +10671,7 @@ The DarkLock Team`
     async getLockdownStatus(req, res) {
         try {
             const guildId = req.query.guildId;
-
+            
             if (!guildId) {
                 return res.status(400).json({ error: 'Guild ID required' });
             }
@@ -12228,7 +10694,7 @@ The DarkLock Team`
         try {
             const guildId = req.query.guildId;
             const limit = parseInt(req.query.limit) || 10;
-
+            
             if (!guildId) {
                 return res.status(400).json({ error: 'Guild ID required' });
             }
@@ -12284,7 +10750,7 @@ The DarkLock Team`
             // Fetch usernames from Discord API (with timeout protection)
             const fetchUserWithTimeout = async (userId) => {
                 try {
-                    const timeoutPromise = new Promise((_, reject) =>
+                    const timeoutPromise = new Promise((_, reject) => 
                         setTimeout(() => reject(new Error('Timeout')), 2000)
                     );
                     const user = await Promise.race([
@@ -12426,7 +10892,7 @@ The DarkLock Team`
 
             // Validate expiration
             const hours = Math.min(Math.max(1, parseInt(expiresInHours) || 24), 168); // 1-168 hours (1 week max)
-
+            
             // Generate random 12-character code
             const crypto = require('crypto');
             const code = crypto.randomBytes(6).toString('hex').toUpperCase();
@@ -12440,8 +10906,8 @@ The DarkLock Team`
             );
 
             this.bot.logger.info(`[SHARED_ACCESS] User ${userId} generated access code ${code} for guild ${guildId}`);
-            res.json({
-                success: true,
+            res.json({ 
+                success: true, 
                 code: code,
                 expiresAt: expiresAt,
                 expiresInHours: hours
@@ -12584,10 +11050,10 @@ The DarkLock Team`
 
             // Get guild info
             const guild = this.bot.client.guilds.cache.get(codeData.guild_id);
-
+            
             this.bot.logger.info(`[SHARED_ACCESS] User ${userId} redeemed access code for guild ${codeData.guild_id}`);
-            res.json({
-                success: true,
+            res.json({ 
+                success: true, 
                 message: 'Access code redeemed successfully',
                 guildId: codeData.guild_id,
                 guildName: guild?.name || 'Unknown Server'
@@ -12667,13 +11133,13 @@ The DarkLock Team`
                     continue;
                 }
             }
-
+            
             res.json({
                 success: true,
                 newAccessGranted,
                 serverCount: accessibleServerCount,
-                message: newAccessGranted > 0
-                    ? `âœ… Found ${newAccessGranted} new server(s) you can access!`
+                message: newAccessGranted > 0 
+                    ? `Ã¢Å“â€¦ Found ${newAccessGranted} new server(s) you can access!` 
                     : 'No new servers found. Ask an admin for access.'
             });
         } catch (error) {
@@ -12686,12 +11152,12 @@ The DarkLock Team`
     async getStaffRoles(req, res) {
         try {
             const { guildId } = req.params;
-
+            
             // Check if database is available
             if (!this.bot?.database) {
                 return res.json({ success: false, error: 'Database not initialized' });
             }
-
+            
             // Check if bot client is ready
             if (!this.bot?.client?.guilds?.cache) {
                 // Return empty config if bot not ready
@@ -12702,7 +11168,7 @@ The DarkLock Team`
                 } : { adminRoleId: null, modRoleId: null };
                 return res.json({ success: true, data: staffRoles });
             }
-
+            
             const guild = this.bot.client.guilds.cache.get(guildId);
             if (!guild) {
                 return res.json({ success: false, error: 'Guild not found' });
@@ -12734,12 +11200,12 @@ The DarkLock Team`
         try {
             const { guildId } = req.params;
             const { modRoleId, adminRoleId } = req.body;
-
+            
             // Check if database is available
             if (!this.bot?.database) {
                 return res.json({ success: false, error: 'Database not initialized' });
             }
-
+            
             // Check if bot client is ready
             if (!this.bot?.client?.guilds?.cache) {
                 // Skip validation if bot not ready, just save to DB
@@ -12750,7 +11216,7 @@ The DarkLock Team`
                 `).run(adminRoleId || null, modRoleId || null, guildId);
                 return res.json({ success: true, data: { modRoleId, adminRoleId } });
             }
-
+            
             const guild = this.bot.client.guilds.cache.get(guildId);
             if (!guild) {
                 return res.json({ success: false, error: 'Guild not found' });
@@ -12761,7 +11227,7 @@ The DarkLock Team`
             if (!userId) {
                 return res.json({ success: false, error: 'User ID not found in token' });
             }
-
+            
             // Check if user is guild owner first (doesn't require member cache)
             if (guild.ownerId !== userId) {
                 // If not owner, check if member is cached with admin perms
@@ -12836,12 +11302,12 @@ The DarkLock Team`
     async getAdvancedPermissions(req, res) {
         try {
             const { guildId } = req.params;
-
+            
             // Check if database is available
             if (!this.bot?.database) {
                 return res.json({ success: false, error: 'Database not initialized' });
             }
-
+            
             // Check if bot client is ready
             if (!this.bot?.client?.guilds?.cache) {
                 // Return config data if bot not ready
@@ -12857,7 +11323,7 @@ The DarkLock Team`
                 } : { adminRoleId: null, modRoleId: null, tickets: false, analytics: false, security: false, overview: false, customize: false };
                 return res.json({ success: true, data: permissions });
             }
-
+            
             const guild = this.bot.client.guilds.cache.get(guildId);
             if (!guild) {
                 return res.json({ success: false, error: 'Guild not found' });
@@ -12908,20 +11374,20 @@ The DarkLock Team`
         try {
             const { guildId } = req.params;
             const { roleType, tickets, analytics, security, overview, customize } = req.body;
-
+            
             // Check if database is available
             if (!this.bot?.database) {
                 return res.json({ success: false, error: 'Database not initialized' });
             }
-
+            
             // Validate roleType
             if (!roleType || (roleType !== 'admin' && roleType !== 'moderator')) {
                 return res.json({ success: false, error: 'Please select a role type (Admin or Moderator)' });
             }
-
+            
             // Get existing config from database
             const existingConfig = this.bot.database.prepare('SELECT admin_role_id, mod_role_id FROM guild_configs WHERE guild_id = ?').get(guildId);
-
+            
             // Check if bot client is ready for validation
             if (this.bot?.client?.guilds?.cache) {
                 const guild = this.bot.client.guilds.cache.get(guildId);
@@ -12934,7 +11400,7 @@ The DarkLock Team`
                 if (!userId) {
                     return res.json({ success: false, error: 'User ID not found in token' });
                 }
-
+                
                 // Check if user is guild owner first (doesn't require member cache)
                 if (guild.ownerId !== userId) {
                     // If not owner, check if member is cached with admin perms
@@ -13065,7 +11531,7 @@ The DarkLock Team`
     }
 
     // ===== Help Ticket System Methods =====
-
+    
     async getHelpTickets(req, res) {
         try {
             const user = req.user;
@@ -13078,7 +11544,7 @@ The DarkLock Team`
             }
 
             let tickets = [];
-
+            
             if (status) {
                 tickets = await this.bot.helpTicketSystem.getTicketsByStatus(status, parseInt(limit));
             } else if (category) {
@@ -13130,7 +11596,7 @@ The DarkLock Team`
             }
 
             const messages = await this.bot.helpTicketSystem.getTicketMessages(ticketId);
-
+            
             res.json({ success: true, ticket: { ...ticket, messages } });
         } catch (error) {
             this.bot.logger.error('Error fetching help ticket details:', error);
@@ -13151,7 +11617,7 @@ The DarkLock Team`
             }
 
             const success = await this.bot.helpTicketSystem.updateTicketStatus(ticketId, status, response);
-
+            
             if (success) {
                 res.json({ success: true, message: 'Ticket status updated' });
             } else {
@@ -13177,7 +11643,7 @@ The DarkLock Team`
 
             const assignToId = adminId || user.discordId || user.id || 'admin';
             const success = await this.bot.helpTicketSystem.assignTicket(ticketId, assignToId);
-
+            
             if (success) {
                 res.json({ success: true, message: 'Ticket assigned' });
             } else {
@@ -13207,9 +11673,9 @@ The DarkLock Team`
 
             // Use Discord user ID if available, otherwise use 'admin' as identifier
             const adminId = user.discordId || user.id || 'admin';
-
+            
             const success = await this.bot.helpTicketSystem.addTicketMessage(ticketId, adminId, message, true);
-
+            
             if (success) {
                 // Try to send DM to user
                 try {
@@ -13219,7 +11685,7 @@ The DarkLock Team`
                         if (userObj) {
                             const { EmbedBuilder } = require('discord.js');
                             const embed = new EmbedBuilder()
-                                .setTitle(`ðŸ“¬ Reply to Ticket ${ticketId}`)
+                                .setTitle(`Ã°Å¸â€œÂ¬ Reply to Ticket ${ticketId}`)
                                 .setDescription(message)
                                 .setColor('#3b82f6')
                                 .addFields(
@@ -13234,7 +11700,7 @@ The DarkLock Team`
                 } catch (dmError) {
                     this.bot.logger.warn('Could not DM user for ticket reply:', dmError);
                 }
-
+                
                 res.json({ success: true, message: 'Reply sent successfully' });
             } else {
                 res.status(500).json({ error: 'Failed to add reply' });
@@ -13262,7 +11728,7 @@ The DarkLock Team`
             }
 
             const success = await this.bot.helpTicketSystem.updateTicketPriority(ticketId, priority);
-
+            
             if (success) {
                 res.json({ success: true, message: 'Priority updated' });
             } else {
@@ -13292,7 +11758,7 @@ The DarkLock Team`
 
             const adminId = user.discordId || user.id || 'admin';
             const success = await this.bot.helpTicketSystem.addTicketNote(ticketId, adminId, note);
-
+            
             if (success) {
                 res.json({ success: true, message: 'Note added' });
             } else {
@@ -13316,7 +11782,7 @@ The DarkLock Team`
             }
 
             const success = await this.bot.helpTicketSystem.deleteTicket(ticketId);
-
+            
             if (success) {
                 res.json({ success: true, message: 'Ticket deleted' });
             } else {
@@ -13466,7 +11932,7 @@ The DarkLock Team`
 
             res.json({
                 success: true,
-                message: `âœ… Pro plan activated for ${codeRecord.duration_days} days!`,
+                message: `Ã¢Å“â€¦ Pro plan activated for ${codeRecord.duration_days} days!`,
                 expiresAt: new Date(Date.now() + codeRecord.duration_days * 24 * 60 * 60 * 1000).toISOString()
             });
         } catch (error) {
@@ -13599,7 +12065,7 @@ The DarkLock Team`
 
             // Get guild info
             const guild = this.bot.client.guilds.cache.get(codeData.guild_id);
-
+            
             // Create new JWT token with access granted
             const jwt = require('jsonwebtoken');
             const newToken = jwt.sign(
@@ -13625,10 +12091,10 @@ The DarkLock Team`
                 maxAge: 24 * 60 * 60 * 1000,
                 path: '/'
             });
-
+            
             this.bot.logger.info(`[ACCESS_CODE] User ${userId} redeemed access code ${code} for guild ${codeData.guild_id}`);
-            res.json({
-                success: true,
+            res.json({ 
+                success: true, 
                 message: 'Access granted successfully',
                 guildId: codeData.guild_id,
                 serverName: guild?.name || 'Unknown Server'
@@ -13638,1099 +12104,6 @@ The DarkLock Team`
             res.status(500).json({ error: 'Failed to redeem access code' });
         }
     }
-
-    // ============================================================================
-    // 2FA Management Methods
-    // ============================================================================
-
-    /**
-     * Initialize 2FA setup for current admin user
-     */
-    async setup2FA(req, res) {
-        try {
-            const user = req.user;
-
-            if (user.role !== 'admin') {
-                return res.status(403).json({ error: 'Unauthorized' });
-            }
-
-            // Check if 2FA is already enabled
-            const isEnabled = await this.twoFactorAuth.is2FAEnabled(user.username);
-            if (isEnabled) {
-                return res.status(400).json({ error: '2FA is already enabled. Disable it first to set up again.' });
-            }
-
-            // Generate new secret and QR code
-            const { secret, qrCode, backupCodes } = await this.twoFactorAuth.generateSecret(user.username);
-
-            // Store secret temporarily in memory with username as key
-            if (!this.pending2FASetups) {
-                this.pending2FASetups = new Map();
-            }
-            this.pending2FASetups.set(user.username, {
-                secret: secret,
-                backupCodes: backupCodes,
-                timestamp: Date.now()
-            });
-
-            // Clean up old pending setups (older than 10 minutes)
-            for (const [username, data] of this.pending2FASetups.entries()) {
-                if (Date.now() - data.timestamp > 10 * 60 * 1000) {
-                    this.pending2FASetups.delete(username);
-                }
-            }
-
-            this.bot.logger.info(`[2FA] Setup initiated for ${user.username}`);
-
-            res.json({
-                success: true,
-                qrCode: qrCode,
-                secret: secret,
-                backupCodes: backupCodes,
-                message: 'Scan the QR code with your authenticator app, then verify with a code to enable 2FA'
-            });
-        } catch (error) {
-            this.bot.logger.error('[2FA] Setup error:', error);
-            res.status(500).json({ error: 'Failed to setup 2FA' });
-        }
-    }
-
-    /**
-     * Verify and enable 2FA
-     */
-    async verify2FA(req, res) {
-        try {
-            const user = req.user;
-            const { token } = req.body;
-
-            if (user.role !== 'admin') {
-                return res.status(403).json({ error: 'Unauthorized' });
-            }
-
-            if (!token) {
-                return res.status(400).json({ error: 'Token is required' });
-            }
-
-            // Get pending secret from memory
-            const pendingSetup = this.pending2FASetups?.get(user.username);
-
-            if (!pendingSetup) {
-                return res.status(400).json({ error: 'No pending 2FA setup found. Please start setup again.' });
-            }
-
-            const { secret, backupCodes } = pendingSetup;
-
-            // Verify the token
-            const isValid = this.twoFactorAuth.verifyToken(secret, token);
-
-            if (!isValid) {
-                return res.status(401).json({ error: 'Invalid token. Please try again.' });
-            }
-
-            // Enable 2FA in database
-            const enabled = await this.twoFactorAuth.enable2FA(user.username, secret, backupCodes);
-
-            if (!enabled) {
-                return res.status(500).json({ error: 'Failed to enable 2FA' });
-            }
-
-            // Clear pending setup
-            this.pending2FASetups.delete(user.username);
-
-            this.bot.logger.info(`[2FA] Enabled for ${user.username}`);
-
-            res.json({
-                success: true,
-                message: '2FA has been enabled successfully'
-            });
-        } catch (error) {
-            this.bot.logger.error('[2FA] Verify error:', error);
-            res.status(500).json({ error: 'Failed to verify 2FA' });
-        }
-    }
-
-    /**
-     * Disable 2FA
-     */
-    async disable2FA(req, res) {
-        try {
-            const user = req.user;
-            const { password, token, backupCode } = req.body;
-
-            if (user.role !== 'admin') {
-                return res.status(403).json({ error: 'Unauthorized' });
-            }
-
-            // Require password confirmation
-            if (!password) {
-                return res.status(400).json({ error: 'Password is required to disable 2FA' });
-            }
-
-            // Verify password
-            const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-            const isPasswordHash = ADMIN_PASSWORD.startsWith('$2b$');
-            let isValid = false;
-
-            if (isPasswordHash) {
-                isValid = await bcrypt.compare(password, ADMIN_PASSWORD);
-            } else {
-                isValid = password === ADMIN_PASSWORD;
-            }
-
-            if (!isValid) {
-                return res.status(401).json({ error: 'Invalid password' });
-            }
-
-            // Verify 2FA token or backup code
-            if (!token && !backupCode) {
-                return res.status(400).json({ error: '2FA token or backup code is required' });
-            }
-
-            let tokenValid = false;
-            if (backupCode) {
-                tokenValid = await this.twoFactorAuth.verifyBackupCode(user.username, backupCode);
-            } else if (token) {
-                const secret = await this.twoFactorAuth.getSecret(user.username);
-                tokenValid = this.twoFactorAuth.verifyToken(secret, token);
-            }
-
-            if (!tokenValid) {
-                return res.status(401).json({ error: 'Invalid 2FA code' });
-            }
-
-            // Disable 2FA
-            const disabled = await this.twoFactorAuth.disable2FA(user.username);
-
-            if (!disabled) {
-                return res.status(500).json({ error: 'Failed to disable 2FA' });
-            }
-
-            this.bot.logger.warn(`[2FA] Disabled for ${user.username}`);
-
-            res.json({
-                success: true,
-                message: '2FA has been disabled'
-            });
-        } catch (error) {
-            this.bot.logger.error('[2FA] Disable error:', error);
-            res.status(500).json({ error: 'Failed to disable 2FA' });
-        }
-    }
-
-    /**
-     * Regenerate backup codes
-     */
-    async regenerateBackupCodes(req, res) {
-        try {
-            const user = req.user;
-            const { token } = req.body;
-
-            if (user.role !== 'admin') {
-                return res.status(403).json({ error: 'Unauthorized' });
-            }
-
-            if (!token) {
-                return res.status(400).json({ error: 'Current 2FA token is required' });
-            }
-
-            // Verify token
-            const secret = await this.twoFactorAuth.getSecret(user.username);
-            const isValid = this.twoFactorAuth.verifyToken(secret, token);
-
-            if (!isValid) {
-                return res.status(401).json({ error: 'Invalid token' });
-            }
-
-            // Regenerate codes
-            const newCodes = await this.twoFactorAuth.regenerateBackupCodes(user.username);
-
-            if (!newCodes) {
-                return res.status(500).json({ error: 'Failed to regenerate backup codes' });
-            }
-
-            this.bot.logger.info(`[2FA] Backup codes regenerated for ${user.username}`);
-
-            res.json({
-                success: true,
-                backupCodes: newCodes,
-                message: 'New backup codes generated. Store them securely.'
-            });
-        } catch (error) {
-            this.bot.logger.error('[2FA] Regenerate codes error:', error);
-            res.status(500).json({ error: 'Failed to regenerate backup codes' });
-        }
-    }
-
-    /**
-     * Get 2FA status for current user
-     */
-    async get2FAStatus(req, res) {
-        try {
-            const user = req.user;
-
-            if (user.role !== 'admin') {
-                return res.status(403).json({ error: 'Unauthorized' });
-            }
-
-            const isEnabled = await this.twoFactorAuth.is2FAEnabled(user.username);
-
-            res.json({
-                enabled: isEnabled
-            });
-        } catch (error) {
-            this.bot.logger.error('[2FA] Status check error:', error);
-            res.status(500).json({ error: 'Failed to check 2FA status' });
-        }
-    }
-
-    // =====================================
-    // ROLE-BASED ACCESS CONTROL
-    // =====================================
-
-    /**
-     * Role hierarchy: super_admin > admin > moderator > viewer
-     * 
-     * super_admin: Everything + User Management
-     * admin: Everything except User Management  
-     * moderator: View dashboard + Limited actions (view logs, moderate tickets)
-     * viewer: Read-only access (view stats, logs, but no changes)
-     */
-
-    /**
-     * Get fresh role from database for a user
-     */
-    async getFreshRole(user) {
-        if (!user || !user.username) return 'viewer';
-        try {
-            const dbUser = await this.bot.database.get(
-                'SELECT role FROM admin_users WHERE username = ?',
-                [user.username.toLowerCase()]
-            );
-            return dbUser?.role || user.role || 'viewer';
-        } catch (e) {
-            return user.role || 'viewer';
-        }
-    }
-
-    /**
-     * Check if user can manage other users (super_admin and owner only)
-     */
-    canManageUsers(user) {
-        return user && (user.role === 'super_admin' || user.role === 'owner');
-    }
-
-    /**
-     * Check if user can modify settings (admin+ only)
-     */
-    canModifySettings(user) {
-        return user && (user.role === 'admin' || user.role === 'super_admin' || user.role === 'owner');
-    }
-
-    /**
-     * Check if user can moderate (moderator+ can reply to tickets, view detailed logs)
-     */
-    canModerate(user) {
-        return user && (user.role === 'moderator' || user.role === 'admin' || user.role === 'super_admin' || user.role === 'owner');
-    }
-
-    /**
-     * Check if user can view dashboard (all roles)
-     */
-    canView(user) {
-        return user && (user.role === 'viewer' || user.role === 'moderator' || user.role === 'admin' || user.role === 'super_admin' || user.role === 'owner');
-    }
-
-    /**
-     * Get user's role level (higher = more permissions)
-     */
-    getRoleLevel(role) {
-        const levels = { 'viewer': 1, 'moderator': 2, 'admin': 3, 'super_admin': 4, 'owner': 5 };
-        return levels[role] || 0;
-    }
-
-    // =====================================
-    // STAFF CHAT METHODS (Moderator+ only)
-    // =====================================
-
-    /**
-     * Get staff chat messages
-     */
-    async getStaffChat(req, res) {
-        try {
-            const freshRole = await this.getFreshRole(req.user);
-            const user = { ...req.user, role: freshRole };
-
-            if (!this.canModerate(user)) {
-                return res.status(403).json({ error: 'Moderator access required for staff chat' });
-            }
-
-            const limit = Math.min(parseInt(req.query.limit) || 50, 200);
-            const before = req.query.before; // Message ID for pagination
-
-            let query = `
-                SELECT id, user_id, username, display_name, role, message, created_at
-                FROM staff_chat
-            `;
-            let params = [];
-
-            if (before) {
-                query += ' WHERE id < ?';
-                params.push(before);
-            }
-
-            query += ' ORDER BY id DESC LIMIT ?';
-            params.push(limit);
-
-            const messages = await this.bot.database.all(query, params);
-
-            res.json({
-                success: true,
-                messages: messages.reverse() // Return in chronological order
-            });
-        } catch (error) {
-            this.bot.logger.error('[Staff Chat] Get messages error:', error);
-            res.status(500).json({ error: 'Failed to load messages' });
-        }
-    }
-
-    /**
-     * Post a staff chat message
-     */
-    async postStaffChat(req, res) {
-        try {
-            const freshRole = await this.getFreshRole(req.user);
-            const user = { ...req.user, role: freshRole };
-
-            if (!this.canModerate(user)) {
-                return res.status(403).json({ error: 'Moderator access required for staff chat' });
-            }
-
-            const { message } = req.body;
-
-            if (!message || typeof message !== 'string') {
-                return res.status(400).json({ error: 'Message is required' });
-            }
-
-            const trimmedMessage = message.trim();
-            if (trimmedMessage.length === 0 || trimmedMessage.length > 2000) {
-                return res.status(400).json({ error: 'Message must be between 1 and 2000 characters' });
-            }
-
-            // Get display name from database
-            const dbUser = await this.bot.database.get(
-                'SELECT display_name FROM admin_users WHERE username = ?',
-                [user.username?.toLowerCase()]
-            );
-
-            const result = await this.bot.database.run(`
-                INSERT INTO staff_chat (user_id, username, display_name, role, message)
-                VALUES (?, ?, ?, ?, ?)
-            `, [
-                user.userId || user.id || 'unknown',
-                user.username || 'Unknown',
-                dbUser?.display_name || user.globalName || user.username || 'Unknown',
-                freshRole,
-                trimmedMessage
-            ]);
-
-            const newMessage = {
-                id: result.lastID,
-                user_id: user.userId || user.id,
-                username: user.username,
-                display_name: dbUser?.display_name || user.globalName || user.username,
-                role: freshRole,
-                message: trimmedMessage,
-                created_at: new Date().toISOString()
-            };
-
-            // Broadcast to WebSocket clients (global event - null guildId)
-            if (this.broadcastToGuild) {
-                this.broadcastToGuild(null, {
-                    type: 'staff_chat',
-                    payload: newMessage
-                });
-            }
-
-            res.json({ success: true, message: newMessage });
-        } catch (error) {
-            this.bot.logger.error('[Staff Chat] Post message error:', error);
-            res.status(500).json({ error: 'Failed to send message' });
-        }
-    }
-
-    /**
-     * Delete a staff chat message (admin+ only)
-     */
-    async deleteStaffChat(req, res) {
-        try {
-            const freshRole = await this.getFreshRole(req.user);
-            const user = { ...req.user, role: freshRole };
-
-            if (!this.canModifySettings(user)) {
-                return res.status(403).json({ error: 'Admin access required to delete messages' });
-            }
-
-            const messageId = parseInt(req.params.id);
-            if (!messageId) {
-                return res.status(400).json({ error: 'Invalid message ID' });
-            }
-
-            await this.bot.database.run('DELETE FROM staff_chat WHERE id = ?', [messageId]);
-
-            // Broadcast deletion (global event - null guildId)
-            if (this.broadcastToGuild) {
-                this.broadcastToGuild(null, {
-                    type: 'staff_chat_delete',
-                    payload: { id: messageId }
-                });
-            }
-
-            res.json({ success: true });
-        } catch (error) {
-            this.bot.logger.error('[Staff Chat] Delete message error:', error);
-            res.status(500).json({ error: 'Failed to delete message' });
-        }
-    }
-
-    // =====================================
-    // OWNER SETTINGS METHODS
-    // =====================================
-
-    /**
-     * Get all owner settings (owner only)
-     */
-    async getOwnerSettings(req, res) {
-        try {
-            const freshRole = await this.getFreshRole(req.user);
-            const user = { ...req.user, role: freshRole };
-
-            if (freshRole !== 'owner') {
-                return res.status(403).json({ error: 'Owner access required' });
-            }
-
-            const settings = await this.bot.database.all(
-                'SELECT key, value FROM dashboard_settings'
-            );
-
-            // Convert to object
-            const settingsObj = {};
-            for (const row of settings) {
-                settingsObj[row.key] = row.value;
-            }
-
-            res.json({ success: true, settings: settingsObj });
-        } catch (error) {
-            this.bot.logger.error('[Settings] Get settings error:', error);
-            res.status(500).json({ error: 'Failed to load settings' });
-        }
-    }
-
-    /**
-     * Save owner settings (owner only)
-     */
-    async saveOwnerSettings(req, res) {
-        try {
-            const freshRole = await this.getFreshRole(req.user);
-            const user = { ...req.user, role: freshRole };
-
-            if (freshRole !== 'owner') {
-                return res.status(403).json({ error: 'Owner access required' });
-            }
-
-            const { settings } = req.body;
-
-            if (!settings || typeof settings !== 'object') {
-                return res.status(400).json({ error: 'Invalid settings data' });
-            }
-
-            // Save each setting
-            for (const [key, value] of Object.entries(settings)) {
-                await this.bot.database.run(`
-                    INSERT INTO dashboard_settings (key, value, updated_at, updated_by)
-                    VALUES (?, ?, datetime('now'), ?)
-                    ON CONFLICT(key) DO UPDATE SET 
-                        value = excluded.value,
-                        updated_at = datetime('now'),
-                        updated_by = excluded.updated_by
-                `, [key, String(value), user.username]);
-            }
-
-            this.bot.logger.info(`[Settings] Settings updated by ${user.username}`);
-            res.json({ success: true });
-        } catch (error) {
-            this.bot.logger.error('[Settings] Save settings error:', error);
-            res.status(500).json({ error: 'Failed to save settings' });
-        }
-    }
-
-    /**
-     * Set theme (owner only)
-     */
-    async setTheme(req, res) {
-        try {
-            const freshRole = await this.getFreshRole(req.user);
-
-            if (freshRole !== 'owner') {
-                return res.status(403).json({ error: 'Owner access required' });
-            }
-
-            const { theme } = req.body;
-
-            if (!theme || typeof theme !== 'string') {
-                return res.status(400).json({ error: 'Invalid theme' });
-            }
-
-            await this.bot.database.run(`
-                INSERT INTO dashboard_settings (key, value, updated_at, updated_by)
-                VALUES ('theme', ?, datetime('now'), ?)
-                ON CONFLICT(key) DO UPDATE SET 
-                    value = excluded.value,
-                    updated_at = datetime('now'),
-                    updated_by = excluded.updated_by
-            `, [theme, req.user.username]);
-
-            this.bot.logger.info(`[Settings] Theme changed to ${theme} by ${req.user.username}`);
-            res.json({ success: true });
-        } catch (error) {
-            this.bot.logger.error('[Settings] Set theme error:', error);
-            res.status(500).json({ error: 'Failed to set theme' });
-        }
-    }
-
-    /**
-     * Set theme schedule (owner only)
-     */
-    async setThemeSchedule(req, res) {
-        try {
-            const freshRole = await this.getFreshRole(req.user);
-
-            if (freshRole !== 'owner') {
-                return res.status(403).json({ error: 'Owner access required' });
-            }
-
-            const { schedules } = req.body;
-
-            if (!Array.isArray(schedules)) {
-                return res.status(400).json({ error: 'Invalid schedules data' });
-            }
-
-            await this.bot.database.run(`
-                INSERT INTO dashboard_settings (key, value, updated_at, updated_by)
-                VALUES ('theme_schedules', ?, datetime('now'), ?)
-                ON CONFLICT(key) DO UPDATE SET 
-                    value = excluded.value,
-                    updated_at = datetime('now'),
-                    updated_by = excluded.updated_by
-            `, [JSON.stringify(schedules), req.user.username]);
-
-            res.json({ success: true });
-        } catch (error) {
-            this.bot.logger.error('[Settings] Set schedule error:', error);
-            res.status(500).json({ error: 'Failed to set schedule' });
-        }
-    }
-
-    /**
-     * Test webhook (owner only)
-     */
-    async testWebhook(req, res) {
-        try {
-            const freshRole = await this.getFreshRole(req.user);
-
-            if (freshRole !== 'owner') {
-                return res.status(403).json({ error: 'Owner access required' });
-            }
-
-            const { webhookUrl, type } = req.body;
-
-            if (!webhookUrl || !webhookUrl.startsWith('https://discord.com/api/webhooks/')) {
-                return res.status(400).json({ error: 'Invalid webhook URL' });
-            }
-
-            const embed = {
-                title: type === 'login' ? '?? Login Notification Test' : '?? Critical Alert Test',
-                description: 'This is a test message from DarkLock Dashboard.',
-                color: type === 'login' ? 0x5865F2 : 0xED4245,
-                timestamp: new Date().toISOString(),
-                footer: { text: `Sent by ${req.user.username}` }
-            };
-
-            const response = await fetch(webhookUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ embeds: [embed] })
-            });
-
-            if (!response.ok) {
-                return res.status(400).json({ error: 'Failed to send test message' });
-            }
-
-            res.json({ success: true });
-        } catch (error) {
-            this.bot.logger.error('[Settings] Test webhook error:', error);
-            res.status(500).json({ error: 'Failed to test webhook' });
-        }
-    }
-
-    /**
-     * Get current theme (public endpoint for loading theme)
-     */
-    async getCurrentTheme(req, res) {
-        try {
-            const themeSetting = await this.bot.database.get(
-                "SELECT value FROM dashboard_settings WHERE key = 'theme'"
-            );
-
-            const theme = themeSetting?.value || 'christmas';
-
-            // Check for scheduled theme overrides
-            const schedulesSetting = await this.bot.database.get(
-                "SELECT value FROM dashboard_settings WHERE key = 'theme_schedules'"
-            );
-
-            let activeTheme = theme;
-            if (schedulesSetting?.value) {
-                try {
-                    const schedules = JSON.parse(schedulesSetting.value);
-                    const now = new Date();
-                    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
-                    const currentDay = String(now.getDate()).padStart(2, '0');
-                    const currentDate = `${currentMonth}-${currentDay}`;
-
-                    // Theme schedule definitions
-                    const scheduleMap = {
-                        'christmas': { start: '12-01', end: '12-31' },
-                        'new-year': { start: '01-01', end: '01-07' },
-                        'valentines': { start: '02-01', end: '02-14' },
-                        'stpatricks': { start: '03-10', end: '03-17' },
-                        'easter': { start: '03-20', end: '04-20' },
-                        'july4th': { start: '06-28', end: '07-04' },
-                        'halloween': { start: '10-01', end: '10-31' },
-                        'thanksgiving': { start: '11-20', end: '11-30' }
-                    };
-
-                    for (const themeId of schedules) {
-                        const schedule = scheduleMap[themeId];
-                        if (schedule) {
-                            // Simple date range check (doesn't handle year wraparound perfectly)
-                            if (currentDate >= schedule.start && currentDate <= schedule.end) {
-                                activeTheme = themeId;
-                                break;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    // Ignore parse errors
-                }
-            }
-
-            res.json({ theme: activeTheme });
-        } catch (error) {
-            res.json({ theme: 'christmas' }); // Default fallback
-        }
-    }
-
-    // =====================================
-    // ADMIN USER MANAGEMENT METHODS
-    // =====================================
-
-    /**
-     * Get all admin users
-     */
-    async getAdminUsers(req, res) {
-        try {
-            // Get fresh role from database
-            const freshRole = await this.getFreshRole(req.user);
-            const user = { ...req.user, role: freshRole };
-
-            if (!this.canManageUsers(user)) {
-                return res.status(403).json({ error: 'You do not have permission to manage users' });
-            }
-
-            const users = await this.bot.database.all(`
-                SELECT id, username, display_name, email, role, active, 
-                       totp_enabled, created_at, last_login, login_attempts, locked_until
-                FROM admin_users
-                ORDER BY created_at DESC
-            `);
-
-            // Calculate stats
-            const stats = {
-                total: users.length,
-                active: users.filter(u => u.active).length,
-                twoFaEnabled: users.filter(u => u.totp_enabled).length,
-                admins: users.filter(u => u.role === 'admin' || u.role === 'super_admin').length
-            };
-
-            res.json({ users, stats });
-        } catch (error) {
-            this.bot.logger.error('[Admin Users] Get users error:', error);
-            res.status(500).json({ error: 'Failed to fetch users' });
-        }
-    }
-
-    /**
-     * Create a new admin user
-     */
-    async createAdminUser(req, res) {
-        try {
-            // Get fresh role from database
-            const freshRole = await this.getFreshRole(req.user);
-            const user = { ...req.user, role: freshRole };
-
-            this.bot.logger.info(`[Admin Users] Create user request from ${user?.username}, role: ${user?.role}`);
-
-            if (!this.canManageUsers(user)) {
-                this.bot.logger.warn(`[Admin Users] Permission denied for ${user?.username}`);
-                return res.status(403).json({ error: 'You do not have permission to create users' });
-            }
-
-            const { display_name, username, password, role } = req.body;
-
-            this.bot.logger.info(`[Admin Users] Creating user: ${username}, display_name: ${display_name}, role: ${role}`);
-
-            // Validation
-            if (!display_name || !username || !password) {
-                return res.status(400).json({ error: 'Display name, username, and password are required' });
-            }
-
-            if (display_name.length < 2 || display_name.length > 64) {
-                return res.status(400).json({ error: 'Display name must be between 2 and 64 characters' });
-            }
-
-            if (username.length < 3 || username.length > 32) {
-                return res.status(400).json({ error: 'Username must be between 3 and 32 characters' });
-            }
-
-            if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
-                return res.status(400).json({ error: 'Username can only contain letters, numbers, underscores, and hyphens' });
-            }
-
-            if (password.length < 8) {
-                return res.status(400).json({ error: 'Password must be at least 8 characters' });
-            }
-
-            // Check if username already exists
-            const existing = await this.bot.database.get(
-                'SELECT id FROM admin_users WHERE username = ?',
-                [username.toLowerCase()]
-            );
-
-            if (existing) {
-                return res.status(400).json({ error: 'Username already exists' });
-            }
-
-            // Hash password
-            const bcrypt = require('bcrypt');
-            const passwordHash = await bcrypt.hash(password, 10);
-
-            // Validate role
-            const validRoles = ['viewer', 'moderator', 'admin', 'super_admin', 'owner'];
-            const userRole = validRoles.includes(role) ? role : 'viewer';
-
-            // Enforce role hierarchy - users can only create roles LOWER than their own
-            const creatorLevel = this.getRoleLevel(user.role);
-            const targetLevel = this.getRoleLevel(userRole);
-
-            if (targetLevel >= creatorLevel) {
-                const roleNames = { 1: 'viewer', 2: 'moderator', 3: 'admin', 4: 'super_admin', 5: 'owner' };
-                const maxAllowedRole = roleNames[creatorLevel - 1] || 'none';
-                return res.status(403).json({
-                    error: `You can only create users with roles lower than your own. Maximum role you can assign: ${maxAllowedRole}`
-                });
-            }
-
-            // Generate a placeholder email from username
-            const email = `${username.toLowerCase()}@dashboard.local`;
-
-            // Insert user (always active on creation)
-            const result = await this.bot.database.run(`
-                INSERT INTO admin_users (username, display_name, email, password_hash, role, active, created_at)
-                VALUES (?, ?, ?, ?, ?, 1, datetime('now'))
-            `, [username.toLowerCase(), display_name, email, passwordHash, userRole]);
-
-            this.bot.logger.info(`[Admin Users] User created: ${username} (${display_name}) by ${user.username}`);
-
-            res.json({
-                success: true,
-                message: 'User created successfully',
-                userId: result.lastID
-            });
-        } catch (error) {
-            this.bot.logger.error('[Admin Users] Create user error:', error);
-            res.status(500).json({ error: 'Failed to create user: ' + error.message });
-        }
-    }
-
-    /**
-     * Update an admin user
-     */
-    async updateAdminUser(req, res) {
-        try {
-            // Get fresh role from database
-            const freshRole = await this.getFreshRole(req.user);
-            const currentUser = { ...req.user, role: freshRole };
-            const userId = parseInt(req.params.id);
-
-            if (!this.canManageUsers(currentUser)) {
-                return res.status(403).json({ error: 'You do not have permission to update users' });
-            }
-
-            const { display_name, username, password, role, active } = req.body;
-
-            // Get existing user
-            const existingUser = await this.bot.database.get(
-                'SELECT * FROM admin_users WHERE id = ?',
-                [userId]
-            );
-
-            if (!existingUser) {
-                return res.status(404).json({ error: 'User not found' });
-            }
-
-            // Enforce role hierarchy - can only edit users with roles LOWER than yours
-            const editorLevel = this.getRoleLevel(currentUser.role);
-            const targetLevel = this.getRoleLevel(existingUser.role);
-
-            if (targetLevel >= editorLevel) {
-                return res.status(403).json({ error: 'You cannot edit users with a role equal to or higher than your own' });
-            }
-
-            // Validate username if changed
-            if (username && username !== existingUser.username) {
-                if (username.length < 3 || username.length > 32) {
-                    return res.status(400).json({ error: 'Username must be between 3 and 32 characters' });
-                }
-
-                if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
-                    return res.status(400).json({ error: 'Username can only contain letters, numbers, underscores, and hyphens' });
-                }
-
-                const duplicate = await this.bot.database.get(
-                    'SELECT id FROM admin_users WHERE username = ? AND id != ?',
-                    [username.toLowerCase(), userId]
-                );
-
-                if (duplicate) {
-                    return res.status(400).json({ error: 'Username already exists' });
-                }
-            }
-
-            // Build update query
-            let updates = [];
-            let params = [];
-
-            if (display_name) {
-                updates.push('display_name = ?');
-                params.push(display_name);
-            }
-
-            if (username) {
-                updates.push('username = ?');
-                params.push(username.toLowerCase());
-            }
-
-            if (password && password.length >= 8) {
-                const bcrypt = require('bcrypt');
-                const passwordHash = await bcrypt.hash(password, 10);
-                updates.push('password_hash = ?');
-                params.push(passwordHash);
-            }
-
-            if (role) {
-                const validRoles = ['viewer', 'moderator', 'admin', 'super_admin', 'owner'];
-                if (validRoles.includes(role)) {
-                    // Enforce role hierarchy - can only assign roles LOWER than yours
-                    const newRoleLevel = this.getRoleLevel(role);
-                    const editorLevel = this.getRoleLevel(currentUser.role);
-
-                    if (newRoleLevel >= editorLevel) {
-                        const roleNames = { 1: 'viewer', 2: 'moderator', 3: 'admin', 4: 'super_admin', 5: 'owner' };
-                        const maxAllowedRole = roleNames[editorLevel - 1] || 'none';
-                        return res.status(403).json({
-                            error: `You can only assign roles lower than your own. Maximum: ${maxAllowedRole}`
-                        });
-                    }
-                    updates.push('role = ?');
-                    params.push(role);
-                }
-            }
-
-            if (active !== undefined) {
-                updates.push('active = ?');
-                params.push(active ? 1 : 0);
-            }
-
-            if (updates.length === 0) {
-                return res.status(400).json({ error: 'No valid fields to update' });
-            }
-
-            params.push(userId);
-
-            await this.bot.database.run(`
-                UPDATE admin_users SET ${updates.join(', ')} WHERE id = ?
-            `, params);
-
-            this.bot.logger.info(`[Admin Users] User updated: ${existingUser.username} by ${currentUser.username}`);
-
-            res.json({
-                success: true,
-                message: 'User updated successfully'
-            });
-        } catch (error) {
-            this.bot.logger.error('[Admin Users] Update user error:', error);
-            res.status(500).json({ error: 'Failed to update user' });
-        }
-    }
-
-    /**
-     * Delete an admin user
-     */
-    async deleteAdminUser(req, res) {
-        try {
-            // Get fresh role from database
-            const freshRole = await this.getFreshRole(req.user);
-            const currentUser = { ...req.user, role: freshRole };
-            const userId = parseInt(req.params.id);
-
-            if (!this.canManageUsers(currentUser)) {
-                return res.status(403).json({ error: 'You do not have permission to delete users' });
-            }
-
-            // Get user to delete
-            const userToDelete = await this.bot.database.get(
-                'SELECT * FROM admin_users WHERE id = ?',
-                [userId]
-            );
-
-            if (!userToDelete) {
-                return res.status(404).json({ error: 'User not found' });
-            }
-
-            // Prevent deleting yourself
-            if (userToDelete.username === currentUser.username) {
-                return res.status(400).json({ error: 'You cannot delete your own account' });
-            }
-
-            // Enforce role hierarchy - can only delete users with roles LOWER than yours
-            const deleterLevel = this.getRoleLevel(currentUser.role);
-            const targetLevel = this.getRoleLevel(userToDelete.role);
-
-            if (targetLevel >= deleterLevel) {
-                return res.status(403).json({ error: 'You cannot delete users with a role equal to or higher than your own' });
-            }
-
-            await this.bot.database.run('DELETE FROM admin_users WHERE id = ?', [userId]);
-
-            this.bot.logger.warn(`[Admin Users] User deleted: ${userToDelete.username} by ${currentUser.username}`);
-
-            res.json({
-                success: true,
-                message: 'User deleted successfully'
-            });
-        } catch (error) {
-            this.bot.logger.error('[Admin Users] Delete user error:', error);
-            res.status(500).json({ error: 'Failed to delete user' });
-        }
-    }
-
-    /**
-     * Reset a user's password
-     */
-    async resetUserPassword(req, res) {
-        try {
-            const currentUser = req.user;
-            const userId = parseInt(req.params.id);
-            const { password } = req.body;
-
-            if (!this.canManageUsers(currentUser)) {
-                return res.status(403).json({ error: 'You do not have permission to reset passwords' });
-            }
-
-            if (!password || password.length < 8) {
-                return res.status(400).json({ error: 'Password must be at least 8 characters' });
-            }
-
-            // Get user
-            const userToReset = await this.bot.database.get(
-                'SELECT * FROM admin_users WHERE id = ?',
-                [userId]
-            );
-
-            if (!userToReset) {
-                return res.status(404).json({ error: 'User not found' });
-            }
-
-            // Prevent non-super_admin from resetting super_admin passwords
-            if (userToReset.role === 'super_admin' && currentUser.role !== 'super_admin') {
-                return res.status(403).json({ error: 'Only super admins can reset super admin passwords' });
-            }
-
-            // Hash new password
-            const bcrypt = require('bcrypt');
-            const passwordHash = await bcrypt.hash(password, 10);
-
-            await this.bot.database.run(
-                'UPDATE admin_users SET password_hash = ? WHERE id = ?',
-                [passwordHash, userId]
-            );
-
-            this.bot.logger.warn(`[Admin Users] Password reset for ${userToReset.username} by ${currentUser.username}`);
-
-            res.json({
-                success: true,
-                message: 'Password reset successfully'
-            });
-        } catch (error) {
-            this.bot.logger.error('[Admin Users] Reset password error:', error);
-            res.status(500).json({ error: 'Failed to reset password' });
-        }
-    }
-
-    /**
-     * Reset a user's 2FA
-     */
-    async resetUser2FA(req, res) {
-        try {
-            const currentUser = req.user;
-            const userId = parseInt(req.params.id);
-
-            if (!this.canManageUsers(currentUser)) {
-                return res.status(403).json({ error: 'You do not have permission to reset 2FA' });
-            }
-
-            // Get user
-            const userToReset = await this.bot.database.get(
-                'SELECT * FROM admin_users WHERE id = ?',
-                [userId]
-            );
-
-            if (!userToReset) {
-                return res.status(404).json({ error: 'User not found' });
-            }
-
-            // Prevent non-super_admin from resetting super_admin 2FA
-            if (userToReset.role === 'super_admin' && currentUser.role !== 'super_admin') {
-                return res.status(403).json({ error: 'Only super admins can reset super admin 2FA' });
-            }
-
-            await this.bot.database.run(`
-                UPDATE admin_users 
-                SET totp_secret = NULL, totp_enabled = 0, backup_codes = NULL 
-                WHERE id = ?
-            `, [userId]);
-
-            this.bot.logger.warn(`[Admin Users] 2FA reset for ${userToReset.username} by ${currentUser.username}`);
-
-            res.json({
-                success: true,
-                message: '2FA reset successfully'
-            });
-        } catch (error) {
-            this.bot.logger.error('[Admin Users] Reset 2FA error:', error);
-            res.status(500).json({ error: 'Failed to reset 2FA' });
-        }
-    }
 }
 
 module.exports = SecurityDashboard;
@@ -14738,7 +12111,7 @@ module.exports = SecurityDashboard;
 // If this file is run directly, start the dashboard
 if (require.main === module) {
     require('dotenv').config({ path: '../../.env' });
-
+    
     // Create a mock bot object for standalone dashboard
     const mockBot = {
         logger: {
@@ -14756,7 +12129,7 @@ if (require.main === module) {
             }
         }
     };
-
+    
     const dashboard = new SecurityDashboard(mockBot);
     dashboard.start().then(() => {
         console.log('Dashboard started successfully');
