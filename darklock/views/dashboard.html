@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/platform/static/css/main.css">
     <link rel="stylesheet" href="/platform/static/css/dashboard.css">
-    <link rel="icon" type="image/svg+xml" href="/platform/static/icons/favicon.svg">
+    <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
     <script src="/platform/static/js/debug-controller.js"></script>
 </head>
 <body class="dashboard-page">
@@ -18,9 +18,16 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <a href="/platform" class="sidebar-brand">
-                    <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                        <path d="M9 12l2 2 4-4"/>
+                    <svg class="brand-icon" width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="dashGrad" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stop-color="#60A5FA"/>
+                                <stop offset="55%" stop-color="#6366F1"/>
+                                <stop offset="100%" stop-color="#7C3AED"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M25 19 H56 C72 19 81 28 81 50 C81 72 72 81 56 81 H25 V19 Z M38 31 V69 H55 C62 69 69 62 69 50 C69 38 62 31 55 31 H38 Z" fill="url(#dashGrad)" />
+                        <path d="M44 41 H56 L50 50 L56 59 H44 V41 Z" fill="#020617" opacity="0.9" />
                     </svg>
                     <span>Darklock</span>
                 </a>

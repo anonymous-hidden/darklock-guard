@@ -1,0 +1,80 @@
+<% 
+const now = new Date();
+const status = device.status || 'offline';
+const linkedDate = device.linkedAt ? new Date(device.linkedAt) : null;
+const lastSeenDate = device.lastSeen ? new Date(device.lastSeen) : null;
+const hasLastSeen = lastSeenDate && !Number.isNaN(lastSeenDate.getTime());
+const diffMs = hasLastSeen ? now - lastSeenDate : null;
+const diffMins = diffMs !== null ? Math.floor(diffMs / 60000) : null;
+const diffHours = diffMs !== null ? Math.floor(diffMs / 3600000) : null;
+const diffDays = diffMs !== null ? Math.floor(diffMs / 86400000) : null;
+
+let lastSeenText = 'Unknown';
+let lastSeenColor = 'var(--text-secondary)';
+
+if (hasLastSeen && diffMins !== null && diffHours !== null && diffDays !== null) {
+    if (status === 'online') {
+        if (diffMins < 5) {
+            lastSeenText = `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+            lastSeenColor = 'var(--online)';
+        } else {
+            lastSeenText = `${diffMins} minutes ago`;
+            lastSeenColor = 'var(--info)';
+        }
+    } else {
+        if (diffHours < 24) {
+            lastSeenText = `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+        } else {
+            lastSeenText = `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+            if (diffDays > 7) lastSeenColor = 'var(--warning)';
+        }
+    }
+}
+%>
+
+<div class="platform-card" style="cursor: pointer;" onclick="window.location.href='/platform/devices/<%= device.id %>'">
+    <div class="device-header">
+        <i data-lucide="monitor" style="width: 20px; height: 20px; color: var(--text-secondary);"></i>
+        <div style="flex: 1;">
+            <span class="mono" style="font-size: 1.125rem; font-weight: 600;"><%= device.name || device.id %></span>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            <% if (device.viewOnly) { %>
+                <span class="badge badge-view-only">VIEW-ONLY</span>
+            <% } %>
+            <% if (device.securityProfile === 'ZERO_TRUST') { %>
+                <span class="badge badge-zerotrust">
+                    <i data-lucide="shield" style="width: 12px; height: 12px;"></i>
+                    ZERO-TRUST
+                </span>
+            <% } %>
+        </div>
+    </div>
+    
+    <div style="margin-top: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span class="status-dot status-dot-<%= status %>"></span>
+        <span style="font-weight: 600; color: <%= status === 'online' ? 'var(--online)' : 'var(--offline)' %>;">
+            <%= status === 'online' ? 'Online' : 'Offline' %>
+        </span>
+        <span style="color: var(--text-muted);">•</span>
+        <span style="color: var(--text-secondary);"><%= device.securityProfile === 'ZERO_TRUST' ? 'Zero-Trust' : 'Normal' %></span>
+    </div>
+    
+    <div class="device-meta" style="color: <%= lastSeenColor %>;">
+        Last seen: <%= lastSeenText %>
+    </div>
+    
+    <div class="device-meta">
+        Linked: <%= linkedDate && !Number.isNaN(linkedDate.getTime()) ? linkedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown' %>
+    </div>
+    
+    <div style="margin-top: 1rem;">
+        <span style="color: var(--accent-primary); font-size: 0.875rem; font-weight: 500;">
+            View Details →
+        </span>
+    </div>
+</div>
+
+<script>
+    lucide.createIcons();
+</script>

@@ -1,4 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-  <path d="M9 12l2 2 4-4"/>
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="faviconGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="55%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="#020617"/>
+  <path d="M16 12 H36 C46 12 52 18 52 32 C52 46 46 52 36 52 H16 V12 Z M24 20 V44 H35 C40 44 44 40 44 32 C44 24 40 20 35 20 H24 Z" fill="url(#faviconGrad)" />
+  <path d="M28 26 H36 L32 32 L36 38 H28 V26 Z" fill="#020617" opacity="0.9" />
 </svg>

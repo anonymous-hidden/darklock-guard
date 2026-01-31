@@ -7,7 +7,7 @@ services:
     plan: free
     region: oregon  # Choose closest to your users
     buildCommand: npm install
-    startCommand: npm start
+    startCommand: npm run start:render
     healthCheckPath: /health
     autoDeploy: true  # Auto-deploy on git push
     

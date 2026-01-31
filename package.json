@@ -5,6 +5,7 @@
   "main": "src/bot.js",
   "scripts": {
     "start": "node src/bot.js",
+    "start:render": "node scripts/render-start.js",
     "build": "echo 'no build required'",
     "dev": "nodemon src/bot.js",
     "setup": "node setup.js",

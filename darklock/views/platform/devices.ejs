@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/platform/styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="platform-layout">
+    <div class="platform-container">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h1 style="font-size: 1.5rem; font-weight: 700;">DEVICES</h1>
+            <div style="display: flex; gap: 1rem;">
+                <button class="btn btn-secondary" onclick="location.reload()">
+                    <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i>
+                    Refresh
+                </button>
+                <button class="btn btn-primary" disabled title="Linking disabled in read-only mode">
+                    <i data-lucide="link" style="width: 16px; height: 16px;"></i>
+                    Link Device
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <div style="display: flex; gap: 1rem; flex: 1; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 300px;">
+                    <label style="display: block; font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Search</label>
+                    <input 
+                        type="text" 
+                        class="filter-select" 
+                        id="filter-search" 
+                        placeholder="Search by Device ID or Name..."
+                        value="<%= filters.search || '' %>"
+                        style="width: 100%;"
+                    >
+                </div>
+                
+                <div>
+                    <label style="display: block; font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Status</label>
+                    <select class="filter-select" id="filter-status" onchange="applyFilters()">
+                        <option value="all" <%= !filters.status || filters.status === 'all' ? 'selected' : '' %>>All</option>
+                        <option value="online" <%= filters.status === 'online' ? 'selected' : '' %>>Online</option>
+                        <option value="offline" <%= filters.status === 'offline' ? 'selected' : '' %>>Offline</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label style="display: block; font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Profile</label>
+                    <select class="filter-select" id="filter-profile" onchange="applyFilters()">
+                        <option value="all" <%= !filters.profile || filters.profile === 'all' ? 'selected' : '' %>>All</option>
+                        <option value="normal" <%= filters.profile === 'normal' ? 'selected' : '' %>>Normal</option>
+                        <option value="zero_trust" <%= filters.profile === 'zero_trust' ? 'selected' : '' %>>Zero-Trust</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button class="btn btn-secondary" onclick="clearFilters()" style="align-self: flex-end;">
+                Clear
+            </button>
+        </div>
+
+        <!-- Devices List -->
+        <div class="device-grid">
+            <% if (error) { %>
+                <div class="empty-state">
+                    <div class="empty-state-icon">⚠️</div>
+                    <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem; color: var(--text-primary);">Unable to load devices</h3>
+                    <p><%= error %></p>
+                    <button class="btn btn-primary" onclick="retry('<%= retryPath || '/platform/devices' %>')" style="margin-top: 1rem;">
+                        Retry
+                    </button>
+                </div>
+            <% } else if (devices.length === 0) { %>
+                <div class="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem; color: var(--text-primary);">No devices found</h3>
+                    <p>No devices match your current filters. Try adjusting them.</p>
+                    <button class="btn btn-primary" onclick="clearFilters()" style="margin-top: 1rem;">
+                        Clear Filters
+                    </button>
+                </div>
+            <% } else { %>
+                <% devices.forEach(device => { %>
+                    <%- include('components/device-card', { device }) %>
+                <% }) %>
+                
+                <div style="text-align: center; color: var(--text-secondary); font-size: 0.875rem; margin-top: 1rem;">
+                    Showing <%= devices.length %> device<%= devices.length !== 1 ? 's' : '' %>
+                </div>
+            <% } %>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        
+        function applyFilters() {
+            const status = document.getElementById('filter-status').value;
+            const profile = document.getElementById('filter-profile').value;
+            const search = document.getElementById('filter-search').value;
+            
+            const params = new URLSearchParams();
+            if (status !== 'all') params.set('status', status);
+            if (profile !== 'all') params.set('profile', profile);
+            if (search) params.set('search', search);
+            
+            window.location.href = '/platform/devices?' + params.toString();
+        }
+        
+        function clearFilters() {
+            window.location.href = '/platform/devices';
+        }
+        
+        function retry(path) {
+            window.location.href = path;
+        }
+        
+        let searchTimeout;
+        document.getElementById('filter-search').addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(applyFilters, 300);
+        });
+    </script>
+</body>
+</html>

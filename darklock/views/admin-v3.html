@@ -1147,7 +1147,25 @@
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <div class="sidebar-logo">D</div>
+                <div class="sidebar-logo" style="display:flex;align-items:center;justify-content:center;background:transparent;">
+                    <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <defs>
+                        <linearGradient id="sideGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" style="stop-color:#60A5FA" />
+                          <stop offset="50%" style="stop-color:#6366F1" />
+                          <stop offset="100%" style="stop-color:#7C3AED" />
+                        </linearGradient>
+                        <linearGradient id="sideShine" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" style="stop-color:#a5b4fc" />
+                          <stop offset="100%" style="stop-color:#6366F1" />
+                        </linearGradient>
+                      </defs>
+                      <path d="M20 15 L20 85 L50 85 C75 85 90 70 90 50 C90 30 75 15 50 15 L20 15 Z" fill="url(#sideGrad)" />
+                      <path d="M35 30 L35 70 L50 70 C65 70 75 62 75 50 C75 38 65 30 50 30 L35 30 Z" fill="#0a0a0f" />
+                      <path d="M42 42 L58 50 L42 58 L42 52 L52 50 L42 48 Z" fill="url(#sideShine)" />
+                      <path d="M20 75 L35 85 L20 85 Z" fill="#4338ca" opacity="0.7" />
+                    </svg>
+                </div>
                 <span class="sidebar-brand">Darklock</span>
             </div>
             <nav class="sidebar-nav" id="sidebarNav">

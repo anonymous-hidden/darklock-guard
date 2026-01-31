@@ -48,8 +48,150 @@ async function initApp() {
     // Setup language settings
     setupLanguageSettings();
     
+    // Setup application launch handlers
+    setupAppLaunchHandlers();
+    
     // Load initial page data
     loadPageData('dashboard');
+}
+
+// ============================================================================
+// APPLICATION LAUNCH
+// ============================================================================
+
+/**
+ * Setup event handlers for application launch buttons
+ */
+function setupAppLaunchHandlers() {
+    // Add click event for launch button
+    document.addEventListener('click', function(event) {
+        // Check if clicked element or its parent is a launch button
+        const launchBtn = event.target.closest('a[href*="/platform/launch/"]');
+        if (launchBtn) {
+            event.preventDefault();
+            const appName = launchBtn.href.split('/').pop();
+            launchApplication(appName, launchBtn);
+        }
+    });
+}
+
+/**
+ * Launch desktop application or prompt to download
+ */
+async function launchApplication(appName, button) {
+    const originalText = button.innerHTML;
+    
+    // Show loading state
+    button.classList.add('loading');
+    button.innerHTML = `
+        <span style="display: inline-block; animation: spin 1s linear infinite;">⟳</span>
+        Launching...
+    `;
+    
+    // Add spin animation if not exists
+    if (!document.getElementById('launch-spinner-style')) {
+        const spinStyle = document.createElement('style');
+        spinStyle.id = 'launch-spinner-style';
+        spinStyle.textContent = `
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(spinStyle);
+    }
+    
+    try {
+        const response = await fetch(`/platform/launch/${appName}`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            if (response.status === 404) {
+                // Application not found - prompt to download
+                showDownloadPrompt(appName, button, originalText);
+                return;
+            }
+            if (response.status === 401) {
+                // Not authenticated
+                openModal('Authentication Required', '<p style="color: var(--text-secondary);">Please log in to launch applications.</p>');
+                button.classList.remove('loading');
+                button.innerHTML = originalText;
+                return;
+            }
+            throw new Error(data.error || 'Failed to launch application');
+        }
+        
+        // Success - show message
+        button.classList.remove('loading');
+        button.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 4px;">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Launched
+        `;
+        
+        // Reset button after 3 seconds
+        setTimeout(() => {
+            button.classList.remove('loading');
+            button.innerHTML = originalText;
+        }, 3000);
+        
+    } catch (err) {
+        console.error('Failed to launch application:', err);
+        
+        // Show error
+        button.classList.remove('loading');
+        button.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 4px;">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+            Failed
+        `;
+        
+        // Show modal with error details
+        openModal('Launch Failed', `<p style="color: var(--text-secondary);">${err.message}</p>`);
+        
+        // Reset button after 3 seconds
+        setTimeout(() => {
+            button.classList.remove('loading');
+            button.innerHTML = originalText;
+        }, 3000);
+    }
+}
+
+/**
+ * Show download prompt when application is not installed
+ */
+function showDownloadPrompt(appName, button, originalText) {
+    button.classList.remove('loading');
+    button.innerHTML = originalText;
+    
+    const appDisplayName = appName.split('-').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+    
+    const modalContent = `
+        <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">
+            ${appDisplayName} is not installed on this computer. Would you like to download and install it?
+        </p>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+            <a href="/platform/download/${appName}" class="btn btn-primary" onclick="closeModal()">
+                Download Now
+            </a>
+        </div>
+    `;
+    
+    openModal(`${appDisplayName} Not Found`, modalContent);
 }
 
 // ============================================================================

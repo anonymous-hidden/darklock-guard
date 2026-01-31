@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/platform/styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="platform-layout">
+    <div class="platform-container">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h1 style="font-size: 1.5rem; font-weight: 700;">UPDATES</h1>
+            <button class="btn btn-primary" disabled title="Upload disabled in read-only mode">
+                <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+                New Release
+            </button>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <div style="display: flex; gap: 1rem; flex: 1; flex-wrap: wrap;">
+                <div>
+                    <label style="display: block; font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Product</label>
+                    <select class="filter-select" id="filter-product" onchange="applyFilters()">
+                        <option value="all" <%= !filters.product || filters.product === 'all' ? 'selected' : '' %>>All</option>
+                        <option value="guard" <%= filters.product === 'guard' ? 'selected' : '' %>>Guard</option>
+                        <option value="bot" <%= filters.product === 'bot' ? 'selected' : '' %>>Bot</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label style="display: block; font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">OS</label>
+                    <select class="filter-select" id="filter-os" onchange="applyFilters()">
+                        <option value="all" <%= !filters.os || filters.os === 'all' ? 'selected' : '' %>>All</option>
+                        <option value="windows" <%= filters.os === 'windows' ? 'selected' : '' %>>Windows</option>
+                        <option value="linux" <%= filters.os === 'linux' ? 'selected' : '' %>>Linux</option>
+                        <option value="macos" <%= filters.os === 'macos' ? 'selected' : '' %>>macOS</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label style="display: block; font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Channel</label>
+                    <select class="filter-select" id="filter-channel" onchange="applyFilters()">
+                        <option value="all" <%= !filters.channel || filters.channel === 'all' ? 'selected' : '' %>>All</option>
+                        <option value="stable" <%= filters.channel === 'stable' ? 'selected' : '' %>>Stable</option>
+                        <option value="beta" <%= filters.channel === 'beta' ? 'selected' : '' %>>Beta</option>
+                    </select>
+                </div>
+                
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="display: block; font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Version</label>
+                    <input 
+                        type="text" 
+                        class="filter-select" 
+                        id="filter-search" 
+                        placeholder="Search version..."
+                        value="<%= filters.search || '' %>"
+                        style="width: 100%;"
+                    >
+                </div>
+            </div>
+            
+            <button class="btn btn-secondary" onclick="clearFilters()" style="align-self: flex-end;">
+                Clear All
+            </button>
+        </div>
+
+        <!-- Releases List -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <% if (error) { %>
+                <div class="empty-state">
+                    <div class="empty-state-icon">⚠️</div>
+                    <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem; color: var(--text-primary);">Unable to load releases</h3>
+                    <p><%= error %></p>
+                    <button class="btn btn-primary" onclick="retry('<%= retryPath || '/platform/updates' %>')" style="margin-top: 1rem;">
+                        Retry
+                    </button>
+                </div>
+            <% } else if (releases.length === 0) { %>
+                <div class="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <h3 style="font-size: 1.25rem; margin-bottom: 0.5rem; color: var(--text-primary);">No releases found</h3>
+                    <p>Try adjusting your filters or clearing all to see all releases.</p>
+                    <button class="btn btn-primary" onclick="clearFilters()" style="margin-top: 1rem;">
+                        Clear All Filters
+                    </button>
+                </div>
+            <% } else { %>
+                <% releases.forEach(release => { %>
+                    <%- include('components/release-card', { release }) %>
+                <% }) %>
+                
+                <div style="text-align: center; color: var(--text-secondary); font-size: 0.875rem; margin-top: 1rem;">
+                    Showing <%= releases.length %> release<%= releases.length !== 1 ? 's' : '' %>
+                </div>
+            <% } %>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        function applyFilters() {
+            const product = document.getElementById('filter-product').value;
+            const os = document.getElementById('filter-os').value;
+            const channel = document.getElementById('filter-channel').value;
+            const search = document.getElementById('filter-search').value;
+            
+            const params = new URLSearchParams();
+            if (product !== 'all') params.set('product', product);
+            if (os !== 'all') params.set('os', os);
+            if (channel !== 'all') params.set('channel', channel);
+            if (search) params.set('search', search);
+            
+            window.location.href = '/platform/updates?' + params.toString();
+        }
+        
+        function clearFilters() {
+            window.location.href = '/platform/updates';
+        }
+        
+        function retry(path) {
+            window.location.href = path;
+        }
+        
+        // Live search with debounce
+        let searchTimeout;
+        document.getElementById('filter-search').addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(applyFilters, 300);
+        });
+    </script>
+</body>
+</html>

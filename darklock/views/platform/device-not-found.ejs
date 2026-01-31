@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/platform/styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="platform-layout">
+    <div class="platform-container">
+        <div style="margin-bottom: 1rem;">
+            <a href="/platform/devices" style="color: var(--accent-primary); font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+                Back to Devices
+            </a>
+        </div>
+
+        <div class="empty-state">
+            <div class="empty-state-icon">🛰️</div>
+            <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">Device not found</h1>
+            <p style="color: var(--text-secondary); max-width: 480px;">This device ID does not exist or you do not have access. Verify the ID and try again.</p>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
+                <a class="btn btn-primary" href="<%= retryPath || '/platform/devices' %>">Retry</a>
+                <a class="btn btn-secondary" href="/platform/devices">Go to Devices</a>
+            </div>
+        </div>
+    </div>
+
+    <script>lucide.createIcons();</script>
+</body>
+</html>

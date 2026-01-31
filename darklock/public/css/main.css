@@ -651,6 +651,20 @@ input, textarea, select {
     margin-bottom: 1.5rem;
 }
 
+.app-icon.app-icon-image {
+    background: transparent;
+    padding: 0;
+    overflow: hidden;
+}
+
+.app-icon.app-icon-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--border-radius-lg);
+    display: block;
+}
+
 .app-icon svg {
     width: 28px;
     height: 28px;
