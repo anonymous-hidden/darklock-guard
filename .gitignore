@@ -35,3 +35,10 @@ file-protection/logs/
 file-protection/config/baseline.json# Build artifacts
 ainti-tampering-app/tauri-app/src-tauri/target/
 ainti-tampering-app/tauri-app/node_modules/
+
+# Archives and large files
+*.tar.gz
+*.zip
+*.tar
+*.gz
+__pycache__/
