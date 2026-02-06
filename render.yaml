@@ -71,6 +71,11 @@ services:
         generateValue: true
         description: Secret for JWT tokens (auto-generated)
       
+      - key: ADMIN_JWT_SECRET
+        sync: false
+        generateValue: true
+        description: Secret for admin JWT tokens - MUST be different from JWT_SECRET (auto-generated)
+      
       - key: ADMIN_PASSWORD
         sync: false
         description: Admin dashboard password (hash with bcrypt)
