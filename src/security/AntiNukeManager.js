@@ -24,7 +24,6 @@ class AntiNukeManager {
     this.permissionMonitor = new PermissionMonitor(this.client, { whitelist: this.whitelist, onDangerDetected: (...args)=>this._onDangerDetected(...args) });
 
     this._bindEvents();
-    this._bindEvents();
     this.snapshotManager.startAutoSnapshot(this.client);
   }
 
@@ -43,6 +42,11 @@ class AntiNukeManager {
   // Backwards-compatible tracking used by existing bot handlers
   track(guildId, userId, actionType, target) {
     try {
+      // Skip whitelisted users (bot owner, trusted admins)
+      if (this.whitelist.has(userId)) {
+        return { triggered: false, recentCreates: 0, recentDeletes: 0 };
+      }
+
       const entry = this._ensureActivity(guildId, userId);
       entry.actions.push({ type: actionType, ts: Date.now() });
       if (actionType === 'channel_create' && target?.id) entry.createdChannels.push(target.id);
@@ -82,6 +86,28 @@ class AntiNukeManager {
         const g = await this.client.guilds.fetch(guild).catch(()=>null);
         if (!g) return;
         guild = g;
+      }
+
+      // SECURITY: Never mitigate whitelisted users, the server owner, or the bot itself
+      if (this.whitelist.has(userId)) {
+        this.modLog(guild, { type: 'nuke_mitigation_skipped', userId, reason: 'whitelisted' });
+        return;
+      }
+      if (guild.ownerId === userId) {
+        this.modLog(guild, { type: 'nuke_mitigation_skipped', userId, reason: 'server_owner' });
+        return;
+      }
+      if (this.client.user && this.client.user.id === userId) {
+        this.modLog(guild, { type: 'nuke_mitigation_skipped', userId, reason: 'self' });
+        return;
+      }
+
+      // Check hierarchy before attempting ban
+      const botMember = guild.members.me;
+      const targetMember = await guild.members.fetch(userId).catch(() => null);
+      if (targetMember && botMember && targetMember.roles.highest.position >= botMember.roles.highest.position) {
+        this.modLog(guild, { type: 'nuke_mitigation_skipped', userId, reason: 'hierarchy_too_high' });
+        return;
       }
 
       // prefer ban, else strip roles
@@ -178,20 +204,31 @@ class AntiNukeManager {
     try {
       // set lockdown for 5 seconds
       this.lockdowns.set(guild.id, Date.now() + 5000);
-      // disable webhooks (best-effort)
-      try {
-        const webhooks = await guild.fetchWebhooks();
-        for (const wh of webhooks.values()) {
-          try { await wh.delete('Lockdown: disabling webhooks'); } catch(e){}
-        }
-      } catch(e){}
+      // NOTE: We no longer delete ALL webhooks during lockdown.
+      // Deleting all webhooks destroys integrations (GitHub, CI/CD, logging bots).
+      // Instead, log the lockdown event for staff review.
+      this.modLog(guild, { type: 'lockdown_activated', duration: '5s', guildId: guild.id });
     } catch (e) {}
   }
 
   async _handleNukeDetected(guildId, userId) {
     try {
+      // SECURITY: Never act against whitelisted users, owner, or self
+      if (this.whitelist.has(userId)) return;
+
       const guild = await this.client.guilds.fetch(guildId).catch(()=>null);
       if (!guild) return;
+
+      if (guild.ownerId === userId) return;
+      if (this.client.user && this.client.user.id === userId) return;
+
+      // Hierarchy check
+      const botMember = guild.members.me;
+      const targetMember = await guild.members.fetch(userId).catch(() => null);
+      if (targetMember && botMember && targetMember.roles.highest.position >= botMember.roles.highest.position) {
+        this.modLog(guild, { type: 'nuke_detected_but_cannot_act', userId, reason: 'hierarchy' });
+        return;
+      }
 
       // try to ban executor
       try {

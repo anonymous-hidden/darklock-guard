@@ -466,7 +466,10 @@ function createRoutes(bot, db) {
                 
                 let decoded;
                 try {
-                    decoded = jwt.verify(token, process.env.JWT_SECRET || 'darklock-secret-key-change-in-production');
+                    if (!process.env.JWT_SECRET) {
+                        return res.status(500).json({ error: 'Server misconfigured', code: ERROR_CODES.INVALID_SESSION });
+                    }
+                    decoded = jwt.verify(token, process.env.JWT_SECRET);
                 } catch (e) {
                     return res.status(401).json({ 
                         error: 'Invalid token',

@@ -273,11 +273,10 @@ async function handleViewLevelRoles(interaction, bot) {
 }
 
 async function handleEnableXP(interaction, bot) {
-    await bot.database.run(
-        `INSERT INTO guild_configs (guild_id, xp_enabled) VALUES (?, 1)
-         ON CONFLICT(guild_id) DO UPDATE SET xp_enabled = 1`,
-        [interaction.guild.id]
-    );
+    // Update XP database settings
+    await bot.xpDatabase.updateGuildSettings(interaction.guild.id, {
+        xp_enabled: 1
+    });
 
     await interaction.reply({
         embeds: [new EmbedBuilder()
@@ -295,10 +294,10 @@ async function handleEnableXP(interaction, bot) {
 }
 
 async function handleDisableXP(interaction, bot) {
-    await bot.database.run(
-        'UPDATE guild_configs SET xp_enabled = 0 WHERE guild_id = ?',
-        [interaction.guild.id]
-    );
+    // Update XP database settings
+    await bot.xpDatabase.updateGuildSettings(interaction.guild.id, {
+        xp_enabled: 0
+    });
 
     await interaction.reply({
         embeds: [new EmbedBuilder()

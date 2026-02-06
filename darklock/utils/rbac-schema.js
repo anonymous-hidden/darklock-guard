@@ -251,6 +251,25 @@ async function initializeRBACTables() {
         )
     `);
 
+    // Theme settings
+    await db.run(`
+        CREATE TABLE IF NOT EXISTS theme_settings (
+            id INTEGER PRIMARY KEY DEFAULT 1,
+            theme_name TEXT DEFAULT 'darklock',
+            auto_holiday_themes BOOLEAN DEFAULT 1,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Initialize default theme settings if not exists
+    const themeExists = await db.get(`SELECT id FROM theme_settings WHERE id = 1`);
+    if (!themeExists) {
+        await db.run(`
+            INSERT INTO theme_settings (id, theme_name, auto_holiday_themes)
+            VALUES (1, 'darklock', 1)
+        `);
+    }
+
     // Create indexes
     await db.run(`CREATE INDEX IF NOT EXISTS idx_admin_users_role ON admin_users(role_id)`);
     await db.run(`CREATE INDEX IF NOT EXISTS idx_admin_users_status ON admin_users(status)`);
@@ -447,21 +466,21 @@ async function seedMaintenanceScopes() {
  */
 async function seedDefaultServices() {
     const services = [
-        { name: 'web', displayName: 'Web Dashboard', status: 'operational' },
-        { name: 'api', displayName: 'API', status: 'operational' },
-        { name: 'auth', displayName: 'Authentication', status: 'operational' },
-        { name: 'bot', displayName: 'Discord Bot', status: 'operational' },
-        { name: 'database', displayName: 'Database', status: 'operational' },
-        { name: 'workers', displayName: 'Background Workers', status: 'operational' },
-        { name: 'gateway', displayName: 'Gateway', status: 'operational' }
+        { name: 'web', displayName: 'Web Dashboard', status: 'online' },
+        { name: 'api', displayName: 'API', status: 'online' },
+        { name: 'auth', displayName: 'Authentication', status: 'online' },
+        { name: 'bot', displayName: 'Discord Bot', status: 'online' },
+        { name: 'database', displayName: 'Database', status: 'online' },
+        { name: 'workers', displayName: 'Background Workers', status: 'online' },
+        { name: 'gateway', displayName: 'Gateway', status: 'online' }
     ];
 
     for (const service of services) {
         const existing = await db.get(`SELECT id FROM service_status WHERE service_name = ?`, [service.name]);
         if (!existing) {
             await db.run(`
-                INSERT INTO service_status (id, service_name, display_name, status)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO service_status (id, service_name, display_name, status, updated_at)
+                VALUES (?, ?, ?, ?, datetime('now'))
             `, [generateId(), service.name, service.displayName, service.status]);
         }
     }
@@ -646,19 +665,19 @@ async function initializeAdditionalTables() {
  */
 async function seedDefaultFeatureFlags() {
     const flags = [
-        { name: 'dark_mode', description: 'Enable dark mode for users', is_enabled: 1 },
-        { name: 'new_dashboard', description: 'Use new dashboard design', is_enabled: 1 },
-        { name: 'advanced_analytics', description: 'Show advanced analytics', is_enabled: 0 },
-        { name: 'beta_features', description: 'Enable beta features', is_enabled: 0 }
+        { key: 'dark_mode', name: 'Dark Mode', description: 'Enable dark mode for users', is_enabled: 1 },
+        { key: 'new_dashboard', name: 'New Dashboard', description: 'Use new dashboard design', is_enabled: 1 },
+        { key: 'advanced_analytics', name: 'Advanced Analytics', description: 'Show advanced analytics', is_enabled: 0 },
+        { key: 'beta_features', name: 'Beta Features', description: 'Enable beta features', is_enabled: 0 }
     ];
 
     for (const flag of flags) {
-        const existing = await db.get(`SELECT id FROM feature_flags WHERE name = ?`, [flag.name]);
+        const existing = await db.get(`SELECT id FROM feature_flags WHERE key = ?`, [flag.key]);
         if (!existing) {
             await db.run(`
-                INSERT INTO feature_flags (id, name, description, is_enabled)
-                VALUES (?, ?, ?, ?)
-            `, [generateId(), flag.name, flag.description, flag.is_enabled]);
+                INSERT INTO feature_flags (id, key, name, description, is_enabled, created_by, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+            `, [generateId(), flag.key, flag.name, flag.description, flag.is_enabled, 'system']);
         }
     }
 }

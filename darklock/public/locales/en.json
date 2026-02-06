@@ -1,0 +1,365 @@
+{
+  "nav": {
+    "main": "Main",
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "apps": "Applications",
+    "account": "Account",
+    "security": "Security",
+    "settings": "Settings"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading...",
+    "success": "Success!",
+    "error": "Error",
+    "logout": "Logout",
+    "submit": "Submit",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "yes": "Yes",
+    "no": "No",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "active": "Active",
+    "inactive": "Inactive",
+    "version": "Version",
+    "user": "User",
+    "admin": "Admin",
+    "owner": "Owner"
+  },
+  "dashboard": {
+    "title": "Welcome back",
+    "subtitle": "Here's an overview of your Darklock platform",
+    "stats": {
+      "activeApps": "Active Applications",
+      "2faStatus": "2FA Status",
+      "activeSessions": "Active Sessions",
+      "lastLogin": "Last Login"
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "viewApps": "View Apps",
+      "securitySettings": "Security Settings",
+      "editProfile": "Edit Profile",
+      "discordBot": "Discord Bot Dashboard"
+    },
+    "securityStatus": {
+      "title": "Security Status",
+      "2fa": {
+        "title": "Two-Factor Authentication",
+        "checking": "Checking status...",
+        "enabled": "2FA is enabled",
+        "disabled": "2FA is not enabled"
+      },
+      "password": {
+        "title": "Strong Password",
+        "description": "Your password meets security requirements"
+      },
+      "email": {
+        "title": "Email Verified",
+        "description": "Account email is set"
+      }
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "subtitle": "Who you are - your identity and preferences",
+    "overview": "Overview",
+    "changeAvatar": "Change Avatar",
+    "username": "Username",
+    "displayName": "Display Name",
+    "role": "Role",
+    "accountCreated": "Account Created",
+    "personalInfo": {
+      "title": "Personal Info",
+      "displayName": "Display Name",
+      "displayNamePlaceholder": "Your display name",
+      "email": "Email",
+      "emailHint": "To change your email, go to Account settings",
+      "timezone": "Timezone",
+      "language": "Language",
+      "saveChanges": "Save Changes"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "theme": {
+        "title": "Theme",
+        "description": "Choose your preferred color scheme",
+        "dark": "Dark",
+        "light": "Light",
+        "system": "System"
+      },
+      "reducedMotion": {
+        "title": "Reduced Motion",
+        "description": "Minimize animations and transitions"
+      },
+      "compactLayout": {
+        "title": "Compact Layout",
+        "description": "Show more content with tighter spacing"
+      }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "securityAlerts": {
+        "title": "Security Alerts",
+        "description": "Get notified about suspicious activity"
+      },
+      "productUpdates": {
+        "title": "Product Updates",
+        "description": "New features and improvements"
+      },
+      "emailNotifications": {
+        "title": "Email Notifications",
+        "description": "Receive notifications via email"
+      }
+    }
+  },
+  "apps": {
+    "title": "Applications",
+    "subtitle": "Access and manage your Darklock applications",
+    "darklock": {
+      "name": "Darklock Guard",
+      "description": "File integrity monitoring and protection",
+      "launch": "Launch",
+      "download": "Download"
+    }
+  },
+  "security": {
+    "title": "Security",
+    "subtitle": "Everything sensitive - how your account is protected",
+    "overview": {
+      "title": "Overview",
+      "2faStatus": "2FA Status",
+      "passwordStrength": "Password Strength",
+      "activeSessions": "Active Sessions",
+      "strong": "Strong"
+    },
+    "authentication": {
+      "title": "Authentication",
+      "changePassword": {
+        "title": "Change Password",
+        "description": "Update your password to keep your account secure",
+        "currentPassword": "Current Password",
+        "currentPasswordPlaceholder": "Enter current password",
+        "newPassword": "New Password",
+        "newPasswordPlaceholder": "Enter new password",
+        "confirmPassword": "Confirm New Password",
+        "confirmPasswordPlaceholder": "Confirm new password",
+        "updateButton": "Update Password"
+      },
+      "2fa": {
+        "title": "Two-Factor Authentication",
+        "description": "Add an extra layer of security to your account",
+        "loading": "Loading 2FA status...",
+        "enable": "Enable 2FA",
+        "disable": "Disable 2FA",
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      }
+    },
+    "sessions": {
+      "title": "Sessions",
+      "description": "Manage devices currently logged into your account",
+      "loading": "Loading sessions...",
+      "current": "Current Session",
+      "revoke": "Revoke",
+      "revokeAll": "Revoke All Sessions"
+    },
+    "activity": {
+      "title": "Security Activity",
+      "description": "Recent security events and login history",
+      "loading": "Loading activity...",
+      "noEvents": "No recent security events"
+    }
+  },
+  "account": {
+    "title": "Account",
+    "subtitle": "Ownership and lifecycle management",
+    "details": {
+      "title": "Account Details",
+      "email": {
+        "title": "Email Address",
+        "description": "Your primary contact email - requires password + 2FA to change",
+        "current": "Current Email",
+        "new": "New Email",
+        "newPlaceholder": "Enter new email",
+        "confirmPassword": "Confirm Password",
+        "confirmPasswordPlaceholder": "Enter your password",
+        "2faCode": "2FA Code",
+        "changeButton": "Change Email"
+      },
+      "username": {
+        "title": "Username",
+        "description": "Your unique identifier on the platform",
+        "current": "Current Username",
+        "new": "New Username",
+        "newPlaceholder": "Enter new username",
+        "hint": "3-20 characters, letters, numbers, underscores, and hyphens only",
+        "changeButton": "Change Username"
+      }
+    },
+    "data": {
+      "title": "Data",
+      "export": {
+        "title": "Export Account Data",
+        "description": "Download all your account data in JSON format",
+        "button": "Export Data"
+      },
+      "clearSessions": {
+        "title": "Clear All Sessions",
+        "description": "Log out from all devices except this one",
+        "button": "Clear Sessions"
+      }
+    },
+    "dangerZone": {
+      "title": "Danger Zone",
+      "description": "Irreversible actions - proceed with caution",
+      "disable": {
+        "title": "Disable Account",
+        "description": "Temporarily disable your account - can be reactivated",
+        "button": "Disable Account"
+      },
+      "delete": {
+        "title": "Delete Account",
+        "description": "Permanently delete your account and all associated data",
+        "button": "Delete Account"
+      }
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Platform-level configuration and preferences",
+    "language": {
+      "title": "Language & Region",
+      "select": "Language",
+      "description": "Select your preferred language"
+    },
+    "autoDetectLanguage": {
+      "title": "Auto-detect Language",
+      "description": "Automatically set language based on browser settings"
+    },
+    "timezone": {
+      "title": "Time Zone",
+      "description": "Your local time zone",
+      "autoDetect": "Auto-detect"
+    },
+    "dateFormat": {
+      "title": "Date Format",
+      "description": "How dates are displayed"
+    },
+    "timeFormat": {
+      "title": "Time Format",
+      "description": "12-hour or 24-hour time",
+      "12hour": "12-hour (AM/PM)",
+      "24hour": "24-hour"
+    },
+    "platform": {
+      "title": "Platform",
+      "defaultLanding": {
+        "title": "Default Landing Page",
+        "description": "Choose where you land after login"
+      },
+      "rememberLastApp": {
+        "title": "Remember Last App",
+        "description": "Return to the last application you used"
+      },
+      "autoSave": {
+        "title": "Auto-save Preferences",
+        "description": "Automatically save changes to your preferences"
+      }
+    },
+    "appearance": {
+      "title": "Appearance",
+      "theme": {
+        "title": "Theme",
+        "description": "Choose your color theme",
+        "dark": "Dark",
+        "light": "Light",
+        "auto": "Auto (System)"
+      },
+      "compactMode": {
+        "title": "Compact Mode",
+        "description": "Reduce spacing for more content"
+      },
+      "sidebarPosition": {
+        "title": "Sidebar Position",
+        "description": "Position of the navigation sidebar",
+        "left": "Left",
+        "right": "Right"
+      }
+    },
+    "accessibility": {
+      "title": "Accessibility",
+      "fontScaling": {
+        "title": "Font Scaling",
+        "description": "Adjust the size of text across the platform",
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large",
+        "xlarge": "Extra Large"
+      },
+      "highContrast": {
+        "title": "High Contrast Mode",
+        "description": "Increase contrast for better visibility"
+      },
+      "reducedMotion": {
+        "title": "Reduced Motion",
+        "description": "Minimize animations and transitions"
+      },
+      "screenReader": {
+        "title": "Screen Reader Support",
+        "description": "Enhanced screen reader compatibility"
+      }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "email": {
+        "title": "Email Notifications",
+        "description": "Receive important updates via email"
+      },
+      "push": {
+        "title": "Push Notifications",
+        "description": "Browser push notifications"
+      },
+      "sound": {
+        "title": "Sound Notifications",
+        "description": "Play sounds for notifications"
+      }
+    },
+    "privacy": {
+      "title": "Privacy & Security",
+      "activityTracking": {
+        "title": "Activity Tracking",
+        "description": "Allow analytics to improve your experience"
+      },
+      "sessionTimeout": {
+        "title": "Session Timeout",
+        "description": "Auto logout after inactivity",
+        "15min": "15 minutes",
+        "30min": "30 minutes",
+        "1hour": "1 hour",
+        "4hours": "4 hours",
+        "never": "Never"
+      },
+      "require2FA": {
+        "title": "Require 2FA for Login",
+        "description": "Always ask for two-factor authentication"
+      }
+    },
+    "experimental": {
+      "title": "Experimental",
+      "description": "Try new features before they're released",
+      "betaFeatures": {
+        "title": "Beta Features",
+        "description": "Enable experimental features and improvements"
+      },
+      "notice": "Beta features may be unstable and are subject to change"
+    }
+  }
+}

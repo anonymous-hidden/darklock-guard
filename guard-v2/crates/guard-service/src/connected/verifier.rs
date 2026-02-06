@@ -1,7 +1,6 @@
 use crate::connected::commands::ServerCommand;
 use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose, Engine as _};
-use chrono::{DateTime, Utc};
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -43,7 +42,7 @@ fn decode_signature(b64: &str) -> Result<Signature> {
         .decode(b64)
         .map_err(|e| anyhow!("decode signature: {e}"))?;
     let arr: [u8; 64] = bytes.try_into().map_err(|_| anyhow!("signature length"))?;
-    Signature::from_bytes(&arr).map_err(|e| anyhow!("sig parse: {e}"))
+    Ok(Signature::from_bytes(&arr))
 }
 
 pub fn canonical_command_message(cmd: &ServerCommand) -> Vec<u8> {

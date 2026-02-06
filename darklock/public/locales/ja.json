@@ -1,0 +1,365 @@
+{
+  "nav": {
+    "main": "メイン",
+    "dashboard": "ダッシュボード",
+    "profile": "プロフィール",
+    "apps": "アプリケーション",
+    "account": "アカウント",
+    "security": "セキュリティ",
+    "settings": "設定"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "loading": "読み込み中...",
+    "success": "成功！",
+    "error": "エラー",
+    "logout": "ログアウト",
+    "submit": "送信",
+    "delete": "削除",
+    "edit": "編集",
+    "close": "閉じる",
+    "confirm": "確認",
+    "back": "戻る",
+    "next": "次へ",
+    "yes": "はい",
+    "no": "いいえ",
+    "enabled": "有効",
+    "disabled": "無効",
+    "active": "アクティブ",
+    "inactive": "非アクティブ",
+    "version": "バージョン",
+    "user": "ユーザー",
+    "admin": "管理者",
+    "owner": "オーナー"
+  },
+  "dashboard": {
+    "title": "ようこそ",
+    "subtitle": "Darklockプラットフォームの概要です",
+    "stats": {
+      "activeApps": "アクティブなアプリ",
+      "2faStatus": "二要素認証ステータス",
+      "activeSessions": "アクティブなセッション",
+      "lastLogin": "最終ログイン"
+    },
+    "quickActions": {
+      "title": "クイックアクション",
+      "viewApps": "アプリを表示",
+      "securitySettings": "セキュリティ設定",
+      "editProfile": "プロフィール編集",
+      "discordBot": "Discord Botダッシュボード"
+    },
+    "securityStatus": {
+      "title": "セキュリティステータス",
+      "2fa": {
+        "title": "二要素認証",
+        "checking": "ステータスを確認中...",
+        "enabled": "二要素認証が有効です",
+        "disabled": "二要素認証が無効です"
+      },
+      "password": {
+        "title": "安全なパスワード",
+        "description": "パスワードはセキュリティ要件を満たしています"
+      },
+      "email": {
+        "title": "メール確認済み",
+        "description": "アカウントメールが設定されています"
+      }
+    }
+  },
+  "profile": {
+    "title": "プロフィール",
+    "subtitle": "あなたの情報 - アイデンティティと設定",
+    "overview": "概要",
+    "changeAvatar": "アバターを変更",
+    "username": "ユーザー名",
+    "displayName": "表示名",
+    "role": "ロール",
+    "accountCreated": "アカウント作成日",
+    "personalInfo": {
+      "title": "個人情報",
+      "displayName": "表示名",
+      "displayNamePlaceholder": "あなたの表示名",
+      "email": "メール",
+      "emailHint": "メールを変更するには、アカウント設定に移動してください",
+      "timezone": "タイムゾーン",
+      "language": "言語",
+      "saveChanges": "変更を保存"
+    },
+    "preferences": {
+      "title": "設定",
+      "theme": {
+        "title": "テーマ",
+        "description": "お好みの配色を選択",
+        "dark": "ダーク",
+        "light": "ライト",
+        "system": "システム"
+      },
+      "reducedMotion": {
+        "title": "アニメーションを減らす",
+        "description": "アニメーションとトランジションを最小化"
+      },
+      "compactLayout": {
+        "title": "コンパクトレイアウト",
+        "description": "より少ない間隔でより多くのコンテンツを表示"
+      }
+    },
+    "notifications": {
+      "title": "通知",
+      "securityAlerts": {
+        "title": "セキュリティアラート",
+        "description": "不審な活動に関する通知を受け取る"
+      },
+      "productUpdates": {
+        "title": "製品アップデート",
+        "description": "新機能と改善"
+      },
+      "emailNotifications": {
+        "title": "メール通知",
+        "description": "メールで通知を受け取る"
+      }
+    }
+  },
+  "apps": {
+    "title": "アプリケーション",
+    "subtitle": "Darklockアプリへのアクセスと管理",
+    "darklock": {
+      "name": "Darklock Guard",
+      "description": "ファイル整合性の監視と保護",
+      "launch": "起動",
+      "download": "ダウンロード"
+    }
+  },
+  "security": {
+    "title": "セキュリティ",
+    "subtitle": "重要な情報 - アカウントの保護方法",
+    "overview": {
+      "title": "概要",
+      "2faStatus": "二要素認証ステータス",
+      "passwordStrength": "パスワード強度",
+      "activeSessions": "アクティブなセッション",
+      "strong": "強力"
+    },
+    "authentication": {
+      "title": "認証",
+      "changePassword": {
+        "title": "パスワードを変更",
+        "description": "アカウントを安全に保つためにパスワードを更新",
+        "currentPassword": "現在のパスワード",
+        "currentPasswordPlaceholder": "現在のパスワードを入力",
+        "newPassword": "新しいパスワード",
+        "newPasswordPlaceholder": "新しいパスワードを入力",
+        "confirmPassword": "新しいパスワードを確認",
+        "confirmPasswordPlaceholder": "新しいパスワードを確認",
+        "updateButton": "パスワードを更新"
+      },
+      "2fa": {
+        "title": "二要素認証",
+        "description": "アカウントにセキュリティの追加レイヤーを追加",
+        "loading": "二要素認証ステータスを読み込み中...",
+        "enable": "二要素認証を有効にする",
+        "disable": "二要素認証を無効にする",
+        "enabled": "有効",
+        "disabled": "無効"
+      }
+    },
+    "sessions": {
+      "title": "セッション",
+      "description": "アカウントに接続されているデバイスを管理",
+      "loading": "セッションを読み込み中...",
+      "current": "現在のセッション",
+      "revoke": "取り消す",
+      "revokeAll": "すべてのセッションを取り消す"
+    },
+    "activity": {
+      "title": "セキュリティ活動",
+      "description": "最近のセキュリティイベントとアクセス履歴",
+      "loading": "活動を読み込み中...",
+      "noEvents": "最近のセキュリティイベントはありません"
+    }
+  },
+  "account": {
+    "title": "アカウント",
+    "subtitle": "所有権とライフサイクル管理",
+    "details": {
+      "title": "アカウント詳細",
+      "email": {
+        "title": "メールアドレス",
+        "description": "主要な連絡先メール - 変更にはパスワード + 二要素認証が必要",
+        "current": "現在のメール",
+        "new": "新しいメール",
+        "newPlaceholder": "新しいメールを入力",
+        "confirmPassword": "パスワードを確認",
+        "confirmPasswordPlaceholder": "パスワードを入力",
+        "2faCode": "二要素認証コード",
+        "changeButton": "メールを変更"
+      },
+      "username": {
+        "title": "ユーザー名",
+        "description": "プラットフォーム上の一意の識別子",
+        "current": "現在のユーザー名",
+        "new": "新しいユーザー名",
+        "newPlaceholder": "新しいユーザー名を入力",
+        "hint": "3〜20文字、英字、数字、アンダースコア、ハイフンのみ",
+        "changeButton": "ユーザー名を変更"
+      }
+    },
+    "data": {
+      "title": "データ",
+      "export": {
+        "title": "アカウントデータをエクスポート",
+        "description": "すべてのアカウントデータをJSON形式でダウンロード",
+        "button": "データをエクスポート"
+      },
+      "clearSessions": {
+        "title": "すべてのセッションを閉じる",
+        "description": "このデバイス以外のすべてのデバイスからログアウト",
+        "button": "セッションを閉じる"
+      }
+    },
+    "dangerZone": {
+      "title": "危険ゾーン",
+      "description": "元に戻せない操作 - 注意して進めてください",
+      "disable": {
+        "title": "アカウントを無効化",
+        "description": "アカウントを一時的に無効化 - 再有効化可能",
+        "button": "アカウントを無効化"
+      },
+      "delete": {
+        "title": "アカウントを削除",
+        "description": "アカウントとすべての関連データを完全に削除",
+        "button": "アカウントを削除"
+      }
+    }
+  },
+  "settings": {
+    "title": "設定",
+    "description": "プラットフォームレベルの設定と環境設定",
+    "language": {
+      "title": "言語と地域",
+      "select": "言語",
+      "description": "お好みの言語を選択"
+    },
+    "autoDetectLanguage": {
+      "title": "言語を自動検出",
+      "description": "ブラウザ設定に基づいて言語を自動設定"
+    },
+    "timezone": {
+      "title": "タイムゾーン",
+      "description": "ローカルタイムゾーン",
+      "autoDetect": "自動検出"
+    },
+    "dateFormat": {
+      "title": "日付形式",
+      "description": "日付の表示方法"
+    },
+    "timeFormat": {
+      "title": "時刻形式",
+      "description": "12時間または24時間形式",
+      "12hour": "12時間形式（AM/PM）",
+      "24hour": "24時間形式"
+    },
+    "platform": {
+      "title": "プラットフォーム",
+      "defaultLanding": {
+        "title": "デフォルトのランディングページ",
+        "description": "ログイン後のランディングページを選択"
+      },
+      "rememberLastApp": {
+        "title": "最後のアプリを記憶",
+        "description": "最後に使用したアプリに戻る"
+      },
+      "autoSave": {
+        "title": "設定を自動保存",
+        "description": "設定の変更を自動的に保存"
+      }
+    },
+    "appearance": {
+      "title": "外観",
+      "theme": {
+        "title": "テーマ",
+        "description": "カラーテーマを選択",
+        "dark": "ダーク",
+        "light": "ライト",
+        "auto": "自動（システム）"
+      },
+      "compactMode": {
+        "title": "コンパクトモード",
+        "description": "より多くのコンテンツのために間隔を縮小"
+      },
+      "sidebarPosition": {
+        "title": "サイドバーの位置",
+        "description": "サイドナビゲーションバーの位置",
+        "left": "左",
+        "right": "右"
+      }
+    },
+    "accessibility": {
+      "title": "アクセシビリティ",
+      "fontScaling": {
+        "title": "フォントスケーリング",
+        "description": "プラットフォーム全体のテキストサイズを調整",
+        "small": "小",
+        "medium": "中",
+        "large": "大",
+        "xlarge": "特大"
+      },
+      "highContrast": {
+        "title": "ハイコントラストモード",
+        "description": "視認性を向上させるためにコントラストを上げる"
+      },
+      "reducedMotion": {
+        "title": "アニメーションを減らす",
+        "description": "アニメーションとトランジションを最小化"
+      },
+      "screenReader": {
+        "title": "スクリーンリーダーサポート",
+        "description": "スクリーンリーダーとの互換性を強化"
+      }
+    },
+    "notifications": {
+      "title": "通知",
+      "email": {
+        "title": "メール通知",
+        "description": "重要なアップデートをメールで受け取る"
+      },
+      "push": {
+        "title": "プッシュ通知",
+        "description": "ブラウザプッシュ通知"
+      },
+      "sound": {
+        "title": "サウンド通知",
+        "description": "通知音を再生"
+      }
+    },
+    "privacy": {
+      "title": "プライバシーとセキュリティ",
+      "activityTracking": {
+        "title": "アクティビティトラッキング",
+        "description": "エクスペリエンス向上のための分析を許可"
+      },
+      "sessionTimeout": {
+        "title": "セッションタイムアウト",
+        "description": "非アクティブ後に自動的にログアウト",
+        "15min": "15分",
+        "30min": "30分",
+        "1hour": "1時間",
+        "4hours": "4時間",
+        "never": "なし"
+      },
+      "require2FA": {
+        "title": "ログインに二要素認証を要求",
+        "description": "常に二要素認証を要求"
+      }
+    },
+    "experimental": {
+      "title": "実験的機能",
+      "description": "リリース前に新機能をテスト",
+      "betaFeatures": {
+        "title": "ベータ機能",
+        "description": "実験的な機能と改善を有効にする"
+      },
+      "notice": "ベータ機能は不安定で変更される可能性があります"
+    }
+  }
+}

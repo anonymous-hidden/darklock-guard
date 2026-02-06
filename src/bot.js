@@ -90,6 +90,17 @@ const RankSystem = require('./utils/RankSystem');
 const RankCardGenerator = require('./utils/RankCardGenerator');
 const OpenAIClient = require('./utils/OpenAIClient');
 
+// Import new XP system modules
+const XPDatabase = require('./db/xpDatabase');
+const XPTracker = require('./bot/xpTracker');
+const WebDashboard = require('./web/server');
+
+// Import new enterprise services
+const SecurityMiddleware = require('./services/SecurityMiddleware');
+const ModerationQueue = require('./services/ModerationQueue');
+const ConfigService = require('./services/ConfigService');
+const VerificationService = require('./services/VerificationService');
+
 class SecurityBot {
     constructor() {
         // Global error handlers to prevent silent early exits
@@ -174,6 +185,17 @@ class SecurityBot {
         // Initialize rank system
         this.rankSystem = null;
         this.rankCardGenerator = null;
+
+        // Initialize new XP system
+        this.xpDatabase = null;
+        this.xpTracker = null;
+        this.webDashboard = null;
+
+        // Initialize new enterprise services
+        this.securityMiddleware = null;
+        this.moderationQueue = null;
+        this.configService = null;
+        this.verificationService = null;
 
         // Plan gating map for premium features
         this.planRequirements = {
@@ -325,7 +347,43 @@ class SecurityBot {
             // OpenAI client (optional)
             this.openAIClient = new OpenAIClient(this);
             this.logger.info('   ✅ Rank System initialized');
-            this.logger.info('   ✅ Rank System initialized');
+
+            // Initialize new Arcane-style XP system
+            this.logger.info('🎮 Initializing Arcane XP system...');
+            this.xpDatabase = new XPDatabase('./data/xp.db');
+            await this.xpDatabase.initialize();
+            this.logger.info('   ✅ XP Database initialized');
+            
+            this.xpTracker = new XPTracker(this.client, this.xpDatabase);
+            this.client.xpTracker = this.xpTracker;
+            this.client.xpDatabase = this.xpDatabase;
+            this.logger.info('   ✅ XP Tracker initialized');
+            
+            this.webDashboard = new WebDashboard(this.xpDatabase, this.client, parseInt(process.env.XP_DASHBOARD_PORT || '3007'));
+            this.logger.info('   ✅ Web Dashboard initialized');
+
+            // Initialize new enterprise services
+            this.logger.info('🛡️ Initializing enterprise security services...');
+            
+            this.securityMiddleware = new SecurityMiddleware(this);
+            this.logger.info('   ✅ Security Middleware initialized');
+            
+            this.moderationQueue = new ModerationQueue(this);
+            this.logger.info('   ✅ Moderation Queue initialized');
+            
+            this.configService = new ConfigService(this);
+            await this.configService.initialize();
+            this.logger.info('   ✅ Config Service initialized');
+
+            // Bind config change events to security modules
+            const ConfigSubscriber = require('./services/config-subscriber');
+            this.configSubscriber = new ConfigSubscriber(this);
+            this.configSubscriber.bind();
+            this.logger.info('   ✅ Config Subscriber bound');
+            
+            this.verificationService = new VerificationService(this);
+            await this.verificationService.initialize();
+            this.logger.info('   ✅ Verification Service initialized');
 
             // Event Emitter for bot and dashboard communication
             this.eventEmitter = new EventEmitter(this);
@@ -707,8 +765,8 @@ class SecurityBot {
                     links: 'anti_links_enabled'
                 };
                 const key = map[feature] || feature;
-                // If config doesn't have the key, default to true (don't block commands unexpectedly)
-                if (typeof cfg[key] === 'undefined' || cfg[key] === null) return true;
+                // Fail-closed: undefined features are disabled by default
+                if (typeof cfg[key] === 'undefined' || cfg[key] === null) return false;
                 return Boolean(cfg[key]);
             };
             
@@ -721,6 +779,16 @@ class SecurityBot {
                 const port = process.env.PORT || process.env.DASHBOARD_PORT || process.env.WEB_PORT || 3001;
                 await this.dashboard.start(port);
                 this.logger.info(`🌐 Dashboard started on http://localhost:${port}`);
+            }
+            
+            // Start XP Web Dashboard
+            if (this.webDashboard) {
+                try {
+                    await this.webDashboard.start();
+                    this.logger.info('🎮 XP Leaderboard Dashboard started');
+                } catch (error) {
+                    this.logger.warn('⚠️ Failed to start XP dashboard:', error.message);
+                }
             }
             
             this.logger.info('✅ Bot initialization complete!');
@@ -820,6 +888,17 @@ class SecurityBot {
                 let commandError = null;
 
                 try {
+                    // Enterprise security middleware check
+                    if (this.securityMiddleware) {
+                        const securityCheck = await this.securityMiddleware.checkCommand(interaction, command);
+                        if (!securityCheck.passed) {
+                            return await interaction.reply({
+                                content: securityCheck.error || '❌ Security check failed.',
+                                ephemeral: true
+                            });
+                        }
+                    }
+
                     // Feature gating
                     const blocked = await this.isFeatureBlocked(interaction);
                     if (blocked) {
@@ -948,6 +1027,23 @@ class SecurityBot {
             else if (interaction.isButton()) {
                 const buttonSuccess = await (async () => {
                     try {
+                        // Enterprise security middleware check for buttons
+                        if (this.securityMiddleware) {
+                            const securityCheck = await this.securityMiddleware.checkButton(interaction);
+                            if (!securityCheck.passed) {
+                                return interaction.reply({
+                                    content: securityCheck.error || '❌ Security check failed.',
+                                    ephemeral: true
+                                });
+                            }
+                        }
+
+                        // Handle verification through enterprise VerificationService
+                        if (interaction.customId === 'verify_button' && this.verificationService) {
+                            await this.verificationService.handleVerifyButton(interaction);
+                            return true;
+                        }
+
                         // Verification skip/deny
                         if (interaction.customId.startsWith('verify_allow_') || interaction.customId.startsWith('verify_deny_')) {
                             const targetId = interaction.customId.split('_')[2];
@@ -991,6 +1087,14 @@ class SecurityBot {
                             }
                             return true;
                         }
+                        // Handle leaderboard time-range buttons
+                        else if (interaction.customId.startsWith('leaderboard:') || interaction.customId.startsWith('leaderboard_')) {
+                            const leaderboardCommand = this.commands.get('leaderboard');
+                            if (leaderboardCommand && leaderboardCommand.handleLeaderboardButton) {
+                                await leaderboardCommand.handleLeaderboardButton(interaction, this);
+                            }
+                            return true;
+                        }
                         // Handle setup wizard buttons
                         else if (interaction.customId.startsWith('setup_')) {
                             if (this.setupWizard) {
@@ -998,15 +1102,7 @@ class SecurityBot {
                             }
                             return true;
                         }
-                        else if (interaction.customId.startsWith('verify_allow_') || interaction.customId.startsWith('verify_deny_')) {
-                            const verifier = require('./events/guildMemberAdd-verification.js');
-                            if (verifier?.handleVerificationButtons) {
-                                await verifier.handleVerificationButtons(interaction, this);
-                            }
-                            return true;
-                        }
-                        // Handle verification buttons
-                        // verify_user_ handled centrally in events/interactionHandler.js
+                        // NOTE: verify_allow_ and verify_deny_ already handled above - removed duplicate
                         // Handle settings buttons
                         else if (interaction.customId.startsWith('toggle_') || 
                                  interaction.customId.startsWith('configure_') ||
@@ -1048,8 +1144,15 @@ class SecurityBot {
             }
             // Handle select menu interactions
             else if (interaction.isStringSelectMenu()) {
+                // Handle leaderboard time range selection
+                if (interaction.customId === 'leaderboard_select') {
+                    const leaderboardCommand = this.commands.get('leaderboard');
+                    if (leaderboardCommand && leaderboardCommand.handleLeaderboardSelect) {
+                        await leaderboardCommand.handleLeaderboardSelect(interaction, this);
+                    }
+                }
                 // Handle ticket category selection
-                if (interaction.customId === 'ticket_category_select') {
+                else if (interaction.customId === 'ticket_category_select') {
                     if (this.enhancedTicketManager) {
                         await this.enhancedTicketManager.handleTicketButton(interaction);
                     }
@@ -1113,6 +1216,23 @@ class SecurityBot {
             }
             // Handle modal submissions
             else if (interaction.isModalSubmit()) {
+                // Enterprise security middleware check for modals
+                if (this.securityMiddleware) {
+                    const securityCheck = await this.securityMiddleware.checkModal(interaction);
+                    if (!securityCheck.passed) {
+                        return interaction.reply({
+                            content: securityCheck.error || '❌ Security check failed.',
+                            ephemeral: true
+                        });
+                    }
+                }
+
+                // Handle verification captcha modal through enterprise VerificationService
+                if ((interaction.customId.startsWith('verify_captcha_') || interaction.customId.startsWith('verify_code_modal_')) && this.verificationService) {
+                    await this.verificationService.handleCodeModalSubmit(interaction);
+                    return;
+                }
+
                 if (interaction.customId === 'ticket_modal') {
                     await this.handleTicketSubmit(interaction);
                 } else if (interaction.customId === 'ticket_create_modal') {
@@ -1275,6 +1395,17 @@ class SecurityBot {
             }
         });
 
+        // Message edit security — Security Rule 9
+        // Runs the same security pipeline on edited messages to prevent bypass
+        this.client.on('messageUpdate', async (oldMessage, newMessage) => {
+            try {
+                const messageUpdateHandler = require('./events/messageUpdate');
+                await messageUpdateHandler.execute(oldMessage, newMessage, this);
+            } catch (error) {
+                this.logger.error('Error in messageUpdate handler:', error);
+            }
+        });
+
         // Member join events
         this.client.on('guildMemberAdd', async (member) => {
             try {
@@ -1294,8 +1425,12 @@ class SecurityBot {
                     if (raidResult && raidResult.isRaid) return;
                 }
 
-                // User verification via join queue (raid-safe)
-                if (this.joinQueue) {
+                // Enterprise verification service (preferred over legacy)
+                if (this.verificationService) {
+                    await this.verificationService.handleMemberJoin(member);
+                }
+                // Fallback: User verification via join queue (raid-safe)
+                else if (this.joinQueue) {
                     this.joinQueue.enqueueJoin(member);
                 } else if (this.userVerification && typeof this.userVerification.verifyNewMember === 'function') {
                     await this.userVerification.verifyNewMember(member);
@@ -2401,7 +2536,8 @@ I'm performing an initial security scan to check for threats. This will complete
         if (feature === 'antiphishing') return !!cfg.anti_phishing_enabled;
         if (feature === 'automod') return !!cfg.auto_mod_enabled;
         if (feature === 'autorole') return !!cfg.autorole_enabled;
-        return true;
+        // Fail-closed: unknown/unmapped features are disabled by default
+        return false;
     }
 
     isSubscriptionActive(record) {
@@ -2449,13 +2585,23 @@ I'm performing an initial security scan to check for threats. This will complete
     }
 
     async hasProFeatures(guildId) {
-        // Paywall disabled: treat all guilds as having Pro features
-        return true;
+        try {
+            const sub = await this.getGuildPlan(guildId);
+            return sub.effectivePlan === 'pro' || sub.effectivePlan === 'enterprise';
+        } catch (err) {
+            this.logger?.warn(`[Paywall] Failed to check pro features for ${guildId}:`, err.message);
+            return false; // fail-closed: deny access when subscription state unknown
+        }
     }
 
     async hasEnterpriseFeatures(guildId) {
-        // Paywall disabled: treat all guilds as having Enterprise features
-        return true;
+        try {
+            const sub = await this.getGuildPlan(guildId);
+            return sub.effectivePlan === 'enterprise';
+        } catch (err) {
+            this.logger?.warn(`[Paywall] Failed to check enterprise features for ${guildId}:`, err.message);
+            return false; // fail-closed: deny access when subscription state unknown
+        }
     }
 
     async applySubscriptionUpdate({ guildId, userId = null, plan = 'free', status = 'inactive', currentPeriodEnd = undefined, stripeCustomerId = null, stripeSubscriptionId = null }) {

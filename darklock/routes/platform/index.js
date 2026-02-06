@@ -1,7 +1,56 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../dashboard');
+
+const os = require('os');
 const apiClient = require('./lib/apiClient');
+const db = require('../../utils/database');
+let discordBot = null;
+
+// Allow main server to inject bot reference if needed
+function setDiscordBot(bot) {
+    discordBot = bot;
+}
+// GET /platform/api/metrics
+router.get('/api/metrics', async (req, res) => {
+    try {
+        // System metrics
+        const memUsage = process.memoryUsage();
+        const cpuLoad = os.loadavg();
+        let dbLatency = 0;
+        try {
+            const start = Date.now();
+            await db.get(`SELECT 1`);
+            dbLatency = Date.now() - start;
+        } catch {}
+
+        // Bot metrics
+        const botMetrics = discordBot ? {
+            status: discordBot.ws?.status === 0 ? 'online' : 'degraded',
+            ping: discordBot.ws?.ping || 0,
+            guilds: discordBot.guilds?.cache?.size || 0,
+            users: discordBot.users?.cache?.size || 0
+        } : { status: 'offline', ping: 0, guilds: 0, users: 0 };
+
+        res.json({
+            success: true,
+            system: {
+                memory: {
+                    rss: memUsage.rss,
+                    heapTotal: memUsage.heapTotal,
+                    heapUsed: memUsage.heapUsed,
+                    external: memUsage.external
+                },
+                cpu: cpuLoad,
+                dbLatency
+            },
+            bot: botMetrics,
+            timestamp: new Date().toISOString()
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Failed to load metrics' });
+    }
+});
 
 function parseReleaseNotes(notes) {
     if (!notes) return [];
@@ -253,4 +302,4 @@ router.post('/devices/:id/enter-safe-mode', requireAuth, async (req, res) => {
     }
 });
 
-module.exports = router;
+module.exports = { router, setDiscordBot };

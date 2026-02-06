@@ -11,11 +11,21 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/css/dashboard-modern.css">
-    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
-    <script src="/js/global-theme.js"></script>
+    <link rel="stylesheet" href="/css/premium-gating.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
+    <script>
+        // Auto-reload theme every 5 minutes
+        setInterval(() => {
+            const link = document.getElementById('dynamic-theme-stylesheet');
+            if (link) {
+                link.href = '/api/v3/theme/css?' + new Date().getTime();
+            }
+        }, 300000);
+    </script>
     <script src="/js/theme-effects.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="/js/chart-manager.js"></script>
+    <script src="/js/premium-gating.js"></script>
 </head>
 
 <body>
@@ -51,6 +61,10 @@
                     <div class="server-dropdown-header">Select Server</div>
                     <div class="server-dropdown-list" id="serverList">
                         <div class="server-dropdown-loading">Loading servers...</div>
+                    </div>
+                    <div class="server-dropdown-add-btn" onclick="event.stopPropagation(); openAccessCodeModal()">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Add Server with Access Code</span>
                     </div>
                 </div>
             </div>
@@ -131,21 +145,32 @@
                         <i class="fas fa-book"></i>
                         <span>Help & Commands</span>
                     </a>
-                    <a href="/dashboard/console" class="nav-item" data-requires-admin>
+                    <a href="/dashboard/console" class="nav-item" data-requires-admin data-premium-required="true">
                         <i class="fas fa-terminal"></i>
                         <span>Bot Console</span>
+                        <i class="fas fa-crown premium-badge" style="color: #ffc107; font-size: 10px; margin-left: auto;"></i>
                     </a>
-                    <a href="/access-generator" class="nav-item" data-requires-admin>
+                    <a href="/access-generator" class="nav-item" data-requires-admin data-premium-required="true">
                         <i class="fas fa-key"></i>
                         <span>Access Generator</span>
+                        <i class="fas fa-crown premium-badge" style="color: #ffc107; font-size: 10px; margin-left: auto;"></i>
                     </a>
-                    <a href="/access-share" class="nav-item" data-requires-admin>
+                    <a href="/access-share" class="nav-item" data-requires-admin data-premium-required="true">
                         <i class="fas fa-share-alt"></i>
                         <span>Access Share</span>
+                        <i class="fas fa-crown premium-badge" style="color: #ffc107; font-size: 10px; margin-left: auto;"></i>
                     </a>
                     <a href="/admin/users" class="nav-item" data-requires-super-admin>
                         <i class="fas fa-users-cog"></i>
                         <span>User Management</span>
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Account</div>
+                    <a href="#" class="nav-item premium-upgrade-nav" onclick="showUpgradeModal(); return false;">
+                        <i class="fas fa-crown" style="color: #ffc107;"></i>
+                        <span>Upgrade to Premium</span>
                     </a>
                 </div>
             </nav>
@@ -166,6 +191,32 @@
                 </div>
             </div>
         </aside>
+
+        <!-- Access Code Modal -->
+        <div class="modal" id="accessCodeModal" style="display: none;">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2><i class="fas fa-key"></i> Enter Access Code</h2>
+                    <button class="modal-close" onclick="closeAccessCodeModal()\">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="margin-bottom: 20px; color: #b9bbbe;">Enter the access code provided by a server administrator to gain dashboard access.</p>
+                    <div class="form-group">
+                        <label for="accessCodeInput">Access Code</label>
+                        <input type="text" id="accessCodeInput" class="form-control" placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="19" style="text-transform: uppercase;">
+                        <small style="color: #72767d; margin-top: 8px; display: block;">Access codes are provided by server administrators</small>
+                    </div>
+                    <div id="accessCodeError" style="color: #ed4245; margin-top: 10px; display: none;"></div>
+                    <div id="accessCodeSuccess" style="color: #3ba55d; margin-top: 10px; display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" onclick="closeAccessCodeModal()">Cancel</button>
+                    <button class="btn-primary" onclick="redeemAccessCode()" id="redeemCodeBtn">
+                        <i class="fas fa-check"></i> Redeem Code
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -261,6 +312,8 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await loadUserData();
             await loadDashboard();
+            await loadPremiumStatus(); // Load premium status for Quick Actions
+            renderQuickActions(); // Render quick actions after page loads
 
             // Close dropdown when clicking outside
             document.addEventListener('click', (e) => {
@@ -286,7 +339,23 @@
                 credentials: 'include'
             });
 
-            if (response.status === 401 || response.status === 403) {
+            // Check if it's an auth error (not a premium error)
+            if (response.status === 401) {
+                window.location.href = '/login';
+                throw new Error('Authentication required');
+            }
+            
+            if (response.status === 403) {
+                // Check if it's a premium error
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const data = await response.clone().json();
+                    if (data.premium) {
+                        // It's a premium error, don't redirect - just return the response
+                        return response;
+                    }
+                }
+                // It's an auth error
                 window.location.href = '/login';
                 throw new Error('Authentication required');
             }
@@ -416,6 +485,229 @@
             }).join('');
             console.log('[Dashboard] Dropdown rendered successfully');
         }
+
+        // Access Code Modal Functions
+        function openAccessCodeModal() {
+            document.getElementById('accessCodeModal').style.display = 'flex';
+            document.getElementById('accessCodeInput').value = '';
+            document.getElementById('accessCodeError').style.display = 'none';
+            document.getElementById('accessCodeSuccess').style.display = 'none';
+            document.getElementById('accessCodeInput').focus();
+        }
+
+        function closeAccessCodeModal() {
+            document.getElementById('accessCodeModal').style.display = 'none';
+        }
+
+        async function redeemAccessCode() {
+            const codeInput = document.getElementById('accessCodeInput');
+            const code = codeInput.value.trim().toUpperCase();
+            const errorDiv = document.getElementById('accessCodeError');
+            const successDiv = document.getElementById('accessCodeSuccess');
+            const redeemBtn = document.getElementById('redeemCodeBtn');
+
+            // Reset messages
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+
+            // Validate code format
+            if (!code) {
+                errorDiv.textContent = 'Please enter an access code';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            if (!/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) {
+                errorDiv.textContent = 'Invalid code format. Use format: XXXX-XXXX-XXXX-XXXX';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            // Disable button and show loading
+            redeemBtn.disabled = true;
+            redeemBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redeeming...';
+
+            try {
+                const response = await apiFetch('/api/access-codes/redeem', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    successDiv.textContent = `Success! You now have access to ${data.serverName}`;
+                    successDiv.style.display = 'block';
+                    codeInput.value = '';
+
+                    // Reload servers after 1.5 seconds
+                    setTimeout(async () => {
+                        await loadUserServers();
+                        closeAccessCodeModal();
+                        // Select the newly added server
+                        if (data.guildId) {
+                            selectServer(data.guildId);
+                        }
+                    }, 1500);
+                } else {
+                    errorDiv.textContent = data.error || 'Invalid or expired access code';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error redeeming access code:', error);
+                errorDiv.textContent = 'Failed to redeem code. Please try again.';
+                errorDiv.style.display = 'block';
+            } finally {
+                redeemBtn.disabled = false;
+                redeemBtn.innerHTML = '<i class="fas fa-check"></i> Redeem Code';
+            }
+        }
+
+        // Format access code input with dashes
+        document.addEventListener('DOMContentLoaded', () => {
+            const codeInput = document.getElementById('accessCodeInput');
+            if (codeInput) {
+                codeInput.addEventListener('input', (e) => {
+                    let value = e.target.value.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                    let formatted = '';
+                    for (let i = 0; i < value.length && i < 16; i++) {
+                        if (i > 0 && i % 4 === 0) formatted += '-';
+                        formatted += value[i];
+                    }
+                    e.target.value = formatted;
+                });
+
+                codeInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        redeemAccessCode();
+                    }
+                });
+            }
+
+            // Close modal on background click
+            document.getElementById('accessCodeModal')?.addEventListener('click', (e) => {
+                if (e.target.id === 'accessCodeModal') {
+                    closeAccessCodeModal();
+                }
+            });
+        });
+
+        // Access Code Modal Functions
+        function openAccessCodeModal() {
+            const modal = document.getElementById('accessCodeModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.getElementById('accessCodeInput').value = '';
+                document.getElementById('accessCodeError').style.display = 'none';
+                document.getElementById('accessCodeSuccess').style.display = 'none';
+                document.getElementById('accessCodeInput').focus();
+            }
+        }
+
+        function closeAccessCodeModal() {
+            const modal = document.getElementById('accessCodeModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        async function redeemAccessCode() {
+            const codeInput = document.getElementById('accessCodeInput');
+            const code = codeInput.value.trim().toUpperCase();
+            const errorDiv = document.getElementById('accessCodeError');
+            const successDiv = document.getElementById('accessCodeSuccess');
+            const redeemBtn = document.getElementById('redeemCodeBtn');
+
+            // Reset messages
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+
+            // Validate code format
+            if (!code) {
+                errorDiv.textContent = 'Please enter an access code';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            if (!/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(code)) {
+                errorDiv.textContent = 'Invalid code format. Use format: XXXX-XXXX-XXXX-XXXX';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            // Disable button and show loading
+            redeemBtn.disabled = true;
+            redeemBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redeeming...';
+
+            try {
+                const response = await apiFetch('/api/access-codes/redeem', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    successDiv.textContent = `Success! You now have access to ${data.serverName}`;
+                    successDiv.style.display = 'block';
+                    codeInput.value = '';
+
+                    // Reload servers after 1.5 seconds
+                    setTimeout(async () => {
+                        await loadUserServers();
+                        closeAccessCodeModal();
+                        // Select the newly added server
+                        if (data.guildId) {
+                            selectServer(data.guildId);
+                        }
+                    }, 1500);
+                } else {
+                    errorDiv.textContent = data.error || 'Invalid or expired access code';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error redeeming access code:', error);
+                errorDiv.textContent = 'Failed to redeem code. Please try again.';
+                errorDiv.style.display = 'block';
+            } finally {
+                redeemBtn.disabled = false;
+                redeemBtn.innerHTML = '<i class="fas fa-check"></i> Redeem Code';
+            }
+        }
+
+        // Format access code input with dashes
+        document.addEventListener('DOMContentLoaded', () => {
+            const codeInput = document.getElementById('accessCodeInput');
+            if (codeInput) {
+                codeInput.addEventListener('input', (e) => {
+                    let value = e.target.value.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                    let formatted = '';
+                    for (let i = 0; i < value.length && i < 16; i++) {
+                        if (i > 0 && i % 4 === 0) formatted += '-';
+                        formatted += value[i];
+                    }
+                    e.target.value = formatted;
+                });
+
+                codeInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        redeemAccessCode();
+                    }
+                });
+            }
+
+            // Close modal on background click
+            const modal = document.getElementById('accessCodeModal');
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target.id === 'accessCodeModal') {
+                        closeAccessCodeModal();
+                    }
+                });
+            }
+        });
 
         // Toggle server dropdown
         function toggleServerDropdown(event) {
@@ -631,81 +923,230 @@
             initCharts();
         }
 
-        // Initialize charts
-        function initCharts() {
-            // Activity Chart
+        // Initialize charts with real data
+        async function initCharts() {
+            try {
+                const guildId = currentGuildId || localStorage.getItem('selectedGuildId');
+                const params = guildId ? `?guildId=${guildId}&days=7` : '?days=7';
+                
+                // Fetch real analytics data
+                const response = await apiFetch(`/api/analytics/full${params}`);
+                const data = await response.json();
+                
+                // Activity Chart with real data
+                const activityCtx = document.getElementById('activityChart');
+                if (activityCtx) {
+                    const memberActivity = data.memberActivity || [];
+                    const commandUsage = data.commandUsage || [];
+                    
+                    // Use labels from data or generate last 7 days
+                    let labels = memberActivity.map(d => formatChartDate(d.date));
+                    if (labels.length === 0) {
+                        labels = getLast7Days();
+                    }
+                    
+                    // Map message/activity data - use hourly activity totals per day
+                    const messagesData = labels.map((label, i) => {
+                        const found = data.hourlyActivity?.reduce((sum, h) => sum + (h.messages || 0), 0) || 0;
+                        return memberActivity[i]?.joins || commandUsage[i]?.count || Math.floor(found / 7);
+                    });
+                    
+                    // Map commands data
+                    const commandsData = labels.map((label, i) => {
+                        return commandUsage[i]?.count || 0;
+                    });
+                    
+                    charts.activity = new Chart(activityCtx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Member Joins',
+                                data: memberActivity.map(d => d.joins || 0),
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                pointBackgroundColor: '#10b981',
+                                pointBorderColor: '#10b981',
+                                pointRadius: 4
+                            }, {
+                                label: 'Commands',
+                                data: commandUsage.map(d => d.count || 0),
+                                borderColor: '#7c3aed',
+                                backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                pointBackgroundColor: '#7c3aed',
+                                pointBorderColor: '#7c3aed',
+                                pointRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        padding: 20,
+                                        usePointStyle: true
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.05)'
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        display: false
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Security Chart with real data
+                const securityCtx = document.getElementById('securityChart');
+                if (securityCtx) {
+                    const moderation = data.moderation || {};
+                    const securityEvents = data.securityEvents || [];
+                    
+                    // Count security event types
+                    const eventCounts = {
+                        links: 0,
+                        spam: 0,
+                        raid: 0,
+                        phishing: 0
+                    };
+                    
+                    securityEvents.forEach(event => {
+                        const type = (event.type || event.event_type || '').toLowerCase();
+                        if (type.includes('link')) eventCounts.links++;
+                        else if (type.includes('spam')) eventCounts.spam++;
+                        else if (type.includes('raid')) eventCounts.raid++;
+                        else if (type.includes('phish')) eventCounts.phishing++;
+                    });
+                    
+                    // Use moderation data if no security events
+                    const chartData = [
+                        eventCounts.links || moderation.warns || 0,
+                        eventCounts.spam || moderation.kicks || 0,
+                        eventCounts.raid || moderation.bans || 0,
+                        eventCounts.phishing || moderation.timeouts || 0
+                    ];
+                    
+                    // Check if we have any data
+                    const hasData = chartData.some(v => v > 0);
+                    
+                    charts.security = new Chart(securityCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: hasData 
+                                ? ['Warns', 'Kicks', 'Bans', 'Timeouts']
+                                : ['No Data'],
+                            datasets: [{
+                                data: hasData ? [
+                                    moderation.warns || 0,
+                                    moderation.kicks || 0,
+                                    moderation.bans || 0,
+                                    moderation.timeouts || 0
+                                ] : [1],
+                                backgroundColor: hasData ? [
+                                    '#f59e0b',
+                                    '#ec4899',
+                                    '#ef4444',
+                                    '#7c3aed'
+                                ] : ['rgba(255,255,255,0.1)'],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: '70%',
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        padding: 20,
+                                        usePointStyle: true
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading chart data:', error);
+                // Fall back to empty charts
+                initEmptyCharts();
+            }
+        }
+        
+        // Helper: Format date for chart labels
+        function formatChartDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        }
+        
+        // Helper: Get last 7 days as labels
+        function getLast7Days() {
+            const days = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                days.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+            }
+            return days;
+        }
+        
+        // Fallback: Initialize empty charts
+        function initEmptyCharts() {
             const activityCtx = document.getElementById('activityChart');
             if (activityCtx) {
                 charts.activity = new Chart(activityCtx, {
                     type: 'line',
                     data: {
-                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        labels: getLast7Days(),
                         datasets: [{
-                            label: 'Messages',
-                            data: [120, 190, 300, 250, 220, 180, 310],
+                            label: 'Activity',
+                            data: [0, 0, 0, 0, 0, 0, 0],
                             borderColor: '#00f0ff',
                             backgroundColor: 'rgba(0, 240, 255, 0.1)',
                             fill: true,
-                            tension: 0.4,
-                            pointBackgroundColor: '#00f0ff',
-                            pointBorderColor: '#00f0ff',
-                            pointRadius: 4
-                        }, {
-                            label: 'Commands',
-                            data: [30, 45, 60, 55, 40, 35, 70],
-                            borderColor: '#7c3aed',
-                            backgroundColor: 'rgba(124, 58, 237, 0.1)',
-                            fill: true,
-                            tension: 0.4,
-                            pointBackgroundColor: '#7c3aed',
-                            pointBorderColor: '#7c3aed',
-                            pointRadius: 4
+                            tension: 0.4
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    padding: 20,
-                                    usePointStyle: true
-                                }
-                            }
+                            legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } }
                         },
                         scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: {
-                                    color: 'rgba(255, 255, 255, 0.05)'
-                                }
-                            },
-                            x: {
-                                grid: {
-                                    display: false
-                                }
-                            }
+                            y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+                            x: { grid: { display: false } }
                         }
                     }
                 });
             }
 
-            // Security Chart
             const securityCtx = document.getElementById('securityChart');
             if (securityCtx) {
                 charts.security = new Chart(securityCtx, {
                     type: 'doughnut',
                     data: {
-                        labels: ['Blocked Links', 'Spam Detected', 'Raid Attempts', 'Phishing'],
+                        labels: ['No Data'],
                         datasets: [{
-                            data: [45, 30, 15, 10],
-                            backgroundColor: [
-                                '#00f0ff',
-                                '#7c3aed',
-                                '#ec4899',
-                                '#f59e0b'
-                            ],
+                            data: [1],
+                            backgroundColor: ['rgba(255,255,255,0.1)'],
                             borderWidth: 0
                         }]
                     },
@@ -713,15 +1154,7 @@
                         responsive: true,
                         maintainAspectRatio: false,
                         cutout: '70%',
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    padding: 20,
-                                    usePointStyle: true
-                                }
-                            }
-                        }
+                        plugins: { legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } } }
                     }
                 });
             }
@@ -956,19 +1389,35 @@
 
         // Quick Actions Management
         const availableActions = [
-            { id: 'tickets', name: 'View Tickets', icon: 'ticket-alt', url: '/tickets', gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', iconBg: 'rgba(102, 126, 234, 0.2)' },
-            { id: 'analytics', name: 'Analytics', icon: 'chart-line', url: '/analytics', gradient: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', iconBg: 'rgba(17, 153, 142, 0.2)' },
-            { id: 'security', name: 'Security', icon: 'shield-alt', url: '/setup/security', gradient: 'linear-gradient(135deg, #00d4ff 0%, #0099ff 100%)', iconBg: 'rgba(0, 212, 255, 0.2)' },
-            { id: 'users', name: 'Users', icon: 'users-cog', url: '/dashboard/users', gradient: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)', iconBg: 'rgba(168, 85, 247, 0.2)' },
-            { id: 'logs', name: 'Audit Logs', icon: 'file-alt', url: '/dashboard/logs', gradient: 'linear-gradient(135deg, #64748b 0%, #475569 100%)', iconBg: 'rgba(100, 116, 139, 0.2)' },
-            { id: 'antinuke', name: 'Anti-Nuke', icon: 'radiation', url: '/setup/antinuke', gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', iconBg: 'rgba(239, 68, 68, 0.2)' },
-            { id: 'antiraid', name: 'Anti-Raid', icon: 'user-shield', url: '/setup/anti-raid', gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', iconBg: 'rgba(245, 158, 11, 0.2)' },
-            { id: 'antispam', name: 'Anti-Spam', icon: 'comment-slash', url: '/setup/anti-spam', gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', iconBg: 'rgba(6, 182, 212, 0.2)' },
-            { id: 'moderation', name: 'Moderation', icon: 'gavel', url: '/setup/moderation', gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', iconBg: 'rgba(139, 92, 246, 0.2)' },
-            { id: 'backup', name: 'Backup', icon: 'database', url: '/setup/backup', gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', iconBg: 'rgba(16, 185, 129, 0.2)' },
-            { id: 'welcome', name: 'Welcome', icon: 'door-open', url: '/setup/welcome', gradient: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)', iconBg: 'rgba(236, 72, 153, 0.2)' },
-            { id: 'invite', name: 'Invite Bot', icon: 'paper-plane', url: '/invite', gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', iconBg: 'rgba(59, 130, 246, 0.2)' }
+            { id: 'tickets', name: 'View Tickets', icon: 'ticket-alt', url: '/tickets', gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', iconBg: 'rgba(102, 126, 234, 0.2)', premium: false },
+            { id: 'analytics', name: 'Analytics', icon: 'chart-line', url: '/analytics', gradient: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', iconBg: 'rgba(17, 153, 142, 0.2)', premium: false },
+            { id: 'security', name: 'Security', icon: 'shield-alt', url: '/setup/security', gradient: 'linear-gradient(135deg, #00d4ff 0%, #0099ff 100%)', iconBg: 'rgba(0, 212, 255, 0.2)', premium: false },
+            { id: 'users', name: 'Users', icon: 'users-cog', url: '/dashboard/users', gradient: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)', iconBg: 'rgba(168, 85, 247, 0.2)', premium: false },
+            { id: 'logs', name: 'Audit Logs', icon: 'file-alt', url: '/dashboard/logs', gradient: 'linear-gradient(135deg, #64748b 0%, #475569 100%)', iconBg: 'rgba(100, 116, 139, 0.2)', premium: false },
+            { id: 'antinuke', name: 'Anti-Nuke', icon: 'radiation', url: '/setup/antinuke', gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', iconBg: 'rgba(239, 68, 68, 0.2)', premium: false },
+            { id: 'antiraid', name: 'Anti-Raid', icon: 'user-shield', url: '/setup/anti-raid', gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', iconBg: 'rgba(245, 158, 11, 0.2)', premium: false },
+            { id: 'antispam', name: 'Anti-Spam', icon: 'comment-slash', url: '/setup/anti-spam', gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', iconBg: 'rgba(6, 182, 212, 0.2)', premium: false },
+            { id: 'moderation', name: 'Moderation', icon: 'gavel', url: '/setup/moderation', gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', iconBg: 'rgba(139, 92, 246, 0.2)', premium: false },
+            { id: 'backup', name: 'Backup', icon: 'database', url: '/setup/backup', gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', iconBg: 'rgba(16, 185, 129, 0.2)', premium: false },
+            { id: 'welcome', name: 'Welcome', icon: 'door-open', url: '/setup/welcome', gradient: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)', iconBg: 'rgba(236, 72, 153, 0.2)', premium: false },
+            { id: 'console', name: 'Bot Console', icon: 'terminal', url: '/dashboard/console', gradient: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)', iconBg: 'rgba(255, 107, 107, 0.2)', premium: true },
+            { id: 'invite', name: 'Invite Bot', icon: 'paper-plane', url: '/invite', gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', iconBg: 'rgba(59, 130, 246, 0.2)', premium: false }
         ];
+
+        // Store premium status globally
+        let userPremiumStatus = false;
+
+        // Load premium status
+        async function loadPremiumStatus() {
+            try {
+                const response = await fetch('/api/premium/status', { credentials: 'include' });
+                const data = await response.json();
+                userPremiumStatus = data.isPremium || false;
+            } catch (e) {
+                console.error('Failed to load premium status:', e);
+                userPremiumStatus = false;
+            }
+        }
 
         function loadQuickActions() {
             const saved = localStorage.getItem('quickActions');
@@ -1009,8 +1458,13 @@
             container.innerHTML = activeActions.map(actionId => {
                 const action = availableActions.find(a => a.id === actionId);
                 if (!action) return '';
+                
+                const isPremiumLocked = action.premium && !userPremiumStatus;
+                const lockIcon = isPremiumLocked ? '<i class="fas fa-lock" style="position: absolute; top: 8px; right: 8px; opacity: 0.6; font-size: 12px;"></i>' : '';
+                
                 return `
-                    <a href="${action.url}" class="quick-action-tile" data-action="${action.id}">
+                    <a href="#" onclick="handleQuickActionClick(event, '${action.url}', ${action.premium})" class="quick-action-tile ${isPremiumLocked ? 'premium-locked' : ''}" data-action="${action.id}">
+                        ${lockIcon}
                         <div class="quick-action-icon" style="background: ${action.iconBg};">
                             <i class="fas fa-${action.icon}" style="background: ${action.gradient}; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></i>
                         </div>
@@ -1019,6 +1473,46 @@
                     </a>
                 `;
             }).join('');
+        }
+
+        function handleQuickActionClick(event, url, isPremium) {
+            event.preventDefault();
+            
+            // Check if premium is required and user doesn't have it
+            if (isPremium && !userPremiumStatus) {
+                showPremiumModal('This feature requires a premium subscription.');
+                return;
+            }
+            
+            // Navigate to the URL
+            window.location.href = url;
+        }
+
+        function showPremiumModal(message) {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 500px; text-align: center;">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-crown" style="color: #ffc107;"></i> Premium Required</h2>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p>${message}</p>
+                        <p style="margin-top: 1rem; color: rgba(255,255,255,0.7);">Upgrade to premium to unlock this feature and many more!</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Close</button>
+                        <button class="btn btn-primary" onclick="window.location.href='/premium'">
+                            <i class="fas fa-crown"></i> Upgrade Now
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            setTimeout(() => modal.classList.add('active'), 10);
         }
 
         function openQuickActionsSettings() {
@@ -1194,15 +1688,15 @@
         /* Quick Actions Grid Display */
         .quick-actions-grid-display {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 1rem;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 0.75rem;
         }
         
         .quick-action-tile {
             display: flex;
             align-items: center;
-            gap: 0.875rem;
-            padding: 1rem 1.25rem;
+            gap: 0.75rem;
+            padding: 0.875rem 1rem;
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.06);
             border-radius: 12px;
@@ -1236,10 +1730,21 @@
             opacity: 1;
         }
         
+        .quick-action-tile.premium-locked {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .quick-action-tile.premium-locked:hover {
+            transform: none;
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.06);
+        }
+        
         .quick-action-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1247,7 +1752,7 @@
         }
         
         .quick-action-icon i {
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
         
         .quick-action-name {

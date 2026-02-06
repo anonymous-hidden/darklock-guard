@@ -90,9 +90,15 @@ class RankSystem {
 
     /**
      * Calculate level from XP using exponential formula
+     * Level progression is smooth and requires increasing XP
      */
     calculateLevel(xp) {
         // Formula: level = floor(0.1 * sqrt(xp))
+        // This creates a balanced progression where:
+        // - Level 1: 100 XP
+        // - Level 10: 10,000 XP
+        // - Level 50: 250,000 XP
+        // - Level 100: 1,000,000 XP
         return Math.floor(0.1 * Math.sqrt(xp));
     }
 
@@ -109,6 +115,13 @@ class RankSystem {
      */
     calculateXPForNextLevel(currentLevel) {
         return this.calculateXPForLevel(currentLevel + 1);
+    }
+    
+    /**
+     * Alternative: Get XP for level (alias method for compatibility)
+     */
+    getXPForLevel(level) {
+        return this.calculateXPForLevel(level);
     }
 
     /**
@@ -281,6 +294,9 @@ class RankSystem {
 
     /**
      * Get leaderboard for a guild
+     * @param {string} guildId - Guild ID
+     * @param {number} limit - Number of users to return
+     * @param {string} type - Type of leaderboard ('alltime', 'weekly', 'monthly')
      */
     getLeaderboard(guildId, limit = 10, type = 'alltime') {
         if (!this.data.guilds[guildId]) {
@@ -294,16 +310,16 @@ class RankSystem {
         let sortKey = 'xp';
         
         if (type === 'weekly') sortKey = 'weeklyXP';
-        if (type === 'monthly') sortKey = 'monthlyXP';
+        else if (type === 'monthly') sortKey = 'monthlyXP';
         
         const leaderboard = Object.entries(users)
             .map(([userId, data]) => ({
                 userId,
-                xp: data.xp,
+                xp: data.xp || 0,
                 weeklyXP: data.weeklyXP || 0,
                 monthlyXP: data.monthlyXP || 0,
-                level: data.level,
-                totalMessages: data.totalMessages
+                level: data.level || 0,
+                totalMessages: data.totalMessages || 0
             }))
             .sort((a, b) => b[sortKey] - a[sortKey])
             .slice(0, limit);
@@ -470,27 +486,27 @@ class RankSystem {
         const nextLevelXP = this.calculateXPForNextLevel(userData.level);
         const xpProgress = userData.xp - currentLevelXP;
         const xpNeeded = nextLevelXP - currentLevelXP;
-        const progressPercent = (xpProgress / xpNeeded) * 100;
+        const progressPercent = xpNeeded > 0 ? (xpProgress / xpNeeded) * 100 : 0;
         
         // Calculate top percentage
         const topPercent = totalUsers > 0 ? ((rank / totalUsers) * 100).toFixed(1) : 0;
 
         return {
             userId,
-            xp: userData.xp,
-            level: userData.level,
-            totalMessages: userData.totalMessages,
-            messagesToday: userData.messagesToday || 0,
-            streak: userData.streak || 0,
+            xp: userData.xp || 0,
             weeklyXP: userData.weeklyXP || 0,
             monthlyXP: userData.monthlyXP || 0,
-            rank,
+            level: userData.level || 0,
+            totalMessages: userData.totalMessages || 0,
+            messagesToday: userData.messagesToday || 0,
+            streak: userData.streak || 0,
+            rank: rank || 0,
             totalUsers,
             topPercent,
             currentLevelXP,
             nextLevelXP,
-            xpProgress,
-            xpNeeded,
+            xpProgress: Math.max(0, xpProgress),
+            xpNeeded: Math.max(1, xpNeeded),
             progressPercent: Math.min(100, Math.max(0, progressPercent))
         };
     }

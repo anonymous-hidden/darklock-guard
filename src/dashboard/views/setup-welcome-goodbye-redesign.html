@@ -10,9 +10,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/css/design-system.css">
-    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <link rel="stylesheet" href="/css/premium-gating.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
     <script src="/js/global-theme.js"></script>
     <script src="/js/theme-effects.js"></script>
+    <script src="/js/premium-gating.js"></script>
     <style>
         .setup-page {
             min-height: 100vh;
@@ -421,24 +423,26 @@
                     <textarea class="setup-form-textarea" id="welcomeMessage" placeholder="Welcome {mention} to {server}! You are member #{memberCount}! 🎉"></textarea>
                 </div>
 
-                <div class="setup-form-group">
-                    <label class="setup-form-label">Options</label>
-                    <div class="checkbox-group">
-                        <label class="checkbox-option">
-                            <input type="checkbox" id="welcomeEmbedEnabled">
-                            <span>Send as Embed</span>
-                        </label>
-                        <label class="checkbox-option">
-                            <input type="checkbox" id="welcomePingUser">
-                            <span>Ping User in Message</span>
-                        </label>
+                <div data-premium-feature="welcome-advanced">
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Options</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="welcomeEmbedEnabled">
+                                <span>Send as Embed</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="welcomePingUser">
+                                <span>Ping User in Message</span>
+                            </label>
+                        </div>
                     </div>
-                </div>
 
-                <div class="setup-form-group">
-                    <label class="setup-form-label">Auto-Delete After (seconds)</label>
-                    <p class="setup-form-desc">Automatically delete the welcome message after this many seconds (0 = never)</p>
-                    <input type="number" class="setup-form-input" id="welcomeDeleteAfter" value="0" min="0" max="300">
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Auto-Delete After (seconds)</label>
+                        <p class="setup-form-desc">Automatically delete the welcome message after this many seconds (0 = never)</p>
+                        <input type="number" class="setup-form-input" id="welcomeDeleteAfter" value="0" min="0" max="300">
+                    </div>
                 </div>
             </div>
         </div>
@@ -482,20 +486,22 @@
                     <textarea class="setup-form-textarea" id="goodbyeMessage" placeholder="Goodbye {user}! We'll miss you in {server}. 👋"></textarea>
                 </div>
 
-                <div class="setup-form-group">
-                    <label class="setup-form-label">Options</label>
-                    <div class="checkbox-group">
-                        <label class="checkbox-option">
-                            <input type="checkbox" id="goodbyeEmbedEnabled">
-                            <span>Send as Embed</span>
-                        </label>
+                <div data-premium-feature="welcome-advanced">
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Options</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="goodbyeEmbedEnabled">
+                                <span>Send as Embed</span>
+                            </label>
+                        </div>
                     </div>
-                </div>
 
-                <div class="setup-form-group">
-                    <label class="setup-form-label">Auto-Delete After (seconds)</label>
-                    <p class="setup-form-desc">Automatically delete the goodbye message after this many seconds (0 = never)</p>
-                    <input type="number" class="setup-form-input" id="goodbyeDeleteAfter" value="0" min="0" max="300">
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Auto-Delete After (seconds)</label>
+                        <p class="setup-form-desc">Automatically delete the goodbye message after this many seconds (0 = never)</p>
+                        <input type="number" class="setup-form-input" id="goodbyeDeleteAfter" value="0" min="0" max="300">
+                    </div>
                 </div>
             </div>
         </div>

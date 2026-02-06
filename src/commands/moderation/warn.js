@@ -12,6 +12,10 @@ module.exports = {
             option.setName('reason')
                 .setDescription('Reason for the warning')
                 .setRequired(true))
+        .addBooleanOption(option =>
+            option.setName('skip_escalation')
+                .setDescription('Skip automatic escalation based on warning history')
+                .setRequired(false))
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
     async execute(interaction, bot) {
@@ -19,6 +23,7 @@ module.exports = {
         
         const target = interaction.options.getUser('target');
         const reason = interaction.options.getString('reason') || 'No reason provided';
+        const skipEscalation = interaction.options.getBoolean('skip_escalation') ?? false;
         const member = interaction.guild.members.cache.get(target.id);
 
         // Check if user exists in guild
@@ -29,15 +34,63 @@ module.exports = {
             });
         }
 
-        // Check role hierarchy
-        if (member.roles.highest.position >= interaction.member.roles.highest.position) {
-            return await interaction.editReply({
-                content: '❌ You cannot warn someone with equal or higher roles.',
-                ephemeral: true
+        // Use SecurityMiddleware if available
+        if (bot.securityMiddleware) {
+            const hierarchyCheck = await bot.securityMiddleware.checkHierarchy({
+                ...interaction,
+                options: { getUser: () => target }
             });
+            if (!hierarchyCheck.passed) {
+                return await interaction.editReply({
+                    content: hierarchyCheck.error,
+                    ephemeral: true
+                });
+            }
+        } else {
+            // Fallback hierarchy check
+            if (member.roles.highest.position >= interaction.member.roles.highest.position) {
+                return await interaction.editReply({
+                    content: '❌ You cannot warn someone with equal or higher roles.',
+                    ephemeral: true
+                });
+            }
         }
 
         try {
+            // Use ModerationQueue if available for escalation handling
+            if (bot.moderationQueue && !skipEscalation) {
+                const result = await bot.moderationQueue.enqueue({
+                    guildId: interaction.guild.id,
+                    targetId: target.id,
+                    moderatorId: interaction.user.id,
+                    actionType: 'warn',
+                    reason: reason
+                });
+
+                if (!result.queued) {
+                    if (result.reason === 'duplicate') {
+                        return await interaction.editReply({
+                            content: '⚠️ This action was already processed recently. Please wait before trying again.',
+                            ephemeral: true
+                        });
+                    }
+                    if (result.reason === 'rate_limited') {
+                        return await interaction.editReply({
+                            content: '⏰ Moderation actions are being rate limited. Please wait a moment.',
+                            ephemeral: true
+                        });
+                    }
+                }
+
+                // If escalated, notify
+                if (result.escalated) {
+                    await interaction.followUp({
+                        content: `🔄 Due to prior offenses, this warning has been **escalated to a timeout**.`,
+                        ephemeral: true
+                    });
+                }
+            }
+
             // Log to database and get warning count
             let warningCount = 1;
             let actionId = null;

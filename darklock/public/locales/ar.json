@@ -1,0 +1,365 @@
+{
+  "nav": {
+    "main": "الرئيسية",
+    "dashboard": "لوحة التحكم",
+    "profile": "الملف الشخصي",
+    "apps": "التطبيقات",
+    "account": "الحساب",
+    "security": "الأمان",
+    "settings": "الإعدادات"
+  },
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "loading": "جاري التحميل...",
+    "success": "نجاح!",
+    "error": "خطأ",
+    "logout": "تسجيل الخروج",
+    "submit": "إرسال",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "close": "إغلاق",
+    "confirm": "تأكيد",
+    "back": "رجوع",
+    "next": "التالي",
+    "yes": "نعم",
+    "no": "لا",
+    "enabled": "مفعّل",
+    "disabled": "معطّل",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "version": "الإصدار",
+    "user": "مستخدم",
+    "admin": "مدير",
+    "owner": "مالك"
+  },
+  "dashboard": {
+    "title": "مرحباً",
+    "subtitle": "هذه نظرة عامة على منصة Darklock الخاصة بك",
+    "stats": {
+      "activeApps": "التطبيقات النشطة",
+      "2faStatus": "حالة المصادقة الثنائية",
+      "activeSessions": "الجلسات النشطة",
+      "lastLogin": "آخر تسجيل دخول"
+    },
+    "quickActions": {
+      "title": "إجراءات سريعة",
+      "viewApps": "عرض التطبيقات",
+      "securitySettings": "إعدادات الأمان",
+      "editProfile": "تعديل الملف الشخصي",
+      "discordBot": "لوحة تحكم بوت Discord"
+    },
+    "securityStatus": {
+      "title": "حالة الأمان",
+      "2fa": {
+        "title": "المصادقة الثنائية",
+        "checking": "جاري التحقق من الحالة...",
+        "enabled": "المصادقة الثنائية مفعّلة",
+        "disabled": "المصادقة الثنائية غير مفعّلة"
+      },
+      "password": {
+        "title": "كلمة مرور آمنة",
+        "description": "كلمة المرور تلبي متطلبات الأمان"
+      },
+      "email": {
+        "title": "تم التحقق من البريد",
+        "description": "تم إعداد بريد الحساب"
+      }
+    }
+  },
+  "profile": {
+    "title": "الملف الشخصي",
+    "subtitle": "من أنت - هويتك وتفضيلاتك",
+    "overview": "نظرة عامة",
+    "changeAvatar": "تغيير الصورة",
+    "username": "اسم المستخدم",
+    "displayName": "الاسم المعروض",
+    "role": "الدور",
+    "accountCreated": "تاريخ إنشاء الحساب",
+    "personalInfo": {
+      "title": "المعلومات الشخصية",
+      "displayName": "الاسم المعروض",
+      "displayNamePlaceholder": "اسمك المعروض",
+      "email": "البريد الإلكتروني",
+      "emailHint": "لتغيير بريدك الإلكتروني، انتقل إلى إعدادات الحساب",
+      "timezone": "المنطقة الزمنية",
+      "language": "اللغة",
+      "saveChanges": "حفظ التغييرات"
+    },
+    "preferences": {
+      "title": "التفضيلات",
+      "theme": {
+        "title": "المظهر",
+        "description": "اختر نظام الألوان المفضل لديك",
+        "dark": "داكن",
+        "light": "فاتح",
+        "system": "النظام"
+      },
+      "reducedMotion": {
+        "title": "تقليل الحركة",
+        "description": "تقليل الرسوم المتحركة والانتقالات"
+      },
+      "compactLayout": {
+        "title": "تخطيط مضغوط",
+        "description": "عرض محتوى أكثر مع مسافات أقل"
+      }
+    },
+    "notifications": {
+      "title": "الإشعارات",
+      "securityAlerts": {
+        "title": "تنبيهات الأمان",
+        "description": "تلقي إشعارات عن النشاط المشبوه"
+      },
+      "productUpdates": {
+        "title": "تحديثات المنتج",
+        "description": "ميزات جديدة وتحسينات"
+      },
+      "emailNotifications": {
+        "title": "إشعارات البريد",
+        "description": "تلقي الإشعارات عبر البريد الإلكتروني"
+      }
+    }
+  },
+  "apps": {
+    "title": "التطبيقات",
+    "subtitle": "الوصول إلى تطبيقات Darklock وإدارتها",
+    "darklock": {
+      "name": "Darklock Guard",
+      "description": "مراقبة وحماية سلامة الملفات",
+      "launch": "تشغيل",
+      "download": "تحميل"
+    }
+  },
+  "security": {
+    "title": "الأمان",
+    "subtitle": "كل ما هو حساس - كيف يتم حماية حسابك",
+    "overview": {
+      "title": "نظرة عامة",
+      "2faStatus": "حالة المصادقة الثنائية",
+      "passwordStrength": "قوة كلمة المرور",
+      "activeSessions": "الجلسات النشطة",
+      "strong": "قوية"
+    },
+    "authentication": {
+      "title": "المصادقة",
+      "changePassword": {
+        "title": "تغيير كلمة المرور",
+        "description": "قم بتحديث كلمة المرور للحفاظ على أمان حسابك",
+        "currentPassword": "كلمة المرور الحالية",
+        "currentPasswordPlaceholder": "أدخل كلمة المرور الحالية",
+        "newPassword": "كلمة المرور الجديدة",
+        "newPasswordPlaceholder": "أدخل كلمة المرور الجديدة",
+        "confirmPassword": "تأكيد كلمة المرور الجديدة",
+        "confirmPasswordPlaceholder": "أكد كلمة المرور الجديدة",
+        "updateButton": "تحديث كلمة المرور"
+      },
+      "2fa": {
+        "title": "المصادقة الثنائية",
+        "description": "أضف طبقة أمان إضافية لحسابك",
+        "loading": "جاري تحميل حالة المصادقة الثنائية...",
+        "enable": "تفعيل المصادقة الثنائية",
+        "disable": "تعطيل المصادقة الثنائية",
+        "enabled": "مفعّلة",
+        "disabled": "معطّلة"
+      }
+    },
+    "sessions": {
+      "title": "الجلسات",
+      "description": "إدارة الأجهزة المتصلة بحسابك",
+      "loading": "جاري تحميل الجلسات...",
+      "current": "الجلسة الحالية",
+      "revoke": "إلغاء",
+      "revokeAll": "إلغاء جميع الجلسات"
+    },
+    "activity": {
+      "title": "نشاط الأمان",
+      "description": "أحداث الأمان الأخيرة وسجل الوصول",
+      "loading": "جاري تحميل النشاط...",
+      "noEvents": "لا توجد أحداث أمان حديثة"
+    }
+  },
+  "account": {
+    "title": "الحساب",
+    "subtitle": "إدارة الملكية ودورة الحياة",
+    "details": {
+      "title": "تفاصيل الحساب",
+      "email": {
+        "title": "عنوان البريد الإلكتروني",
+        "description": "بريد الاتصال الرئيسي - يتطلب كلمة مرور + مصادقة ثنائية للتغيير",
+        "current": "البريد الحالي",
+        "new": "البريد الجديد",
+        "newPlaceholder": "أدخل البريد الجديد",
+        "confirmPassword": "تأكيد كلمة المرور",
+        "confirmPasswordPlaceholder": "أدخل كلمة المرور",
+        "2faCode": "رمز المصادقة الثنائية",
+        "changeButton": "تغيير البريد"
+      },
+      "username": {
+        "title": "اسم المستخدم",
+        "description": "معرّفك الفريد على المنصة",
+        "current": "اسم المستخدم الحالي",
+        "new": "اسم المستخدم الجديد",
+        "newPlaceholder": "أدخل اسم المستخدم الجديد",
+        "hint": "3-20 حرفاً، أحرف وأرقام وشرطات سفلية وشرطات فقط",
+        "changeButton": "تغيير اسم المستخدم"
+      }
+    },
+    "data": {
+      "title": "البيانات",
+      "export": {
+        "title": "تصدير بيانات الحساب",
+        "description": "تحميل جميع بيانات حسابك بصيغة JSON",
+        "button": "تصدير البيانات"
+      },
+      "clearSessions": {
+        "title": "إغلاق جميع الجلسات",
+        "description": "تسجيل الخروج من جميع الأجهزة باستثناء هذا",
+        "button": "إغلاق الجلسات"
+      }
+    },
+    "dangerZone": {
+      "title": "منطقة الخطر",
+      "description": "إجراءات لا يمكن التراجع عنها - تابع بحذر",
+      "disable": {
+        "title": "تعطيل الحساب",
+        "description": "تعطيل حسابك مؤقتاً - يمكن إعادة تفعيله",
+        "button": "تعطيل الحساب"
+      },
+      "delete": {
+        "title": "حذف الحساب",
+        "description": "حذف حسابك وجميع البيانات المرتبطة نهائياً",
+        "button": "حذف الحساب"
+      }
+    }
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "description": "تكوين وتفضيلات على مستوى المنصة",
+    "language": {
+      "title": "اللغة والمنطقة",
+      "select": "اللغة",
+      "description": "اختر لغتك المفضلة"
+    },
+    "autoDetectLanguage": {
+      "title": "اكتشاف اللغة تلقائياً",
+      "description": "تعيين اللغة تلقائياً بناءً على إعدادات المتصفح"
+    },
+    "timezone": {
+      "title": "المنطقة الزمنية",
+      "description": "منطقتك الزمنية المحلية",
+      "autoDetect": "اكتشاف تلقائي"
+    },
+    "dateFormat": {
+      "title": "تنسيق التاريخ",
+      "description": "كيفية عرض التواريخ"
+    },
+    "timeFormat": {
+      "title": "تنسيق الوقت",
+      "description": "تنسيق 12 أو 24 ساعة",
+      "12hour": "12 ساعة (ص/م)",
+      "24hour": "24 ساعة"
+    },
+    "platform": {
+      "title": "المنصة",
+      "defaultLanding": {
+        "title": "الصفحة الافتراضية",
+        "description": "اختر أين تذهب بعد تسجيل الدخول"
+      },
+      "rememberLastApp": {
+        "title": "تذكر آخر تطبيق",
+        "description": "العودة إلى آخر تطبيق استخدمته"
+      },
+      "autoSave": {
+        "title": "حفظ التفضيلات تلقائياً",
+        "description": "حفظ التغييرات تلقائياً في تفضيلاتك"
+      }
+    },
+    "appearance": {
+      "title": "المظهر",
+      "theme": {
+        "title": "المظهر",
+        "description": "اختر مظهر الألوان",
+        "dark": "داكن",
+        "light": "فاتح",
+        "auto": "تلقائي (النظام)"
+      },
+      "compactMode": {
+        "title": "الوضع المضغوط",
+        "description": "تقليل المسافات لمحتوى أكثر"
+      },
+      "sidebarPosition": {
+        "title": "موضع الشريط الجانبي",
+        "description": "موضع شريط التنقل الجانبي",
+        "left": "يسار",
+        "right": "يمين"
+      }
+    },
+    "accessibility": {
+      "title": "إمكانية الوصول",
+      "fontScaling": {
+        "title": "تحجيم الخط",
+        "description": "ضبط حجم النص عبر المنصة",
+        "small": "صغير",
+        "medium": "متوسط",
+        "large": "كبير",
+        "xlarge": "كبير جداً"
+      },
+      "highContrast": {
+        "title": "وضع التباين العالي",
+        "description": "زيادة التباين لرؤية أفضل"
+      },
+      "reducedMotion": {
+        "title": "تقليل الحركة",
+        "description": "تقليل الرسوم المتحركة والانتقالات"
+      },
+      "screenReader": {
+        "title": "دعم قارئ الشاشة",
+        "description": "توافق محسّن مع قارئات الشاشة"
+      }
+    },
+    "notifications": {
+      "title": "الإشعارات",
+      "email": {
+        "title": "إشعارات البريد",
+        "description": "تلقي التحديثات المهمة عبر البريد"
+      },
+      "push": {
+        "title": "إشعارات الدفع",
+        "description": "إشعارات الدفع في المتصفح"
+      },
+      "sound": {
+        "title": "إشعارات صوتية",
+        "description": "تشغيل أصوات للإشعارات"
+      }
+    },
+    "privacy": {
+      "title": "الخصوصية والأمان",
+      "activityTracking": {
+        "title": "تتبع النشاط",
+        "description": "السماح بالتحليلات لتحسين تجربتك"
+      },
+      "sessionTimeout": {
+        "title": "مهلة الجلسة",
+        "description": "تسجيل الخروج تلقائياً بعد عدم النشاط",
+        "15min": "15 دقيقة",
+        "30min": "30 دقيقة",
+        "1hour": "ساعة واحدة",
+        "4hours": "4 ساعات",
+        "never": "أبداً"
+      },
+      "require2FA": {
+        "title": "طلب المصادقة الثنائية لتسجيل الدخول",
+        "description": "طلب المصادقة الثنائية دائماً"
+      }
+    },
+    "experimental": {
+      "title": "تجريبي",
+      "description": "اختبر ميزات جديدة قبل الإصدار",
+      "betaFeatures": {
+        "title": "ميزات تجريبية",
+        "description": "تفعيل الميزات التجريبية والتحسينات"
+      },
+      "notice": "قد تكون الميزات التجريبية غير مستقرة وقابلة للتغيير"
+    }
+  }
+}

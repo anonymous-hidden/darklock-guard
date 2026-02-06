@@ -29,6 +29,9 @@
     flex-direction: column;
     z-index: var(--z-sticky);
     transition: transform var(--transition-base);
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
 }
 
 .sidebar.collapsed {
@@ -45,6 +48,8 @@
 }
 
 .sidebar-header {
+    flex-shrink: 0;
+    flex-grow: 0;
     padding: 1.5rem;
     border-bottom: 1px solid var(--border-color);
 }
@@ -66,9 +71,33 @@
 
 /* Sidebar Navigation */
 .sidebar-nav {
-    flex: 1;
+    flex: 1 1 auto;
     padding: 1rem 0;
-    overflow-y: auto;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-muted) transparent;
+    will-change: scroll-position;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 3px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
 }
 
 .nav-section {
@@ -95,6 +124,8 @@
     border-radius: var(--border-radius);
     transition: all var(--transition-fast);
     margin-bottom: 0.25rem;
+    cursor: pointer;
+    user-select: none;
 }
 
 .nav-item:hover {
@@ -123,6 +154,7 @@
 
 /* Sidebar Footer */
 .sidebar-footer {
+    flex-shrink: 0;
     padding: 1rem 1.5rem;
     border-top: 1px solid var(--border-color);
 }
@@ -1022,12 +1054,14 @@
     z-index: var(--z-modal);
     opacity: 0;
     visibility: hidden;
+    pointer-events: none;
     transition: all var(--transition-base);
 }
 
 .modal-overlay.active {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
 }
 
 .modal {

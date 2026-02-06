@@ -4,6 +4,7 @@
  */
 
 const { PermissionsBitField } = require('discord.js');
+const SafeRegex = require('../utils/SafeRegex');
 
 class AutoMod {
     constructor(bot) {
@@ -126,16 +127,21 @@ class AutoMod {
             }
         }
 
-        // Check regex patterns
+        // Check regex patterns (with ReDoS protection)
         if (config.regex && Array.isArray(config.regex)) {
             for (const pattern of config.regex) {
                 try {
-                    const regex = new RegExp(pattern, 'i');
-                    if (regex.test(content)) {
+                    const regex = SafeRegex.safeCompile(pattern, 'i');
+                    if (!regex) {
+                        this.bot.logger?.warn(`[AutoMod] Rejected unsafe regex pattern: ${pattern.substring(0, 50)}`);
+                        continue; // Skip unsafe patterns instead of crashing
+                    }
+                    if (SafeRegex.safeTest(regex, content)) {
                         return { violated: true, reason: 'Blocked pattern detected' };
                     }
                 } catch (e) {
-                    // Invalid regex, skip
+                    // Invalid or timed-out regex, skip
+                    this.bot.logger?.warn(`[AutoMod] Regex execution failed for pattern: ${e.message}`);
                 }
             }
         }

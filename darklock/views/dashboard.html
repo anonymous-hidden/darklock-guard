@@ -35,63 +35,63 @@
 
             <nav class="sidebar-nav">
                 <div class="nav-section">
-                    <span class="nav-section-title">Main</span>
-                    <a href="#" class="nav-item active" data-page="dashboard">
+                    <span class="nav-section-title" data-i18n="nav.main">Main</span>
+                    <button type="button" class="nav-item active" data-page="dashboard">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="7" height="7"/>
                             <rect x="14" y="3" width="7" height="7"/>
                             <rect x="14" y="14" width="7" height="7"/>
                             <rect x="3" y="14" width="7" height="7"/>
                         </svg>
-                        <span>Dashboard</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="profile">
+                        <span data-i18n="nav.dashboard">Dashboard</span>
+                    </button>
+                    <button type="button" class="nav-item" data-page="profile">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
                             <circle cx="12" cy="7" r="4"/>
                         </svg>
-                        <span>Profile</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="apps">
+                        <span data-i18n="nav.profile">Profile</span>
+                    </button>
+                    <button type="button" class="nav-item" data-page="apps">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
                             <line x1="8" y1="21" x2="16" y2="21"/>
                             <line x1="12" y1="17" x2="12" y2="21"/>
                         </svg>
-                        <span>Applications</span>
-                    </a>
+                        <span data-i18n="nav.apps">Applications</span>
+                    </button>
                 </div>
 
                 <div class="nav-section">
-                    <span class="nav-section-title">Account</span>
-                    <a href="#" class="nav-item" data-page="security">
+                    <span class="nav-section-title" data-i18n="nav.account">Account</span>
+                    <button type="button" class="nav-item" data-page="security">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                         </svg>
-                        <span>Security</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="account">
+                        <span data-i18n="nav.security">Security</span>
+                    </button>
+                    <button type="button" class="nav-item" data-page="account">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
                             <circle cx="12" cy="7" r="4"/>
                         </svg>
-                        <span>Account</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="settings">
+                        <span data-i18n="nav.account">Account</span>
+                    </button>
+                    <button type="button" class="nav-item" data-page="settings">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="3"/>
                             <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
                         </svg>
-                        <span>Settings</span>
-                    </a>
-                    <a href="#" class="nav-item logout-btn" id="logoutBtn">
+                        <span data-i18n="nav.settings">Settings</span>
+                    </button>
+                    <button type="button" class="nav-item logout-btn" id="logoutBtn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
                             <polyline points="16 17 21 12 16 7"/>
                             <line x1="21" y1="12" x2="9" y2="12"/>
                         </svg>
-                        <span>Logout</span>
-                    </a>
+                        <span data-i18n="common.logout">Logout</span>
+                    </button>
                 </div>
             </nav>
 
@@ -104,8 +104,8 @@
                         </svg>
                     </div>
                     <div class="user-details">
-                        <span class="user-name" id="userName">Loading...</span>
-                        <span class="user-role" id="userRole">User</span>
+                        <span class="user-name" id="userName" data-i18n="common.loading">Loading...</span>
+                        <span class="user-role" id="userRole" data-i18n="common.user">User</span>
                     </div>
                 </div>
             </div>
@@ -138,8 +138,8 @@
                 <!-- Dashboard Page -->
                 <div class="page active" id="page-dashboard">
                     <div class="page-header">
-                        <h1>Welcome back, <span id="welcomeName">User</span></h1>
-                        <p>Here's an overview of your Darklock platform</p>
+                        <h1><span data-i18n="dashboard.title">Welcome back</span>, <span id="welcomeName">User</span></h1>
+                        <p data-i18n="dashboard.subtitle">Here's an overview of your Darklock platform</p>
                     </div>
 
                     <div class="stats-grid">
@@ -153,7 +153,7 @@
                             </div>
                             <div class="stat-info">
                                 <span class="stat-value" id="statApps">1</span>
-                                <span class="stat-label">Active Applications</span>
+                                <span class="stat-label" data-i18n="dashboard.stats.activeApps">Active Applications</span>
                             </div>
                         </div>
                         <div class="stat-card">
@@ -165,7 +165,7 @@
                             </div>
                             <div class="stat-info">
                                 <span class="stat-value" id="stat2FA">-</span>
-                                <span class="stat-label">2FA Status</span>
+                                <span class="stat-label" data-i18n="dashboard.stats.2faStatus">2FA Status</span>
                             </div>
                         </div>
                         <div class="stat-card">
@@ -179,7 +179,7 @@
                             </div>
                             <div class="stat-info">
                                 <span class="stat-value" id="statSessions">-</span>
-                                <span class="stat-label">Active Sessions</span>
+                                <span class="stat-label" data-i18n="dashboard.stats.activeSessions">Active Sessions</span>
                             </div>
                         </div>
                         <div class="stat-card">
@@ -191,7 +191,7 @@
                             </div>
                             <div class="stat-info">
                                 <span class="stat-value" id="statLastLogin">-</span>
-                                <span class="stat-label">Last Login</span>
+                                <span class="stat-label" data-i18n="dashboard.stats.lastLogin">Last Login</span>
                             </div>
                         </div>
                     </div>
@@ -199,7 +199,7 @@
                     <div class="dashboard-grid">
                         <div class="card quick-actions">
                             <div class="card-header">
-                                <h3>Quick Actions</h3>
+                                <h3 data-i18n="dashboard.quickActions.title">Quick Actions</h3>
                             </div>
                             <div class="card-body">
                                 <div class="action-buttons">
@@ -209,27 +209,27 @@
                                             <line x1="8" y1="21" x2="16" y2="21"/>
                                             <line x1="12" y1="17" x2="12" y2="21"/>
                                         </svg>
-                                        <span>View Apps</span>
+                                        <span data-i18n="dashboard.quickActions.viewApps">View Apps</span>
                                     </button>
                                     <button class="action-btn" onclick="navigateTo('security')">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                                         </svg>
-                                        <span>Security Settings</span>
+                                        <span data-i18n="dashboard.quickActions.securitySettings">Security Settings</span>
                                     </button>
                                     <button class="action-btn" onclick="navigateTo('profile')">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
                                             <circle cx="12" cy="7" r="4"/>
                                         </svg>
-                                        <span>Edit Profile</span>
+                                        <span data-i18n="dashboard.quickActions.editProfile">Edit Profile</span>
                                     </button>
                                     <a href="/dashboard" class="action-btn external">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                                             <path d="M9 12l2 2 4-4"/>
                                         </svg>
-                                        <span>Discord Bot Dashboard</span>
+                                        <span data-i18n="dashboard.quickActions.discordBot">Discord Bot Dashboard</span>
                                     </a>
                                 </div>
                             </div>
@@ -237,7 +237,7 @@
 
                         <div class="card security-status">
                             <div class="card-header">
-                                <h3>Security Status</h3>
+                                <h3 data-i18n="dashboard.securityStatus.title">Security Status</h3>
                             </div>
                             <div class="card-body">
                                 <div class="security-checklist" id="securityChecklist">
@@ -248,8 +248,8 @@
                                             </svg>
                                         </div>
                                         <div class="security-info">
-                                            <span class="security-title">Two-Factor Authentication</span>
-                                            <span class="security-desc">Checking status...</span>
+                                            <span class="security-title" data-i18n="dashboard.securityStatus.2fa.title">Two-Factor Authentication</span>
+                                            <span class="security-desc" data-i18n="dashboard.securityStatus.2fa.checking">Checking status...</span>
                                         </div>
                                     </div>
                                     <div class="security-item complete" id="checkPassword">
@@ -260,8 +260,8 @@
                                             </svg>
                                         </div>
                                         <div class="security-info">
-                                            <span class="security-title">Strong Password</span>
-                                            <span class="security-desc">Your password meets security requirements</span>
+                                            <span class="security-title" data-i18n="dashboard.securityStatus.password.title">Strong Password</span>
+                                            <span class="security-desc" data-i18n="dashboard.securityStatus.password.description">Your password meets security requirements</span>
                                         </div>
                                     </div>
                                     <div class="security-item complete" id="checkEmail">
@@ -272,8 +272,8 @@
                                             </svg>
                                         </div>
                                         <div class="security-info">
-                                            <span class="security-title">Email Verified</span>
-                                            <span class="security-desc">Account email is set</span>
+                                            <span class="security-title" data-i18n="dashboard.securityStatus.email.title">Email Verified</span>
+                                            <span class="security-desc" data-i18n="dashboard.securityStatus.email.description">Account email is set</span>
                                         </div>
                                     </div>
                                 </div>
@@ -285,15 +285,15 @@
                 <!-- Profile Page -->
                 <div class="page" id="page-profile">
                     <div class="page-header">
-                        <h1>Profile</h1>
-                        <p>Who you are - your identity and preferences</p>
+                        <h1 data-i18n="profile.title">Profile</h1>
+                        <p data-i18n="profile.subtitle">Who you are - your identity and preferences</p>
                     </div>
 
                     <div class="profile-grid">
                         <!-- Overview Card -->
                         <div class="card">
                             <div class="card-header">
-                                <h3>Overview</h3>
+                                <h3 data-i18n="profile.overview">Overview</h3>
                             </div>
                             <div class="card-body">
                                 <div class="profile-overview">
@@ -305,23 +305,23 @@
                                             </svg>
                                         </div>
                                         <input type="file" id="avatarUploadInput" accept="image/png,image/jpeg,image/jpg,image/webp" style="display:none;">
-                                        <button class="btn btn-ghost btn-sm" id="changeAvatarBtn">Change Avatar</button>
+                                        <button class="btn btn-ghost btn-sm" id="changeAvatarBtn" data-i18n="profile.changeAvatar">Change Avatar</button>
                                     </div>
                                     <div class="profile-identity">
                                         <div class="identity-field">
-                                            <span class="identity-label">Username</span>
-                                            <span class="identity-value" id="profileUsernameDisplay">Loading...</span>
+                                            <span class="identity-label" data-i18n="profile.username">Username</span>
+                                            <span class="identity-value" id="profileUsernameDisplay" data-i18n="common.loading">Loading...</span>
                                         </div>
                                         <div class="identity-field">
-                                            <span class="identity-label">Display Name</span>
+                                            <span class="identity-label" data-i18n="profile.displayName">Display Name</span>
                                             <span class="identity-value" id="profileDisplayName">-</span>
                                         </div>
                                         <div class="identity-field">
-                                            <span class="identity-label">Role</span>
-                                            <span class="identity-badge" id="profileRoleBadge">User</span>
+                                            <span class="identity-label" data-i18n="profile.role">Role</span>
+                                            <span class="identity-badge" id="profileRoleBadge" data-i18n="common.user">User</span>
                                         </div>
                                         <div class="identity-field">
-                                            <span class="identity-label">Account Created</span>
+                                            <span class="identity-label" data-i18n="profile.accountCreated">Account Created</span>
                                             <span class="identity-value" id="profileCreatedDisplay">-</span>
                                         </div>
                                     </div>
@@ -332,24 +332,24 @@
                         <!-- Personal Info Card -->
                         <div class="card">
                             <div class="card-header">
-                                <h3>Personal Info</h3>
+                                <h3 data-i18n="profile.personalInfo.title">Personal Info</h3>
                             </div>
                             <div class="card-body">
                                 <form id="personalInfoForm" class="settings-form">
                                     <div class="form-group">
-                                        <label class="form-label">Display Name</label>
-                                        <input type="text" id="displayNameInput" class="form-input" placeholder="Your display name" maxlength="50">
+                                        <label class="form-label" data-i18n="profile.personalInfo.displayName">Display Name</label>
+                                        <input type="text" id="displayNameInput" class="form-input" data-i18n-placeholder="profile.personalInfo.displayNamePlaceholder" placeholder="Your display name" maxlength="50">
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label">Email</label>
+                                        <label class="form-label" data-i18n="profile.personalInfo.email">Email</label>
                                         <div class="input-with-hint">
                                             <input type="email" id="profileEmailReadonly" class="form-input" disabled>
-                                            <p class="form-hint">To change your email, go to <a href="#" onclick="navigateTo('account'); return false;">Account settings</a></p>
+                                            <p class="form-hint" data-i18n="profile.personalInfo.emailHint">To change your email, go to <a href="#" onclick="navigateTo('account'); return false;">Account settings</a></p>
                                         </div>
                                     </div>
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label class="form-label">Timezone</label>
+                                            <label class="form-label" data-i18n="profile.personalInfo.timezone">Timezone</label>
                                             <select id="timezoneSelect" class="form-input">
                                                 <option value="UTC">UTC</option>
                                                 <option value="America/New_York">Eastern Time (ET)</option>
@@ -362,18 +362,24 @@
                                             </select>
                                         </div>
                                         <div class="form-group">
-                                            <label class="form-label">Language</label>
+                                            <label class="form-label" data-i18n="profile.personalInfo.language">Language</label>
                                             <select id="languageSelect" class="form-input">
                                                 <option value="en">English</option>
                                                 <option value="es">Español</option>
                                                 <option value="fr">Français</option>
                                                 <option value="de">Deutsch</option>
+                                                <option value="pt">Português</option>
+                                                <option value="zh">中文</option>
                                                 <option value="ja">日本語</option>
+                                                <option value="ru">Русский</option>
+                                                <option value="it">Italiano</option>
+                                                <option value="ko">한국어</option>
+                                                <option value="ar">العربية</option>
                                             </select>
                                         </div>
                                     </div>
                                     <div class="form-actions">
-                                        <button type="submit" class="btn btn-primary" id="savePersonalInfoBtn">Save Changes</button>
+                                        <button type="submit" class="btn btn-primary" id="savePersonalInfoBtn" data-i18n="profile.personalInfo.saveChanges">Save Changes</button>
                                     </div>
                                 </form>
                             </div>
@@ -382,24 +388,24 @@
                         <!-- Preferences Card -->
                         <div class="card">
                             <div class="card-header">
-                                <h3>Preferences</h3>
+                                <h3 data-i18n="profile.preferences.title">Preferences</h3>
                             </div>
                             <div class="card-body">
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Theme</span>
-                                        <span class="setting-desc">Choose your preferred color scheme</span>
+                                        <span class="setting-title" data-i18n="profile.preferences.theme.title">Theme</span>
+                                        <span class="setting-desc" data-i18n="profile.preferences.theme.description">Choose your preferred color scheme</span>
                                     </div>
                                     <select id="themeSelect" class="form-input" style="max-width: 150px;">
-                                        <option value="dark">Dark</option>
-                                        <option value="light">Light</option>
-                                        <option value="system">System</option>
+                                        <option value="dark" data-i18n="profile.preferences.theme.dark">Dark</option>
+                                        <option value="light" data-i18n="profile.preferences.theme.light">Light</option>
+                                        <option value="system" data-i18n="profile.preferences.theme.system">System</option>
                                     </select>
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Reduced Motion</span>
-                                        <span class="setting-desc">Minimize animations and transitions</span>
+                                        <span class="setting-title" data-i18n="profile.preferences.reducedMotion.title">Reduced Motion</span>
+                                        <span class="setting-desc" data-i18n="profile.preferences.reducedMotion.description">Minimize animations and transitions</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="reducedMotionToggle">
@@ -408,8 +414,8 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Compact Layout</span>
-                                        <span class="setting-desc">Show more content with tighter spacing</span>
+                                        <span class="setting-title" data-i18n="profile.preferences.compactLayout.title">Compact Layout</span>
+                                        <span class="setting-desc" data-i18n="profile.preferences.compactLayout.description">Show more content with tighter spacing</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="compactLayoutToggle">
@@ -422,13 +428,13 @@
                         <!-- Notifications Card -->
                         <div class="card">
                             <div class="card-header">
-                                <h3>Notifications</h3>
+                                <h3 data-i18n="profile.notifications.title">Notifications</h3>
                             </div>
                             <div class="card-body">
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Security Alerts</span>
-                                        <span class="setting-desc">Get notified about suspicious activity</span>
+                                        <span class="setting-title" data-i18n="profile.notifications.securityAlerts.title">Security Alerts</span>
+                                        <span class="setting-desc" data-i18n="profile.notifications.securityAlerts.description">Get notified about suspicious activity</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="securityAlertsToggle" checked>
@@ -437,8 +443,8 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Product Updates</span>
-                                        <span class="setting-desc">New features and improvements</span>
+                                        <span class="setting-title" data-i18n="profile.notifications.productUpdates.title">Product Updates</span>
+                                        <span class="setting-desc" data-i18n="profile.notifications.productUpdates.description">New features and improvements</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="productUpdatesToggle" checked>
@@ -447,8 +453,8 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Email Notifications</span>
-                                        <span class="setting-desc">Receive notifications via email</span>
+                                        <span class="setting-title" data-i18n="profile.notifications.emailNotifications.title">Email Notifications</span>
+                                        <span class="setting-desc" data-i18n="profile.notifications.emailNotifications.description">Receive notifications via email</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="emailNotificationsToggle" checked>
@@ -463,8 +469,8 @@
                 <!-- Apps Page -->
                 <div class="page" id="page-apps">
                     <div class="page-header">
-                        <h1>Applications</h1>
-                        <p>Access and manage your Darklock applications</p>
+                        <h1 data-i18n="apps.title">Applications</h1>
+                        <p data-i18n="apps.subtitle">Access and manage your Darklock applications</p>
                     </div>
 
                     <div class="apps-grid">
@@ -477,16 +483,16 @@
                                 </svg>
                             </div>
                             <div class="app-info">
-                                <h3 class="app-name">Darklock Guard</h3>
-                                <p class="app-desc">File integrity monitoring and protection</p>
+                                <h3 class="app-name" data-i18n="apps.darklock.name">Darklock Guard</h3>
+                                <p class="app-desc" data-i18n="apps.darklock.description">File integrity monitoring and protection</p>
                                 <div class="app-meta">
-                                    <span class="app-status active">Active</span>
+                                    <span class="app-status active" data-i18n="common.active">Active</span>
                                     <span class="app-version">v1.0.0</span>
                                 </div>
                             </div>
                             <div class="app-actions">
-                                <a href="/platform/launch/darklock-guard" class="btn btn-primary btn-sm">Launch</a>
-                                <a href="/platform/download/darklock-guard" class="btn btn-ghost btn-sm">Download</a>
+                                <a href="/platform/launch/darklock-guard" class="btn btn-primary btn-sm" data-i18n="apps.darklock.launch">Launch</a>
+                                <a href="/platform/download/darklock-guard" class="btn btn-ghost btn-sm" data-i18n="apps.darklock.download">Download</a>
                             </div>
                         </div>
 
@@ -498,14 +504,14 @@
                 <!-- Security Page -->
                 <div class="page" id="page-security">
                     <div class="page-header">
-                        <h1>Security</h1>
-                        <p>Everything sensitive - how your account is protected</p>
+                        <h1 data-i18n="security.title">Security</h1>
+                        <p data-i18n="security.subtitle">Everything sensitive - how your account is protected</p>
                     </div>
 
                     <!-- Security Overview -->
                     <div class="card" style="margin-bottom: 1.5rem;">
                         <div class="card-header">
-                            <h3>Overview</h3>
+                            <h3 data-i18n="security.overview.title">Overview</h3>
                         </div>
                         <div class="card-body">
                             <div class="security-stats-grid">
@@ -515,8 +521,8 @@
                                         <path d="M7 11V7a5 5 0 0110 0v4"/>
                                     </svg>
                                     <div class="security-stat-info">
-                                        <span class="security-stat-label">2FA Status</span>
-                                        <span class="security-stat-value" id="security2FAStatus">Loading...</span>
+                                        <span class="security-stat-label" data-i18n="security.overview.2faStatus">2FA Status</span>
+                                        <span class="security-stat-value" id="security2FAStatus" data-i18n="common.loading">Loading...</span>
                                     </div>
                                 </div>
                                 <div class="security-stat">
@@ -525,8 +531,8 @@
                                         <path d="M7 11V7a5 5 0 0110 0v4"/>
                                     </svg>
                                     <div class="security-stat-info">
-                                        <span class="security-stat-label">Password Strength</span>
-                                        <span class="security-stat-value">Strong</span>
+                                        <span class="security-stat-label" data-i18n="security.overview.passwordStrength">Password Strength</span>
+                                        <span class="security-stat-value" data-i18n="security.overview.strong">Strong</span>
                                     </div>
                                 </div>
                                 <div class="security-stat">
@@ -537,7 +543,7 @@
                                         <path d="M16 3.13a4 4 0 010 7.75"/>
                                     </svg>
                                     <div class="security-stat-info">
-                                        <span class="security-stat-label">Active Sessions</span>
+                                        <span class="security-stat-label" data-i18n="security.overview.activeSessions">Active Sessions</span>
                                         <span class="security-stat-value" id="securitySessionsCount">-</span>
                                     </div>
                                 </div>
@@ -549,30 +555,30 @@
                         <!-- Authentication Section -->
                         <div class="card">
                             <div class="card-header">
-                                <h3>Authentication</h3>
+                                <h3 data-i18n="security.authentication.title">Authentication</h3>
                             </div>
                             <div class="card-body">
                                 <!-- Change Password -->
                                 <div class="security-section">
                                     <div class="security-section-header">
-                                        <h4>Change Password</h4>
-                                        <p>Update your password to keep your account secure</p>
+                                        <h4 data-i18n="security.authentication.changePassword.title">Change Password</h4>
+                                        <p data-i18n="security.authentication.changePassword.description">Update your password to keep your account secure</p>
                                     </div>
                                     <form id="passwordForm" class="settings-form">
                                         <div class="form-group">
-                                            <label class="form-label">Current Password</label>
-                                            <input type="password" id="currentPassword" class="form-input" placeholder="Enter current password" required>
+                                            <label class="form-label" data-i18n="security.authentication.changePassword.currentPassword">Current Password</label>
+                                            <input type="password" id="currentPassword" class="form-input" data-i18n-placeholder="security.authentication.changePassword.currentPasswordPlaceholder" placeholder="Enter current password" required>
                                         </div>
                                         <div class="form-group">
-                                            <label class="form-label">New Password</label>
-                                            <input type="password" id="newPassword" class="form-input" placeholder="Enter new password" required>
+                                            <label class="form-label" data-i18n="security.authentication.changePassword.newPassword">New Password</label>
+                                            <input type="password" id="newPassword" class="form-input" data-i18n-placeholder="security.authentication.changePassword.newPasswordPlaceholder" placeholder="Enter new password" required>
                                         </div>
                                         <div class="form-group">
-                                            <label class="form-label">Confirm New Password</label>
-                                            <input type="password" id="confirmNewPassword" class="form-input" placeholder="Confirm new password" required>
+                                            <label class="form-label" data-i18n="security.authentication.changePassword.confirmPassword">Confirm New Password</label>
+                                            <input type="password" id="confirmNewPassword" class="form-input" data-i18n-placeholder="security.authentication.changePassword.confirmPasswordPlaceholder" placeholder="Confirm new password" required>
                                         </div>
                                         <div class="form-actions">
-                                            <button type="submit" class="btn btn-primary">Update Password</button>
+                                            <button type="submit" class="btn btn-primary" data-i18n="security.authentication.changePassword.updateButton">Update Password</button>
                                         </div>
                                     </form>
                                 </div>
@@ -582,13 +588,13 @@
                                 <!-- 2FA Management -->
                                 <div class="security-section">
                                     <div class="security-section-header">
-                                        <h4>Two-Factor Authentication</h4>
-                                        <p>Add an extra layer of security to your account</p>
+                                        <h4 data-i18n="security.authentication.2fa.title">Two-Factor Authentication</h4>
+                                        <p data-i18n="security.authentication.2fa.description">Add an extra layer of security to your account</p>
                                     </div>
                                     <div id="twoFactorContent">
                                         <div class="loading-state">
                                             <div class="spinner"></div>
-                                            <span>Loading 2FA status...</span>
+                                            <span data-i18n="security.authentication.2fa.loading">Loading 2FA status...</span>
                                         </div>
                                     </div>
                                 </div>
@@ -598,14 +604,14 @@
                         <!-- Sessions Section -->
                         <div class="card">
                             <div class="card-header">
-                                <h3>Sessions</h3>
-                                <p class="card-desc">Manage devices currently logged into your account</p>
+                                <h3 data-i18n="security.sessions.title">Sessions</h3>
+                                <p class="card-desc" data-i18n="security.sessions.description">Manage devices currently logged into your account</p>
                             </div>
                             <div class="card-body">
                                 <div class="sessions-list" id="sessionsList">
                                     <div class="loading-state">
                                         <div class="spinner"></div>
-                                        <span>Loading sessions...</span>
+                                        <span data-i18n="security.sessions.loading">Loading sessions...</span>
                                     </div>
                                 </div>
                             </div>
@@ -614,14 +620,14 @@
                         <!-- Security Activity Section -->
                         <div class="card">
                             <div class="card-header">
-                                <h3>Security Activity</h3>
-                                <p class="card-desc">Recent security events and login history</p>
+                                <h3 data-i18n="security.activity.title">Security Activity</h3>
+                                <p class="card-desc" data-i18n="security.activity.description">Recent security events and login history</p>
                             </div>
                             <div class="card-body">
                                 <div id="lastLoginInfo">
                                     <div class="loading-state">
                                         <div class="spinner"></div>
-                                        <span>Loading activity...</span>
+                                        <span data-i18n="security.activity.loading">Loading activity...</span>
                                     </div>
                                 </div>
                                 <div class="section-divider"></div>
@@ -631,7 +637,7 @@
                                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                                             <path d="M9 12l2 2 4-4"/>
                                         </svg>
-                                        <span>No recent security events</span>
+                                        <span data-i18n="security.activity.noEvents">No recent security events</span>
                                     </div>
                                 </div>
                             </div>
@@ -642,41 +648,41 @@
                 <!-- Account Page -->
                 <div class="page" id="page-account">
                     <div class="page-header">
-                        <h1>Account</h1>
-                        <p>Ownership and lifecycle management</p>
+                        <h1 data-i18n="account.title">Account</h1>
+                        <p data-i18n="account.subtitle">Ownership and lifecycle management</p>
                     </div>
 
                     <!-- Account Details -->
                     <div class="card" style="margin-bottom: 1.5rem;">
                         <div class="card-header">
-                            <h3>Account Details</h3>
+                            <h3 data-i18n="account.details.title">Account Details</h3>
                         </div>
                         <div class="card-body">
                             <!-- Email Change -->
                             <div class="account-section">
                                 <div class="account-section-header">
-                                    <h4>Email Address</h4>
-                                    <p>Your primary contact email - requires password + 2FA to change</p>
+                                    <h4 data-i18n="account.details.email.title">Email Address</h4>
+                                    <p data-i18n="account.details.email.description">Your primary contact email - requires password + 2FA to change</p>
                                 </div>
                                 <form id="emailChangeForm" class="settings-form">
                                     <div class="form-group">
-                                        <label class="form-label">Current Email</label>
+                                        <label class="form-label" data-i18n="account.details.email.current">Current Email</label>
                                         <input type="email" id="currentEmailDisplay" class="form-input" disabled>
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label">New Email</label>
-                                        <input type="email" id="newEmail" class="form-input" placeholder="Enter new email">
+                                        <label class="form-label" data-i18n="account.details.email.new">New Email</label>
+                                        <input type="email" id="newEmail" class="form-input" data-i18n-placeholder="account.details.email.newPlaceholder" placeholder="Enter new email">
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label">Confirm Password</label>
-                                        <input type="password" id="emailChangePassword" class="form-input" placeholder="Enter your password" required>
+                                        <label class="form-label" data-i18n="account.details.email.confirmPassword">Confirm Password</label>
+                                        <input type="password" id="emailChangePassword" class="form-input" data-i18n-placeholder="account.details.email.confirmPasswordPlaceholder" placeholder="Enter your password" required>
                                     </div>
                                     <div class="form-group" id="emailChange2FAGroup" style="display: none;">
-                                        <label class="form-label">2FA Code</label>
+                                        <label class="form-label" data-i18n="account.details.email.2faCode">2FA Code</label>
                                         <input type="text" id="emailChange2FACode" class="form-input" placeholder="000000" maxlength="6">
                                     </div>
                                     <div class="form-actions">
-                                        <button type="submit" class="btn btn-primary">Change Email</button>
+                                        <button type="submit" class="btn btn-primary" data-i18n="account.details.email.changeButton">Change Email</button>
                                     </div>
                                 </form>
                             </div>
@@ -686,21 +692,21 @@
                             <!-- Username Change -->
                             <div class="account-section">
                                 <div class="account-section-header">
-                                    <h4>Username</h4>
-                                    <p>Your unique identifier on the platform</p>
+                                    <h4 data-i18n="account.details.username.title">Username</h4>
+                                    <p data-i18n="account.details.username.description">Your unique identifier on the platform</p>
                                 </div>
                                 <form id="usernameChangeForm" class="settings-form">
                                     <div class="form-group">
-                                        <label class="form-label">Current Username</label>
+                                        <label class="form-label" data-i18n="account.details.username.current">Current Username</label>
                                         <input type="text" id="currentUsernameDisplay" class="form-input" disabled>
                                     </div>
                                     <div class="form-group">
-                                        <label class="form-label">New Username</label>
-                                        <input type="text" id="newUsername" class="form-input" placeholder="Enter new username" pattern="^[a-zA-Z0-9_-]+$">
-                                        <p class="form-hint">3-20 characters, letters, numbers, underscores, and hyphens only</p>
+                                        <label class="form-label" data-i18n="account.details.username.new">New Username</label>
+                                        <input type="text" id="newUsername" class="form-input" data-i18n-placeholder="account.details.username.newPlaceholder" placeholder="Enter new username" pattern="^[a-zA-Z0-9_-]+$">
+                                        <p class="form-hint" data-i18n="account.details.username.hint">3-20 characters, letters, numbers, underscores, and hyphens only</p>
                                     </div>
                                     <div class="form-actions">
-                                        <button type="submit" class="btn btn-primary">Change Username</button>
+                                        <button type="submit" class="btn btn-primary" data-i18n="account.details.username.changeButton">Change Username</button>
                                     </div>
                                 </form>
                             </div>
@@ -710,22 +716,22 @@
                     <!-- Data Management -->
                     <div class="card" style="margin-bottom: 1.5rem;">
                         <div class="card-header">
-                            <h3>Data</h3>
+                            <h3 data-i18n="account.data.title">Data</h3>
                         </div>
                         <div class="card-body">
                             <div class="setting-item">
                                 <div class="setting-info">
-                                    <span class="setting-title">Export Account Data</span>
-                                    <span class="setting-desc">Download all your account data in JSON format</span>
+                                    <span class="setting-title" data-i18n="account.data.export.title">Export Account Data</span>
+                                    <span class="setting-desc" data-i18n="account.data.export.description">Download all your account data in JSON format</span>
                                 </div>
-                                <button class="btn btn-ghost btn-sm" id="exportDataBtn">Export Data</button>
+                                <button class="btn btn-ghost btn-sm" id="exportDataBtn" data-i18n="account.data.export.button">Export Data</button>
                             </div>
                             <div class="setting-item">
                                 <div class="setting-info">
-                                    <span class="setting-title">Clear All Sessions</span>
-                                    <span class="setting-desc">Log out from all devices except this one</span>
+                                    <span class="setting-title" data-i18n="account.data.clearSessions.title">Clear All Sessions</span>
+                                    <span class="setting-desc" data-i18n="account.data.clearSessions.description">Log out from all devices except this one</span>
                                 </div>
-                                <button class="btn btn-ghost btn-sm" id="clearSessionsBtn">Clear Sessions</button>
+                                <button class="btn btn-ghost btn-sm" id="clearSessionsBtn" data-i18n="account.data.clearSessions.button">Clear Sessions</button>
                             </div>
                         </div>
                     </div>
@@ -733,23 +739,23 @@
                     <!-- Danger Zone -->
                     <div class="card danger-zone">
                         <div class="card-header">
-                            <h3>Danger Zone</h3>
-                            <p class="card-desc">Irreversible actions - proceed with caution</p>
+                            <h3 data-i18n="account.dangerZone.title">Danger Zone</h3>
+                            <p class="card-desc" data-i18n="account.dangerZone.description">Irreversible actions - proceed with caution</p>
                         </div>
                         <div class="card-body">
                             <div class="setting-item">
                                 <div class="setting-info">
-                                    <span class="setting-title">Disable Account</span>
-                                    <span class="setting-desc">Temporarily disable your account - can be reactivated</span>
+                                    <span class="setting-title" data-i18n="account.dangerZone.disable.title">Disable Account</span>
+                                    <span class="setting-desc" data-i18n="account.dangerZone.disable.description">Temporarily disable your account - can be reactivated</span>
                                 </div>
-                                <button class="btn btn-ghost btn-sm" id="disableAccountBtn">Disable Account</button>
+                                <button class="btn btn-ghost btn-sm" id="disableAccountBtn" data-i18n="account.dangerZone.disable.button">Disable Account</button>
                             </div>
                             <div class="setting-item">
                                 <div class="setting-info">
-                                    <span class="setting-title">Delete Account</span>
-                                    <span class="setting-desc">Permanently delete your account and all associated data</span>
+                                    <span class="setting-title" data-i18n="account.dangerZone.delete.title">Delete Account</span>
+                                    <span class="setting-desc" data-i18n="account.dangerZone.delete.description">Permanently delete your account and all associated data</span>
                                 </div>
-                                <button class="btn btn-danger btn-sm" id="deleteAccountBtn">Delete Account</button>
+                                <button class="btn btn-danger btn-sm" id="deleteAccountBtn" data-i18n="account.dangerZone.delete.button">Delete Account</button>
                             </div>
                         </div>
                     </div>
@@ -758,8 +764,8 @@
                 <!-- Settings Page -->
                 <div class="page" id="page-settings">
                     <div class="page-header">
-                        <h1>Settings</h1>
-                        <p>Platform-level configuration and preferences</p>
+                        <h1 data-i18n="settings.title">Settings</h1>
+                        <p data-i18n="settings.description">Platform-level configuration and preferences</p>
                     </div>
 
                     <div class="settings-sections">
@@ -767,7 +773,7 @@
                         <div class="card collapsible-card">
                             <div class="card-header" data-toggle="collapse">
                                 <div class="card-header-content">
-                                    <h3>Language & Region</h3>
+                                    <h3 data-i18n="settings.language.title">Language & Region</h3>
                                     <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <polyline points="6 9 12 15 18 9"/>
                                     </svg>
@@ -776,36 +782,27 @@
                             <div class="card-body collapse-content">
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Language</span>
-                                        <span class="setting-desc">Select your preferred language</span>
+                                        <span class="setting-title" data-i18n="settings.language.select">Language</span>
+                                        <span class="setting-desc" data-i18n="settings.language.description">Select your preferred language</span>
                                     </div>
-                                    <select id="languageSelect" class="form-input" style="max-width: 200px;">
+                                    <select id="settingsLanguageSelect" class="form-input" style="max-width: 200px;">
                                         <option value="en">English</option>
                                         <option value="es">Español (Spanish)</option>
                                         <option value="fr">Français (French)</option>
                                         <option value="de">Deutsch (German)</option>
-                                        <option value="it">Italiano (Italian)</option>
                                         <option value="pt">Português (Portuguese)</option>
-                                        <option value="ru">Русский (Russian)</option>
                                         <option value="zh">中文 (Chinese)</option>
                                         <option value="ja">日本語 (Japanese)</option>
+                                        <option value="ru">Русский (Russian)</option>
+                                        <option value="it">Italiano (Italian)</option>
                                         <option value="ko">한국어 (Korean)</option>
                                         <option value="ar">العربية (Arabic)</option>
-                                        <option value="hi">हिन्दी (Hindi)</option>
-                                        <option value="nl">Nederlands (Dutch)</option>
-                                        <option value="pl">Polski (Polish)</option>
-                                        <option value="tr">Türkçe (Turkish)</option>
-                                        <option value="sv">Svenska (Swedish)</option>
-                                        <option value="no">Norsk (Norwegian)</option>
-                                        <option value="da">Dansk (Danish)</option>
-                                        <option value="fi">Suomi (Finnish)</option>
-                                        <option value="cs">Čeština (Czech)</option>
                                     </select>
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Auto-detect Language</span>
-                                        <span class="setting-desc">Automatically set language based on browser settings</span>
+                                        <span class="setting-title" data-i18n="settings.autoDetectLanguage.title">Auto-detect Language</span>
+                                        <span class="setting-desc" data-i18n="settings.autoDetectLanguage.description">Automatically set language based on browser settings</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="autoDetectLanguageToggle" checked>
@@ -814,8 +811,8 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Time Zone</span>
-                                        <span class="setting-desc">Your local time zone</span>
+                                        <span class="setting-title" data-i18n="settings.timezone.title">Time Zone</span>
+                                        <span class="setting-desc" data-i18n="settings.timezone.description">Your local time zone</span>
                                     </div>
                                     <select id="timezoneSelect" class="form-input" style="max-width: 250px;">
                                         <option value="auto">Auto-detect</option>
@@ -835,8 +832,8 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Date Format</span>
-                                        <span class="setting-desc">How dates are displayed</span>
+                                        <span class="setting-title" data-i18n="settings.dateFormat.title">Date Format</span>
+                                        <span class="setting-desc" data-i18n="settings.dateFormat.description">How dates are displayed</span>
                                     </div>
                                     <select id="dateFormatSelect" class="form-input" style="max-width: 150px;">
                                         <option value="MM/DD/YYYY">MM/DD/YYYY</option>
@@ -846,8 +843,8 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Time Format</span>
-                                        <span class="setting-desc">12-hour or 24-hour time</span>
+                                        <span class="setting-title" data-i18n="settings.timeFormat.title">Time Format</span>
+                                        <span class="setting-desc" data-i18n="settings.timeFormat.description">12-hour or 24-hour time</span>
                                     </div>
                                     <select id="timeFormatSelect" class="form-input" style="max-width: 150px;">
                                         <option value="12h">12-hour (AM/PM)</option>
@@ -861,7 +858,7 @@
                         <div class="card collapsible-card">
                             <div class="card-header" data-toggle="collapse">
                                 <div class="card-header-content">
-                                    <h3>Platform</h3>
+                                    <h3 data-i18n="settings.platform.title">Platform</h3>
                                     <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <polyline points="6 9 12 15 18 9"/>
                                     </svg>
@@ -870,19 +867,19 @@
                             <div class="card-body collapse-content">
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Default Landing Page</span>
-                                        <span class="setting-desc">Choose where you land after login</span>
+                                        <span class="setting-title" data-i18n="settings.platform.defaultLanding.title">Default Landing Page</span>
+                                        <span class="setting-desc" data-i18n="settings.platform.defaultLanding.description">Choose where you land after login</span>
                                     </div>
                                     <select id="defaultLandingPage" class="form-input" style="max-width: 200px;">
-                                        <option value="dashboard">Dashboard</option>
-                                        <option value="apps">Applications</option>
-                                        <option value="profile">Profile</option>
+                                        <option value="dashboard" data-i18n="nav.dashboard">Dashboard</option>
+                                        <option value="apps" data-i18n="nav.apps">Applications</option>
+                                        <option value="profile" data-i18n="nav.profile">Profile</option>
                                     </select>
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Remember Last App</span>
-                                        <span class="setting-desc">Return to the last application you used</span>
+                                        <span class="setting-title" data-i18n="settings.platform.rememberLastApp.title">Remember Last App</span>
+                                        <span class="setting-desc" data-i18n="settings.platform.rememberLastApp.description">Return to the last application you used</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="rememberLastAppToggle" checked>
@@ -891,8 +888,8 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Auto-save Preferences</span>
-                                        <span class="setting-desc">Automatically save changes to your preferences</span>
+                                        <span class="setting-title" data-i18n="settings.platform.autoSave.title">Auto-save Preferences</span>
+                                        <span class="setting-desc" data-i18n="settings.platform.autoSave.description">Automatically save changes to your preferences</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="autoSaveToggle" checked>
@@ -906,7 +903,7 @@
                         <div class="card collapsible-card">
                             <div class="card-header" data-toggle="collapse">
                                 <div class="card-header-content">
-                                    <h3>Appearance</h3>
+                                    <h3 data-i18n="settings.appearance.title">Appearance</h3>
                                     <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <polyline points="6 9 12 15 18 9"/>
                                     </svg>
@@ -915,19 +912,19 @@
                             <div class="card-body collapse-content">
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Theme</span>
-                                        <span class="setting-desc">Choose your color theme</span>
+                                        <span class="setting-title" data-i18n="settings.appearance.theme.title">Theme</span>
+                                        <span class="setting-desc" data-i18n="settings.appearance.theme.description">Choose your color theme</span>
                                     </div>
                                     <select id="themeSelect" class="form-input" style="max-width: 150px;">
-                                        <option value="dark" selected>Dark</option>
-                                        <option value="light">Light</option>
-                                        <option value="auto">Auto (System)</option>
+                                        <option value="dark" selected data-i18n="settings.appearance.theme.dark">Dark</option>
+                                        <option value="light" data-i18n="settings.appearance.theme.light">Light</option>
+                                        <option value="auto" data-i18n="settings.appearance.theme.auto">Auto (System)</option>
                                     </select>
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Compact Mode</span>
-                                        <span class="setting-desc">Reduce spacing for more content</span>
+                                        <span class="setting-title" data-i18n="settings.appearance.compactMode.title">Compact Mode</span>
+                                        <span class="setting-desc" data-i18n="settings.appearance.compactMode.description">Reduce spacing for more content</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="compactModeToggle">
@@ -936,12 +933,12 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Sidebar Position</span>
-                                        <span class="setting-desc">Position of the navigation sidebar</span>
+                                        <span class="setting-title" data-i18n="settings.appearance.sidebarPosition.title">Sidebar Position</span>
+                                        <span class="setting-desc" data-i18n="settings.appearance.sidebarPosition.description">Position of the navigation sidebar</span>
                                     </div>
                                     <select id="sidebarPosition" class="form-input" style="max-width: 150px;">
-                                        <option value="left" selected>Left</option>
-                                        <option value="right">Right</option>
+                                        <option value="left" selected data-i18n="settings.appearance.sidebarPosition.left">Left</option>
+                                        <option value="right" data-i18n="settings.appearance.sidebarPosition.right">Right</option>
                                     </select>
                                 </div>
                             </div>
@@ -951,7 +948,7 @@
                         <div class="card collapsible-card">
                             <div class="card-header" data-toggle="collapse">
                                 <div class="card-header-content">
-                                    <h3>Accessibility</h3>
+                                    <h3 data-i18n="settings.accessibility.title">Accessibility</h3>
                                     <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <polyline points="6 9 12 15 18 9"/>
                                     </svg>
@@ -960,20 +957,20 @@
                             <div class="card-body collapse-content">
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Font Scaling</span>
-                                        <span class="setting-desc">Adjust the size of text across the platform</span>
+                                        <span class="setting-title" data-i18n="settings.accessibility.fontScaling.title">Font Scaling</span>
+                                        <span class="setting-desc" data-i18n="settings.accessibility.fontScaling.description">Adjust the size of text across the platform</span>
                                     </div>
                                     <select id="fontScaling" class="form-input" style="max-width: 150px;">
-                                        <option value="small">Small</option>
-                                        <option value="medium" selected>Medium</option>
-                                        <option value="large">Large</option>
-                                        <option value="xlarge">Extra Large</option>
+                                        <option value="small" data-i18n="settings.accessibility.fontScaling.small">Small</option>
+                                        <option value="medium" selected data-i18n="settings.accessibility.fontScaling.medium">Medium</option>
+                                        <option value="large" data-i18n="settings.accessibility.fontScaling.large">Large</option>
+                                        <option value="xlarge" data-i18n="settings.accessibility.fontScaling.xlarge">Extra Large</option>
                                     </select>
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">High Contrast Mode</span>
-                                        <span class="setting-desc">Increase contrast for better visibility</span>
+                                        <span class="setting-title" data-i18n="settings.accessibility.highContrast.title">High Contrast Mode</span>
+                                        <span class="setting-desc" data-i18n="settings.accessibility.highContrast.description">Increase contrast for better visibility</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="highContrastToggle">
@@ -982,8 +979,8 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Reduced Motion</span>
-                                        <span class="setting-desc">Minimize animations and transitions</span>
+                                        <span class="setting-title" data-i18n="settings.accessibility.reducedMotion.title">Reduced Motion</span>
+                                        <span class="setting-desc" data-i18n="settings.accessibility.reducedMotion.description">Minimize animations and transitions</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="reducedMotionToggle">
@@ -992,8 +989,8 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Screen Reader Support</span>
-                                        <span class="setting-desc">Enhanced screen reader compatibility</span>
+                                        <span class="setting-title" data-i18n="settings.accessibility.screenReader.title">Screen Reader Support</span>
+                                        <span class="setting-desc" data-i18n="settings.accessibility.screenReader.description">Enhanced screen reader compatibility</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="screenReaderToggle">
@@ -1007,7 +1004,7 @@
                         <div class="card collapsible-card">
                             <div class="card-header" data-toggle="collapse">
                                 <div class="card-header-content">
-                                    <h3>Notifications</h3>
+                                    <h3 data-i18n="settings.notifications.title">Notifications</h3>
                                     <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <polyline points="6 9 12 15 18 9"/>
                                     </svg>
@@ -1016,8 +1013,8 @@
                             <div class="card-body collapse-content">
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Email Notifications</span>
-                                        <span class="setting-desc">Receive important updates via email</span>
+                                        <span class="setting-title" data-i18n="settings.notifications.email.title">Email Notifications</span>
+                                        <span class="setting-desc" data-i18n="settings.notifications.email.description">Receive important updates via email</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="emailNotificationsToggle" checked>
@@ -1026,8 +1023,8 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Push Notifications</span>
-                                        <span class="setting-desc">Browser push notifications</span>
+                                        <span class="setting-title" data-i18n="settings.notifications.push.title">Push Notifications</span>
+                                        <span class="setting-desc" data-i18n="settings.notifications.push.description">Browser push notifications</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="pushNotificationsToggle">
@@ -1036,8 +1033,8 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Sound Notifications</span>
-                                        <span class="setting-desc">Play sounds for notifications</span>
+                                        <span class="setting-title" data-i18n="settings.notifications.sound.title">Sound Notifications</span>
+                                        <span class="setting-desc" data-i18n="settings.notifications.sound.description">Play sounds for notifications</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="soundNotificationsToggle" checked>
@@ -1051,7 +1048,7 @@
                         <div class="card collapsible-card">
                             <div class="card-header" data-toggle="collapse">
                                 <div class="card-header-content">
-                                    <h3>Privacy & Security</h3>
+                                    <h3 data-i18n="settings.privacy.title">Privacy & Security</h3>
                                     <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <polyline points="6 9 12 15 18 9"/>
                                     </svg>
@@ -1060,8 +1057,8 @@
                             <div class="card-body collapse-content">
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Activity Tracking</span>
-                                        <span class="setting-desc">Allow analytics to improve your experience</span>
+                                        <span class="setting-title" data-i18n="settings.privacy.activityTracking.title">Activity Tracking</span>
+                                        <span class="setting-desc" data-i18n="settings.privacy.activityTracking.description">Allow analytics to improve your experience</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="activityTrackingToggle" checked>
@@ -1070,21 +1067,21 @@
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Session Timeout</span>
-                                        <span class="setting-desc">Auto logout after inactivity</span>
+                                        <span class="setting-title" data-i18n="settings.privacy.sessionTimeout.title">Session Timeout</span>
+                                        <span class="setting-desc" data-i18n="settings.privacy.sessionTimeout.description">Auto logout after inactivity</span>
                                     </div>
                                     <select id="sessionTimeoutSelect" class="form-input" style="max-width: 150px;">
-                                        <option value="15">15 minutes</option>
-                                        <option value="30">30 minutes</option>
-                                        <option value="60" selected>1 hour</option>
-                                        <option value="240">4 hours</option>
-                                        <option value="0">Never</option>
+                                        <option value="15" data-i18n="settings.privacy.sessionTimeout.15min">15 minutes</option>
+                                        <option value="30" data-i18n="settings.privacy.sessionTimeout.30min">30 minutes</option>
+                                        <option value="60" selected data-i18n="settings.privacy.sessionTimeout.1hour">1 hour</option>
+                                        <option value="240" data-i18n="settings.privacy.sessionTimeout.4hours">4 hours</option>
+                                        <option value="0" data-i18n="settings.privacy.sessionTimeout.never">Never</option>
                                     </select>
                                 </div>
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Require 2FA for Login</span>
-                                        <span class="setting-desc">Always ask for two-factor authentication</span>
+                                        <span class="setting-title" data-i18n="settings.privacy.require2FA.title">Require 2FA for Login</span>
+                                        <span class="setting-desc" data-i18n="settings.privacy.require2FA.description">Always ask for two-factor authentication</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="require2FAToggle">
@@ -1098,18 +1095,18 @@
                         <div class="card collapsible-card">
                             <div class="card-header" data-toggle="collapse">
                                 <div class="card-header-content">
-                                    <h3>Experimental</h3>
+                                    <h3 data-i18n="settings.experimental.title">Experimental</h3>
                                     <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <polyline points="6 9 12 15 18 9"/>
                                     </svg>
                                 </div>
-                                <p class="card-desc">Try new features before they're released</p>
+                                <p class="card-desc" data-i18n="settings.experimental.description">Try new features before they're released</p>
                             </div>
                             <div class="card-body collapse-content">
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-title">Beta Features</span>
-                                        <span class="setting-desc">Enable experimental features and improvements</span>
+                                        <span class="setting-title" data-i18n="settings.experimental.betaFeatures.title">Beta Features</span>
+                                        <span class="setting-desc" data-i18n="settings.experimental.betaFeatures.description">Enable experimental features and improvements</span>
                                     </div>
                                     <label class="toggle">
                                         <input type="checkbox" id="betaFeaturesToggle">
@@ -1122,12 +1119,13 @@
                                         <line x1="12" y1="16" x2="12" y2="12"/>
                                         <line x1="12" y1="8" x2="12.01" y2="8"/>
                                     </svg>
-                                    <span>Beta features may be unstable and are subject to change</span>
+                                    <span data-i18n="settings.experimental.notice">Beta features may be unstable and are subject to change</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
             </div>
         </main>
     </div>
@@ -1148,6 +1146,7 @@
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
+    <script src="/platform/static/js/i18n.js"></script>
     <script src="/platform/static/js/console-branding.js"></script>
     <script src="/platform/static/js/dashboard.js"></script>
 </body>

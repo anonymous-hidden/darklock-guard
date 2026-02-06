@@ -236,7 +236,7 @@ router.get('/signup', async (req, res) => {
  */
 router.post('/signup', rateLimitMiddleware('signup'), async (req, res) => {
     try {
-        const { username, email, password, confirmPassword } = req.body;
+        const { username, email, password, confirmPassword, emailUpdatesOptIn } = req.body;
         
         // Validate all fields present
         if (!username || !email || !password || !confirmPassword) {
@@ -308,10 +308,6 @@ router.post('/signup', rateLimitMiddleware('signup'), async (req, res) => {
         // Hash password with bcrypt (cost factor 12)
         const hashedPassword = await bcrypt.hash(password, 12);
         
-        // Check if this is the first user (make them admin)
-        const allUsers = await db.getAllUsers();
-        const isFirstUser = allUsers.length === 0;
-        
         // Generate user ID
         const userId = crypto.randomBytes(16).toString('hex');
         
@@ -321,9 +317,21 @@ router.post('/signup', rateLimitMiddleware('signup'), async (req, res) => {
             username: username.trim(),
             email: email.toLowerCase().trim(),
             password: hashedPassword,
-            role: isFirstUser ? 'admin' : 'user',
-            lastLoginIp: getClientIP(req)
+            role: 'user',
+            lastLoginIp: getClientIP(req),
+            settings: {
+                emailUpdatesOptIn: emailUpdatesOptIn === true || emailUpdatesOptIn === 'true'
+            }
         });
+        
+        // Also update the email_updates_opt_in field directly
+        if (emailUpdatesOptIn === true || emailUpdatesOptIn === 'true') {
+            await db.run(`
+                UPDATE users 
+                SET email_updates_opt_in = 1 
+                WHERE id = ?
+            `, [userId]);
+        }
         
         if (!newUser) {
             return res.status(500).json({

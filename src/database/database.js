@@ -388,6 +388,38 @@ class Database {
                 console.log('✅ Added ip_hash to verification_queue');
             } catch (e) {}
 
+            // Migration: Ensure verification columns exist on guild_configs
+            try {
+                await this.run(`ALTER TABLE guild_configs ADD COLUMN verification_method TEXT`);
+                console.log('✅ Added verification_method to guild_configs');
+            } catch (e) {
+                // Column may already exist
+            }
+            try {
+                await this.run(`ALTER TABLE guild_configs ADD COLUMN unverified_role_id TEXT`);
+                console.log('✅ Added unverified_role_id to guild_configs');
+            } catch (e) {
+                // Column may already exist
+            }
+            try {
+                await this.run(`ALTER TABLE guild_configs ADD COLUMN verified_role_id TEXT`);
+                console.log('✅ Added verified_role_id to guild_configs');
+            } catch (e) {
+                // Column may already exist
+            }
+            try {
+                await this.run(`ALTER TABLE guild_configs ADD COLUMN mod_log_channel TEXT`);
+                console.log('✅ Added mod_log_channel to guild_configs');
+            } catch (e) {
+                // Column may already exist
+            }
+            try {
+                await this.run(`ALTER TABLE guild_configs ADD COLUMN verification_channel_id TEXT`);
+                console.log('✅ Added verification_channel_id to guild_configs');
+            } catch (e) {
+                // Column may already exist
+            }
+
             // Migration 18: Add user_records risk and behavior tracking
             try {
                 await this.run(`ALTER TABLE user_records ADD COLUMN risk_score INTEGER DEFAULT 50`);

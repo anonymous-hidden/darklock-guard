@@ -1,0 +1,365 @@
+{
+  "nav": {
+    "main": "Principal",
+    "dashboard": "Panel",
+    "profile": "Perfil",
+    "apps": "Aplicaciones",
+    "account": "Cuenta",
+    "security": "Seguridad",
+    "settings": "Configuración"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "loading": "Cargando...",
+    "success": "¡Éxito!",
+    "error": "Error",
+    "logout": "Cerrar Sesión",
+    "submit": "Enviar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "yes": "Sí",
+    "no": "No",
+    "enabled": "Activado",
+    "disabled": "Desactivado",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "version": "Versión",
+    "user": "Usuario",
+    "admin": "Administrador",
+    "owner": "Propietario"
+  },
+  "dashboard": {
+    "title": "Bienvenido",
+    "subtitle": "Aquí tienes un resumen de tu plataforma Darklock",
+    "stats": {
+      "activeApps": "Aplicaciones Activas",
+      "2faStatus": "Estado 2FA",
+      "activeSessions": "Sesiones Activas",
+      "lastLogin": "Último Acceso"
+    },
+    "quickActions": {
+      "title": "Acciones Rápidas",
+      "viewApps": "Ver Apps",
+      "securitySettings": "Configuración de Seguridad",
+      "editProfile": "Editar Perfil",
+      "discordBot": "Panel del Bot Discord"
+    },
+    "securityStatus": {
+      "title": "Estado de Seguridad",
+      "2fa": {
+        "title": "Autenticación de Dos Factores",
+        "checking": "Verificando estado...",
+        "enabled": "2FA está activado",
+        "disabled": "2FA no está activado"
+      },
+      "password": {
+        "title": "Contraseña Segura",
+        "description": "Tu contraseña cumple los requisitos de seguridad"
+      },
+      "email": {
+        "title": "Email Verificado",
+        "description": "El email de la cuenta está configurado"
+      }
+    }
+  },
+  "profile": {
+    "title": "Perfil",
+    "subtitle": "Quién eres - tu identidad y preferencias",
+    "overview": "Resumen",
+    "changeAvatar": "Cambiar Avatar",
+    "username": "Nombre de Usuario",
+    "displayName": "Nombre para Mostrar",
+    "role": "Rol",
+    "accountCreated": "Cuenta Creada",
+    "personalInfo": {
+      "title": "Información Personal",
+      "displayName": "Nombre para Mostrar",
+      "displayNamePlaceholder": "Tu nombre para mostrar",
+      "email": "Email",
+      "emailHint": "Para cambiar tu email, ve a Configuración de cuenta",
+      "timezone": "Zona Horaria",
+      "language": "Idioma",
+      "saveChanges": "Guardar Cambios"
+    },
+    "preferences": {
+      "title": "Preferencias",
+      "theme": {
+        "title": "Tema",
+        "description": "Elige tu esquema de colores preferido",
+        "dark": "Oscuro",
+        "light": "Claro",
+        "system": "Sistema"
+      },
+      "reducedMotion": {
+        "title": "Movimiento Reducido",
+        "description": "Minimizar animaciones y transiciones"
+      },
+      "compactLayout": {
+        "title": "Diseño Compacto",
+        "description": "Mostrar más contenido con menos espaciado"
+      }
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "securityAlerts": {
+        "title": "Alertas de Seguridad",
+        "description": "Recibe notificaciones sobre actividad sospechosa"
+      },
+      "productUpdates": {
+        "title": "Actualizaciones del Producto",
+        "description": "Nuevas funciones y mejoras"
+      },
+      "emailNotifications": {
+        "title": "Notificaciones por Email",
+        "description": "Recibir notificaciones por correo electrónico"
+      }
+    }
+  },
+  "apps": {
+    "title": "Aplicaciones",
+    "subtitle": "Accede y gestiona tus aplicaciones Darklock",
+    "darklock": {
+      "name": "Darklock Guard",
+      "description": "Monitoreo y protección de integridad de archivos",
+      "launch": "Iniciar",
+      "download": "Descargar"
+    }
+  },
+  "security": {
+    "title": "Seguridad",
+    "subtitle": "Todo lo sensible - cómo se protege tu cuenta",
+    "overview": {
+      "title": "Resumen",
+      "2faStatus": "Estado 2FA",
+      "passwordStrength": "Fortaleza de Contraseña",
+      "activeSessions": "Sesiones Activas",
+      "strong": "Fuerte"
+    },
+    "authentication": {
+      "title": "Autenticación",
+      "changePassword": {
+        "title": "Cambiar Contraseña",
+        "description": "Actualiza tu contraseña para mantener tu cuenta segura",
+        "currentPassword": "Contraseña Actual",
+        "currentPasswordPlaceholder": "Introduce la contraseña actual",
+        "newPassword": "Nueva Contraseña",
+        "newPasswordPlaceholder": "Introduce la nueva contraseña",
+        "confirmPassword": "Confirmar Nueva Contraseña",
+        "confirmPasswordPlaceholder": "Confirma la nueva contraseña",
+        "updateButton": "Actualizar Contraseña"
+      },
+      "2fa": {
+        "title": "Autenticación de Dos Factores",
+        "description": "Añade una capa extra de seguridad a tu cuenta",
+        "loading": "Cargando estado 2FA...",
+        "enable": "Activar 2FA",
+        "disable": "Desactivar 2FA",
+        "enabled": "Activado",
+        "disabled": "Desactivado"
+      }
+    },
+    "sessions": {
+      "title": "Sesiones",
+      "description": "Gestiona los dispositivos conectados a tu cuenta",
+      "loading": "Cargando sesiones...",
+      "current": "Sesión Actual",
+      "revoke": "Revocar",
+      "revokeAll": "Revocar Todas las Sesiones"
+    },
+    "activity": {
+      "title": "Actividad de Seguridad",
+      "description": "Eventos de seguridad recientes e historial de acceso",
+      "loading": "Cargando actividad...",
+      "noEvents": "No hay eventos de seguridad recientes"
+    }
+  },
+  "account": {
+    "title": "Cuenta",
+    "subtitle": "Gestión de propiedad y ciclo de vida",
+    "details": {
+      "title": "Detalles de la Cuenta",
+      "email": {
+        "title": "Dirección de Email",
+        "description": "Tu email de contacto principal - requiere contraseña + 2FA para cambiar",
+        "current": "Email Actual",
+        "new": "Nuevo Email",
+        "newPlaceholder": "Introduce el nuevo email",
+        "confirmPassword": "Confirmar Contraseña",
+        "confirmPasswordPlaceholder": "Introduce tu contraseña",
+        "2faCode": "Código 2FA",
+        "changeButton": "Cambiar Email"
+      },
+      "username": {
+        "title": "Nombre de Usuario",
+        "description": "Tu identificador único en la plataforma",
+        "current": "Nombre de Usuario Actual",
+        "new": "Nuevo Nombre de Usuario",
+        "newPlaceholder": "Introduce el nuevo nombre de usuario",
+        "hint": "3-20 caracteres, letras, números, guiones bajos y guiones solamente",
+        "changeButton": "Cambiar Nombre de Usuario"
+      }
+    },
+    "data": {
+      "title": "Datos",
+      "export": {
+        "title": "Exportar Datos de la Cuenta",
+        "description": "Descarga todos los datos de tu cuenta en formato JSON",
+        "button": "Exportar Datos"
+      },
+      "clearSessions": {
+        "title": "Cerrar Todas las Sesiones",
+        "description": "Cerrar sesión en todos los dispositivos excepto este",
+        "button": "Cerrar Sesiones"
+      }
+    },
+    "dangerZone": {
+      "title": "Zona de Peligro",
+      "description": "Acciones irreversibles - procede con precaución",
+      "disable": {
+        "title": "Desactivar Cuenta",
+        "description": "Desactiva temporalmente tu cuenta - puede ser reactivada",
+        "button": "Desactivar Cuenta"
+      },
+      "delete": {
+        "title": "Eliminar Cuenta",
+        "description": "Elimina permanentemente tu cuenta y todos los datos asociados",
+        "button": "Eliminar Cuenta"
+      }
+    }
+  },
+  "settings": {
+    "title": "Configuración",
+    "description": "Configuración y preferencias a nivel de plataforma",
+    "language": {
+      "title": "Idioma y Región",
+      "select": "Idioma",
+      "description": "Selecciona tu idioma preferido"
+    },
+    "autoDetectLanguage": {
+      "title": "Detectar Idioma Automáticamente",
+      "description": "Establecer idioma automáticamente según la configuración del navegador"
+    },
+    "timezone": {
+      "title": "Zona Horaria",
+      "description": "Tu zona horaria local",
+      "autoDetect": "Detectar automáticamente"
+    },
+    "dateFormat": {
+      "title": "Formato de Fecha",
+      "description": "Cómo se muestran las fechas"
+    },
+    "timeFormat": {
+      "title": "Formato de Hora",
+      "description": "Formato de 12 o 24 horas",
+      "12hour": "12 horas (AM/PM)",
+      "24hour": "24 horas"
+    },
+    "platform": {
+      "title": "Plataforma",
+      "defaultLanding": {
+        "title": "Página de Inicio Predeterminada",
+        "description": "Elige dónde aterrizas después de iniciar sesión"
+      },
+      "rememberLastApp": {
+        "title": "Recordar Última App",
+        "description": "Volver a la última aplicación que usaste"
+      },
+      "autoSave": {
+        "title": "Guardar Preferencias Automáticamente",
+        "description": "Guardar cambios automáticamente en tus preferencias"
+      }
+    },
+    "appearance": {
+      "title": "Apariencia",
+      "theme": {
+        "title": "Tema",
+        "description": "Elige tu tema de color",
+        "dark": "Oscuro",
+        "light": "Claro",
+        "auto": "Auto (Sistema)"
+      },
+      "compactMode": {
+        "title": "Modo Compacto",
+        "description": "Reducir espaciado para más contenido"
+      },
+      "sidebarPosition": {
+        "title": "Posición de la Barra Lateral",
+        "description": "Posición de la barra de navegación lateral",
+        "left": "Izquierda",
+        "right": "Derecha"
+      }
+    },
+    "accessibility": {
+      "title": "Accesibilidad",
+      "fontScaling": {
+        "title": "Escala de Fuente",
+        "description": "Ajustar el tamaño del texto en toda la plataforma",
+        "small": "Pequeño",
+        "medium": "Mediano",
+        "large": "Grande",
+        "xlarge": "Extra Grande"
+      },
+      "highContrast": {
+        "title": "Modo de Alto Contraste",
+        "description": "Aumentar contraste para mejor visibilidad"
+      },
+      "reducedMotion": {
+        "title": "Movimiento Reducido",
+        "description": "Minimizar animaciones y transiciones"
+      },
+      "screenReader": {
+        "title": "Soporte para Lector de Pantalla",
+        "description": "Compatibilidad mejorada con lectores de pantalla"
+      }
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "email": {
+        "title": "Notificaciones por Email",
+        "description": "Recibir actualizaciones importantes por correo"
+      },
+      "push": {
+        "title": "Notificaciones Push",
+        "description": "Notificaciones push del navegador"
+      },
+      "sound": {
+        "title": "Notificaciones con Sonido",
+        "description": "Reproducir sonidos para notificaciones"
+      }
+    },
+    "privacy": {
+      "title": "Privacidad y Seguridad",
+      "activityTracking": {
+        "title": "Seguimiento de Actividad",
+        "description": "Permitir análisis para mejorar tu experiencia"
+      },
+      "sessionTimeout": {
+        "title": "Tiempo de Espera de Sesión",
+        "description": "Cerrar sesión automáticamente después de inactividad",
+        "15min": "15 minutos",
+        "30min": "30 minutos",
+        "1hour": "1 hora",
+        "4hours": "4 horas",
+        "never": "Nunca"
+      },
+      "require2FA": {
+        "title": "Requerir 2FA para Iniciar Sesión",
+        "description": "Siempre pedir autenticación de dos factores"
+      }
+    },
+    "experimental": {
+      "title": "Experimental",
+      "description": "Prueba nuevas funciones antes de su lanzamiento",
+      "betaFeatures": {
+        "title": "Funciones Beta",
+        "description": "Habilitar funciones experimentales y mejoras"
+      },
+      "notice": "Las funciones beta pueden ser inestables y están sujetas a cambios"
+    }
+  }
+}

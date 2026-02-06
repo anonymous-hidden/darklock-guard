@@ -62,7 +62,7 @@ class EnvValidator {
      * Validate Discord client id format
      */
     validateDiscordClientId() {
-        const clientId = process.env.DISCORD_CLIENT_ID;
+        const clientId = process.env.DISCORD_CLIENT_ID?.trim();
         if (!clientId) {
             this.errors.push('DISCORD_CLIENT_ID is required for OAuth and slash command registration');
             return;
@@ -127,7 +127,7 @@ class EnvValidator {
      * Validate Discord OAuth secrets
      */
     validateClientSecrets() {
-        const clientId = process.env.DISCORD_CLIENT_ID;
+        const clientId = process.env.DISCORD_CLIENT_ID?.trim();
         const clientSecret = process.env.DISCORD_CLIENT_SECRET;
 
         if (!clientId) {
@@ -228,6 +228,25 @@ class EnvValidator {
                 if (sanitized !== value) {
                     console.warn(`⚠️  Sanitized ${varName}: removed shell metacharacters`);
                     process.env[varName] = sanitized;
+                }
+            }
+        });
+
+        // Trim whitespace/CRLF from critical auth values
+        const trimVars = [
+            'DISCORD_TOKEN',
+            'BOT_TOKEN',
+            'DISCORD_CLIENT_ID',
+            'DISCORD_CLIENT_SECRET',
+            'ADMIN_PASSWORD'
+        ];
+
+        trimVars.forEach(varName => {
+            const value = process.env[varName];
+            if (typeof value === 'string') {
+                const trimmed = value.trim();
+                if (trimmed !== value) {
+                    process.env[varName] = trimmed;
                 }
             }
         });

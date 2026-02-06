@@ -308,7 +308,7 @@
             }
         }
     </style>
-    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
     <script src="/js/global-theme.js"></script>
     <script src="/js/theme-effects.js"></script>
 </head>
@@ -454,7 +454,7 @@
                 
                 if (response.ok && data.success) {
                     // Cookie is set automatically by server - redirect to dashboard
-                    window.location.href = '/admin';
+                    window.location.href = '/dashboard';
                 } else {
                     throw new Error(data.error || 'Login failed');
                 }

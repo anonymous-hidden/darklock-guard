@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
+    <title>Anti-Phishing - DarkLock Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/premium-gating.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <script src="/js/premium-gating.js"></script>
+    <style>
+        .setup-page {
+            min-height: 100vh;
+            background: var(--ds-surface-0);
+        }
+
+        .setup-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--ds-space-md) var(--ds-space-xl);
+            background: var(--ds-surface-1);
+            border-bottom: 1px solid var(--ds-border);
+            backdrop-filter: blur(12px);
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--ds-surface-2);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            color: var(--ds-text-primary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all var(--ds-transition-fast);
+        }
+
+        .back-button:hover {
+            background: var(--ds-surface-3);
+            border-color: var(--ds-primary);
+            transform: translateX(-2px);
+        }
+
+        .setup-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+            font-size: 14px;
+            color: var(--ds-text-muted);
+        }
+
+        .setup-breadcrumb a {
+            color: var(--ds-text-muted);
+            text-decoration: none;
+        }
+
+        .setup-breadcrumb a:hover {
+            color: var(--ds-primary);
+        }
+
+        .setup-breadcrumb-current {
+            color: var(--ds-text-primary);
+            font-weight: 500;
+        }
+
+        .setup-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: var(--ds-space-xl) var(--ds-space-lg);
+        }
+
+        .setup-header {
+            margin-bottom: var(--ds-space-xl);
+        }
+
+        .setup-header-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            background: var(--ds-warning-bg);
+            border: 1px solid var(--ds-warning-border);
+            border-radius: var(--ds-radius-lg);
+            margin-bottom: var(--ds-space-md);
+        }
+
+        .setup-header-icon i {
+            font-size: 24px;
+            color: var(--ds-warning);
+        }
+
+        .setup-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--ds-text-primary);
+            margin: 0 0 var(--ds-space-sm) 0;
+        }
+
+        .setup-header p {
+            color: var(--ds-text-muted);
+            font-size: 15px;
+            margin: 0;
+        }
+
+        .setup-card {
+            background: var(--ds-surface-1);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-lg);
+            margin-bottom: var(--ds-space-lg);
+            overflow: hidden;
+        }
+
+        .setup-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--ds-space-lg);
+            border-bottom: 1px solid var(--ds-border);
+            background: var(--ds-surface-2);
+        }
+
+        .setup-card-title {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+        }
+
+        .setup-card-title i {
+            color: var(--ds-warning);
+            font-size: 16px;
+        }
+
+        .setup-card-title h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--ds-text-primary);
+            margin: 0;
+        }
+
+        .setup-card-body {
+            padding: var(--ds-space-lg);
+        }
+
+        .setup-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--ds-space-md);
+            background: var(--ds-surface-0);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            margin-bottom: var(--ds-space-md);
+        }
+
+        .setup-toggle-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .setup-toggle-info h4 {
+            margin: 0 0 4px 0;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--ds-text-primary);
+        }
+
+        .setup-toggle-info p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--ds-text-muted);
+        }
+
+        .setup-form-group {
+            margin-bottom: var(--ds-space-lg);
+        }
+
+        .setup-form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .setup-form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--ds-text-primary);
+            margin-bottom: var(--ds-space-xs);
+        }
+
+        .setup-form-desc {
+            font-size: 13px;
+            color: var(--ds-text-muted);
+            margin-bottom: var(--ds-space-sm);
+        }
+
+        .setup-form-input,
+        .setup-form-select,
+        .setup-form-textarea {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--ds-surface-0);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            color: var(--ds-text-primary);
+            font-size: 14px;
+            transition: all var(--ds-transition-fast);
+            font-family: 'Inter', sans-serif;
+        }
+
+        .setup-form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .setup-form-input:focus,
+        .setup-form-select:focus,
+        .setup-form-textarea:focus {
+            outline: none;
+            border-color: var(--ds-primary);
+            box-shadow: 0 0 0 3px var(--ds-primary-shadow);
+        }
+
+        .setup-form-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--ds-space-md);
+        }
+
+        .info-box {
+            display: flex;
+            gap: var(--ds-space-md);
+            padding: var(--ds-space-md);
+            background: var(--ds-info-bg);
+            border: 1px solid var(--ds-info-border);
+            border-radius: var(--ds-radius-md);
+            margin-bottom: var(--ds-space-md);
+        }
+
+        .info-box i {
+            color: var(--ds-info);
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .info-box-content {
+            flex: 1;
+        }
+
+        .info-box-content p {
+            margin: 0;
+            font-size: 14px;
+            color: var(--ds-text-primary);
+            line-height: 1.5;
+        }
+
+        .warning-box {
+            display: flex;
+            gap: var(--ds-space-md);
+            padding: var(--ds-space-md);
+            background: var(--ds-warning-bg);
+            border: 1px solid var(--ds-warning-border);
+            border-radius: var(--ds-radius-md);
+            margin-bottom: var(--ds-space-md);
+        }
+
+        .warning-box i {
+            color: var(--ds-warning);
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .warning-box-content {
+            flex: 1;
+        }
+
+        .warning-box-content p {
+            margin: 0;
+            font-size: 14px;
+            color: var(--ds-text-primary);
+            line-height: 1.5;
+        }
+
+        .domain-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--ds-space-sm);
+        }
+
+        .domain-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--ds-space-sm) var(--ds-space-md);
+            background: var(--ds-surface-0);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+        }
+
+        .domain-item code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--ds-text-primary);
+            background: transparent;
+        }
+
+        .domain-item button {
+            padding: 4px 12px;
+            background: var(--ds-danger-bg);
+            border: 1px solid var(--ds-danger-border);
+            border-radius: var(--ds-radius-sm);
+            color: var(--ds-danger);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all var(--ds-transition-fast);
+        }
+
+        .domain-item button:hover {
+            background: var(--ds-danger);
+            color: white;
+        }
+
+        .add-domain-row {
+            display: flex;
+            gap: var(--ds-space-sm);
+        }
+
+        .add-domain-row input {
+            flex: 1;
+        }
+
+        .setup-status-msg {
+            display: none;
+            padding: var(--ds-space-md);
+            border-radius: var(--ds-radius-md);
+            font-size: 14px;
+            text-align: center;
+            margin-top: var(--ds-space-md);
+        }
+
+        .setup-status-msg.success {
+            display: block;
+            background: var(--ds-success-bg);
+            border: 1px solid var(--ds-success-border);
+            color: var(--ds-success);
+        }
+
+        .setup-status-msg.error {
+            display: block;
+            background: var(--ds-danger-bg);
+            border: 1px solid var(--ds-danger-border);
+            color: var(--ds-danger);
+        }
+    </style>
+</head>
+<body class="setup-page" data-premium-page="anti-phishing">
+    <!-- Navigation -->
+    <nav class="setup-nav">
+        <div style="display: flex; align-items: center; gap: var(--ds-space-lg);">
+            <a href="/dashboard" class="back-button">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+            </a>
+            <div class="setup-breadcrumb">
+                <a href="/dashboard"><i class="fas fa-home"></i></a>
+                <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                <a href="/dashboard">Dashboard</a>
+                <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                <span class="setup-breadcrumb-current">Anti-Phishing</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="setup-container">
+        <div class="setup-header">
+            <div class="setup-header-icon">
+                <i class="fas fa-fish"></i>
+            </div>
+            <h1>Anti-Phishing Protection</h1>
+            <p>Protect your community from malicious links and phishing attacks</p>
+        </div>
+
+        <!-- Info Box -->
+        <div class="info-box">
+            <i class="fas fa-info-circle"></i>
+            <div class="info-box-content">
+                <p><strong>How it works:</strong> Anti-phishing scans all messages for suspicious links and automatically takes action based on your settings. Our AI-powered system checks against known phishing databases and analyzes URL patterns in real-time.</p>
+            </div>
+        </div>
+
+        <!-- Main Protection Card -->
+        <div class="setup-card">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3>Protection Settings</h3>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <div class="setup-toggle-row" style="margin-bottom: var(--ds-space-lg);">
+                    <div class="setup-toggle-info">
+                        <h4>Enable Anti-Phishing</h4>
+                        <p>Automatically scan messages for suspicious links</p>
+                    </div>
+                    <label class="ds-toggle">
+                        <input type="checkbox" id="antiphishingEnabled">
+                        <span class="ds-toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Action on Detection</label>
+                    <p class="setup-form-desc">What happens when a phishing link is detected</p>
+                    <select class="setup-form-select" id="actionType">
+                        <option value="delete">🗑️ Delete Message</option>
+                        <option value="delete_warn">⚠️ Delete & Warn User</option>
+                        <option value="delete_timeout">⏱️ Delete & Timeout (1 hour)</option>
+                        <option value="delete_kick">👢 Delete & Kick User</option>
+                        <option value="delete_ban">🔨 Delete & Ban User</option>
+                    </select>
+                </div>
+
+                <div class="setup-toggle-row">
+                    <div class="setup-toggle-info">
+                        <h4>Log to Moderation Channel</h4>
+                        <p>Send alerts when phishing links are detected</p>
+                    </div>
+                    <label class="ds-toggle">
+                        <input type="checkbox" id="logDetections">
+                        <span class="ds-toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detection Methods Card -->
+        <div class="setup-card">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-search"></i>
+                    <h3>Detection Methods</h3>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <div class="setup-toggle-row">
+                    <div class="setup-toggle-info">
+                        <h4>Scam Link Database</h4>
+                        <p>Check against known phishing databases</p>
+                    </div>
+                    <label class="ds-toggle">
+                        <input type="checkbox" id="useDatabase" checked>
+                        <span class="ds-toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setup-toggle-row">
+                    <div class="setup-toggle-info">
+                        <h4>Discord Nitro Scams</h4>
+                        <p>Detect fake Discord Nitro gift links</p>
+                    </div>
+                    <label class="ds-toggle">
+                        <input type="checkbox" id="detectNitroScams" checked>
+                        <span class="ds-toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setup-toggle-row">
+                    <div class="setup-toggle-info">
+                        <h4>Suspicious Shorteners</h4>
+                        <p>Block URL shorteners often used in phishing</p>
+                    </div>
+                    <label class="ds-toggle">
+                        <input type="checkbox" id="blockShorteners">
+                        <span class="ds-toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setup-toggle-row">
+                    <div class="setup-toggle-info">
+                        <h4>IP Address Links</h4>
+                        <p>Block direct IP address links (often malicious)</p>
+                    </div>
+                    <label class="ds-toggle">
+                        <input type="checkbox" id="blockIpLinks">
+                        <span class="ds-toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Whitelist/Blacklist Card -->
+        <div class="setup-card">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-list"></i>
+                    <h3>Custom Domain Lists</h3>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Whitelisted Domains</label>
+                    <p class="setup-form-desc">Domains that will always be allowed (even if flagged)</p>
+                    
+                    <div class="domain-list" id="whitelistDomains">
+                        <div style="text-align: center; padding: 20px; color: var(--ds-text-muted); font-size: 14px;">
+                            No whitelisted domains yet
+                        </div>
+                    </div>
+
+                    <div class="add-domain-row" style="margin-top: var(--ds-space-md);">
+                        <input type="text" class="setup-form-input" id="whitelistInput" placeholder="example.com">
+                        <button class="ds-btn ds-btn-secondary" onclick="addWhitelistDomain()">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Blacklisted Domains</label>
+                    <p class="setup-form-desc">Domains that will always be blocked</p>
+                    
+                    <div class="domain-list" id="blacklistDomains">
+                        <div style="text-align: center; padding: 20px; color: var(--ds-text-muted); font-size: 14px;">
+                            No blacklisted domains yet
+                        </div>
+                    </div>
+
+                    <div class="add-domain-row" style="margin-top: var(--ds-space-md);">
+                        <input type="text" class="setup-form-input" id="blacklistInput" placeholder="suspicious-site.com">
+                        <button class="ds-btn ds-btn-secondary" onclick="addBlacklistDomain()">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Warning Box -->
+        <div class="warning-box">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div class="warning-box-content">
+                <p><strong>Important:</strong> Anti-phishing protection requires appropriate bot permissions. Make sure the bot can delete messages and timeout/kick/ban users based on your selected action.</p>
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <div style="display: flex; justify-content: flex-end; gap: var(--ds-space-md); margin-top: var(--ds-space-lg);">
+            <a href="/dashboard" class="ds-btn ds-btn-secondary">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+            <button class="ds-btn ds-btn-primary" id="saveBtn" onclick="saveSettings()">
+                <i class="fas fa-save"></i> Save Settings
+            </button>
+        </div>
+
+        <div class="setup-status-msg" id="statusMsg"></div>
+    </main>
+
+    <script src="/js/secure-auth.js"></script>
+    <script>
+        let currentGuildId = null;
+        let whitelistedDomains = [];
+        let blacklistedDomains = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await SecureAuth.init();
+            currentGuildId = localStorage.getItem('selectedGuildId');
+            if (!currentGuildId) {
+                showStatus('error', 'No server selected. Please return to dashboard and select a server.');
+                return;
+            }
+
+            await loadSettings();
+        });
+
+        async function loadSettings() {
+            try {
+                const response = await fetch(`/api/settings/antiphishing?guildId=${currentGuildId}`, {
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const settings = await response.json();
+                    
+                    document.getElementById('antiphishingEnabled').checked = settings.enabled || false;
+                    document.getElementById('actionType').value = settings.actionType || 'delete';
+                    document.getElementById('logDetections').checked = settings.logDetections !== false;
+                    document.getElementById('useDatabase').checked = settings.useDatabase !== false;
+                    document.getElementById('detectNitroScams').checked = settings.detectNitroScams !== false;
+                    document.getElementById('blockShorteners').checked = settings.blockShorteners || false;
+                    document.getElementById('blockIpLinks').checked = settings.blockIpLinks || false;
+
+                    whitelistedDomains = settings.whitelistedDomains || [];
+                    blacklistedDomains = settings.blacklistedDomains || [];
+                    
+                    renderDomainLists();
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        function renderDomainLists() {
+            const whitelistContainer = document.getElementById('whitelistDomains');
+            const blacklistContainer = document.getElementById('blacklistDomains');
+
+            // Render whitelist
+            if (whitelistedDomains.length === 0) {
+                whitelistContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--ds-text-muted); font-size: 14px;">No whitelisted domains yet</div>';
+            } else {
+                whitelistContainer.innerHTML = whitelistedDomains.map((domain, index) => `
+                    <div class="domain-item">
+                        <code>${domain}</code>
+                        <button onclick="removeWhitelistDomain(${index})">
+                            <i class="fas fa-times"></i> Remove
+                        </button>
+                    </div>
+                `).join('');
+            }
+
+            // Render blacklist
+            if (blacklistedDomains.length === 0) {
+                blacklistContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--ds-text-muted); font-size: 14px;">No blacklisted domains yet</div>';
+            } else {
+                blacklistContainer.innerHTML = blacklistedDomains.map((domain, index) => `
+                    <div class="domain-item">
+                        <code>${domain}</code>
+                        <button onclick="removeBlacklistDomain(${index})">
+                            <i class="fas fa-times"></i> Remove
+                        </button>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function addWhitelistDomain() {
+            const input = document.getElementById('whitelistInput');
+            const domain = input.value.trim().toLowerCase();
+            
+            if (!domain) return;
+            
+            if (whitelistedDomains.includes(domain)) {
+                showStatus('error', 'Domain already in whitelist');
+                return;
+            }
+
+            whitelistedDomains.push(domain);
+            input.value = '';
+            renderDomainLists();
+        }
+
+        function removeWhitelistDomain(index) {
+            whitelistedDomains.splice(index, 1);
+            renderDomainLists();
+        }
+
+        function addBlacklistDomain() {
+            const input = document.getElementById('blacklistInput');
+            const domain = input.value.trim().toLowerCase();
+            
+            if (!domain) return;
+            
+            if (blacklistedDomains.includes(domain)) {
+                showStatus('error', 'Domain already in blacklist');
+                return;
+            }
+
+            blacklistedDomains.push(domain);
+            input.value = '';
+            renderDomainLists();
+        }
+
+        function removeBlacklistDomain(index) {
+            blacklistedDomains.splice(index, 1);
+            renderDomainLists();
+        }
+
+        async function saveSettings() {
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            const settings = {
+                enabled: document.getElementById('antiphishingEnabled').checked,
+                actionType: document.getElementById('actionType').value,
+                logDetections: document.getElementById('logDetections').checked,
+                useDatabase: document.getElementById('useDatabase').checked,
+                detectNitroScams: document.getElementById('detectNitroScams').checked,
+                blockShorteners: document.getElementById('blockShorteners').checked,
+                blockIpLinks: document.getElementById('blockIpLinks').checked,
+                whitelistedDomains: whitelistedDomains,
+                blacklistedDomains: blacklistedDomains
+            };
+
+            try {
+                const response = await fetch(`/api/settings/antiphishing?guildId=${currentGuildId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(settings)
+                });
+
+                if (response.ok) {
+                    showStatus('success', 'Settings saved successfully!');
+                } else {
+                    const error = await response.json();
+                    showStatus('error', error.message || 'Failed to save settings');
+                }
+            } catch (error) {
+                showStatus('error', 'An error occurred while saving settings');
+                console.error(error);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Settings';
+            }
+        }
+
+        function showStatus(type, message) {
+            const statusMsg = document.getElementById('statusMsg');
+            statusMsg.className = `setup-status-msg ${type}`;
+            statusMsg.textContent = message;
+            setTimeout(() => {
+                statusMsg.className = 'setup-status-msg';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

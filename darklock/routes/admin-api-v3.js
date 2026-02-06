@@ -24,6 +24,7 @@ const rbacSchema = require('../utils/rbac-schema');
 const rbacMiddleware = require('../utils/rbac-middleware');
 const { requireAdminAuth } = require('./admin-auth');
 const debugLogger = require('../utils/debug-logger');
+const themeManager = require('../utils/theme-manager');
 
 // Discord bot reference
 let discordBot = null;
@@ -171,11 +172,15 @@ function getTabGroup(tabId) {
         maintenance: 'Operations',
         bot: 'Operations',
         platform: 'Operations',
+        updates: 'Operations',
+        dashboards: 'External',
         users: 'Administration',
         permissions: 'Administration',
         logs: 'Monitoring',
         audit: 'Monitoring',
         security: 'Monitoring',
+        profile: 'Account',
+        themes: 'Configuration',
         integrations: 'Configuration',
         settings: 'Configuration'
     };
@@ -742,7 +747,7 @@ router.get('/v3/users', ownerOrCoOwnerOnly, async (req, res) => {
                 r.rank_level,
                 r.color as role_color,
                 a.email,
-                a.require_2fa as totp_enabled,
+                0 as totp_enabled,
                 a.created_at as admin_created_at
             FROM admin_users au
             JOIN roles r ON au.role_id = r.id
@@ -760,7 +765,7 @@ router.get('/v3/users', ownerOrCoOwnerOnly, async (req, res) => {
         });
     } catch (err) {
         console.error('[Admin API v3] Users error:', err);
-        res.status(500).json({ success: false, error: 'Failed to load users' });
+        res.status(500).json({ success: false, error: 'Failed to load users', details: err.message });
     }
 });
 
@@ -1102,7 +1107,15 @@ router.get('/v3/bot', requirePermission('bot.view'), async (req, res) => {
             return res.json({ success: true, status: 'offline', guilds: [], shards: [], commands: 0 });
         }
 
-        const guilds = Array.from(discordBot.guilds.cache.values()).map(g => ({
+        // Check if bot client exists
+        if (!discordBot.client) {
+            console.error('[Admin API v3] discordBot.client is undefined');
+            return res.json({ success: true, status: 'offline', guilds: [], shards: [], commands: 0 });
+        }
+
+        const client = discordBot.client;
+
+        const guilds = Array.from(client.guilds?.cache?.values() || []).map(g => ({
             id: g.id,
             name: g.name,
             memberCount: g.memberCount,
@@ -1111,7 +1124,7 @@ router.get('/v3/bot', requirePermission('bot.view'), async (req, res) => {
             joinedAt: g.joinedAt?.toISOString()
         })).sort((a, b) => b.memberCount - a.memberCount);
 
-        const shards = Array.from(discordBot.ws?.shards?.values() || []).map(s => ({
+        const shards = Array.from(client.ws?.shards?.values() || []).map(s => ({
             id: s.id,
             status: s.status === 0 ? 'ready' : s.status,
             ping: s.ping,
@@ -1120,21 +1133,21 @@ router.get('/v3/bot', requirePermission('bot.view'), async (req, res) => {
 
         res.json({
             success: true,
-            status: discordBot.ws?.status === 0 ? 'online' : 'degraded',
-            ping: discordBot.ws?.ping || 0,
+            status: client.ws?.status === 0 ? 'online' : 'degraded',
+            ping: client.ws?.ping || 0,
             guilds,
-            shards: shards.length > 0 ? shards : [{ id: 0, status: 'ready', ping: discordBot.ws?.ping || 0, guilds: guilds.length }],
+            shards: shards.length > 0 ? shards : [{ id: 0, status: 'ready', ping: client.ws?.ping || 0, guilds: guilds.length }],
             commands: discordBot.commands?.size || 0,
-            uptime: discordBot.uptime,
-            user: discordBot.user ? {
-                id: discordBot.user.id,
-                tag: discordBot.user.tag,
-                avatar: discordBot.user.avatarURL()
+            uptime: client.uptime,
+            user: client.user ? {
+                id: client.user.id,
+                tag: client.user.tag,
+                avatar: client.user.avatarURL()
             } : null
         });
     } catch (err) {
         console.error('[Admin API v3] Bot error:', err);
-        res.status(500).json({ success: false, error: 'Failed to load bot data' });
+        res.status(500).json({ success: false, error: 'Failed to load bot data', details: err.message });
     }
 });
 
@@ -1871,6 +1884,416 @@ router.put('/v3/settings', requirePermission('settings.edit'), async (req, res) 
 });
 
 // ============================================================================
+// THEME MANAGEMENT
+// ============================================================================
+
+router.get('/v3/themes', async (req, res) => {
+    try {
+        const allThemes = themeManager.getAllThemes();
+        const activeTheme = await themeManager.getActiveTheme();
+        
+        res.json({
+            success: true,
+            themes: allThemes,
+            active: activeTheme.name,
+            autoHoliday: activeTheme.autoHoliday,
+            currentHoliday: activeTheme.currentHoliday
+        });
+    } catch (err) {
+        console.error('[Admin API v3] Get themes error:', err);
+        res.status(500).json({ success: false, error: 'Failed to load themes' });
+    }
+});
+
+router.get('/v3/theme/active', async (req, res) => {
+    try {
+        const activeTheme = await themeManager.getActiveTheme();
+        
+        res.json({
+            success: true,
+            name: activeTheme.name,
+            theme: activeTheme.theme,
+            autoHoliday: activeTheme.autoHoliday,
+            currentHoliday: activeTheme.currentHoliday
+        });
+    } catch (err) {
+        console.error('[Admin API v3] Get active theme error:', err);
+        res.status(500).json({ success: false, error: 'Failed to load active theme' });
+    }
+});
+
+router.post('/v3/theme/set', requirePermission('settings.edit'), async (req, res) => {
+    try {
+        const { themeName } = req.body;
+        
+        if (!themeName) {
+            return res.status(400).json({ success: false, error: 'Theme name required' });
+        }
+        
+        await themeManager.setTheme(themeName);
+        
+        await logAuditAction(req, 'THEME_CHANGED', {
+            scope: 'settings',
+            after: { theme: themeName }
+        });
+        
+        res.json({ success: true, message: 'Theme updated successfully' });
+    } catch (err) {
+        console.error('[Admin API v3] Set theme error:', err);
+        res.status(500).json({ success: false, error: err.message || 'Failed to set theme' });
+    }
+});
+
+router.post('/v3/theme/auto-holiday', requirePermission('settings.edit'), async (req, res) => {
+    try {
+        const { enabled } = req.body;
+        
+        if (typeof enabled !== 'boolean') {
+            return res.status(400).json({ success: false, error: 'Enabled boolean required' });
+        }
+        
+        await themeManager.setAutoHolidayThemes(enabled);
+        
+        await logAuditAction(req, 'AUTO_HOLIDAY_THEME_CHANGED', {
+            scope: 'settings',
+            after: { enabled }
+        });
+        
+        res.json({ success: true, message: 'Auto holiday themes ' + (enabled ? 'enabled' : 'disabled') });
+    } catch (err) {
+        console.error('[Admin API v3] Set auto holiday error:', err);
+        res.status(500).json({ success: false, error: 'Failed to update auto holiday setting' });
+    }
+});
+
+router.get('/v3/theme/css', async (req, res) => {
+    try {
+        const activeTheme = await themeManager.getActiveTheme();
+        const colors = activeTheme.theme.colors;
+        
+        // Generate CSS from theme colors for bot dashboard only
+        // Admin panel keeps its default Darklock theme
+        const css = `:root {
+${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n')}
+}
+
+/* Theme applies to bot dashboard and site only, not admin panel */`;
+        
+        res.setHeader('Content-Type', 'text/css');
+        res.setHeader('Cache-Control', 'public, max-age=300'); // 5 minutes cache
+        res.send(css);
+    } catch (err) {
+        console.error('[Admin API v3] Get theme CSS error:', err);
+        res.status(500).send('/* Error loading theme */');
+    }
+});
+
+// ============================================================================
+// PROFILE & SECURITY
+// ============================================================================
+
+router.get('/v3/profile', async (req, res) => {
+    try {
+        const adminUser = req.adminUser;
+        
+        if (!adminUser) {
+            return res.status(401).json({ success: false, error: 'Not authenticated' });
+        }
+
+        // Get admin record and 2FA status
+        const admin = await db.get(`SELECT * FROM admins WHERE id = ?`, [adminUser.admin_id]).catch(() => null);
+        const twoFAEnabled = !!admin?.totp_secret;
+
+        // Try to get sessions, fallback to empty array if table doesn't exist
+        let sessions = [];
+        try {
+            sessions = await db.all(`
+                SELECT id, created_at, last_active, ip_address, user_agent
+                FROM admin_sessions 
+                WHERE admin_id = ? AND expires_at > datetime('now')
+                ORDER BY last_active DESC
+                LIMIT 10
+            `, [adminUser.admin_id]);
+        } catch (err) {
+            console.log('[Admin API v3] Sessions table not available:', err.message);
+        }
+
+        // Get current session ID from token or cookie
+        const currentSessionId = req.sessionId || null;
+
+        // Try to get recent activity, fallback to empty array if table doesn't exist
+        let recentActivity = [];
+        try {
+            recentActivity = await db.all(`
+                SELECT action, details, ip_address, created_at as timestamp
+                FROM admin_audit_log_v2
+                WHERE admin_id = ?
+                ORDER BY created_at DESC
+                LIMIT 20
+            `, [adminUser.admin_id]);
+        } catch (err) {
+            console.log('[Admin API v3] Audit log table not available:', err.message);
+        }
+
+        res.json({
+            success: true,
+            profile: {
+                id: adminUser.admin_id || admin?.id,
+                email: adminUser.email || admin?.email,
+                displayName: adminUser.display_name || admin?.email?.split('@')[0] || 'Admin',
+                role: adminUser.role_name || 'Owner',
+                roleColor: adminUser.role_color || '#7c4dff',
+                rankLevel: adminUser.rank_level || 100,
+                createdAt: adminUser.created_at || admin?.created_at || new Date().toISOString(),
+                lastLogin: adminUser.last_login || adminUser.last_activity || new Date().toISOString(),
+                twoFactorEnabled: twoFAEnabled
+            },
+            sessions: sessions.map(s => ({
+                id: s.id,
+                createdAt: s.created_at,
+                lastActive: s.last_active,
+                ipAddress: s.ip_address,
+                userAgent: s.user_agent,
+                current: currentSessionId === s.id
+            })),
+            recentActivity: recentActivity.map(a => ({
+                action: a.action,
+                details: a.details,
+                ipAddress: a.ip_address,
+                timestamp: a.timestamp
+            }))
+        });
+    } catch (err) {
+        console.error('[Admin API v3] Profile error:', err);
+        res.status(500).json({ success: false, error: 'Failed to load profile', details: err.message });
+    }
+});
+
+router.post('/v3/profile/change-password', sensitiveActionLimiter, async (req, res) => {
+    try {
+        const { currentPassword, newPassword, confirmPassword } = req.body;
+        const adminUser = req.adminUser;
+
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            return res.status(400).json({ success: false, error: 'All fields are required' });
+        }
+
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({ success: false, error: 'New passwords do not match' });
+        }
+
+        if (newPassword.length < 12) {
+            return res.status(400).json({ success: false, error: 'Password must be at least 12 characters long' });
+        }
+
+        // Get current password hash
+        const admin = await db.get(`SELECT password FROM admins WHERE id = ?`, [adminUser.admin_id]);
+        
+        if (!admin) {
+            return res.status(404).json({ success: false, error: 'Admin account not found' });
+        }
+
+        // Verify current password
+        const isValidPassword = await bcrypt.compare(currentPassword, admin.password);
+        
+        if (!isValidPassword) {
+            await logSecurityEvent(req, 'PASSWORD_CHANGE_FAILED', {
+                reason: 'Invalid current password',
+                severity: 'medium'
+            });
+            return res.status(401).json({ success: false, error: 'Current password is incorrect' });
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+        // Update password
+        await db.run(`
+            UPDATE admins 
+            SET password = ?, password_changed_at = ?
+            WHERE id = ?
+        `, [hashedPassword, new Date().toISOString(), adminUser.admin_id]);
+
+        await logAuditAction(req, 'PASSWORD_CHANGED', {
+            scope: 'profile',
+            severity: 'high'
+        });
+
+        res.json({ success: true, message: 'Password changed successfully' });
+    } catch (err) {
+        console.error('[Admin API v3] Change password error:', err);
+        res.status(500).json({ success: false, error: 'Failed to change password', details: err.message });
+    }
+});
+
+router.post('/v3/profile/2fa/setup', sensitiveActionLimiter, async (req, res) => {
+    try {
+        const adminUser = req.adminUser;
+        const speakeasy = require('speakeasy');
+        const QRCode = require('qrcode');
+
+        // Check if 2FA is already enabled
+        const admin = await db.get(`SELECT totp_secret FROM admins WHERE id = ?`, [adminUser.admin_id]);
+        
+        if (admin?.totp_secret) {
+            return res.status(400).json({ success: false, error: '2FA is already enabled' });
+        }
+
+        // Generate new secret
+        const secret = speakeasy.generateSecret({
+            name: `Darklock Admin (${adminUser.email})`,
+            issuer: 'Darklock Platform'
+        });
+
+        // Generate QR code
+        const qrCodeDataUrl = await QRCode.toDataURL(secret.otpauth_url);
+
+        // Store temporary secret (will be confirmed when user verifies)
+        await db.run(`
+            UPDATE admins 
+            SET totp_secret_temp = ?
+            WHERE id = ?
+        `, [secret.base32, adminUser.admin_id]);
+
+        res.json({
+            success: true,
+            secret: secret.base32,
+            qrCode: qrCodeDataUrl,
+            otpauthUrl: secret.otpauth_url
+        });
+    } catch (err) {
+        console.error('[Admin API v3] 2FA setup error:', err);
+        res.status(500).json({ success: false, error: 'Failed to setup 2FA', details: err.message });
+    }
+});
+
+router.post('/v3/profile/2fa/verify', sensitiveActionLimiter, async (req, res) => {
+    try {
+        const { token } = req.body;
+        const adminUser = req.adminUser;
+        const speakeasy = require('speakeasy');
+
+        if (!token || !/^\d{6}$/.test(token)) {
+            return res.status(400).json({ success: false, error: 'Invalid token format' });
+        }
+
+        // Get temporary secret
+        const admin = await db.get(`SELECT totp_secret_temp FROM admins WHERE id = ?`, [adminUser.admin_id]);
+        
+        if (!admin?.totp_secret_temp) {
+            return res.status(400).json({ success: false, error: 'No pending 2FA setup found' });
+        }
+
+        // Verify token
+        const verified = speakeasy.totp.verify({
+            secret: admin.totp_secret_temp,
+            encoding: 'base32',
+            token: token,
+            window: 2
+        });
+
+        if (!verified) {
+            return res.status(401).json({ success: false, error: 'Invalid verification code' });
+        }
+
+        // Activate 2FA
+        await db.run(`
+            UPDATE admins 
+            SET totp_secret = totp_secret_temp, totp_secret_temp = NULL, totp_enabled_at = ?
+            WHERE id = ?
+        `, [new Date().toISOString(), adminUser.admin_id]);
+
+        await logAuditAction(req, '2FA_ENABLED', {
+            scope: 'profile',
+            severity: 'high'
+        });
+
+        res.json({ success: true, message: '2FA enabled successfully' });
+    } catch (err) {
+        console.error('[Admin API v3] 2FA verify error:', err);
+        res.status(500).json({ success: false, error: 'Failed to verify 2FA', details: err.message });
+    }
+});
+
+router.post('/v3/profile/2fa/disable', sensitiveActionLimiter, async (req, res) => {
+    try {
+        const { password, token } = req.body;
+        const adminUser = req.adminUser;
+        const speakeasy = require('speakeasy');
+
+        if (!password || !token) {
+            return res.status(400).json({ success: false, error: 'Password and 2FA token required' });
+        }
+
+        // Get admin data
+        const admin = await db.get(`SELECT password, totp_secret FROM admins WHERE id = ?`, [adminUser.admin_id]);
+        
+        if (!admin?.totp_secret) {
+            return res.status(400).json({ success: false, error: '2FA is not enabled' });
+        }
+
+        // Verify password
+        const isValidPassword = await bcrypt.compare(password, admin.password);
+        
+        if (!isValidPassword) {
+            return res.status(401).json({ success: false, error: 'Invalid password' });
+        }
+
+        // Verify 2FA token
+        const verified = speakeasy.totp.verify({
+            secret: admin.totp_secret,
+            encoding: 'base32',
+            token: token,
+            window: 2
+        });
+
+        if (!verified) {
+            return res.status(401).json({ success: false, error: 'Invalid 2FA code' });
+        }
+
+        // Disable 2FA
+        await db.run(`
+            UPDATE admins 
+            SET totp_secret = NULL, totp_enabled_at = NULL
+            WHERE id = ?
+        `, [adminUser.admin_id]);
+
+        await logAuditAction(req, '2FA_DISABLED', {
+            scope: 'profile',
+            severity: 'high'
+        });
+
+        res.json({ success: true, message: '2FA disabled successfully' });
+    } catch (err) {
+        console.error('[Admin API v3] 2FA disable error:', err);
+        res.status(500).json({ success: false, error: 'Failed to disable 2FA', details: err.message });
+    }
+});
+
+router.post('/v3/profile/sessions/revoke/:sessionId', sensitiveActionLimiter, async (req, res) => {
+    try {
+        const { sessionId } = req.params;
+        const adminUser = req.adminUser;
+
+        // Delete session
+        await db.run(`
+            DELETE FROM admin_sessions 
+            WHERE id = ? AND admin_id = ?
+        `, [sessionId, adminUser.admin_id]);
+
+        await logAuditAction(req, 'SESSION_REVOKED', {
+            scope: 'profile',
+            targetId: sessionId
+        });
+
+        res.json({ success: true, message: 'Session revoked successfully' });
+    } catch (err) {
+        console.error('[Admin API v3] Revoke session error:', err);
+        res.status(500).json({ success: false, error: 'Failed to revoke session', details: err.message });
+    }
+});
+
+// ============================================================================
 // QUICK ACTIONS
 // ============================================================================
 
@@ -2082,69 +2505,6 @@ router.post('/v3/alerts/:id/resolve', requireRoleMin(ROLE_LEVELS.admin), async (
     } catch (err) {
         console.error('[Admin API v3] Resolve alert error:', err);
         res.status(500).json({ success: false, error: 'Failed to resolve incident' });
-    }
-});
-
-// ============================================================================
-// PROFILE
-// ============================================================================
-
-router.get('/v3/profile', async (req, res) => {
-    try {
-        const admin = await db.get(`SELECT * FROM admins WHERE id = ?`, [req.admin.id]);
-        const adminUser = req.adminUser;
-
-        res.json({
-            success: true,
-            profile: {
-                email: admin.email,
-                displayName: adminUser.display_name,
-                role: adminUser.role_name,
-                roleColor: adminUser.role_color,
-                totp_enabled: !!admin.totp_enabled,
-                lastActivity: adminUser.last_activity,
-                createdAt: admin.created_at
-            }
-        });
-    } catch (err) {
-        console.error('[Admin API v3] Profile error:', err);
-        res.status(500).json({ success: false, error: 'Failed to load profile' });
-    }
-});
-
-router.put('/v3/profile', async (req, res) => {
-    try {
-        const { displayName, currentPassword, newPassword } = req.body;
-
-        if (displayName) {
-            await db.run(`UPDATE admin_users SET display_name = ? WHERE admin_id = ?`, [displayName, req.admin.id]);
-        }
-
-        if (currentPassword && newPassword) {
-            const admin = await db.get(`SELECT password_hash FROM admins WHERE id = ?`, [req.admin.id]);
-            const valid = await bcrypt.compare(currentPassword, admin.password_hash);
-            
-            if (!valid) {
-                return res.status(400).json({ success: false, error: 'Current password is incorrect' });
-            }
-
-            if (newPassword.length < 8) {
-                return res.status(400).json({ success: false, error: 'New password must be at least 8 characters' });
-            }
-
-            const newHash = await bcrypt.hash(newPassword, 12);
-            await db.run(`UPDATE admins SET password_hash = ? WHERE id = ?`, [newHash, req.admin.id]);
-
-            await logAuditAction(req, 'PASSWORD_CHANGED', {
-                scope: 'profile',
-                severity: 'high'
-            });
-        }
-
-        res.json({ success: true, message: 'Profile updated' });
-    } catch (err) {
-        console.error('[Admin API v3] Profile update error:', err);
-        res.status(500).json({ success: false, error: 'Failed to update profile' });
     }
 });
 

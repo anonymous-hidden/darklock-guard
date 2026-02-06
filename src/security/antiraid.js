@@ -54,13 +54,13 @@ class AntiRaid {
             // Check if raid threshold is exceeded
             if (joinTimes.length >= threshold) {
                 await this.handleRaidDetection(member.guild, joinTimes);
-                return true;
+                return { isRaid: true, disabled: false };
             }
             
             // Check for suspicious patterns
             await this.checkSuspiciousPatterns(member.guild, joinTimes);
             
-            return false;
+            return { isRaid: false, disabled: false };
             
         } catch (error) {
             this.bot.logger.error(`Anti-raid check failed for guild ${guildId}:`, error);
@@ -102,7 +102,7 @@ class AntiRaid {
             
             // Activate lockdown if enabled (check both field names)
             if (config.anti_raid_enabled || config.antiraid_enabled) {
-                await this.activateLockdown(guild, raidData);
+                await this.activateLockdown(guild, raidData, config);
             }
             
             // Handle raid users
@@ -185,17 +185,26 @@ class AntiRaid {
         };
     }
 
-    async activateLockdown(guild, raidData) {
+    async activateLockdown(guild, raidData, config = null, autoLift = true) {
         const guildId = guild.id;
-        const lockdownDuration = 5 * 60 * 1000; // 5 minutes
+        const configuredDuration = Number(config?.raid_lockdown_duration_ms);
+        const lockdownDuration = Number.isFinite(configuredDuration) && configuredDuration > 0
+            ? configuredDuration
+            : 5 * 60 * 1000; // 5 minutes default
         
         try {
+            const existing = this.lockdowns.get(guildId);
+            if (existing?.liftTimeout) {
+                clearTimeout(existing.liftTimeout);
+            }
+
             // Store lockdown info
             this.lockdowns.set(guildId, {
                 startTime: Date.now(),
                 duration: lockdownDuration,
                 reason: `Raid detected: ${raidData.patternType}`,
-                severity: raidData.severity
+                severity: raidData.severity,
+                liftTimeout: null
             });
             
             // Find system/general channel for notifications
@@ -219,9 +228,13 @@ class AntiRaid {
             await this.applyTemporaryRestrictions(guild);
             
             // Schedule lockdown removal
-            setTimeout(() => {
-                this.removeLockdown(guild);
-            }, lockdownDuration);
+            if (autoLift !== false) {
+                const timeout = setTimeout(() => {
+                    this.removeLockdown(guild);
+                }, lockdownDuration);
+                const info = this.lockdowns.get(guildId);
+                if (info) info.liftTimeout = timeout;
+            }
             
             this.bot.logger.security(`🔒 Lockdown activated for ${guild.name} (${guildId})`);
             
@@ -413,6 +426,10 @@ class AntiRaid {
         try {
             const lockdownInfo = this.lockdowns.get(guildId);
             if (!lockdownInfo) return;
+
+            if (lockdownInfo.liftTimeout) {
+                clearTimeout(lockdownInfo.liftTimeout);
+            }
             
             // Remove lockdown from memory
             this.lockdowns.delete(guildId);
@@ -501,7 +518,7 @@ class AntiRaid {
             patternType: 'MANUAL',
             severity: 'HIGH',
             confidence: 1.0
-        });
+        }, { raid_lockdown_duration_ms: duration });
         
         // Override reason
         const lockdownInfo = this.lockdowns.get(guild.id);
@@ -509,6 +526,33 @@ class AntiRaid {
             lockdownInfo.reason = reason;
             lockdownInfo.duration = duration;
         }
+    }
+
+    async restoreLockdown(guild) {
+        await this.removeLockdown(guild);
+    }
+
+    scheduleLockdownLift(guild, config = null, durationOverride = null) {
+        const guildId = guild.id;
+        const lockdownInfo = this.lockdowns.get(guildId);
+        if (!lockdownInfo) return;
+
+        const override = Number(durationOverride);
+        const configuredDuration = Number(config?.raid_lockdown_duration_ms);
+        const duration = Number.isFinite(override) && override > 0
+            ? override
+            : (Number.isFinite(configuredDuration) && configuredDuration > 0
+                ? configuredDuration
+                : (lockdownInfo.duration || 5 * 60 * 1000));
+
+        if (lockdownInfo.liftTimeout) {
+            clearTimeout(lockdownInfo.liftTimeout);
+        }
+
+        lockdownInfo.duration = duration;
+        lockdownInfo.liftTimeout = setTimeout(() => {
+            this.removeLockdown(guild);
+        }, duration);
     }
 
     async manualLockdownRemoval(guild) {

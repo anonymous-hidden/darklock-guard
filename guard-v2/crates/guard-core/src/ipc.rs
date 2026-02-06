@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use crate::settings::GuardSettings;
 use hmac::{Hmac, Mac};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
@@ -65,6 +66,10 @@ pub struct ResponseEnvelope {
 pub enum IpcRequest {
     Ping,
     GetStatus,
+    GetSettings,
+    UpdateSettings {
+        settings: GuardSettings,
+    },
     EnterSafeMode {
         reason: String,
     },
@@ -93,6 +98,10 @@ pub enum IpcResponse {
     Status {
         ok: bool,
     },
+    Settings {
+        settings: GuardSettings,
+    },
+    SettingsUpdated,
     SafeModeEntered,
     SafeModeExited,
     UpdateChecked {

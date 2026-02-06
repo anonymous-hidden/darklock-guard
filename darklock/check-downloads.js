@@ -1,6 +1,7 @@
 /**
  * Startup check for Darklock Guard installer files
  * Verifies that installer files are present and accessible
+ * NOTE: Missing installer files log warnings but do not crash the container
  */
 
 const fs = require('fs');
@@ -21,8 +22,9 @@ console.log('[Darklock] Downloads directory:', downloadsDir);
 
 // Check if downloads directory exists
 if (!fs.existsSync(downloadsDir)) {
-    console.error('[Darklock] ❌ Downloads directory not found!');
-    process.exit(1);
+    console.warn('[Darklock] ⚠️  Downloads directory not found (optional feature)');
+    console.warn('[Darklock] Download functionality will be unavailable until installers are added');
+    return;
 }
 
 // List all files in downloads
@@ -33,9 +35,10 @@ console.log('[Darklock] Files in downloads folder:', files);
 const hasInstaller = expectedFiles.some(file => files.includes(file));
 
 if (!hasInstaller) {
-    console.error('[Darklock] ❌ No installer files found!');
-    console.error('[Darklock] Expected at least one of:', expectedFiles);
-    process.exit(1);
+    console.warn('[Darklock] ⚠️  No installer files found (optional feature)');
+    console.warn('[Darklock] Expected at least one of:', expectedFiles);
+    console.warn('[Darklock] Download functionality will be unavailable until installers are added');
+    return;
 }
 
 console.log('[Darklock] ✅ Installer files verified');

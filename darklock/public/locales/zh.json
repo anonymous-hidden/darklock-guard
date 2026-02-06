@@ -1,0 +1,365 @@
+{
+  "nav": {
+    "main": "主要",
+    "dashboard": "仪表板",
+    "profile": "个人资料",
+    "apps": "应用程序",
+    "account": "账户",
+    "security": "安全",
+    "settings": "设置"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "loading": "加载中...",
+    "success": "成功！",
+    "error": "错误",
+    "logout": "退出登录",
+    "submit": "提交",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭",
+    "confirm": "确认",
+    "back": "返回",
+    "next": "下一步",
+    "yes": "是",
+    "no": "否",
+    "enabled": "已启用",
+    "disabled": "已禁用",
+    "active": "活跃",
+    "inactive": "不活跃",
+    "version": "版本",
+    "user": "用户",
+    "admin": "管理员",
+    "owner": "所有者"
+  },
+  "dashboard": {
+    "title": "欢迎",
+    "subtitle": "这是您的 Darklock 平台概览",
+    "stats": {
+      "activeApps": "活跃应用",
+      "2faStatus": "双因素认证状态",
+      "activeSessions": "活跃会话",
+      "lastLogin": "上次登录"
+    },
+    "quickActions": {
+      "title": "快捷操作",
+      "viewApps": "查看应用",
+      "securitySettings": "安全设置",
+      "editProfile": "编辑资料",
+      "discordBot": "Discord 机器人仪表板"
+    },
+    "securityStatus": {
+      "title": "安全状态",
+      "2fa": {
+        "title": "双因素认证",
+        "checking": "正在检查状态...",
+        "enabled": "双因素认证已启用",
+        "disabled": "双因素认证未启用"
+      },
+      "password": {
+        "title": "安全密码",
+        "description": "您的密码符合安全要求"
+      },
+      "email": {
+        "title": "邮箱已验证",
+        "description": "账户邮箱已设置"
+      }
+    }
+  },
+  "profile": {
+    "title": "个人资料",
+    "subtitle": "您是谁 - 您的身份和偏好设置",
+    "overview": "概览",
+    "changeAvatar": "更改头像",
+    "username": "用户名",
+    "displayName": "显示名称",
+    "role": "角色",
+    "accountCreated": "账户创建时间",
+    "personalInfo": {
+      "title": "个人信息",
+      "displayName": "显示名称",
+      "displayNamePlaceholder": "您的显示名称",
+      "email": "邮箱",
+      "emailHint": "要更改邮箱，请前往账户设置",
+      "timezone": "时区",
+      "language": "语言",
+      "saveChanges": "保存更改"
+    },
+    "preferences": {
+      "title": "偏好设置",
+      "theme": {
+        "title": "主题",
+        "description": "选择您喜欢的配色方案",
+        "dark": "深色",
+        "light": "浅色",
+        "system": "跟随系统"
+      },
+      "reducedMotion": {
+        "title": "减少动画",
+        "description": "最小化动画和过渡效果"
+      },
+      "compactLayout": {
+        "title": "紧凑布局",
+        "description": "用更少的间距显示更多内容"
+      }
+    },
+    "notifications": {
+      "title": "通知",
+      "securityAlerts": {
+        "title": "安全警报",
+        "description": "接收可疑活动通知"
+      },
+      "productUpdates": {
+        "title": "产品更新",
+        "description": "新功能和改进"
+      },
+      "emailNotifications": {
+        "title": "邮件通知",
+        "description": "通过电子邮件接收通知"
+      }
+    }
+  },
+  "apps": {
+    "title": "应用程序",
+    "subtitle": "访问和管理您的 Darklock 应用",
+    "darklock": {
+      "name": "Darklock Guard",
+      "description": "文件完整性监控和保护",
+      "launch": "启动",
+      "download": "下载"
+    }
+  },
+  "security": {
+    "title": "安全",
+    "subtitle": "敏感内容 - 您的账户如何受到保护",
+    "overview": {
+      "title": "概览",
+      "2faStatus": "双因素认证状态",
+      "passwordStrength": "密码强度",
+      "activeSessions": "活跃会话",
+      "strong": "强"
+    },
+    "authentication": {
+      "title": "身份验证",
+      "changePassword": {
+        "title": "更改密码",
+        "description": "更新密码以保护您的账户安全",
+        "currentPassword": "当前密码",
+        "currentPasswordPlaceholder": "输入当前密码",
+        "newPassword": "新密码",
+        "newPasswordPlaceholder": "输入新密码",
+        "confirmPassword": "确认新密码",
+        "confirmPasswordPlaceholder": "确认新密码",
+        "updateButton": "更新密码"
+      },
+      "2fa": {
+        "title": "双因素认证",
+        "description": "为您的账户添加额外的安全层",
+        "loading": "正在加载双因素认证状态...",
+        "enable": "启用双因素认证",
+        "disable": "禁用双因素认证",
+        "enabled": "已启用",
+        "disabled": "已禁用"
+      }
+    },
+    "sessions": {
+      "title": "会话",
+      "description": "管理连接到您账户的设备",
+      "loading": "正在加载会话...",
+      "current": "当前会话",
+      "revoke": "撤销",
+      "revokeAll": "撤销所有会话"
+    },
+    "activity": {
+      "title": "安全活动",
+      "description": "最近的安全事件和访问历史",
+      "loading": "正在加载活动...",
+      "noEvents": "没有最近的安全事件"
+    }
+  },
+  "account": {
+    "title": "账户",
+    "subtitle": "所有权和生命周期管理",
+    "details": {
+      "title": "账户详情",
+      "email": {
+        "title": "邮箱地址",
+        "description": "您的主要联系邮箱 - 更改需要密码 + 双因素认证",
+        "current": "当前邮箱",
+        "new": "新邮箱",
+        "newPlaceholder": "输入新邮箱",
+        "confirmPassword": "确认密码",
+        "confirmPasswordPlaceholder": "输入您的密码",
+        "2faCode": "双因素认证码",
+        "changeButton": "更改邮箱"
+      },
+      "username": {
+        "title": "用户名",
+        "description": "您在平台上的唯一标识符",
+        "current": "当前用户名",
+        "new": "新用户名",
+        "newPlaceholder": "输入新用户名",
+        "hint": "3-20个字符，仅限字母、数字、下划线和连字符",
+        "changeButton": "更改用户名"
+      }
+    },
+    "data": {
+      "title": "数据",
+      "export": {
+        "title": "导出账户数据",
+        "description": "以 JSON 格式下载您的所有账户数据",
+        "button": "导出数据"
+      },
+      "clearSessions": {
+        "title": "关闭所有会话",
+        "description": "从所有设备退出登录（除了当前设备）",
+        "button": "关闭会话"
+      }
+    },
+    "dangerZone": {
+      "title": "危险区域",
+      "description": "不可逆操作 - 请谨慎操作",
+      "disable": {
+        "title": "禁用账户",
+        "description": "暂时禁用您的账户 - 可以重新激活",
+        "button": "禁用账户"
+      },
+      "delete": {
+        "title": "删除账户",
+        "description": "永久删除您的账户和所有相关数据",
+        "button": "删除账户"
+      }
+    }
+  },
+  "settings": {
+    "title": "设置",
+    "description": "平台级配置和偏好设置",
+    "language": {
+      "title": "语言和地区",
+      "select": "语言",
+      "description": "选择您偏好的语言"
+    },
+    "autoDetectLanguage": {
+      "title": "自动检测语言",
+      "description": "根据浏览器设置自动设置语言"
+    },
+    "timezone": {
+      "title": "时区",
+      "description": "您的本地时区",
+      "autoDetect": "自动检测"
+    },
+    "dateFormat": {
+      "title": "日期格式",
+      "description": "日期的显示方式"
+    },
+    "timeFormat": {
+      "title": "时间格式",
+      "description": "12小时制或24小时制",
+      "12hour": "12小时制 (上午/下午)",
+      "24hour": "24小时制"
+    },
+    "platform": {
+      "title": "平台",
+      "defaultLanding": {
+        "title": "默认首页",
+        "description": "选择登录后进入的页面"
+      },
+      "rememberLastApp": {
+        "title": "记住上次使用的应用",
+        "description": "返回上次使用的应用程序"
+      },
+      "autoSave": {
+        "title": "自动保存偏好设置",
+        "description": "自动保存偏好设置的更改"
+      }
+    },
+    "appearance": {
+      "title": "外观",
+      "theme": {
+        "title": "主题",
+        "description": "选择您的颜色主题",
+        "dark": "深色",
+        "light": "浅色",
+        "auto": "自动（跟随系统）"
+      },
+      "compactMode": {
+        "title": "紧凑模式",
+        "description": "减少间距以显示更多内容"
+      },
+      "sidebarPosition": {
+        "title": "侧边栏位置",
+        "description": "侧边导航栏的位置",
+        "left": "左侧",
+        "right": "右侧"
+      }
+    },
+    "accessibility": {
+      "title": "无障碍",
+      "fontScaling": {
+        "title": "字体缩放",
+        "description": "调整整个平台的文字大小",
+        "small": "小",
+        "medium": "中",
+        "large": "大",
+        "xlarge": "超大"
+      },
+      "highContrast": {
+        "title": "高对比度模式",
+        "description": "增加对比度以提高可见性"
+      },
+      "reducedMotion": {
+        "title": "减少动画",
+        "description": "最小化动画和过渡效果"
+      },
+      "screenReader": {
+        "title": "屏幕阅读器支持",
+        "description": "增强的屏幕阅读器兼容性"
+      }
+    },
+    "notifications": {
+      "title": "通知",
+      "email": {
+        "title": "邮件通知",
+        "description": "通过邮件接收重要更新"
+      },
+      "push": {
+        "title": "推送通知",
+        "description": "浏览器推送通知"
+      },
+      "sound": {
+        "title": "声音通知",
+        "description": "播放通知声音"
+      }
+    },
+    "privacy": {
+      "title": "隐私和安全",
+      "activityTracking": {
+        "title": "活动追踪",
+        "description": "允许分析以改善您的体验"
+      },
+      "sessionTimeout": {
+        "title": "会话超时",
+        "description": "不活动后自动退出登录",
+        "15min": "15分钟",
+        "30min": "30分钟",
+        "1hour": "1小时",
+        "4hours": "4小时",
+        "never": "永不"
+      },
+      "require2FA": {
+        "title": "登录需要双因素认证",
+        "description": "始终要求双因素认证"
+      }
+    },
+    "experimental": {
+      "title": "实验性功能",
+      "description": "在发布前测试新功能",
+      "betaFeatures": {
+        "title": "测试版功能",
+        "description": "启用实验性功能和改进"
+      },
+      "notice": "测试版功能可能不稳定且可能会更改"
+    }
+  }
+}

@@ -86,7 +86,10 @@ class DarklockDatabase {
                 last_login_ip TEXT,
                 password_changed_at TEXT,
                 settings TEXT,
-                active INTEGER DEFAULT 1
+                active INTEGER DEFAULT 1,
+                language TEXT DEFAULT 'en',
+                region TEXT DEFAULT 'auto',
+                email_updates_opt_in INTEGER DEFAULT 0
             )
         `);
 
@@ -117,8 +120,38 @@ class DarklockDatabase {
                 show_quick_actions INTEGER DEFAULT 1,
                 theme TEXT DEFAULT 'dark',
                 language TEXT DEFAULT 'en',
+                region TEXT DEFAULT 'auto',
+                timezone TEXT DEFAULT 'auto',
+                date_format TEXT DEFAULT 'MM/DD/YYYY',
+                time_format TEXT DEFAULT '12h',
+                default_landing_page TEXT DEFAULT 'dashboard',
+                remember_last_app INTEGER DEFAULT 1,
+                auto_save INTEGER DEFAULT 1,
+                compact_mode INTEGER DEFAULT 0,
+                sidebar_position TEXT DEFAULT 'left',
+                font_scaling TEXT DEFAULT '100',
+                high_contrast INTEGER DEFAULT 0,
+                reduced_motion INTEGER DEFAULT 0,
+                screen_reader_support INTEGER DEFAULT 0,
+                email_notifications INTEGER DEFAULT 1,
+                push_notifications INTEGER DEFAULT 0,
+                sound_enabled INTEGER DEFAULT 1,
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+
+        await this.run(`
+            CREATE TABLE IF NOT EXISTS updates (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                version TEXT NOT NULL,
+                type TEXT NOT NULL,
+                content TEXT NOT NULL,
+                published_at TEXT NOT NULL,
+                created_by TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (created_by) REFERENCES users(id)
             )
         `);
 
@@ -128,6 +161,59 @@ class DarklockDatabase {
         await this.run(`CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)`);
         await this.run(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
         await this.run(`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`);
+        await this.run(`CREATE INDEX IF NOT EXISTS idx_updates_published_at ON updates(published_at)`);
+        await this.run(`CREATE INDEX IF NOT EXISTS idx_updates_version ON updates(version)`);
+
+        // Premium subscription tables
+        await this.run(`
+            CREATE TABLE IF NOT EXISTS premium_subscriptions (
+                user_id TEXT PRIMARY KEY,
+                tier TEXT NOT NULL,
+                license_code TEXT,
+                stripe_customer_id TEXT,
+                stripe_subscription_id TEXT,
+                payment_id TEXT,
+                expires_at TEXT,
+                purchased_at TEXT NOT NULL,
+                cancelled_at TEXT,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+
+        await this.run(`
+            CREATE TABLE IF NOT EXISTS license_codes (
+                code TEXT PRIMARY KEY,
+                tier TEXT NOT NULL,
+                expires_at TEXT,
+                max_redemptions INTEGER DEFAULT 1,
+                redemptions_count INTEGER DEFAULT 0,
+                redeemed_at TEXT,
+                created_at TEXT NOT NULL
+            )
+        `);
+
+        await this.run(`
+            CREATE TABLE IF NOT EXISTS payment_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                tier TEXT NOT NULL,
+                amount REAL NOT NULL,
+                currency TEXT DEFAULT 'usd',
+                stripe_session_id TEXT,
+                stripe_payment_intent TEXT,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+
+        // Create indexes for premium tables
+        await this.run(`CREATE INDEX IF NOT EXISTS idx_premium_stripe_customer ON premium_subscriptions(stripe_customer_id)`);
+        await this.run(`CREATE INDEX IF NOT EXISTS idx_premium_payment_id ON premium_subscriptions(payment_id)`);
+        await this.run(`CREATE INDEX IF NOT EXISTS idx_license_tier ON license_codes(tier)`);
+        await this.run(`CREATE INDEX IF NOT EXISTS idx_payment_user ON payment_history(user_id)`);
+        await this.run(`CREATE INDEX IF NOT EXISTS idx_payment_intent ON payment_history(stripe_payment_intent)`);
 
         console.log('[Darklock DB] Tables created successfully');
     }
@@ -136,7 +222,28 @@ class DarklockDatabase {
      * Run any pending migrations
      */
     async runMigrations() {
-        // Future migrations will go here
+        // Migration: Add language, region, and email_updates_opt_in to existing users table
+        try {
+            await this.run(`ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'en'`);
+            console.log('[Darklock DB] Migration: Added language column');
+        } catch (err) {
+            // Column already exists
+        }
+        
+        try {
+            await this.run(`ALTER TABLE users ADD COLUMN region TEXT DEFAULT 'auto'`);
+            console.log('[Darklock DB] Migration: Added region column');
+        } catch (err) {
+            // Column already exists
+        }
+        
+        try {
+            await this.run(`ALTER TABLE users ADD COLUMN email_updates_opt_in INTEGER DEFAULT 0`);
+            console.log('[Darklock DB] Migration: Added email_updates_opt_in column');
+        } catch (err) {
+            // Column already exists
+        }
+        
         console.log('[Darklock DB] Migrations complete');
     }
 
@@ -446,6 +553,172 @@ class DarklockDatabase {
         }
 
         return this.getUserSettings(userId);
+    }
+
+    /**
+     * UPDATE METHODS
+     */
+
+    async createUpdate(updateData) {
+        const { id, title, version, type, content, createdBy } = updateData;
+        const now = new Date().toISOString();
+
+        await this.run(`
+            INSERT INTO updates (
+                id, title, version, type, content, published_at, created_by, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [id, title, version, type, content, now, createdBy, now]);
+
+        return this.getUpdateById(id);
+    }
+
+    async getUpdateById(updateId) {
+        return this.get(`SELECT * FROM updates WHERE id = ?`, [updateId]);
+    }
+
+    async getAllUpdates() {
+        return this.all(`
+            SELECT * FROM updates 
+            ORDER BY published_at DESC
+        `);
+    }
+
+    async getLatestUpdate() {
+        return this.get(`
+            SELECT * FROM updates 
+            ORDER BY published_at DESC 
+            LIMIT 1
+        `);
+    }
+
+    async getUsersWithEmailOptIn() {
+        return this.all(`
+            SELECT id, username, email 
+            FROM users 
+            WHERE email_updates_opt_in = 1 AND active = 1
+        `);
+    }
+
+    /**
+     * Save user language preference
+     */
+    async saveUserLanguage(userId, language) {
+        const now = new Date().toISOString();
+        await this.run(`
+            UPDATE users 
+            SET language = ?, updated_at = ? 
+            WHERE id = ?
+        `, [language, now, userId]);
+    }
+
+    /**
+     * Save user region preference
+     */
+    async saveUserRegion(userId, region) {
+        const now = new Date().toISOString();
+        await this.run(`
+            UPDATE users 
+            SET region = ?, updated_at = ? 
+            WHERE id = ?
+        `, [region, now, userId]);
+    }
+
+    /**
+     * Get user's premium subscription
+     */
+    async getUserPremium(userId) {
+        return this.get(`
+            SELECT * FROM premium_subscriptions 
+            WHERE user_id = ?
+        `, [userId]);
+    }
+
+    /**
+     * Save/update premium subscription
+     */
+    async savePremium(userId, data) {
+        const now = new Date().toISOString();
+        return this.run(`
+            INSERT OR REPLACE INTO premium_subscriptions 
+            (user_id, tier, license_code, stripe_customer_id, stripe_subscription_id, payment_id, expires_at, purchased_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+            userId,
+            data.tier,
+            data.licenseCode || null,
+            data.stripeCustomerId || null,
+            data.stripeSubscriptionId || null,
+            data.stripePaymentIntent || null,
+            data.expiresAt || null,
+            data.purchasedAt || now,
+            now
+        ]);
+    }
+
+    /**
+     * Create license code
+     */
+    async createLicense(code, tier, expiresAt = null, maxRedemptions = 1) {
+        const now = new Date().toISOString();
+        return this.run(`
+            INSERT INTO license_codes 
+            (code, tier, expires_at, max_redemptions, redemptions_count, created_at)
+            VALUES (?, ?, ?, ?, 0, ?)
+        `, [code, tier, expiresAt, maxRedemptions, now]);
+    }
+
+    /**
+     * Get license code
+     */
+    async getLicense(code) {
+        return this.get(`
+            SELECT * FROM license_codes 
+            WHERE code = ?
+        `, [code]);
+    }
+
+    /**
+     * Redeem license code
+     */
+    async redeemLicense(code) {
+        return this.run(`
+            UPDATE license_codes 
+            SET redemptions_count = redemptions_count + 1,
+                redeemed_at = ?
+            WHERE code = ?
+        `, [new Date().toISOString(), code]);
+    }
+
+    /**
+     * Record payment
+     */
+    async recordPayment(data) {
+        const now = new Date().toISOString();
+        return this.run(`
+            INSERT INTO payment_history 
+            (user_id, tier, amount, currency, stripe_session_id, stripe_payment_intent, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+            data.userId,
+            data.tier,
+            data.amount,
+            data.currency,
+            data.stripeSessionId || null,
+            data.stripePaymentIntent || null,
+            data.status || 'completed',
+            now
+        ]);
+    }
+
+    /**
+     * Cancel premium
+     */
+    async cancelPremium(userId) {
+        return this.run(`
+            UPDATE premium_subscriptions 
+            SET cancelled_at = ?
+            WHERE user_id = ?
+        `, [new Date().toISOString(), userId]);
     }
 
     /**

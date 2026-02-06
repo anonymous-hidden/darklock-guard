@@ -1,11 +1,11 @@
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
-use guard_core::device_state::RemoteActivityStatus;
 use guard_core::event_log::{EventLog, EventSeverity};
 use guard_core::ipc::{IpcHandler, IpcRequest, IpcResponse, IpcServer};
 use guard_core::paths::{data_dir, ipc_socket_path, log_dir};
 use guard_core::safe_mode::{SafeModeReason, SafeModeState};
+use guard_core::secure_storage::store_ipc_secret;
 use guard_core::vault::{Vault, CURRENT_CONFIG_VERSION, VAULT_VERSION};
 use parking_lot::Mutex;
 use serde::Deserialize;
@@ -17,7 +17,12 @@ use tracing::info;
 use zeroize::Zeroizing;
 
 mod connected;
+mod engine;
 mod status;
+mod service_state;
+
+use crate::engine::Engine;
+use crate::service_state::{CrashTracker, ServiceState};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Darklock Guard v2 Service", long_about = None)]
@@ -103,13 +108,16 @@ async fn run_command(data_dir_override: Option<PathBuf>) -> Result<()> {
     }
 
     let ipc_secret = vault.ipc_shared_secret()?;
+    store_ipc_secret(&vault.payload.device_id, &ipc_secret)?;
     let socket_path = ipc_socket_path()?;
 
     let initial_connected = !matches!(vault.payload.mode, guard_core::vault::Mode::Connected);
 
+    let engine = Engine::load_from_vault(&vault)?;
     let state = Arc::new(Mutex::new(ServiceState {
         vault_path,
         vault,
+        engine,
         event_log,
         safe_mode,
         password: Zeroizing::new(password),
@@ -169,26 +177,6 @@ async fn run_command(data_dir_override: Option<PathBuf>) -> Result<()> {
     Ok(())
 }
 
-pub(crate) struct ServiceState {
-    pub(crate) vault_path: PathBuf,
-    pub(crate) vault: Vault,
-    pub(crate) event_log: EventLog,
-    pub(crate) safe_mode: SafeModeState,
-    pub(crate) password: Zeroizing<String>,
-    pub(crate) connected: bool,
-    pub(crate) last_heartbeat: Option<DateTime<Utc>>,
-    pub(crate) last_remote_command: Option<RemoteCommandRecord>,
-    pub(crate) update_available: bool,
-    pub(crate) _crash_tracker: CrashTracker,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct RemoteCommandRecord {
-    pub command: String,
-    pub timestamp: DateTime<Utc>,
-    pub status: RemoteActivityStatus,
-}
-
 struct ServiceHandler {
     state: Arc<Mutex<ServiceState>>,
     updater_path: PathBuf,
@@ -204,13 +192,28 @@ impl IpcHandler for ServiceHandler {
                     ok: !state.safe_mode.active,
                 })
             }
+            IpcRequest::GetSettings => {
+                let state = self.state.lock();
+                Ok(IpcResponse::Settings {
+                    settings: state.engine.settings(),
+                })
+            }
+            IpcRequest::UpdateSettings { settings } => {
+                let mut state = self.state.lock();
+                state
+                    .engine
+                    .update_settings(&mut state.vault, settings)
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                Ok(IpcResponse::SettingsUpdated)
+            }
             IpcRequest::CheckUpdate { manifest_path } => {
                 let manifest = load_manifest(&manifest_path)?;
                 {
                     let mut guard = self.state.lock();
                     guard.update_available = true;
                     guard.vault.payload.state.last_update_check = Some(Utc::now());
-                    guard.vault.save(&guard.password)?;
+                    let password = guard.password.clone();
+                    guard.vault.save(&password)?;
                 }
                 Ok(IpcResponse::UpdateChecked {
                     available: true,
@@ -253,7 +256,8 @@ impl IpcHandler for ServiceHandler {
                     let mut guard = self.state.lock();
                     guard.update_available = false;
                     guard.vault.payload.state.installed_version = manifest.version.clone();
-                    guard.vault.save(&guard.password)?;
+                    let password = guard.password.clone();
+                    guard.vault.save(&password)?;
                 }
                 Ok(IpcResponse::UpdateInstalled {
                     backup_manifest: backup_manifest.trim().to_string(),
@@ -303,6 +307,11 @@ impl IpcHandler for ServiceHandler {
 }
 
 fn prompt_password_once(prompt: &str) -> Result<String> {
+    if let Ok(pw) = std::env::var("GUARD_VAULT_PASSWORD") {
+        if !pw.is_empty() {
+            return Ok(pw);
+        }
+    }
     let pw = rpassword::prompt_password(prompt).map_err(|e| anyhow!("password prompt: {e}"))?;
     if pw.len() < 12 {
         return Err(anyhow!("password too short; minimum 12 characters"));
@@ -311,6 +320,16 @@ fn prompt_password_once(prompt: &str) -> Result<String> {
 }
 
 fn prompt_password_twice(prompt: &str) -> Result<String> {
+    if let Ok(pw) = std::env::var("GUARD_VAULT_PASSWORD") {
+        if !pw.is_empty() {
+            if let Ok(confirm) = std::env::var("GUARD_VAULT_PASSWORD_CONFIRM") {
+                if confirm != pw {
+                    return Err(anyhow!("password confirmation mismatch"));
+                }
+            }
+            return Ok(pw);
+        }
+    }
     let first = prompt_password_once(prompt)?;
     let second = rpassword::prompt_password("Confirm password")
         .map_err(|e| anyhow!("password prompt: {e}"))?;
@@ -346,31 +365,4 @@ fn run_updater(updater_path: &PathBuf, args: &[&str]) -> Result<String> {
         return Err(anyhow!("updater failed: {}", stderr));
     }
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
-}
-
-struct CrashTracker {
-    path: PathBuf,
-}
-
-impl CrashTracker {
-    pub fn new(path: PathBuf) -> Self {
-        Self { path }
-    }
-
-    pub fn record_start(&self) -> Result<usize> {
-        let mut entries: Vec<chrono::DateTime<chrono::Utc>> = if self.path.exists() {
-            let data = std::fs::read_to_string(&self.path)?;
-            serde_json::from_str(&data).unwrap_or_default()
-        } else {
-            vec![]
-        };
-        let now = chrono::Utc::now();
-        let window = chrono::Duration::minutes(5);
-        entries.retain(|t| *t > now - window);
-        entries.push(now);
-        let count = entries.len();
-        let data = serde_json::to_string(&entries)?;
-        std::fs::write(&self.path, data)?;
-        Ok(count)
-    }
 }

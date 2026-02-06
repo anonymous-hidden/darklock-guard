@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/css/dashboard-modern.css">
-    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
     <script src="/js/global-theme.js"></script>
     <script src="/js/theme-effects.js"></script>
     <style>
@@ -487,6 +487,14 @@
             if (userRole === 'administration') {
                 await loadAnalytics();
             }
+            
+            // Listen for guild selection changes
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'selectedGuildId' && e.newValue !== e.oldValue) {
+                    loadTickets();
+                    loadServerInfo();
+                }
+            });
         });
 
         // API Helper
@@ -496,7 +504,15 @@
                 'Content-Type': 'application/json',
                 ...(opts.headers || {})
             };
-            if (guildId) headers['X-Guild-Id'] = guildId;
+            if (guildId) {
+                headers['X-Guild-Id'] = guildId;
+                // Also add as query parameter if not already present
+                if (!path.includes('guildId=') && !path.includes('?')) {
+                    path += `?guildId=${guildId}`;
+                } else if (!path.includes('guildId=')) {
+                    path += `&guildId=${guildId}`;
+                }
+            }
 
             const response = await SecureAuth.fetch(path, {
                 ...opts,
@@ -597,6 +613,18 @@
         // Load tickets
         async function loadTickets() {
             try {
+                const guildId = localStorage.getItem('selectedGuildId');
+                if (!guildId) {
+                    document.getElementById('ticketsListContent').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">🔍</div>
+                            <div class="empty-title">Select a Server</div>
+                            <div class="empty-description">Please select a server from the sidebar to view tickets</div>
+                        </div>
+                    `;
+                    return;
+                }
+
                 let response = await apiFetch('/api/tickets/list?limit=100').catch(() => null);
                 
                 if (!response || response.status === 404) {

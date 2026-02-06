@@ -8,7 +8,7 @@ use tokio::{
 use tracing::warn;
 
 use super::api_client::ApiClient;
-use crate::ServiceState;
+use crate::service_state::ServiceState;
 
 pub fn spawn_heartbeat_loop(
     client: ApiClient,
@@ -21,24 +21,22 @@ pub fn spawn_heartbeat_loop(
             ticker.tick().await;
             match client.send_heartbeat(&device_id).await {
                 Ok(_) => {
-                    if let Ok(mut guard) = std::panic::catch_unwind(|| state.lock()) {
-                        guard.connected = true;
-                        guard.last_heartbeat = Some(Utc::now());
-                        guard
-                            .event_log
-                            .append(
-                                "HEARTBEAT_SENT",
-                                guard_core::event_log::EventSeverity::Info,
-                                serde_json::json!({"device_id": device_id}),
-                            )
-                            .ok();
-                    }
+                    let mut guard = state.lock();
+                    guard.connected = true;
+                    guard.last_heartbeat = Some(Utc::now());
+                    guard
+                        .event_log
+                        .append(
+                            "HEARTBEAT_SENT",
+                            guard_core::event_log::EventSeverity::Info,
+                            serde_json::json!({"device_id": device_id}),
+                        )
+                        .ok();
                 }
                 Err(err) => {
                     warn!(error = %err, "heartbeat failed");
-                    if let Ok(mut guard) = std::panic::catch_unwind(|| state.lock()) {
-                        guard.connected = false;
-                    }
+                    let mut guard = state.lock();
+                    guard.connected = false;
                 }
             }
         }

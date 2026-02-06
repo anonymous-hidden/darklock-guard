@@ -1,211 +1,216 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('leaderboard')
-        .setDescription('View the server XP leaderboard')
-        .addIntegerOption(option =>
-            option.setName('page')
-                .setDescription('Page number to view')
-                .setRequired(false)
-                .setMinValue(1)),
+        .setDescription('🏆 View the server XP leaderboard'),
 
     async execute(interaction, bot) {
         await interaction.deferReply();
 
-        try {
-            const guildId = interaction.guild.id;
-            const page = interaction.options.getInteger('page') || 1;
-            const perPage = 10;
-
-            // Check if XP system is enabled
-            const guildConfig = await bot.database.getGuildConfig(guildId);
-            if (!guildConfig?.xp_enabled) {
-                return interaction.editReply({
-                    embeds: [new EmbedBuilder()
-                        .setColor('#ff6b6b')
-                        .setDescription('❌ XP system is not enabled on this server. An admin can enable it in the dashboard.')
-                    ]
-                });
-            }
-
-            // Get total user count for pagination
-            const totalUsers = await bot.rankSystem.getTotalUsers(guildId);
-            const totalPages = Math.ceil(totalUsers / perPage) || 1;
-            const currentPage = Math.min(page, totalPages);
-            const offset = (currentPage - 1) * perPage;
-
-            // Get leaderboard data
-            const leaderboard = await bot.rankSystem.getLeaderboard(guildId, perPage, offset);
-
-            if (leaderboard.length === 0) {
-                return interaction.editReply({
-                    embeds: [new EmbedBuilder()
-                        .setColor('#ffaa00')
-                        .setTitle('📊 XP Leaderboard')
-                        .setDescription('No one has earned XP yet! Start chatting to be the first on the leaderboard.')
-                        .setFooter({ text: interaction.guild.name, iconURL: interaction.guild.iconURL() })
-                    ]
-                });
-            }
-
-            // Build leaderboard embed
-            const embed = await buildLeaderboardEmbed(interaction, leaderboard, currentPage, totalPages, totalUsers, offset);
-
-            // Create pagination buttons
-            const buttons = createPaginationButtons(currentPage, totalPages);
-
-            const response = { embeds: [embed] };
-            if (totalPages > 1) {
-                response.components = [buttons];
-            }
-
-            const message = await interaction.editReply(response);
-
-            // Handle button interactions if multiple pages
-            if (totalPages > 1) {
-                const collector = message.createMessageComponentCollector({
-                    filter: i => i.user.id === interaction.user.id,
-                    time: 120000 // 2 minutes
-                });
-
-                collector.on('collect', async i => {
-                    try {
-                        let newPage = currentPage;
-
-                        switch (i.customId) {
-                            case 'lb_first':
-                                newPage = 1;
-                                break;
-                            case 'lb_prev':
-                                newPage = Math.max(1, currentPage - 1);
-                                break;
-                            case 'lb_next':
-                                newPage = Math.min(totalPages, currentPage + 1);
-                                break;
-                            case 'lb_last':
-                                newPage = totalPages;
-                                break;
-                        }
-
-                        const newOffset = (newPage - 1) * perPage;
-                        const newLeaderboard = await bot.rankSystem.getLeaderboard(guildId, perPage, newOffset);
-                        const newEmbed = await buildLeaderboardEmbed(interaction, newLeaderboard, newPage, totalPages, totalUsers, newOffset);
-                        const newButtons = createPaginationButtons(newPage, totalPages);
-
-                        await i.update({ embeds: [newEmbed], components: [newButtons] });
-                    } catch (error) {
-                        console.error('Error updating leaderboard:', error);
-                    }
-                });
-
-                collector.on('end', () => {
-                    // Disable buttons after timeout
-                    const disabledButtons = createPaginationButtons(currentPage, totalPages, true);
-                    interaction.editReply({ components: [disabledButtons] }).catch(() => {});
-                });
-            }
-
-        } catch (error) {
-            console.error('Error executing leaderboard command:', error);
-            await interaction.editReply({
-                embeds: [new EmbedBuilder()
-                    .setColor('#ff6b6b')
-                    .setDescription('❌ An error occurred while fetching the leaderboard.')
+        const guildId = interaction.guild.id;
+        
+        // Check if XP is enabled
+        const settings = await bot.xpDatabase?.getGuildSettings(guildId);
+        if (!settings?.xp_enabled) {
+            return interaction.editReply({
+                embeds: [
+                    new EmbedBuilder()
+                        .setColor(0x2B2D31)
+                        .setDescription('⚠️ XP system is not enabled on this server.\nAsk an admin to use `/xp enable`')
                 ]
             });
         }
+
+        // Get leaderboard data
+        const leaderboard = await bot.xpDatabase?.getLeaderboard(guildId, 10, 'overall');
+        
+        if (!leaderboard || leaderboard.length === 0) {
+            return interaction.editReply({
+                embeds: [
+                    new EmbedBuilder()
+                        .setColor(0x2B2D31)
+                        .setDescription('📊 No XP data yet. Start chatting to earn XP!')
+                ]
+            });
+        }
+
+        const embed = await buildArcaneLeaderboard(interaction, leaderboard, 'overall', bot);
+        const dropdown = createTimeDropdown('overall');
+        
+        await interaction.editReply({ embeds: [embed], components: [dropdown] });
     }
 };
 
-/**
- * Build the leaderboard embed
- */
-async function buildLeaderboardEmbed(interaction, leaderboard, currentPage, totalPages, totalUsers, offset) {
-    const medals = ['🥇', '🥈', '🥉'];
-    const descriptions = [];
+// Get level from XP
+function getLevel(xp) {
+    if (!xp || xp === 0) return 0;
+    return Math.floor(0.1 * Math.sqrt(xp));
+}
 
+// Get time range config
+function getTimeConfig(timeRange) {
+    const configs = {
+        daily: { label: 'Daily XP', emoji: '📅' },
+        weekly: { label: 'Weekly XP', emoji: '📆' },
+        monthly: { label: 'Monthly XP', emoji: '🗓️' },
+        overall: { label: 'Overall XP', emoji: '🏆' }
+    };
+    return configs[timeRange] || configs.overall;
+}
+
+// Build the Arcane-style leaderboard embed
+async function buildArcaneLeaderboard(interaction, leaderboard, timeRange, bot) {
+    const guild = interaction.guild;
+    
+    // Build leaderboard entries - clean Arcane style
+    let description = '';
+    
     for (let i = 0; i < leaderboard.length; i++) {
-        const user = leaderboard[i];
-        const rank = offset + i + 1;
-        const medal = rank <= 3 ? medals[rank - 1] : `\`${rank}.\``;
+        const entry = leaderboard[i];
+        const rank = i + 1;
+        const xp = timeRange === 'overall' ? (entry.total_xp || 0) : (entry[`${timeRange}_xp`] || entry.total_xp || 0);
+        const level = getLevel(xp);
         
-        // Try to fetch username
-        let username;
+        // Try to get user
+        let username = 'Unknown User';
         try {
-            const member = await interaction.guild.members.fetch(user.user_id).catch(() => null);
-            username = member?.user?.username || `User ${user.user_id.slice(0, 8)}...`;
-        } catch {
-            username = `User ${user.user_id.slice(0, 8)}...`;
+            const user = await interaction.client.users.fetch(entry.user_id).catch(() => null);
+            if (user) username = user.username;
+        } catch (e) {
+            username = 'Unknown User';
         }
-
-        const level = user.level || 0;
-        const xp = formatNumber(user.xp || 0);
-        const messages = formatNumber(user.total_messages || 0);
-
-        descriptions.push(
-            `${medal} **${username}**\n` +
-            `   ╰ Level \`${level}\` • \`${xp}\` XP • \`${messages}\` msgs`
-        );
+        
+        // Rank display with colors
+        let rankDisplay;
+        if (rank === 1) {
+            rankDisplay = '**#1**';  // Gold style
+        } else if (rank === 2) {
+            rankDisplay = '**#2**';  // Silver style  
+        } else if (rank === 3) {
+            rankDisplay = '**#3**';  // Bronze style
+        } else {
+            rankDisplay = `**#${rank}**`;
+        }
+        
+        // Clean single-line format like Arcane
+        description += `${rankDisplay} • @${username} • LVL: ${level}\n`;
     }
-
-    // Find requesting user's position
-    const userStats = await interaction.client.bot?.rankSystem?.getUserStats(interaction.guild.id, interaction.user.id);
-    const userRank = userStats?.rank || '—';
-
+    
+    // Remove trailing newline
+    description = description.trimEnd();
+    
+    // Add visual terminator + dropdown hint (Arcane-style illusion technique)
+    description += '\n\n'; // Spacer
+    description += '─────────────────────────────'; // Divider
+    description += '\n*Select leaderboard type below*'; // Hint text
+    
+    const config = getTimeConfig(timeRange);
+    
     return new EmbedBuilder()
-        .setColor('#00d4ff')
-        .setTitle('🏆 XP Leaderboard')
-        .setDescription(descriptions.join('\n\n'))
-        .setThumbnail(interaction.guild.iconURL({ size: 256 }))
-        .addFields(
-            { name: '📊 Your Rank', value: `#${userRank}`, inline: true },
-            { name: '👥 Total Members', value: formatNumber(totalUsers), inline: true },
-            { name: '📄 Page', value: `${currentPage}/${totalPages}`, inline: true }
-        )
-        .setFooter({ text: `${interaction.guild.name} • Keep chatting to climb the ranks!`, iconURL: interaction.guild.iconURL() })
+        .setColor(0x2B2D31)
+        .setAuthor({
+            name: guild.name,
+            iconURL: guild.iconURL({ dynamic: true })
+        })
+        .setDescription(description)
+        .setFooter({ text: `${config.emoji} ${config.label}` })
         .setTimestamp();
 }
 
-/**
- * Create pagination buttons
- */
-function createPaginationButtons(currentPage, totalPages, disabled = false) {
-    return new ActionRowBuilder()
-        .addComponents(
-            new ButtonBuilder()
-                .setCustomId('lb_first')
-                .setLabel('⏪')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(disabled || currentPage === 1),
-            new ButtonBuilder()
-                .setCustomId('lb_prev')
-                .setLabel('◀️')
-                .setStyle(ButtonStyle.Primary)
-                .setDisabled(disabled || currentPage === 1),
-            new ButtonBuilder()
-                .setCustomId('lb_page')
-                .setLabel(`Page ${currentPage}/${totalPages}`)
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(true),
-            new ButtonBuilder()
-                .setCustomId('lb_next')
-                .setLabel('▶️')
-                .setStyle(ButtonStyle.Primary)
-                .setDisabled(disabled || currentPage === totalPages),
-            new ButtonBuilder()
-                .setCustomId('lb_last')
-                .setLabel('⏩')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(disabled || currentPage === totalPages)
-        );
+// Create time range dropdown (like Arcane's "Overall XP" dropdown)
+function createTimeDropdown(activeRange) {
+    const select = new StringSelectMenuBuilder()
+        .setCustomId('leaderboard_select')
+        .setPlaceholder('Select Type')  // ≤ 16 chars
+        .setMinValues(1)
+        .setMaxValues(1)
+        .addOptions([
+            {
+                label: '🏆 Overall',
+                description: 'All-time',
+                value: 'overall',
+                default: activeRange === 'overall'
+            },
+            {
+                label: '📅 Daily',
+                description: 'Today',
+                value: 'daily',
+                default: activeRange === 'daily'
+            },
+            {
+                label: '📆 Weekly',
+                description: 'This week',
+                value: 'weekly',
+                default: activeRange === 'weekly'
+            },
+            {
+                label: '🗓️ Monthly',
+                description: 'This month',
+                value: 'monthly',
+                default: activeRange === 'monthly'
+            }
+        ]);
+    
+    return new ActionRowBuilder().addComponents(select);
 }
 
-/**
- * Format large numbers with K/M suffixes
- */
-function formatNumber(num) {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toLocaleString();
+// Handle dropdown interactions
+async function handleLeaderboardSelect(interaction, bot) {
+    const timeRange = interaction.values[0];
+    const guildId = interaction.guild.id;
+    
+    await interaction.deferUpdate();
+    
+    const leaderboard = await bot.xpDatabase?.getLeaderboard(guildId, 10, timeRange);
+    
+    if (!leaderboard || leaderboard.length === 0) {
+        const config = getTimeConfig(timeRange);
+        return interaction.editReply({
+            embeds: [
+                new EmbedBuilder()
+                    .setColor(0x2B2D31)
+                    .setDescription(`📊 No ${config.label.toLowerCase()} data yet!`)
+            ],
+            components: [createTimeDropdown(timeRange)]
+        });
+    }
+    
+    const embed = await buildArcaneLeaderboard(interaction, leaderboard, timeRange, bot);
+    const dropdown = createTimeDropdown(timeRange);
+    
+    await interaction.editReply({ embeds: [embed], components: [dropdown] });
 }
+
+// Handle button interactions (legacy support)
+async function handleLeaderboardButton(interaction, bot) {
+    const timeRange = interaction.customId.replace('leaderboard_', '');
+    const guildId = interaction.guild.id;
+    
+    await interaction.deferUpdate();
+    
+    const leaderboard = await bot.xpDatabase?.getLeaderboard(guildId, 10, timeRange);
+    
+    if (!leaderboard || leaderboard.length === 0) {
+        const config = getTimeConfig(timeRange);
+        return interaction.editReply({
+            embeds: [
+                new EmbedBuilder()
+                    .setColor(0x2B2D31)
+                    .setDescription(`📊 No ${config.label.toLowerCase()} data yet!`)
+            ],
+            components: [createTimeDropdown(timeRange)]
+        });
+    }
+    
+    const embed = await buildArcaneLeaderboard(interaction, leaderboard, timeRange, bot);
+    const dropdown = createTimeDropdown(timeRange);
+    
+    await interaction.editReply({ embeds: [embed], components: [dropdown] });
+}
+
+// Export handlers
+module.exports.handleLeaderboardButton = handleLeaderboardButton;
+module.exports.handleLeaderboardSelect = handleLeaderboardSelect;
+module.exports.buildArcaneLeaderboard = buildArcaneLeaderboard;
+module.exports.createTimeDropdown = createTimeDropdown;

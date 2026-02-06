@@ -11,6 +11,7 @@ const fs = require('fs');
 
 // Database
 const db = require('../utils/database');
+const themeManager = require('../utils/theme-manager');
 
 // Fail-fast environment validation
 const { getJwtSecret } = require('../utils/env-validator');
@@ -129,7 +130,9 @@ router.get('/api/me', requireAuth, async (req, res) => {
                 avatar: user.avatar,
                 twoFactorEnabled: user.two_factor_enabled === 1,
                 createdAt: user.created_at,
-                lastLogin: user.last_login
+                lastLogin: user.last_login,
+                language: user.language || 'en',
+                timezone: user.timezone || 'UTC'
             }
         });
     } catch (err) {
@@ -398,6 +401,11 @@ router.post('/api/settings', requireAuth, async (req, res) => {
         
         // Save settings to database
         await db.saveUserSettings(userId, settings);
+
+        // Keep top-level user fields in sync when provided
+        if (settings.language) {
+            await db.saveUserLanguage(userId, settings.language);
+        }
         
         res.json({
             success: true,
@@ -408,6 +416,84 @@ router.post('/api/settings', requireAuth, async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to save settings'
+        });
+    }
+});
+
+/**
+ * POST /api/language - Save user language preference
+ */
+router.post('/api/language', requireAuth, async (req, res) => {
+    try {
+        const { language } = req.body;
+        
+        if (!language) {
+            return res.status(400).json({
+                success: false,
+                error: 'Language is required'
+            });
+        }
+        
+        // Validate language code
+        const validLanguages = ['en', 'es', 'fr', 'de', 'pt'];
+        if (!validLanguages.includes(language)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid language code'
+            });
+        }
+        
+        await db.saveUserLanguage(req.user.userId, language);
+
+        // Also store in settings JSON for consistency
+        try {
+            const existingSettings = await db.getUserSettings(req.user.userId);
+            await db.saveUserSettings(req.user.userId, {
+                ...(existingSettings || {}),
+                language
+            });
+        } catch (settingsErr) {
+            console.warn('[Darklock Dashboard] Failed to sync language to settings:', settingsErr);
+        }
+        
+        res.json({
+            success: true,
+            message: 'Language saved successfully'
+        });
+    } catch (err) {
+        console.error('[Darklock Dashboard] Save language error:', err);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to save language'
+        });
+    }
+});
+
+/**
+ * POST /api/region - Save user region preference
+ */
+router.post('/api/region', requireAuth, async (req, res) => {
+    try {
+        const { region } = req.body;
+        
+        if (!region) {
+            return res.status(400).json({
+                success: false,
+                error: 'Region is required'
+            });
+        }
+        
+        await db.saveUserRegion(req.user.userId, region);
+        
+        res.json({
+            success: true,
+            message: 'Region saved successfully'
+        });
+    } catch (err) {
+        console.error('[Darklock Dashboard] Save region error:', err);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to save region'
         });
     }
 });
@@ -429,6 +515,31 @@ router.get('/api/settings', requireAuth, async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to load settings'
+        });
+    }
+});
+
+/**
+ * GET /api/current-theme - Get current active theme
+ * Used by client-side theme system
+ */
+router.get('/api/current-theme', async (req, res) => {
+    try {
+        const activeTheme = await themeManager.getActiveTheme();
+        
+        res.json({
+            success: true,
+            theme: activeTheme.name,
+            colors: activeTheme.theme.colors,
+            autoHoliday: activeTheme.autoHoliday,
+            currentHoliday: activeTheme.currentHoliday
+        });
+    } catch (err) {
+        console.error('[Darklock Dashboard] Get current theme error:', err);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to load theme',
+            theme: 'darklock' // Fallback to default
         });
     }
 });

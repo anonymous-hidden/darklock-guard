@@ -10,9 +10,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/css/design-system.css">
-    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <link rel="stylesheet" href="/css/premium-gating.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
     <script src="/js/global-theme.js"></script>
     <script src="/js/theme-effects.js"></script>
+    <script src="/js/premium-gating.js"></script>
     <style>
         .setup-page { min-height: 100vh; background: var(--ds-surface-0); }
         .setup-nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: var(--ds-space-md) var(--ds-space-xl); background: var(--ds-surface-1); border-bottom: 1px solid var(--ds-border); backdrop-filter: blur(12px); }
@@ -118,7 +120,7 @@
                         <option value="">Select a channel...</option>
                     </select>
                 </div>
-                <div class="setup-form-group">
+                <div class="setup-form-group" data-premium-feature="tickets-advanced">
                     <label class="setup-form-label">Transcript Channel</label>
                     <p class="setup-form-desc">Channel where ticket transcripts will be saved</p>
                     <select class="setup-form-select" id="ticketTranscriptChannel">
@@ -141,7 +143,7 @@
             </div>
         </div>
 
-        <div class="setup-card">
+        <div class="setup-card" data-premium-feature="tickets-advanced">
             <div class="setup-card-header">
                 <div class="setup-card-title"><i class="fas fa-clock"></i><h3>Auto-Close</h3></div>
             </div>
@@ -223,7 +225,18 @@
 
         async function loadSettings() {
             try {
-                const res = await fetch(`/api/guild/${guildId}/settings`, { credentials: 'include' });
+                const guildId = localStorage.getItem('selectedGuildId');
+                if (!guildId) {
+                    alert('Please select a server first');
+                    return;
+                }
+                
+                const res = await fetch(`/api/settings/tickets?guildId=${guildId}`, { 
+                    credentials: 'include',
+                    headers: {
+                        'X-Guild-Id': guildId
+                    }
+                });
                 
                 // Check if response is HTML instead of JSON
                 const contentType = res.headers.get('content-type');
@@ -243,17 +256,17 @@
                 }
                 
                 const response = await res.json();
-                const data = response.data || response;
+                const data = response.settings || response.data || response;
                 
-                document.getElementById('ticketsEnabled').checked = data.tickets_enabled || false;
-                document.getElementById('ticketCategory').value = data.ticket_category || '';
-                document.getElementById('ticketPanelChannel').value = data.ticket_panel_channel || '';
-                document.getElementById('ticketTranscriptChannel').value = data.ticket_transcript_channel || '';
-                document.getElementById('ticketWelcomeMessage').value = data.ticket_welcome_message || '';
-                document.getElementById('ticketAutoclose').checked = data.ticket_autoclose || false;
-                document.getElementById('ticketAutocloseHours').value = data.ticket_autoclose_hours || 48;
+                document.getElementById('ticketsEnabled').checked = data.enabled || false;
+                document.getElementById('ticketCategory').value = data.category || '';
+                document.getElementById('ticketPanelChannel').value = data.panelChannel || '';
+                document.getElementById('ticketTranscriptChannel').value = data.transcriptChannel || '';
+                document.getElementById('ticketWelcomeMessage').value = data.welcomeMessage || '';
+                document.getElementById('ticketAutoclose').checked = data.autoClose?.enabled || false;
+                document.getElementById('ticketAutocloseHours').value = data.autoClose?.hours || 48;
                 
-                updateFeatureStatus(data.tickets_enabled);
+                updateFeatureStatus(data.enabled);
             } catch (error) {
                 console.error('Error loading settings:', error);
                 // Show user-friendly error
@@ -269,19 +282,32 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             
             try {
+                const guildId = localStorage.getItem('selectedGuildId');
+                if (!guildId) {
+                    alert('Please select a server first');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-save"></i> Save Settings';
+                    return;
+                }
+                
                 const settings = {
-                    tickets_enabled: document.getElementById('ticketsEnabled').checked,
-                    ticket_category: document.getElementById('ticketCategory').value,
-                    ticket_panel_channel: document.getElementById('ticketPanelChannel').value,
-                    ticket_transcript_channel: document.getElementById('ticketTranscriptChannel').value,
-                    ticket_welcome_message: document.getElementById('ticketWelcomeMessage').value,
-                    ticket_autoclose: document.getElementById('ticketAutoclose').checked,
-                    ticket_autoclose_hours: parseInt(document.getElementById('ticketAutocloseHours').value)
+                    enabled: document.getElementById('ticketsEnabled').checked,
+                    category: document.getElementById('ticketCategory').value,
+                    panelChannel: document.getElementById('ticketPanelChannel').value,
+                    transcriptChannel: document.getElementById('ticketTranscriptChannel').value,
+                    welcomeMessage: document.getElementById('ticketWelcomeMessage').value,
+                    autoClose: {
+                        enabled: document.getElementById('ticketAutoclose').checked,
+                        hours: parseInt(document.getElementById('ticketAutocloseHours').value)
+                    }
                 };
                 
-                const res = await SecureAuth.fetch(`/api/guild/${guildId}/settings`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
+                const res = await SecureAuth.fetch(`/api/settings/tickets?guildId=${guildId}`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Guild-Id': guildId
+                    },
                     body: JSON.stringify(settings),
                     credentials: 'include'
                 });

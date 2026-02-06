@@ -1,18 +1,27 @@
 const { PermissionsBitField } = require('discord.js');
 const StandardEmbedBuilder = require('../utils/embed-builder');
+const BoundedMap = require('../utils/BoundedMap');
 
 class AntiSpam {
     constructor(bot) {
         this.bot = bot;
-        this.userMessageTimes = new Map(); // userId -> array of message timestamps
-        this.userChannelMessages = new Map(); // userId_channelId -> message data
-        this.duplicateMessages = new Map(); // guildId_userId -> Map(content -> {count, timestamp})
-        this.linkCooldowns = new Map(); // userId -> last link timestamp
-        this.mentionCooldowns = new Map(); // userId -> mention data
-        this.recentlyPunished = new Map(); // guildId_userId -> timestamp of last punishment
-        this.userWarningDecay = new Map(); // guildId_userId -> last warning timestamp (for decay)
-        this.notificationCooldowns = new Map(); // guildId_userId -> timestamp of last notification
-        this.dmCooldowns = new Map(); // guildId_userId -> timestamp of last DM sent
+        this.userMessageTimes = new BoundedMap({ maxSize: 10000, ttlMs: 600000, name: 'antispam-msgTimes' }); // userId -> array of message timestamps
+        this.userChannelMessages = new BoundedMap({ maxSize: 20000, ttlMs: 600000, name: 'antispam-chanMsgs' }); // userId_channelId -> message data
+        this.userGlobalMessages = new BoundedMap({ maxSize: 10000, ttlMs: 600000, name: 'antispam-globalMsgs' }); // userId -> array of timestamps (cross-channel flood)
+        this.duplicateMessages = new BoundedMap({ maxSize: 10000, ttlMs: 60000, name: 'antispam-dups' }); // guildId_userId -> Map(content -> {count, timestamp})
+        this.linkCooldowns = new BoundedMap({ maxSize: 5000, ttlMs: 600000, name: 'antispam-links' }); // userId -> last link timestamp
+        this.mentionCooldowns = new BoundedMap({ maxSize: 5000, ttlMs: 600000, name: 'antispam-mentions' }); // userId -> mention data
+        this.recentlyPunished = new BoundedMap({ maxSize: 5000, ttlMs: 300000, name: 'antispam-punished' }); // guildId_userId -> timestamp of last punishment
+        this.userWarningDecay = new BoundedMap({ maxSize: 5000, ttlMs: 3600000, name: 'antispam-decay' }); // guildId_userId -> last warning timestamp (for decay)
+        this.notificationCooldowns = new BoundedMap({ maxSize: 5000, ttlMs: 30000, name: 'antispam-notifCd' }); // guildId_userId -> timestamp of last notification
+        this.dmCooldowns = new BoundedMap({ maxSize: 5000, ttlMs: 60000, name: 'antispam-dmCd' }); // guildId_userId -> timestamp of last DM sent
+
+        // Auto-cleanup interval — ensures Maps stay bounded even without traffic
+        this._cleanupInterval = setInterval(() => {
+            try { this.cleanup(); } catch (e) {
+                this.bot?.logger?.error?.('[AntiSpam] Cleanup error:', e.message);
+            }
+        }, 60000); // Every 60 seconds
     }
 
     async initializeGuild(guildId) {
@@ -26,6 +35,11 @@ class AntiSpam {
         const now = Date.now();
         
         try {
+            // Skip bots, webhooks, and non-guild messages
+            if (!guildId || message.author?.bot || message.webhookId) {
+                return false;
+            }
+
             // Skip if user has certain permissions
             if (message.member && this.hasModeratorPermissions(message.member)) {
                 this.bot.logger.debug(`Skipping spam check for moderator: ${message.author.tag}`);
@@ -56,18 +70,26 @@ class AntiSpam {
                 this.bot.logger.debug(`Anti-spam disabled for guild ${guildNameSafe}`);
                 return false;
             }
+
+            // Bypass configured channels
+            const bypassChannels = this.parseBypassChannels(config.antispam_bypass_channels);
+            if (bypassChannels.has(channelId)) {
+                this.bot.logger.debug(`Skipping spam check in bypass channel ${channelId} for guild ${guildNameSafe}`);
+                return false;
+            }
             
             // Get spam configuration from DATABASE (not hardcoded config file)
             // Read all antispam thresholds from guild_configs
-            const maxMessages = config.antispam_flood_messages || config.spam_threshold || 5;
-            const timeWindow = (config.antispam_flood_seconds || 10) * 1000; // Convert to milliseconds
-            const maxDuplicates = config.antispam_duplicate_mid || 3;
-            const maxMentions = config.antispam_mention_threshold || 5;
-            const maxEmojis = config.antispam_emoji_mid || 10;
-            const maxLinks = config.antispam_link_threshold || 2;
-            const capsRatio = (config.antispam_caps_ratio || 70) / 100; // Convert percentage to decimal
-            const capsMinLength = config.antispam_caps_min_letters || 15;
-            const spamAction = config.spam_action || 'timeout'; // delete | warn | timeout | kick
+            // SECURITY: Use ?? (nullish coalescing) instead of || so that 0 is respected as a valid config value
+            const maxMessages = config.antispam_flood_messages ?? config.spam_threshold ?? 5;
+            const timeWindow = (config.antispam_flood_seconds ?? 10) * 1000; // Convert to milliseconds
+            const maxDuplicates = config.antispam_duplicate_mid ?? 3;
+            const maxMentions = config.antispam_mention_threshold ?? 5;
+            const maxEmojis = config.antispam_emoji_mid ?? 10;
+            const maxLinks = config.antispam_link_threshold ?? 2;
+            const capsRatio = (config.antispam_caps_ratio ?? 70) / 100; // Convert percentage to decimal
+            const capsMinLength = config.antispam_caps_min_letters ?? 15;
+            const spamAction = config.spam_action || 'timeout'; // delete | warn | timeout | kick (string, so || is fine)
             
             this.bot.logger.debug(`Anti-spam thresholds for ${guildNameSafe}: flood=${maxMessages}/${timeWindow}ms, dup=${maxDuplicates}, mention=${maxMentions}, emoji=${maxEmojis}, links=${maxLinks}, caps=${capsRatio*100}%/${capsMinLength}chars, action=${spamAction}`);
             
@@ -76,12 +98,22 @@ class AntiSpam {
             let spamDetected = false;
             let spamTypes = [];
             
-            // Check message flood
+            // Check message flood (per-channel)
             const floodDetected = await this.checkMessageFlood(message, maxMessages, timeWindow);
             if (floodDetected) {
                 spamDetected = true;
                 spamTypes.push('MESSAGE_FLOOD');
                 this.bot.logger.debug(`Flood detected for ${message.author.tag}`);
+            }
+            
+            // Check cross-channel flood (global per-user) — prevents spreading 4 msgs across 5 channels
+            if (!floodDetected) {
+                const globalFlood = this.checkGlobalFlood(message, maxMessages, timeWindow);
+                if (globalFlood) {
+                    spamDetected = true;
+                    spamTypes.push('CROSS_CHANNEL_FLOOD');
+                    this.bot.logger.debug(`Cross-channel flood detected for ${message.author.tag}`);
+                }
             }
             
             // Check duplicate messages
@@ -152,6 +184,25 @@ class AntiSpam {
         this.userChannelMessages.set(key, messageTimes);
         
         return messageTimes.length > maxMessages;
+    }
+
+    /**
+     * Cross-channel flood detection — tracks messages globally per user regardless of channel.
+     * Prevents attackers from staying under per-channel limits by spreading across many channels.
+     * Uses a 2x multiplier on maxMessages since cross-channel is a broader pattern.
+     */
+    checkGlobalFlood(message, maxMessages, timeWindow) {
+        const userId = message.author.id;
+        const now = Date.now();
+        
+        let globalTimes = this.userGlobalMessages.get(userId) || [];
+        globalTimes.push(now);
+        globalTimes = globalTimes.filter(time => now - time <= timeWindow);
+        this.userGlobalMessages.set(userId, globalTimes);
+        
+        // Use 2x the per-channel limit for global detection
+        // (e.g., if per-channel limit is 5, global limit is 10 across all channels)
+        return globalTimes.length > maxMessages * 2;
     }
 
     async checkDuplicateSpam(message, maxDuplicates) {
@@ -403,7 +454,7 @@ class AntiSpam {
             // Use passed guildConfig or fetch if needed
             const config = guildConfig || await this.bot.database?.getGuildConfig(guildId);
             const autoActionEnabled = config?.auto_action_enabled;
-            const punishmentThreshold = config?.spam_punishment_threshold || 10; // Default threshold for auto-escalation
+            const punishmentThreshold = config?.spam_punishment_threshold ?? 10; // Default threshold for auto-escalation
             
             // Apply the configured spam_action from dashboard
             // configuredAction values: 'delete' | 'warn' | 'timeout' | 'mute' | 'kick' | 'ban'
@@ -471,7 +522,7 @@ class AntiSpam {
                         });
                         this.clearUserTracking(guildId, userId);
                     } else if (action === 'KICK') {
-                        await message.member.kick(`Auto-kick: spam threshold reached (${warningCount}/5)`);
+                        await message.member.kick(`Auto-kick: spam threshold reached (${warningCount}/${punishmentThreshold})`);
                         // Log action in unified action_logs
                         await this.bot.database.logAction({
                             guildId: guildId,
@@ -481,7 +532,7 @@ class AntiSpam {
                             targetUsername: message.author.tag,
                             moderatorId: this.bot.client.user.id,
                             moderatorUsername: this.bot.client.user.tag,
-                            reason: `Auto-kick: spam detection threshold (${warningCount}/5) - ${spamTypes.join(', ')}`,
+                            reason: `Auto-kick: spam detection threshold (${warningCount}/${punishmentThreshold}) - ${spamTypes.join(', ')}`,
                             canUndo: false,
                             details: { spamTypes, warningCount, auto: true, configuredAction }
                         });
@@ -515,11 +566,11 @@ class AntiSpam {
             // Send warning message using cached data
             // Skip warning DM if kicked or banned
             if (action !== 'KICK' && action !== 'BAN') {
-                await this.sendSpamWarning(messageData, spamTypes, warningCount, actionDuration);
+                await this.sendSpamWarning(messageData, spamTypes, warningCount, actionDuration, punishmentThreshold);
             }
 
             // Notify moderators for ALL timeouts (not just severe ones) using cached data
-            await this.notifyModeratorsWithActions(messageData, spamTypes, warningCount, action, actionDuration);
+            await this.notifyModeratorsWithActions(messageData, spamTypes, warningCount, action, actionDuration, punishmentThreshold);
 
             this.bot.logger.security(`🚫 Spam detected from ${messageData.authorTag} in ${messageData.guild.name}: ${spamTypes.join(', ')}`);
 
@@ -528,7 +579,7 @@ class AntiSpam {
         }
     }
 
-    async sendSpamWarning(messageData, spamTypes, warningCount, actionDuration) {
+    async sendSpamWarning(messageData, spamTypes, warningCount, actionDuration, punishmentThreshold = 10) {
         try {
             // Check DM cooldown - only send one DM per 60 seconds per user
             const dmCooldownKey = `${messageData.guild.id}_${messageData.authorId}`;
@@ -554,7 +605,7 @@ class AntiSpam {
                     },
                     {
                         name: 'Warning Count',
-                        value: `${warningCount}/5`,
+                        value: `${warningCount}/${punishmentThreshold}`,
                         inline: true
                     }
                 ],
@@ -666,7 +717,7 @@ class AntiSpam {
         }
     }
 
-    async notifyModeratorsWithActions(messageData, spamTypes, warningCount, action, actionDuration) {
+    async notifyModeratorsWithActions(messageData, spamTypes, warningCount, action, actionDuration, punishmentThreshold = 10) {
         try {
             const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
             
@@ -890,6 +941,12 @@ class AntiSpam {
         // Keep only recent messages (last 10 minutes)
         userTimes = userTimes.filter(time => now - time <= 600000);
         this.userMessageTimes.set(userId, userTimes);
+
+        // Update cross-channel global counter
+        let globalTimes = this.userGlobalMessages.get(userId) || [];
+        globalTimes.push(now);
+        globalTimes = globalTimes.filter(time => now - time <= 600000);
+        this.userGlobalMessages.set(userId, globalTimes);
     }
 
     hasModeratorPermissions(member) {
@@ -897,6 +954,26 @@ class AntiSpam {
                member.permissions.has(PermissionsBitField.Flags.ModerateMembers) ||
                member.permissions.has(PermissionsBitField.Flags.ManageGuild) ||
                member.permissions.has(PermissionsBitField.Flags.Administrator);
+    }
+
+    parseBypassChannels(raw) {
+        if (!raw) return new Set();
+        if (Array.isArray(raw)) {
+            return new Set(raw.map(String));
+        }
+        const str = String(raw).trim();
+        if (!str) return new Set();
+        if (str.startsWith('[')) {
+            try {
+                const parsed = JSON.parse(str);
+                if (Array.isArray(parsed)) {
+                    return new Set(parsed.map(String));
+                }
+            } catch (_) {
+                // fall through
+            }
+        }
+        return new Set(str.split(',').map(s => s.trim()).filter(Boolean));
     }
 
     getAccountAge(date) {
@@ -920,6 +997,9 @@ class AntiSpam {
         
         // Clear message times
         this.userMessageTimes.delete(userId);
+        
+        // Clear cross-channel global tracking
+        this.userGlobalMessages.delete(userId);
         
         // Clear channel-specific tracking for all channels
         for (const key of this.userChannelMessages.keys()) {
@@ -965,13 +1045,15 @@ class AntiSpam {
         }
     }
 
-    // Cleanup method to be called periodically
+    // Cleanup method - called automatically by constructor's setInterval
+    // BoundedMap handles TTL/size limits, but we still prune stale array entries stored as values
     cleanup() {
         const now = Date.now();
         const maxAge = 600000; // 10 minutes
         
-        // Clean message tracking data
+        // Clean message tracking data (arrays stored inside BoundedMap)
         for (const [key, times] of this.userMessageTimes.entries()) {
+            if (!Array.isArray(times)) continue;
             const filteredTimes = times.filter(time => now - time <= maxAge);
             if (filteredTimes.length === 0) {
                 this.userMessageTimes.delete(key);
@@ -980,8 +1062,9 @@ class AntiSpam {
             }
         }
 
-        // Clean channel-specific message tracking
+        // Clean channel-specific message tracking (arrays inside BoundedMap)
         for (const [key, times] of this.userChannelMessages.entries()) {
+            if (!Array.isArray(times)) continue;
             const filteredTimes = times.filter(time => now - time <= maxAge);
             if (filteredTimes.length === 0) {
                 this.userChannelMessages.delete(key);
@@ -990,15 +1073,20 @@ class AntiSpam {
             }
         }
 
-        // Clean link cooldowns
-        for (const [userId, lastTime] of this.linkCooldowns.entries()) {
-            if (now - lastTime > maxAge) {
-                this.linkCooldowns.delete(userId);
+        // Clean global flood tracking (arrays inside BoundedMap)
+        for (const [key, times] of this.userGlobalMessages.entries()) {
+            if (!Array.isArray(times)) continue;
+            const filteredTimes = times.filter(time => now - time <= maxAge);
+            if (filteredTimes.length === 0) {
+                this.userGlobalMessages.delete(key);
+            } else {
+                this.userGlobalMessages.set(key, filteredTimes);
             }
         }
-        
-        // Clean duplicate message tracking (30 seconds)
+
+        // Clean duplicate message tracking (nested Maps inside BoundedMap)
         for (const [userKey, contentMap] of this.duplicateMessages.entries()) {
+            if (!(contentMap instanceof Map)) continue;
             for (const [content, data] of contentMap.entries()) {
                 if (now - data.timestamp > 30000) {
                     contentMap.delete(content);
@@ -1006,27 +1094,6 @@ class AntiSpam {
             }
             if (contentMap.size === 0) {
                 this.duplicateMessages.delete(userKey);
-            }
-        }
-        
-        // Clean recently punished tracking (keep for 5 minutes)
-        for (const [key, timestamp] of this.recentlyPunished.entries()) {
-            if (now - timestamp > 5 * 60 * 1000) {
-                this.recentlyPunished.delete(key);
-            }
-        }
-        
-        // Clean warning decay timestamps (keep for 1 hour)
-        for (const [key, timestamp] of this.userWarningDecay.entries()) {
-            if (now - timestamp > 60 * 60 * 1000) {
-                this.userWarningDecay.delete(key);
-            }
-        }
-        
-        // Clean notification cooldowns (keep for 30 seconds)
-        for (const [key, timestamp] of this.notificationCooldowns.entries()) {
-            if (now - timestamp > 30000) {
-                this.notificationCooldowns.delete(key);
             }
         }
     }

@@ -1,0 +1,365 @@
+{
+  "nav": {
+    "main": "메인",
+    "dashboard": "대시보드",
+    "profile": "프로필",
+    "apps": "앱",
+    "account": "계정",
+    "security": "보안",
+    "settings": "설정"
+  },
+  "common": {
+    "save": "저장",
+    "cancel": "취소",
+    "loading": "로딩 중...",
+    "success": "성공!",
+    "error": "오류",
+    "logout": "로그아웃",
+    "submit": "제출",
+    "delete": "삭제",
+    "edit": "편집",
+    "close": "닫기",
+    "confirm": "확인",
+    "back": "뒤로",
+    "next": "다음",
+    "yes": "예",
+    "no": "아니오",
+    "enabled": "활성화됨",
+    "disabled": "비활성화됨",
+    "active": "활성",
+    "inactive": "비활성",
+    "version": "버전",
+    "user": "사용자",
+    "admin": "관리자",
+    "owner": "소유자"
+  },
+  "dashboard": {
+    "title": "환영합니다",
+    "subtitle": "Darklock 플랫폼 개요입니다",
+    "stats": {
+      "activeApps": "활성 앱",
+      "2faStatus": "2단계 인증 상태",
+      "activeSessions": "활성 세션",
+      "lastLogin": "마지막 로그인"
+    },
+    "quickActions": {
+      "title": "빠른 작업",
+      "viewApps": "앱 보기",
+      "securitySettings": "보안 설정",
+      "editProfile": "프로필 편집",
+      "discordBot": "Discord 봇 대시보드"
+    },
+    "securityStatus": {
+      "title": "보안 상태",
+      "2fa": {
+        "title": "2단계 인증",
+        "checking": "상태 확인 중...",
+        "enabled": "2단계 인증이 활성화되어 있습니다",
+        "disabled": "2단계 인증이 활성화되지 않았습니다"
+      },
+      "password": {
+        "title": "안전한 비밀번호",
+        "description": "비밀번호가 보안 요구 사항을 충족합니다"
+      },
+      "email": {
+        "title": "이메일 인증됨",
+        "description": "계정 이메일이 설정되었습니다"
+      }
+    }
+  },
+  "profile": {
+    "title": "프로필",
+    "subtitle": "당신이 누구인지 - 정체성과 선호 설정",
+    "overview": "개요",
+    "changeAvatar": "아바타 변경",
+    "username": "사용자 이름",
+    "displayName": "표시 이름",
+    "role": "역할",
+    "accountCreated": "계정 생성일",
+    "personalInfo": {
+      "title": "개인 정보",
+      "displayName": "표시 이름",
+      "displayNamePlaceholder": "표시 이름",
+      "email": "이메일",
+      "emailHint": "이메일을 변경하려면 계정 설정으로 이동하세요",
+      "timezone": "시간대",
+      "language": "언어",
+      "saveChanges": "변경사항 저장"
+    },
+    "preferences": {
+      "title": "환경설정",
+      "theme": {
+        "title": "테마",
+        "description": "선호하는 색상 구성표 선택",
+        "dark": "다크",
+        "light": "라이트",
+        "system": "시스템"
+      },
+      "reducedMotion": {
+        "title": "움직임 줄이기",
+        "description": "애니메이션과 전환 효과 최소화"
+      },
+      "compactLayout": {
+        "title": "컴팩트 레이아웃",
+        "description": "더 적은 간격으로 더 많은 콘텐츠 표시"
+      }
+    },
+    "notifications": {
+      "title": "알림",
+      "securityAlerts": {
+        "title": "보안 알림",
+        "description": "의심스러운 활동에 대한 알림 받기"
+      },
+      "productUpdates": {
+        "title": "제품 업데이트",
+        "description": "새로운 기능 및 개선 사항"
+      },
+      "emailNotifications": {
+        "title": "이메일 알림",
+        "description": "이메일로 알림 받기"
+      }
+    }
+  },
+  "apps": {
+    "title": "앱",
+    "subtitle": "Darklock 앱 액세스 및 관리",
+    "darklock": {
+      "name": "Darklock Guard",
+      "description": "파일 무결성 모니터링 및 보호",
+      "launch": "실행",
+      "download": "다운로드"
+    }
+  },
+  "security": {
+    "title": "보안",
+    "subtitle": "민감한 모든 것 - 계정 보호 방법",
+    "overview": {
+      "title": "개요",
+      "2faStatus": "2단계 인증 상태",
+      "passwordStrength": "비밀번호 강도",
+      "activeSessions": "활성 세션",
+      "strong": "강함"
+    },
+    "authentication": {
+      "title": "인증",
+      "changePassword": {
+        "title": "비밀번호 변경",
+        "description": "계정을 안전하게 유지하기 위해 비밀번호 업데이트",
+        "currentPassword": "현재 비밀번호",
+        "currentPasswordPlaceholder": "현재 비밀번호 입력",
+        "newPassword": "새 비밀번호",
+        "newPasswordPlaceholder": "새 비밀번호 입력",
+        "confirmPassword": "새 비밀번호 확인",
+        "confirmPasswordPlaceholder": "새 비밀번호 확인",
+        "updateButton": "비밀번호 업데이트"
+      },
+      "2fa": {
+        "title": "2단계 인증",
+        "description": "계정에 추가 보안 계층 추가",
+        "loading": "2단계 인증 상태 로딩 중...",
+        "enable": "2단계 인증 활성화",
+        "disable": "2단계 인증 비활성화",
+        "enabled": "활성화됨",
+        "disabled": "비활성화됨"
+      }
+    },
+    "sessions": {
+      "title": "세션",
+      "description": "계정에 연결된 기기 관리",
+      "loading": "세션 로딩 중...",
+      "current": "현재 세션",
+      "revoke": "취소",
+      "revokeAll": "모든 세션 취소"
+    },
+    "activity": {
+      "title": "보안 활동",
+      "description": "최근 보안 이벤트 및 액세스 기록",
+      "loading": "활동 로딩 중...",
+      "noEvents": "최근 보안 이벤트 없음"
+    }
+  },
+  "account": {
+    "title": "계정",
+    "subtitle": "소유권 및 수명 주기 관리",
+    "details": {
+      "title": "계정 세부 정보",
+      "email": {
+        "title": "이메일 주소",
+        "description": "주요 연락처 이메일 - 변경하려면 비밀번호 + 2단계 인증 필요",
+        "current": "현재 이메일",
+        "new": "새 이메일",
+        "newPlaceholder": "새 이메일 입력",
+        "confirmPassword": "비밀번호 확인",
+        "confirmPasswordPlaceholder": "비밀번호 입력",
+        "2faCode": "2단계 인증 코드",
+        "changeButton": "이메일 변경"
+      },
+      "username": {
+        "title": "사용자 이름",
+        "description": "플랫폼에서의 고유 식별자",
+        "current": "현재 사용자 이름",
+        "new": "새 사용자 이름",
+        "newPlaceholder": "새 사용자 이름 입력",
+        "hint": "3-20자, 문자, 숫자, 밑줄 및 하이픈만 허용",
+        "changeButton": "사용자 이름 변경"
+      }
+    },
+    "data": {
+      "title": "데이터",
+      "export": {
+        "title": "계정 데이터 내보내기",
+        "description": "모든 계정 데이터를 JSON 형식으로 다운로드",
+        "button": "데이터 내보내기"
+      },
+      "clearSessions": {
+        "title": "모든 세션 종료",
+        "description": "이 기기를 제외한 모든 기기에서 로그아웃",
+        "button": "세션 종료"
+      }
+    },
+    "dangerZone": {
+      "title": "위험 구역",
+      "description": "되돌릴 수 없는 작업 - 주의하여 진행하세요",
+      "disable": {
+        "title": "계정 비활성화",
+        "description": "계정 일시적 비활성화 - 재활성화 가능",
+        "button": "계정 비활성화"
+      },
+      "delete": {
+        "title": "계정 삭제",
+        "description": "계정 및 모든 관련 데이터 영구 삭제",
+        "button": "계정 삭제"
+      }
+    }
+  },
+  "settings": {
+    "title": "설정",
+    "description": "플랫폼 수준 구성 및 환경설정",
+    "language": {
+      "title": "언어 및 지역",
+      "select": "언어",
+      "description": "선호하는 언어 선택"
+    },
+    "autoDetectLanguage": {
+      "title": "자동 언어 감지",
+      "description": "브라우저 설정에 따라 자동으로 언어 설정"
+    },
+    "timezone": {
+      "title": "시간대",
+      "description": "로컬 시간대",
+      "autoDetect": "자동 감지"
+    },
+    "dateFormat": {
+      "title": "날짜 형식",
+      "description": "날짜 표시 방법"
+    },
+    "timeFormat": {
+      "title": "시간 형식",
+      "description": "12시간 또는 24시간 형식",
+      "12hour": "12시간 (오전/오후)",
+      "24hour": "24시간"
+    },
+    "platform": {
+      "title": "플랫폼",
+      "defaultLanding": {
+        "title": "기본 시작 페이지",
+        "description": "로그인 후 이동할 페이지 선택"
+      },
+      "rememberLastApp": {
+        "title": "마지막 앱 기억",
+        "description": "마지막으로 사용한 앱으로 돌아가기"
+      },
+      "autoSave": {
+        "title": "환경설정 자동 저장",
+        "description": "환경설정 변경사항 자동 저장"
+      }
+    },
+    "appearance": {
+      "title": "외관",
+      "theme": {
+        "title": "테마",
+        "description": "색상 테마 선택",
+        "dark": "다크",
+        "light": "라이트",
+        "auto": "자동 (시스템)"
+      },
+      "compactMode": {
+        "title": "컴팩트 모드",
+        "description": "더 많은 콘텐츠를 위해 간격 줄이기"
+      },
+      "sidebarPosition": {
+        "title": "사이드바 위치",
+        "description": "사이드 네비게이션 바 위치",
+        "left": "왼쪽",
+        "right": "오른쪽"
+      }
+    },
+    "accessibility": {
+      "title": "접근성",
+      "fontScaling": {
+        "title": "글꼴 크기 조정",
+        "description": "플랫폼 전체의 텍스트 크기 조정",
+        "small": "작게",
+        "medium": "보통",
+        "large": "크게",
+        "xlarge": "매우 크게"
+      },
+      "highContrast": {
+        "title": "고대비 모드",
+        "description": "가시성 향상을 위해 대비 증가"
+      },
+      "reducedMotion": {
+        "title": "움직임 줄이기",
+        "description": "애니메이션과 전환 효과 최소화"
+      },
+      "screenReader": {
+        "title": "스크린 리더 지원",
+        "description": "스크린 리더와의 향상된 호환성"
+      }
+    },
+    "notifications": {
+      "title": "알림",
+      "email": {
+        "title": "이메일 알림",
+        "description": "중요한 업데이트를 이메일로 받기"
+      },
+      "push": {
+        "title": "푸시 알림",
+        "description": "브라우저 푸시 알림"
+      },
+      "sound": {
+        "title": "소리 알림",
+        "description": "알림 소리 재생"
+      }
+    },
+    "privacy": {
+      "title": "개인정보 및 보안",
+      "activityTracking": {
+        "title": "활동 추적",
+        "description": "경험 향상을 위한 분석 허용"
+      },
+      "sessionTimeout": {
+        "title": "세션 시간 초과",
+        "description": "비활성 후 자동 로그아웃",
+        "15min": "15분",
+        "30min": "30분",
+        "1hour": "1시간",
+        "4hours": "4시간",
+        "never": "안 함"
+      },
+      "require2FA": {
+        "title": "로그인 시 2단계 인증 필요",
+        "description": "항상 2단계 인증 요구"
+      }
+    },
+    "experimental": {
+      "title": "실험적 기능",
+      "description": "출시 전 새 기능 테스트",
+      "betaFeatures": {
+        "title": "베타 기능",
+        "description": "실험적 기능 및 개선 사항 활성화"
+      },
+      "notice": "베타 기능은 불안정할 수 있으며 변경될 수 있습니다"
+    }
+  }
+}

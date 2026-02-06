@@ -1,0 +1,678 @@
+/**
+ * Darklock Premium Styles
+ * Styling for premium features, lock icons, and upgrade prompts
+ */
+
+/* Premium Badge */
+.premium-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #ffffff;
+}
+
+.premium-badge.pro {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}
+
+.premium-badge.enterprise {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.premium-badge svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* Premium Lock Icon */
+.premium-lock {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-left: 8px;
+    cursor: pointer;
+}
+
+.premium-lock svg {
+    width: 14px;
+    height: 14px;
+    color: #f59e0b;
+    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.3));
+    transition: all 0.2s ease;
+}
+
+.premium-lock:hover svg {
+    color: #fbbf24;
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.5));
+    transform: scale(1.1);
+}
+
+.premium-lock .premium-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 8px;
+    font-size: 12px;
+    color: #e2e8f0;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.premium-lock .premium-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(245, 158, 11, 0.3);
+}
+
+.premium-lock:hover .premium-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-4px);
+}
+
+/* Locked Setting Item */
+.setting-item.premium-locked {
+    position: relative;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.setting-item.premium-locked::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(245, 158, 11, 0.03) 10px,
+        rgba(245, 158, 11, 0.03) 20px
+    );
+    border-radius: 8px;
+    pointer-events: none;
+}
+
+.setting-item.premium-locked .setting-title {
+    display: flex;
+    align-items: center;
+}
+
+.setting-item.premium-locked .toggle,
+.setting-item.premium-locked select,
+.setting-item.premium-locked input {
+    pointer-events: none;
+    filter: grayscale(0.5);
+}
+
+/* Premium upgrade banner in locked settings */
+.premium-upgrade-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.05));
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 12px;
+}
+
+.premium-upgrade-banner .banner-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.premium-upgrade-banner .banner-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border-radius: 10px;
+}
+
+.premium-upgrade-banner .banner-icon svg {
+    width: 20px;
+    height: 20px;
+    color: #ffffff;
+}
+
+.premium-upgrade-banner .banner-text h4 {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #f8fafc;
+}
+
+.premium-upgrade-banner .banner-text p {
+    margin: 0;
+    font-size: 13px;
+    color: #94a3b8;
+}
+
+.premium-upgrade-banner .btn-upgrade {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.premium-upgrade-banner .btn-upgrade:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+/* Premium Navigation Item */
+.nav-item.premium-nav {
+    position: relative;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.05));
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: 8px;
+    margin: 8px;
+}
+
+.nav-item.premium-nav:hover {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.1));
+    border-color: rgba(245, 158, 11, 0.4);
+}
+
+.nav-item.premium-nav.active {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.15));
+    border-color: #f59e0b;
+}
+
+.nav-item.premium-nav svg {
+    color: #f59e0b;
+}
+
+/* Premium Page Styles */
+.premium-page {
+    padding: 24px;
+}
+
+.premium-header {
+    text-align: center;
+    margin-bottom: 48px;
+}
+
+.premium-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 12px;
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.premium-header p {
+    font-size: 16px;
+    color: #94a3b8;
+    margin: 0;
+}
+
+/* Current Plan Card */
+.current-plan-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 32px;
+}
+
+.current-plan-card.premium {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.05));
+}
+
+.current-plan-card .plan-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.current-plan-card .plan-name {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.current-plan-card .plan-name h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.current-plan-card .plan-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.current-plan-card .plan-feature {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #94a3b8;
+}
+
+.current-plan-card .plan-feature svg {
+    width: 16px;
+    height: 16px;
+    color: #10b981;
+}
+
+.current-plan-card .plan-feature.locked svg {
+    color: #ef4444;
+}
+
+/* Pricing Cards */
+.pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    margin-bottom: 48px;
+}
+
+.pricing-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 32px 24px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.pricing-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+.pricing-card.featured {
+    border-color: rgba(99, 102, 241, 0.5);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05));
+}
+
+.pricing-card.featured::before {
+    content: 'Most Popular';
+    position: absolute;
+    top: 16px;
+    right: -32px;
+    padding: 4px 40px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    transform: rotate(45deg);
+}
+
+.pricing-card .plan-tier {
+    font-size: 14px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+.pricing-card .plan-price {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.pricing-card .plan-price .currency {
+    font-size: 24px;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.pricing-card .plan-price .amount {
+    font-size: 48px;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.pricing-card .plan-price .period {
+    font-size: 14px;
+    color: #64748b;
+}
+
+.pricing-card .plan-description {
+    font-size: 14px;
+    color: #94a3b8;
+    margin-bottom: 24px;
+}
+
+.pricing-card .plan-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 24px;
+}
+
+.pricing-card .plan-features li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    font-size: 14px;
+    color: #e2e8f0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pricing-card .plan-features li:last-child {
+    border-bottom: none;
+}
+
+.pricing-card .plan-features li svg {
+    width: 16px;
+    height: 16px;
+    color: #10b981;
+    flex-shrink: 0;
+}
+
+.pricing-card .plan-features li.unavailable {
+    color: #64748b;
+}
+
+.pricing-card .plan-features li.unavailable svg {
+    color: #ef4444;
+}
+
+.pricing-card .btn-select-plan {
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pricing-card .btn-select-plan.btn-primary {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #ffffff;
+}
+
+.pricing-card .btn-select-plan.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+}
+
+.pricing-card .btn-select-plan.btn-ghost {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e2e8f0;
+}
+
+.pricing-card .btn-select-plan.btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.pricing-card .btn-select-plan:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* License Code Redemption */
+.redeem-section {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 32px;
+}
+
+.redeem-section h3 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 8px;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.redeem-section h3 svg {
+    width: 24px;
+    height: 24px;
+    color: #f59e0b;
+}
+
+.redeem-section p {
+    color: #94a3b8;
+    margin: 0 0 20px;
+    font-size: 14px;
+}
+
+.redeem-form {
+    display: flex;
+    gap: 12px;
+}
+
+.redeem-form input {
+    flex: 1;
+    padding: 14px 16px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: #f8fafc;
+    font-size: 16px;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.redeem-form input::placeholder {
+    color: #64748b;
+    letter-spacing: 1px;
+    text-transform: none;
+}
+
+.redeem-form input:focus {
+    outline: none;
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.redeem-form button {
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.redeem-form button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
+}
+
+/* Payment History */
+.payment-history {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 24px;
+}
+
+.payment-history h3 {
+    margin: 0 0 20px;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.payment-history .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.payment-history .history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 10px;
+}
+
+.payment-history .history-item .item-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.payment-history .history-item .item-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(16, 185, 129, 0.1);
+    border-radius: 10px;
+}
+
+.payment-history .history-item .item-icon svg {
+    width: 20px;
+    height: 20px;
+    color: #10b981;
+}
+
+.payment-history .history-item .item-details h4 {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.payment-history .history-item .item-details p {
+    margin: 0;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.payment-history .history-item .item-amount {
+    font-size: 16px;
+    font-weight: 600;
+    color: #10b981;
+}
+
+/* License Code Display */
+.license-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px dashed rgba(245, 158, 11, 0.3);
+    border-radius: 10px;
+    margin-top: 16px;
+}
+
+.license-display .code {
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    font-weight: 600;
+    color: #f59e0b;
+    letter-spacing: 2px;
+}
+
+.license-display .copy-btn {
+    padding: 8px 12px;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 6px;
+    color: #f59e0b;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.license-display .copy-btn:hover {
+    background: rgba(245, 158, 11, 0.2);
+}
+
+/* Success Animation */
+@keyframes premiumUnlock {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.premium-unlocked {
+    animation: premiumUnlock 0.5s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pricing-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .redeem-form {
+        flex-direction: column;
+    }
+
+    .premium-upgrade-banner {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .premium-upgrade-banner .banner-content {
+        flex-direction: column;
+    }
+}

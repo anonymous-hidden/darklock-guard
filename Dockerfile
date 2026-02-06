@@ -26,14 +26,21 @@ COPY . .
 # Install production dependencies
 RUN npm ci --only=production
 
-# Create data directory for SQLite
-RUN mkdir -p data
+# Create writable directories and set ownership for non-root runtime
+RUN mkdir -p data logs uploads \
+    file-protection/config \
+    file-protection/backups \
+    file-protection/logs \
+ && chown -R node:node /usr/src/app
 
-# Make startup script executable
-RUN chmod +x startup.sh
+# Make scripts executable
+RUN chmod +x startup.sh scripts/validate-env.sh
 
-# Expose the platform expected open port (Render service uses port 10000)
-EXPOSE 10000
+# Run as non-root for least privilege
+USER node
+
+# Expose ports for dashboard (3001) and Darklock platform (3002)
+EXPOSE 3001 3002
 
 # Start the application (baseline generation happens at runtime)
 CMD ["sh", "startup.sh"]

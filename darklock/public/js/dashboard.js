@@ -48,11 +48,21 @@ async function initApp() {
     // Setup language settings
     setupLanguageSettings();
     
+    // Setup all settings handlers
+    setupAllSettingsHandlers();
+    
     // Setup application launch handlers
     setupAppLaunchHandlers();
     
     // Load initial page data
     loadPageData('dashboard');
+    
+    // Initialize translations after everything is loaded
+    if (currentUser && currentUser.language) {
+        await window.i18n.init(currentUser.language);
+    } else {
+        await window.i18n.init('en');
+    }
 }
 
 // ============================================================================
@@ -206,6 +216,11 @@ async function loadUserData() {
         
         if (data.success) {
             currentUser = data.user;
+            console.debug('[i18n] Loaded user data', {
+                userId: currentUser?.id,
+                language: currentUser?.language,
+                timezone: currentUser?.timezone
+            });
             updateUserDisplay();
         }
     } catch (err) {
@@ -220,12 +235,16 @@ async function loadUserSettings() {
         
         if (data.success && data.settings) {
             userSettings = data.settings;
+            console.debug('[i18n] Loaded user settings', {
+                language: userSettings?.language,
+                autoDetectLanguage: userSettings?.autoDetectLanguage
+            });
             
             // Populate form fields with saved settings
             populateSettingsForm(userSettings);
             
             // Apply settings immediately
-            applySettings(userSettings);
+            await applySettings(userSettings);
         }
     } catch (err) {
         console.error('Failed to load user settings:', err);
@@ -234,41 +253,45 @@ async function loadUserSettings() {
 
 function populateSettingsForm(settings) {
     // Language & Region
-    if (settings.language) document.getElementById('language').value = settings.language;
-    if (settings.autoDetectLanguage !== undefined) document.getElementById('autoDetectLanguage').checked = settings.autoDetectLanguage;
-    if (settings.timezone) document.getElementById('timezone').value = settings.timezone;
-    if (settings.autoDetectTimezone !== undefined) document.getElementById('autoDetectTimezone').checked = settings.autoDetectTimezone;
-    if (settings.dateFormat) document.getElementById('dateFormat').value = settings.dateFormat;
-    if (settings.timeFormat) document.getElementById('timeFormat').value = settings.timeFormat;
+    if (settings.language) {
+        document.getElementById('languageSelect').value = settings.language;
+        const settingsLanguageSelect = document.getElementById('settingsLanguageSelect');
+        if (settingsLanguageSelect) settingsLanguageSelect.value = settings.language;
+        console.debug('[i18n] populateSettingsForm applied language', settings.language);
+    }
+    if (settings.autoDetectLanguage !== undefined) document.getElementById('autoDetectLanguageToggle').checked = settings.autoDetectLanguage;
+    if (settings.timezone) document.getElementById('timezoneSelect').value = settings.timezone;
+    if (settings.dateFormat) document.getElementById('dateFormatSelect').value = settings.dateFormat;
+    if (settings.timeFormat) document.getElementById('timeFormatSelect').value = settings.timeFormat;
     
     // Platform
     if (settings.defaultLandingPage) document.getElementById('defaultLandingPage').value = settings.defaultLandingPage;
-    if (settings.rememberLastApp !== undefined) document.getElementById('rememberLastApp').checked = settings.rememberLastApp;
-    if (settings.autoSave !== undefined) document.getElementById('autoSave').checked = settings.autoSave;
+    if (settings.rememberLastApp !== undefined) document.getElementById('rememberLastAppToggle').checked = settings.rememberLastApp;
+    if (settings.autoSave !== undefined) document.getElementById('autoSaveToggle').checked = settings.autoSave;
     
     // Appearance
-    if (settings.theme) document.getElementById('theme').value = settings.theme;
-    if (settings.compactMode !== undefined) document.getElementById('compactMode').checked = settings.compactMode;
+    if (settings.theme) document.getElementById('themeSelect').value = settings.theme;
+    if (settings.compactMode !== undefined) document.getElementById('compactModeToggle').checked = settings.compactMode;
     if (settings.sidebarPosition) document.getElementById('sidebarPosition').value = settings.sidebarPosition;
     
     // Accessibility
     if (settings.fontScaling) document.getElementById('fontScaling').value = settings.fontScaling;
-    if (settings.highContrast !== undefined) document.getElementById('highContrast').checked = settings.highContrast;
-    if (settings.reducedMotion !== undefined) document.getElementById('reducedMotion').checked = settings.reducedMotion;
-    if (settings.screenReaderSupport !== undefined) document.getElementById('screenReaderSupport').checked = settings.screenReaderSupport;
+    if (settings.highContrast !== undefined) document.getElementById('highContrastToggle').checked = settings.highContrast;
+    if (settings.reducedMotion !== undefined) document.getElementById('reducedMotionToggle').checked = settings.reducedMotion;
+    if (settings.screenReaderSupport !== undefined) document.getElementById('screenReaderToggle').checked = settings.screenReaderSupport;
     
     // Notifications
-    if (settings.emailNotifications !== undefined) document.getElementById('emailNotifications').checked = settings.emailNotifications;
-    if (settings.pushNotifications !== undefined) document.getElementById('pushNotifications').checked = settings.pushNotifications;
-    if (settings.soundEnabled !== undefined) document.getElementById('soundEnabled').checked = settings.soundEnabled;
+    if (settings.emailNotifications !== undefined) document.getElementById('emailNotificationsToggle').checked = settings.emailNotifications;
+    if (settings.pushNotifications !== undefined) document.getElementById('pushNotificationsToggle').checked = settings.pushNotifications;
+    if (settings.soundEnabled !== undefined) document.getElementById('soundNotificationsToggle').checked = settings.soundEnabled;
     
     // Privacy & Security
-    if (settings.activityTracking !== undefined) document.getElementById('activityTracking').checked = settings.activityTracking;
-    if (settings.sessionTimeout) document.getElementById('sessionTimeout').value = settings.sessionTimeout;
-    if (settings.require2FA !== undefined) document.getElementById('require2FA').checked = settings.require2FA;
+    if (settings.activityTracking !== undefined) document.getElementById('activityTrackingToggle').checked = settings.activityTracking;
+    if (settings.sessionTimeout) document.getElementById('sessionTimeoutSelect').value = settings.sessionTimeout;
+    if (settings.require2FA !== undefined) document.getElementById('require2FAToggle').checked = settings.require2FA;
     
     // Experimental
-    if (settings.betaFeatures !== undefined) document.getElementById('betaFeatures').checked = settings.betaFeatures;
+    if (settings.betaFeatures !== undefined) document.getElementById('betaFeaturesToggle').checked = settings.betaFeatures;
 }
 
 function updateUserDisplay() {
@@ -336,13 +359,22 @@ function updateSecurityChecklist() {
 // ============================================================================
 function setupNavigation() {
     const navItems = document.querySelectorAll('.nav-item[data-page]');
-    
+
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
             const page = item.dataset.page;
-            navigateTo(page);
+            if (page) navigateTo(page);
         });
+    });
+
+    // Event delegation fallback (ensures clicks work even if bindings fail)
+    document.addEventListener('click', (e) => {
+        const target = e.target.closest('.nav-item[data-page]');
+        if (!target) return;
+        e.preventDefault();
+        const page = target.dataset.page;
+        if (page) navigateTo(page);
     });
 }
 
@@ -583,6 +615,12 @@ function loadProfileData() {
     const languageSelect = document.getElementById('languageSelect');
     if (languageSelect && currentUser.language) {
         languageSelect.value = currentUser.language;
+    }
+    
+    // Also set settings language select if available
+    const settingsLanguageSelect = document.getElementById('settingsLanguageSelect');
+    if (settingsLanguageSelect && currentUser.language) {
+        settingsLanguageSelect.value = currentUser.language;
     }
     
     // Load preferences
@@ -1997,10 +2035,70 @@ function setupCollapsibleCards() {
 // LANGUAGE & REGION SETTINGS
 // ============================================================================
 function setupLanguageSettings() {
-    const autoDetectToggle = document.getElementById('autoDetectLanguage');
-    const languageSelect = document.getElementById('language');
-    const timezoneSelect = document.getElementById('timezone');
-    const autoDetectTimezoneToggle = document.getElementById('autoDetectTimezone');
+    const languageSelect = document.getElementById('languageSelect');
+    const settingsLanguageSelect = document.getElementById('settingsLanguageSelect');
+    const autoDetectToggle = document.getElementById('autoDetectLanguageToggle');
+    const timezoneSelect = document.getElementById('timezoneSelect');
+    
+    // Function to save language
+    const saveLanguage = async (language) => {
+        try {
+            console.debug('[i18n] Saving language', { language });
+            // Save to database
+            const response = await fetch('/platform/dashboard/api/language', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ language })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                console.debug('[i18n] Language saved successfully', { language });
+                // Save to localStorage for instant access
+                localStorage.setItem('language', language);
+                
+                // Update both select elements
+                if (languageSelect && languageSelect.value !== language) {
+                    languageSelect.value = language;
+                }
+                if (settingsLanguageSelect && settingsLanguageSelect.value !== language) {
+                    settingsLanguageSelect.value = language;
+                }
+                
+                // Show success message
+                showToast('Language updated - reloading...', 'success');
+                
+                // Reload page to apply language
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                console.debug('[i18n] Language save failed', data);
+                showToast(data.error || 'Failed to save language', 'error');
+            }
+        } catch (err) {
+            console.error('Error saving language:', err);
+            showToast('Failed to save language', 'error');
+        }
+    };
+    
+    // Language change handler for profile section
+    if (languageSelect) {
+        languageSelect.addEventListener('change', async (e) => {
+            const language = e.target.value;
+            await saveLanguage(language);
+        });
+    }
+    
+    // Language change handler for settings section
+    if (settingsLanguageSelect) {
+        settingsLanguageSelect.addEventListener('change', async (e) => {
+            const language = e.target.value;
+            await saveLanguage(language);
+        });
+    }
     
     // Auto-detect language
     if (autoDetectToggle) {
@@ -2014,127 +2112,204 @@ function setupLanguageSettings() {
                     'sv': 'sv', 'no': 'no', 'da': 'da', 'fi': 'fi', 'cs': 'cs'
                 };
                 
-                if (langMap[browserLang]) {
-                    languageSelect.value = langMap[browserLang];
-                    languageSelect.disabled = true;
-                } else {
-                    languageSelect.value = 'en';
-                    languageSelect.disabled = true;
-                }
+                const detectedLang = langMap[browserLang] || 'en';
+                console.debug('[i18n] Auto-detect language', { browserLang, detectedLang });
                 
-                saveSettings();
+                // Update both select elements
+                if (languageSelect) languageSelect.value = detectedLang;
+                if (settingsLanguageSelect) settingsLanguageSelect.value = detectedLang;
+                
+                // Trigger save
+                saveLanguage(detectedLang);
+                
+                // Disable language selects when auto-detect is enabled
+                if (languageSelect) languageSelect.disabled = true;
+                if (settingsLanguageSelect) settingsLanguageSelect.disabled = true;
             } else {
-                languageSelect.disabled = false;
+                // Enable language selects when auto-detect is disabled
+                if (languageSelect) languageSelect.disabled = false;
+                if (settingsLanguageSelect) settingsLanguageSelect.disabled = false;
             }
         });
-        
-        // Initial check
-        if (autoDetectToggle.checked) {
-            autoDetectToggle.dispatchEvent(new Event('change'));
-        }
     }
     
-    // Auto-detect timezone
-    if (autoDetectTimezoneToggle) {
-        autoDetectTimezoneToggle.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                try {
-                    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                    timezoneSelect.value = userTimezone;
-                    timezoneSelect.disabled = true;
-                    saveSettings();
-                } catch (error) {
-                    console.error('Failed to detect timezone:', error);
-                    autoDetectTimezoneToggle.checked = false;
-                }
-            } else {
-                timezoneSelect.disabled = false;
-            }
+    // Timezone change handler
+    if (timezoneSelect) {
+        timezoneSelect.addEventListener('change', async (e) => {
+            const timezone = e.target.value;
+            await saveUserSetting('timezone', timezone);
         });
-        
-        // Initial check
-        if (autoDetectTimezoneToggle.checked) {
-            autoDetectTimezoneToggle.dispatchEvent(new Event('change'));
-        }
     }
-    
-    // Save settings on change
-    const settingsInputs = document.querySelectorAll('.settings-sections select, .settings-sections input');
-    settingsInputs.forEach(input => {
-        input.addEventListener('change', saveSettings);
-    });
 }
 
 // ============================================================================
 // SAVE SETTINGS
 // ============================================================================
 async function saveSettings() {
-    const settings = {
-        // Language & Region
-        language: document.getElementById('language')?.value,
-        autoDetectLanguage: document.getElementById('autoDetectLanguage')?.checked,
-        timezone: document.getElementById('timezone')?.value,
-        autoDetectTimezone: document.getElementById('autoDetectTimezone')?.checked,
-        dateFormat: document.getElementById('dateFormat')?.value,
-        timeFormat: document.getElementById('timeFormat')?.value,
-        
-        // Platform
-        defaultLandingPage: document.getElementById('defaultLandingPage')?.value,
-        rememberLastApp: document.getElementById('rememberLastApp')?.checked,
-        autoSave: document.getElementById('autoSave')?.checked,
-        
-        // Appearance
-        theme: document.getElementById('theme')?.value,
-        compactMode: document.getElementById('compactMode')?.checked,
-        sidebarPosition: document.getElementById('sidebarPosition')?.value,
-        
-        // Accessibility
-        fontScaling: document.getElementById('fontScaling')?.value,
-        highContrast: document.getElementById('highContrast')?.checked,
-        reducedMotion: document.getElementById('reducedMotion')?.checked,
-        screenReaderSupport: document.getElementById('screenReaderSupport')?.checked,
-        
-        // Notifications
-        emailNotifications: document.getElementById('emailNotifications')?.checked,
-        pushNotifications: document.getElementById('pushNotifications')?.checked,
-        soundEnabled: document.getElementById('soundEnabled')?.checked,
-        
-        // Privacy & Security
-        activityTracking: document.getElementById('activityTracking')?.checked,
-        sessionTimeout: document.getElementById('sessionTimeout')?.value,
-        require2FA: document.getElementById('require2FA')?.checked,
-        
-        // Experimental
-        betaFeatures: document.getElementById('betaFeatures')?.checked
-    };
+    const settings = gatherAllSettings();
     
     try {
         const response = await fetch('/platform/dashboard/api/settings', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(settings)
         });
         
-        if (!response.ok) {
-            throw new Error('Failed to save settings');
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Settings saved', 'success');
+        } else {
+            showToast(data.error || 'Failed to save settings', 'error');
         }
-        
-        // Apply settings immediately
-        applySettings(settings);
-        
-        showToast('Settings saved successfully', 'success');
-    } catch (error) {
-        console.error('Error saving settings:', error);
+    } catch (err) {
+        console.error('Error saving settings:', err);
         showToast('Failed to save settings', 'error');
     }
 }
 
+/**
+ * Gather all settings from form elements
+ */
+function gatherAllSettings() {
+    return {
+        // Language & Region
+        language: document.getElementById('languageSelect')?.value || 'en',
+        autoDetectLanguage: document.getElementById('autoDetectLanguageToggle')?.checked || false,
+        timezone: document.getElementById('timezoneSelect')?.value || 'auto',
+        dateFormat: document.getElementById('dateFormatSelect')?.value || 'MM/DD/YYYY',
+        timeFormat: document.getElementById('timeFormatSelect')?.value || '12h',
+        
+        // Platform
+        defaultLandingPage: document.getElementById('defaultLandingPage')?.value || 'dashboard',
+        rememberLastApp: document.getElementById('rememberLastAppToggle')?.checked !== false,
+        autoSave: document.getElementById('autoSaveToggle')?.checked !== false,
+        
+        // Appearance
+        theme: document.getElementById('themeSelect')?.value || 'dark',
+        compactMode: document.getElementById('compactModeToggle')?.checked || false,
+        sidebarPosition: document.getElementById('sidebarPosition')?.value || 'left',
+        
+        // Accessibility
+        fontScaling: document.getElementById('fontScaling')?.value || '100',
+        highContrast: document.getElementById('highContrastToggle')?.checked || false,
+        reducedMotion: document.getElementById('reducedMotionToggle')?.checked || false,
+        screenReaderSupport: document.getElementById('screenReaderToggle')?.checked || false,
+        
+        // Notifications
+        emailNotifications: document.getElementById('emailNotificationsToggle')?.checked !== false,
+        pushNotifications: document.getElementById('pushNotificationsToggle')?.checked || false,
+        soundEnabled: document.getElementById('soundNotificationsToggle')?.checked !== false
+    };
+}
+
+/**
+ * Save a single user setting
+ */
+async function saveUserSetting(key, value) {
+    try {
+        const settings = { [key]: value };
+        
+        const response = await fetch('/platform/dashboard/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(settings)
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            console.error('Failed to save setting:', data.error);
+        }
+    } catch (err) {
+        console.error('Error saving setting:', err);
+    }
+}
+
+/**
+ * Wire up all settings toggles and selects
+ */
+function setupAllSettingsHandlers() {
+    // All toggles
+    const toggles = [
+        'autoDetectLanguageToggle',
+        'rememberLastAppToggle',
+        'autoSaveToggle',
+        'compactModeToggle',
+        'highContrastToggle',
+        'reducedMotionToggle',
+        'screenReaderToggle',
+        'emailNotificationsToggle',
+        'pushNotificationsToggle',
+        'soundNotificationsToggle'
+    ];
+    
+    toggles.forEach(id => {
+        const toggle = document.getElementById(id);
+        if (toggle) {
+            toggle.addEventListener('change', async (e) => {
+                const setting = id.replace('Toggle', '').replace(/([A-Z])/g, '_$1').toLowerCase();
+                await saveUserSetting(setting, e.target.checked);
+                
+                // Apply some settings immediately
+                if (id === 'highContrastToggle') {
+                    document.body.classList.toggle('high-contrast', e.target.checked);
+                }
+                if (id === 'reducedMotionToggle') {
+                    document.body.classList.toggle('reduced-motion', e.target.checked);
+                }
+                if (id === 'compactModeToggle') {
+                    document.body.classList.toggle('compact-mode', e.target.checked);
+                }
+                
+                showToast('Setting saved', 'success');
+            });
+        }
+    });
+    
+    // All selects (excluding language which has its own handler)
+    const selects = [
+        'timezoneSelect',
+        'dateFormatSelect',
+        'timeFormatSelect',
+        'defaultLandingPage',
+        'themeSelect',
+        'sidebarPosition',
+        'fontScaling'
+    ];
+    
+    selects.forEach(id => {
+        const select = document.getElementById(id);
+        if (select) {
+            select.addEventListener('change', async (e) => {
+                const setting = id.replace('Select', '').replace(/([A-Z])/g, '_$1').toLowerCase();
+                await saveUserSetting(setting, e.target.value);
+                
+                // Apply some settings immediately
+                if (id === 'themeSelect') {
+                    applyTheme(e.target.value);
+                }
+                if (id === 'fontScaling') {
+                    document.documentElement.style.setProperty('--font-scale', e.target.value + '%');
+                }
+                
+                showToast('Setting saved', 'success');
+            });
+        }
+    });
+}
 // ============================================================================
 // APPLY SETTINGS
 // ============================================================================
-function applySettings(settings) {
+async function applySettings(settings) {
+    // Language
+    if (settings.language && window.i18n) {
+        console.debug('[i18n] applySettings calling setLanguage', settings.language);
+        await window.i18n.setLanguage(settings.language);
+    }
+    
     // Theme
     if (settings.theme) {
         document.documentElement.setAttribute('data-theme', settings.theme);

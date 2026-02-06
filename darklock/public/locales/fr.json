@@ -1,0 +1,365 @@
+{
+  "nav": {
+    "main": "Principal",
+    "dashboard": "Tableau de Bord",
+    "profile": "Profil",
+    "apps": "Applications",
+    "account": "Compte",
+    "security": "Sécurité",
+    "settings": "Paramètres"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "loading": "Chargement...",
+    "success": "Succès !",
+    "error": "Erreur",
+    "logout": "Déconnexion",
+    "submit": "Soumettre",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "confirm": "Confirmer",
+    "back": "Retour",
+    "next": "Suivant",
+    "yes": "Oui",
+    "no": "Non",
+    "enabled": "Activé",
+    "disabled": "Désactivé",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "version": "Version",
+    "user": "Utilisateur",
+    "admin": "Administrateur",
+    "owner": "Propriétaire"
+  },
+  "dashboard": {
+    "title": "Bienvenue",
+    "subtitle": "Voici un aperçu de votre plateforme Darklock",
+    "stats": {
+      "activeApps": "Applications Actives",
+      "2faStatus": "Statut 2FA",
+      "activeSessions": "Sessions Actives",
+      "lastLogin": "Dernière Connexion"
+    },
+    "quickActions": {
+      "title": "Actions Rapides",
+      "viewApps": "Voir les Apps",
+      "securitySettings": "Paramètres de Sécurité",
+      "editProfile": "Modifier le Profil",
+      "discordBot": "Tableau de Bord Bot Discord"
+    },
+    "securityStatus": {
+      "title": "État de Sécurité",
+      "2fa": {
+        "title": "Authentification à Deux Facteurs",
+        "checking": "Vérification du statut...",
+        "enabled": "2FA est activé",
+        "disabled": "2FA n'est pas activé"
+      },
+      "password": {
+        "title": "Mot de Passe Sécurisé",
+        "description": "Votre mot de passe répond aux exigences de sécurité"
+      },
+      "email": {
+        "title": "Email Vérifié",
+        "description": "L'email du compte est configuré"
+      }
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "subtitle": "Qui vous êtes - votre identité et vos préférences",
+    "overview": "Aperçu",
+    "changeAvatar": "Changer l'Avatar",
+    "username": "Nom d'Utilisateur",
+    "displayName": "Nom d'Affichage",
+    "role": "Rôle",
+    "accountCreated": "Compte Créé",
+    "personalInfo": {
+      "title": "Informations Personnelles",
+      "displayName": "Nom d'Affichage",
+      "displayNamePlaceholder": "Votre nom d'affichage",
+      "email": "Email",
+      "emailHint": "Pour modifier votre email, allez dans Paramètres du compte",
+      "timezone": "Fuseau Horaire",
+      "language": "Langue",
+      "saveChanges": "Enregistrer les Modifications"
+    },
+    "preferences": {
+      "title": "Préférences",
+      "theme": {
+        "title": "Thème",
+        "description": "Choisissez votre palette de couleurs préférée",
+        "dark": "Sombre",
+        "light": "Clair",
+        "system": "Système"
+      },
+      "reducedMotion": {
+        "title": "Mouvement Réduit",
+        "description": "Minimiser les animations et transitions"
+      },
+      "compactLayout": {
+        "title": "Mise en Page Compacte",
+        "description": "Afficher plus de contenu avec moins d'espacement"
+      }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "securityAlerts": {
+        "title": "Alertes de Sécurité",
+        "description": "Recevoir des notifications sur les activités suspectes"
+      },
+      "productUpdates": {
+        "title": "Mises à Jour du Produit",
+        "description": "Nouvelles fonctionnalités et améliorations"
+      },
+      "emailNotifications": {
+        "title": "Notifications par Email",
+        "description": "Recevoir des notifications par courrier électronique"
+      }
+    }
+  },
+  "apps": {
+    "title": "Applications",
+    "subtitle": "Accédez et gérez vos applications Darklock",
+    "darklock": {
+      "name": "Darklock Guard",
+      "description": "Surveillance et protection de l'intégrité des fichiers",
+      "launch": "Lancer",
+      "download": "Télécharger"
+    }
+  },
+  "security": {
+    "title": "Sécurité",
+    "subtitle": "Tout ce qui est sensible - comment votre compte est protégé",
+    "overview": {
+      "title": "Aperçu",
+      "2faStatus": "Statut 2FA",
+      "passwordStrength": "Force du Mot de Passe",
+      "activeSessions": "Sessions Actives",
+      "strong": "Fort"
+    },
+    "authentication": {
+      "title": "Authentification",
+      "changePassword": {
+        "title": "Changer le Mot de Passe",
+        "description": "Mettez à jour votre mot de passe pour garder votre compte sécurisé",
+        "currentPassword": "Mot de Passe Actuel",
+        "currentPasswordPlaceholder": "Entrez le mot de passe actuel",
+        "newPassword": "Nouveau Mot de Passe",
+        "newPasswordPlaceholder": "Entrez le nouveau mot de passe",
+        "confirmPassword": "Confirmer le Nouveau Mot de Passe",
+        "confirmPasswordPlaceholder": "Confirmez le nouveau mot de passe",
+        "updateButton": "Mettre à Jour le Mot de Passe"
+      },
+      "2fa": {
+        "title": "Authentification à Deux Facteurs",
+        "description": "Ajoutez une couche de sécurité supplémentaire à votre compte",
+        "loading": "Chargement du statut 2FA...",
+        "enable": "Activer 2FA",
+        "disable": "Désactiver 2FA",
+        "enabled": "Activé",
+        "disabled": "Désactivé"
+      }
+    },
+    "sessions": {
+      "title": "Sessions",
+      "description": "Gérez les appareils connectés à votre compte",
+      "loading": "Chargement des sessions...",
+      "current": "Session Actuelle",
+      "revoke": "Révoquer",
+      "revokeAll": "Révoquer Toutes les Sessions"
+    },
+    "activity": {
+      "title": "Activité de Sécurité",
+      "description": "Événements de sécurité récents et historique d'accès",
+      "loading": "Chargement de l'activité...",
+      "noEvents": "Aucun événement de sécurité récent"
+    }
+  },
+  "account": {
+    "title": "Compte",
+    "subtitle": "Gestion de la propriété et du cycle de vie",
+    "details": {
+      "title": "Détails du Compte",
+      "email": {
+        "title": "Adresse Email",
+        "description": "Votre email de contact principal - nécessite mot de passe + 2FA pour changer",
+        "current": "Email Actuel",
+        "new": "Nouvel Email",
+        "newPlaceholder": "Entrez le nouvel email",
+        "confirmPassword": "Confirmer le Mot de Passe",
+        "confirmPasswordPlaceholder": "Entrez votre mot de passe",
+        "2faCode": "Code 2FA",
+        "changeButton": "Changer l'Email"
+      },
+      "username": {
+        "title": "Nom d'Utilisateur",
+        "description": "Votre identifiant unique sur la plateforme",
+        "current": "Nom d'Utilisateur Actuel",
+        "new": "Nouveau Nom d'Utilisateur",
+        "newPlaceholder": "Entrez le nouveau nom d'utilisateur",
+        "hint": "3-20 caractères, lettres, chiffres, tirets bas et tirets uniquement",
+        "changeButton": "Changer le Nom d'Utilisateur"
+      }
+    },
+    "data": {
+      "title": "Données",
+      "export": {
+        "title": "Exporter les Données du Compte",
+        "description": "Téléchargez toutes les données de votre compte au format JSON",
+        "button": "Exporter les Données"
+      },
+      "clearSessions": {
+        "title": "Fermer Toutes les Sessions",
+        "description": "Se déconnecter de tous les appareils sauf celui-ci",
+        "button": "Fermer les Sessions"
+      }
+    },
+    "dangerZone": {
+      "title": "Zone Dangereuse",
+      "description": "Actions irréversibles - procédez avec prudence",
+      "disable": {
+        "title": "Désactiver le Compte",
+        "description": "Désactivez temporairement votre compte - peut être réactivé",
+        "button": "Désactiver le Compte"
+      },
+      "delete": {
+        "title": "Supprimer le Compte",
+        "description": "Supprimez définitivement votre compte et toutes les données associées",
+        "button": "Supprimer le Compte"
+      }
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "description": "Configuration et préférences au niveau de la plateforme",
+    "language": {
+      "title": "Langue et Région",
+      "select": "Langue",
+      "description": "Sélectionnez votre langue préférée"
+    },
+    "autoDetectLanguage": {
+      "title": "Détecter la Langue Automatiquement",
+      "description": "Définir la langue automatiquement selon les paramètres du navigateur"
+    },
+    "timezone": {
+      "title": "Fuseau Horaire",
+      "description": "Votre fuseau horaire local",
+      "autoDetect": "Détecter automatiquement"
+    },
+    "dateFormat": {
+      "title": "Format de Date",
+      "description": "Comment les dates sont affichées"
+    },
+    "timeFormat": {
+      "title": "Format de l'Heure",
+      "description": "Format 12 ou 24 heures",
+      "12hour": "12 heures (AM/PM)",
+      "24hour": "24 heures"
+    },
+    "platform": {
+      "title": "Plateforme",
+      "defaultLanding": {
+        "title": "Page d'Accueil par Défaut",
+        "description": "Choisissez où vous arrivez après la connexion"
+      },
+      "rememberLastApp": {
+        "title": "Se Souvenir de la Dernière App",
+        "description": "Retourner à la dernière application utilisée"
+      },
+      "autoSave": {
+        "title": "Enregistrer Automatiquement les Préférences",
+        "description": "Enregistrer automatiquement les modifications de vos préférences"
+      }
+    },
+    "appearance": {
+      "title": "Apparence",
+      "theme": {
+        "title": "Thème",
+        "description": "Choisissez votre thème de couleur",
+        "dark": "Sombre",
+        "light": "Clair",
+        "auto": "Auto (Système)"
+      },
+      "compactMode": {
+        "title": "Mode Compact",
+        "description": "Réduire l'espacement pour plus de contenu"
+      },
+      "sidebarPosition": {
+        "title": "Position de la Barre Latérale",
+        "description": "Position de la barre de navigation latérale",
+        "left": "Gauche",
+        "right": "Droite"
+      }
+    },
+    "accessibility": {
+      "title": "Accessibilité",
+      "fontScaling": {
+        "title": "Échelle de Police",
+        "description": "Ajuster la taille du texte sur toute la plateforme",
+        "small": "Petit",
+        "medium": "Moyen",
+        "large": "Grand",
+        "xlarge": "Très Grand"
+      },
+      "highContrast": {
+        "title": "Mode Contraste Élevé",
+        "description": "Augmenter le contraste pour une meilleure visibilité"
+      },
+      "reducedMotion": {
+        "title": "Mouvement Réduit",
+        "description": "Minimiser les animations et transitions"
+      },
+      "screenReader": {
+        "title": "Support Lecteur d'Écran",
+        "description": "Compatibilité améliorée avec les lecteurs d'écran"
+      }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "email": {
+        "title": "Notifications par Email",
+        "description": "Recevoir les mises à jour importantes par courrier"
+      },
+      "push": {
+        "title": "Notifications Push",
+        "description": "Notifications push du navigateur"
+      },
+      "sound": {
+        "title": "Notifications Sonores",
+        "description": "Jouer des sons pour les notifications"
+      }
+    },
+    "privacy": {
+      "title": "Confidentialité et Sécurité",
+      "activityTracking": {
+        "title": "Suivi d'Activité",
+        "description": "Autoriser les analyses pour améliorer votre expérience"
+      },
+      "sessionTimeout": {
+        "title": "Expiration de Session",
+        "description": "Se déconnecter automatiquement après inactivité",
+        "15min": "15 minutes",
+        "30min": "30 minutes",
+        "1hour": "1 heure",
+        "4hours": "4 heures",
+        "never": "Jamais"
+      },
+      "require2FA": {
+        "title": "Exiger 2FA pour la Connexion",
+        "description": "Toujours demander l'authentification à deux facteurs"
+      }
+    },
+    "experimental": {
+      "title": "Expérimental",
+      "description": "Testez de nouvelles fonctionnalités avant leur sortie",
+      "betaFeatures": {
+        "title": "Fonctionnalités Bêta",
+        "description": "Activer les fonctionnalités expérimentales et améliorations"
+      },
+      "notice": "Les fonctionnalités bêta peuvent être instables et sont susceptibles de changer"
+    }
+  }
+}

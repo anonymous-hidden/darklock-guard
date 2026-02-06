@@ -48,7 +48,7 @@ module.exports = {
                 );
             } catch (e) { bot.logger?.warn('[VERIFICATION] queue record failed:', e.message); }
 
-            await sendVerificationDM(member);
+            await sendVerificationDM(member, cfg, bot);
             await postStaffLog(member, guild, roles, cfg, bot);
 
             if (AUTO_KICK_DELAY_MS > 0) {
@@ -128,12 +128,21 @@ async function ensureRoles(guild, cfg, bot) {
     let verifiedRole = null;
 
     // Verified role from config
-    if (cfg?.verification_role || cfg?.verification_role_id) {
-        verifiedRole = guild.roles.cache.get(cfg.verification_role || cfg.verification_role_id) || null;
+    const verifiedRoleId = cfg?.verification_role || cfg?.verification_role_id || cfg?.verified_role_id;
+    if (verifiedRoleId) {
+        verifiedRole = guild.roles.cache.get(verifiedRoleId) || null;
     }
 
-    // Try to locate an existing "Unverified" role
-    unverifiedRole = guild.roles.cache.find(r => r.name.toLowerCase() === 'unverified') || null;
+    // Unverified role from config
+    const unverifiedRoleId = cfg?.unverified_role_id || cfg?.unverified_role;
+    if (unverifiedRoleId) {
+        unverifiedRole = guild.roles.cache.get(unverifiedRoleId) || null;
+    }
+
+    // Try to locate an existing "Unverified" role by name if not found by id
+    if (!unverifiedRole) {
+        unverifiedRole = guild.roles.cache.find(r => r.name.toLowerCase() === 'unverified') || null;
+    }
 
     if (!unverifiedRole) {
         try {
@@ -153,47 +162,141 @@ async function ensureRoles(guild, cfg, bot) {
     return { unverifiedRole, verifiedRole };
 }
 
-async function sendVerificationDM(member) {
+async function sendVerificationDM(member, cfg, bot) {
     try {
+        // Resolve method from DB or settings
+        const method = cfg?.verification_method
+            || cfg?.settings?.verification_method
+            || cfg?.settings?.verification?.method
+            || 'button';
+        
         // Build the web verification URL
-        const dashboardUrl = process.env.DASHBOARD_URL || 'https://discord-security-bot-uyx6.onrender.com';
+        const dashboardUrl = process.env.DASHBOARD_URL || process.env.DASHBOARD_ORIGIN || 'http://localhost:3001';
         const verifyUrl = `${dashboardUrl}/verify/${member.guild.id}/${member.id}`;
         
         const dmEmbed = new EmbedBuilder()
             .setTitle(`🔐 Welcome to ${member.guild.name}!`)
-            .setDescription('Thank you for joining! Please complete verification to access the server.')
-            .addFields(
-                {
-                    name: '🌐 How to Verify',
-                    value: `Click the link below to open our secure verification portal:\n\n**[Click Here to Verify](${verifyUrl})**\n\nOr copy this link: \`${verifyUrl}\``
-                },
-                {
-                    name: '📜 Server Rules',
-                    value: '• Be respectful\n• No spam or self-promo\n• Follow Discord TOS\n• Enjoy your stay!'
-                },
-                {
-                    name: '❓ Need Help?',
-                    value: 'If you have questions or issues verifying, head to the verification channel in the server or ping a staff member.'
-                }
-            )
-            .setColor('#00d4ff')
             .setThumbnail(member.guild.iconURL({ dynamic: true }))
+            .setColor('#00d4ff')
             .setFooter({ text: `User ID: ${member.id} | Verification required` })
             .setTimestamp();
 
-        // Add a button to the DM as well
         const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-        const row = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setLabel('🔗 Verify Now')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL(verifyUrl)
-            );
+        let row;
 
-        await member.send({ embeds: [dmEmbed], components: [row] });
+        if (method === 'web') {
+            // Web portal verification
+            dmEmbed.setDescription('Thank you for joining! Please complete verification to access the server.')
+                .addFields(
+                    {
+                        name: '🌐 How to Verify',
+                        value: `Click the button below to open our secure verification portal and complete the verification process.`
+                    },
+                    {
+                        name: '📜 Server Rules',
+                        value: '• Be respectful\n• No spam or self-promo\n• Follow Discord TOS\n• Enjoy your stay!'
+                    },
+                    {
+                        name: '❓ Need Help?',
+                        value: 'If you have questions or issues verifying, head to the verification channel in the server or ping a staff member.'
+                    }
+                );
+
+            row = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setLabel('🔗 Verify Now')
+                        .setStyle(ButtonStyle.Link)
+                        .setURL(verifyUrl)
+                );
+        } else if (method === 'button' || method === 'auto') {
+            // Button click verification
+            dmEmbed.setDescription('Thank you for joining! Please complete verification to access the server.')
+                .addFields(
+                    {
+                        name: '✅ How to Verify',
+                        value: `Head to the verification channel in **${member.guild.name}** and click the **Verify** button to gain access to the server.`
+                    },
+                    {
+                        name: '📜 Server Rules',
+                        value: '• Be respectful\n• No spam or self-promo\n• Follow Discord TOS\n• Enjoy your stay!'
+                    },
+                    {
+                        name: '❓ Need Help?',
+                        value: 'If you have questions, head to the verification channel or ping a staff member.'
+                    }
+                );
+
+            // No button needed for button method - they click in the server
+            row = null;
+        } else if (method === 'captcha' || method === 'code') {
+            // CAPTCHA/code verification
+            dmEmbed.setDescription('Thank you for joining! Please complete verification to access the server.')
+                .addFields(
+                    {
+                        name: '🔐 How to Verify',
+                        value: `Head to the verification channel in **${member.guild.name}** and click the **Get Code** button. You'll receive a code in your DMs that you need to enter to verify.`
+                    },
+                    {
+                        name: '📜 Server Rules',
+                        value: '• Be respectful\n• No spam or self-promo\n• Follow Discord TOS\n• Enjoy your stay!'
+                    },
+                    {
+                        name: '❓ Need Help?',
+                        value: 'If you didn\'t receive a code or have issues, contact a staff member in the verification channel.'
+                    }
+                );
+
+            row = null;
+        } else if (method === 'reaction' || method === 'emoji') {
+            // Emoji reaction verification
+            dmEmbed.setDescription('Thank you for joining! Please complete verification to access the server.')
+                .addFields(
+                    {
+                        name: '🎯 How to Verify',
+                        value: `Head to the verification channel in **${member.guild.name}** and click the **Start Verification** button. You'll receive an emoji challenge in your DMs.`
+                    },
+                    {
+                        name: '📜 Server Rules',
+                        value: '• Be respectful\n• No spam or self-promo\n• Follow Discord TOS\n• Enjoy your stay!'
+                    },
+                    {
+                        name: '❓ Need Help?',
+                        value: 'If you have questions, head to the verification channel or ping a staff member.'
+                    }
+                );
+
+            row = null;
+        } else {
+            // Fallback to button method for unknown methods
+            dmEmbed.setDescription('Thank you for joining! Please complete verification to access the server.')
+                .addFields(
+                    {
+                        name: '✅ How to Verify',
+                        value: `Head to the verification channel in **${member.guild.name}** and click the **Verify** button to gain access to the server.`
+                    },
+                    {
+                        name: '📜 Server Rules',
+                        value: '• Be respectful\n• No spam or self-promo\n• Follow Discord TOS\n• Enjoy your stay!'
+                    },
+                    {
+                        name: '❓ Need Help?',
+                        value: 'If you have questions, head to the verification channel or ping a staff member.'
+                    }
+                );
+
+            row = null;
+        }
+
+        const messageOptions = { embeds: [dmEmbed] };
+        if (row) {
+            messageOptions.components = [row];
+        }
+
+        await member.send(messageOptions);
     } catch (error) {
         // User may have DMs disabled
+        bot?.logger?.warn?.('[VERIFICATION] DM send failed:', error?.message || error);
     }
 }
 

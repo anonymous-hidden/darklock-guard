@@ -10,9 +10,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/css/design-system.css">
-    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <link rel="stylesheet" href="/css/premium-gating.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
     <script src="/js/global-theme.js"></script>
     <script src="/js/theme-effects.js"></script>
+    <script src="/js/premium-gating.js"></script>
     <style>
         .page { min-height: 100vh; background: var(--ds-surface-0); }
 
@@ -230,17 +232,17 @@
                         <div class="perm-card viewer active" data-level="viewer" onclick="selectPermission('viewer')">
                             <div class="perm-card-icon"><i class="fas fa-eye"></i></div>
                             <h4>Viewer</h4>
-                            <p>Read-only access to dashboard</p>
+                            <p>View analytics & logs only</p>
                         </div>
                         <div class="perm-card moderator" data-level="moderator" onclick="selectPermission('moderator')">
                             <div class="perm-card-icon"><i class="fas fa-user-shield"></i></div>
                             <h4>Moderator</h4>
-                            <p>Limited editing permissions</p>
+                            <p>Manage tickets & moderation</p>
                         </div>
                         <div class="perm-card admin" data-level="admin" onclick="selectPermission('admin')">
                             <div class="perm-card-icon"><i class="fas fa-crown"></i></div>
                             <h4>Admin</h4>
-                            <p>Full dashboard access</p>
+                            <p>Full access & settings control</p>
                         </div>
                     </div>
                     <input type="hidden" id="permissionLevel" value="viewer">

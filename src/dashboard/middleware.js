@@ -91,11 +91,20 @@ function requestId() {
 function apiRateLimit() {
     return rateLimit({
         windowMs: 60 * 1000, // 1 minute
-        max: 100,
+        max: 500, // 500 requests per minute (generous for dashboard)
         standardHeaders: true,
         legacyHeaders: false,
         message: { error: 'Too many requests, please try again later' },
-        keyGenerator: (req) => req.user?.userId || req.ip
+        keyGenerator: (req) => req.user?.userId || req.ip,
+        skip: (req) => {
+            // Skip rate limiting for theme/static endpoints
+            return req.path.includes('theme') ||
+                   req.path.includes('csrf') ||
+                   req.path.includes('current-theme') ||
+                   req.path.startsWith('/static/') ||
+                   req.path.endsWith('.css') ||
+                   req.path.endsWith('.js');
+        }
     });
 }
 

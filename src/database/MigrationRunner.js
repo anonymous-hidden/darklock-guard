@@ -612,6 +612,13 @@ class MigrationRunner {
                 }
             },
             {
+                version: '018_verification_method_column',
+                name: 'Ensure guild_configs.verification_method exists',
+                up: async () => {
+                    await this.safeAddColumn('guild_configs', 'verification_method', 'TEXT');
+                }
+            },
+            {
                 version: '019_user_sessions',
                 name: 'Create user sessions table for session management',
                 up: async () => {
@@ -631,6 +638,13 @@ class MigrationRunner {
                     `);
                     await this.run(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON user_sessions(user_id)`).catch(() => {});
                     await this.run(`CREATE INDEX IF NOT EXISTS idx_sessions_expires ON user_sessions(expires_at)`).catch(() => {});
+                }
+            },
+            {
+                version: '020_verification_method_patch',
+                name: 'Ensure guild_configs.verification_method column exists (patch)',
+                up: async () => {
+                    await this.safeAddColumn('guild_configs', 'verification_method', 'TEXT');
                 }
             }
         ];

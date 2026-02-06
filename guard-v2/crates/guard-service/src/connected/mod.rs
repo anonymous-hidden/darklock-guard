@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tokio::task::JoinHandle;
 use tracing::info;
 
-use crate::ServiceState;
+use crate::service_state::ServiceState;
 
 mod api_client;
 pub mod commands;

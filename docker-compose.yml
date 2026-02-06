@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  darklock:
+    build:
+      context: .
+    image: darklock:latest
+    container_name: darklock
+    restart: on-failure
+    user: "${UID:-1000}:${GID:-1000}"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      WEB_HOST: 0.0.0.0
+    ports:
+      - "3001:3001"
+      - "3002:3002"
+    volumes:
+      # CRITICAL: Backup these volumes before upgrades
+      - ./data:/usr/src/app/data                                    # SQLite database
+      - ./file-protection/config:/usr/src/app/file-protection/config  # Tamper baseline
+      # Runtime data
+      - ./logs:/usr/src/app/logs
+      - ./uploads:/usr/src/app/uploads
+      - ./file-protection/backups:/usr/src/app/file-protection/backups
+      - ./file-protection/logs:/usr/src/app/file-protection/logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Resource limits for Raspberry Pi 5
+    mem_limit: 1g
+    cpus: 2
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "/usr/src/app/healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

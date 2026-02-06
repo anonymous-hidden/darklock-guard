@@ -3,7 +3,16 @@
     windows_subsystem = "windows"
 )]
 
-use guard_core::{device_state::DeviceState, safe_mode::SafeModeReason, vault::SecurityProfile};
+use guard_core::{
+    device_state::DeviceState,
+    ipc::{IpcRequest, IpcResponse},
+    ipc_client::send_request,
+    paths::ipc_socket_path,
+    safe_mode::SafeModeReason,
+    secure_storage::get_ipc_secret,
+    settings::GuardSettings,
+    vault::SecurityProfile,
+};
 use serde::{Deserialize, Serialize};
 
 mod status_client;
@@ -86,12 +95,42 @@ fn format_safe_mode_reason(reason: &SafeModeReason) -> String {
     .to_string()
 }
 
+async fn ipc_settings_request(request: IpcRequest) -> Result<IpcResponse, String> {
+    let state = status_client::fetch_device_state()
+        .await
+        .map_err(|_| "Guard service unavailable".to_string())?;
+    let device_id = state
+        .device_id
+        .ok_or_else(|| "Device ID unavailable".to_string())?;
+    let secret = get_ipc_secret(&device_id).map_err(|e| e.to_string())?;
+    let socket_path = ipc_socket_path().map_err(|e| e.to_string())?;
+    send_request(socket_path, &secret, request)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 async fn get_status() -> Result<ServiceStatus, String> {
     let device_state = status_client::fetch_device_state()
         .await
         .map_err(|_| "Guard service unavailable".to_string())?;
     Ok(map_device_state_to_status(&device_state))
+}
+
+#[tauri::command]
+async fn get_settings() -> Result<GuardSettings, String> {
+    match ipc_settings_request(IpcRequest::GetSettings).await? {
+        IpcResponse::Settings { settings } => Ok(settings),
+        _ => Err("Unexpected IPC response".to_string()),
+    }
+}
+
+#[tauri::command]
+async fn update_settings(settings: GuardSettings) -> Result<(), String> {
+    match ipc_settings_request(IpcRequest::UpdateSettings { settings }).await? {
+        IpcResponse::SettingsUpdated => Ok(()),
+        _ => Err("Unexpected IPC response".to_string()),
+    }
 }
 
 #[tauri::command]
@@ -142,6 +181,8 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             get_status,
+            get_settings,
+            update_settings,
             get_capabilities,
             get_events,
             get_device_state,

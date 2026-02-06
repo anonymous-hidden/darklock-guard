@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/css/dashboard-modern.css">
-    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
     <script src="/js/global-theme.js"></script>
     <script src="/js/theme-effects.js"></script>
 </head>
@@ -1326,7 +1326,10 @@
             try {
                 const response = await fetch('/api/me', { credentials: 'include' });
                 if (!response.ok) {
-                    window.location.href = '/login';
+                    // User not logged in - show guest view
+                    document.getElementById('userName').textContent = 'Guest';
+                    document.getElementById('userRole').textContent = 'Visitor';
+                    document.getElementById('userAvatar').src = 'https://cdn.discordapp.com/embed/avatars/0.png';
                     return;
                 }
                 const data = await response.json();
@@ -1343,7 +1346,10 @@
                 }
             } catch (error) {
                 console.error('Error loading user data:', error);
-                window.location.href = '/login';
+                // Show guest view instead of redirecting
+                document.getElementById('userName').textContent = 'Guest';
+                document.getElementById('userRole').textContent = 'Visitor';
+                document.getElementById('userAvatar').src = 'https://cdn.discordapp.com/embed/avatars/0.png';
             }
         }
 

@@ -366,6 +366,114 @@ class EmailService {
 </html>
         `;
     }
+
+    /**
+     * Send platform update notification email
+     */
+    async sendUpdateEmail(email, username, update) {
+        if (!this.enabled) {
+            console.log('[Email] Email service disabled, skipping update email');
+            return;
+        }
+
+        const updateTypeLabel = update.type === 'major' ? 'Major Update' :
+                                update.type === 'minor' ? 'Minor Update' : 'Bug Fix';
+
+        const mailOptions = {
+            from: this.getFromAddress(),
+            to: email,
+            subject: `Darklock Platform Update: v${update.version} - ${update.title}`,
+            html: this.generateUpdateEmailHTML(username, update, updateTypeLabel)
+        };
+
+        try {
+            await this.transporter.sendMail(mailOptions);
+            console.log(`[Email] Update notification sent to: ${email}`);
+        } catch (err) {
+            console.error('[Email] Failed to send update email:', err);
+            throw err;
+        }
+    }
+
+    /**
+     * Generate update notification email HTML
+     */
+    generateUpdateEmailHTML(username, update, updateTypeLabel) {
+        const updateUrl = `${this.getBaseUrl()}/platform/update`;
+        
+        return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platform Update</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0f; color: #ffffff;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <table role="presentation" style="max-width: 600px; width: 100%; border-collapse: collapse; background: linear-gradient(135deg, #16161d 0%, #1c1c26 100%); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);">
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #6366f1, #7c3aed); padding: 40px 40px 30px; text-align: center;">
+                            <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff;">
+                                🚀 Platform Update
+                            </h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 40px;">
+                            <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #e5e7eb;">
+                                Hi ${username},
+                            </p>
+                            <p style="margin: 0 0 30px; font-size: 16px; line-height: 1.6; color: #e5e7eb;">
+                                We've just released a new update to the Darklock Platform!
+                            </p>
+                            <div style="background: #0a0a0f; border: 1px solid #2a2a3a; border-radius: 8px; padding: 24px; margin-bottom: 30px;">
+                                <div style="margin-bottom: 16px;">
+                                    <span style="display: inline-block; padding: 4px 12px; background: rgba(99, 102, 241, 0.15); border: 1px solid #6366f1; border-radius: 6px; font-size: 13px; font-weight: 600; color: #6366f1; font-family: 'Monaco', 'Courier New', monospace;">
+                                        v${update.version}
+                                    </span>
+                                    <span style="display: inline-block; padding: 4px 10px; margin-left: 8px; background: ${update.type === 'major' ? 'rgba(239, 68, 68, 0.15)' : update.type === 'minor' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(34, 197, 94, 0.15)'}; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; color: ${update.type === 'major' ? '#ef4444' : update.type === 'minor' ? '#3b82f6' : '#22c55e'};">
+                                        ${updateTypeLabel}
+                                    </span>
+                                </div>
+                                <h2 style="margin: 0 0 12px; font-size: 20px; font-weight: 600; color: #ffffff;">
+                                    ${update.title}
+                                </h2>
+                                <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #9ca3af; white-space: pre-wrap;">
+                                    ${update.content.substring(0, 300)}${update.content.length > 300 ? '...' : ''}
+                                </p>
+                            </div>
+                            <div style="text-align: center; margin-bottom: 30px;">
+                                <a href="${updateUrl}" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #6366f1, #7c3aed); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                                    View Full Update
+                                </a>
+                            </div>
+                            <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #9ca3af;">
+                                Want to change your email preferences? You can manage your notification settings in your 
+                                <a href="${this.getBaseUrl()}/platform/dashboard" style="color: #6366f1; text-decoration: none;">account settings</a>.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background: #0a0a0f; padding: 30px; text-align: center; border-top: 1px solid #2a2a3a;">
+                            <p style="margin: 0 0 10px; font-size: 14px; color: #6b7280;">
+                                Darklock Platform
+                            </p>
+                            <p style="margin: 0; font-size: 12px; color: #4b5563;">
+                                This email was sent to ${email} because you opted in to receive platform updates.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+        `;
+    }
 }
 
 // Export singleton instance

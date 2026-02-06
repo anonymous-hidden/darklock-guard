@@ -76,6 +76,20 @@ async function saveSessions(data) {
     }
 }
 
+/**
+ * Resolve user from DB first, fallback to JSON users file
+ */
+async function getUserRecord(userId) {
+    const dbUser = await db.getUserById(userId);
+    if (dbUser) {
+        return { source: 'db', user: dbUser, usersData: null };
+    }
+
+    const usersData = await loadUsers();
+    const user = usersData.users.find(u => u.id === userId);
+    return { source: 'json', user, usersData };
+}
+
 // ============================================================================
 // PROFILE API ROUTES
 // ============================================================================
@@ -781,7 +795,12 @@ router.post('/api/2fa/verify-backup', async (req, res) => {
 // ============================================================================
 
 const multer = require('multer');
-const sharp = require('sharp');
+let sharp = null;
+try {
+    sharp = require('sharp');
+} catch (err) {
+    console.warn('[Darklock Profile] sharp not installed; avatar processing disabled');
+}
 const fs = require('fs').promises;
 
 // Setup multer for avatar uploads
@@ -805,6 +824,12 @@ const avatarUpload = multer({
  */
 router.post('/api/avatar', requireAuth, avatarUpload.single('avatar'), async (req, res) => {
     try {
+        if (!sharp) {
+            return res.status(503).json({
+                success: false,
+                error: 'Avatar processing is unavailable (missing sharp dependency)'
+            });
+        }
         if (!req.file) {
             return res.status(400).json({
                 success: false,
@@ -1066,6 +1091,165 @@ router.put('/api/settings', requireAuth, async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to update settings'
+        });
+    }
+});
+
+// ============================================================================
+// ACCOUNT MANAGEMENT
+// ============================================================================
+
+/**
+ * POST /profile/api/disable - Disable user account
+ * Requires password verification
+ */
+router.post('/api/disable', requireAuth, async (req, res) => {
+    try {
+        const { password } = req.body;
+
+        if (!password) {
+            return res.status(400).json({
+                success: false,
+                error: 'Password is required'
+            });
+        }
+
+        const { source, user, usersData } = await getUserRecord(req.user.userId);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+
+        const passwordValid = await bcrypt.compare(password, user.password);
+        if (!passwordValid) {
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid password'
+            });
+        }
+
+        if (source === 'db') {
+            await db.updateUser(user.id, { active: 0 });
+            await db.revokeAllUserSessions(user.id);
+        } else {
+            user.active = false;
+            user.disabledAt = new Date().toISOString();
+
+            await saveUsers(usersData);
+
+            const sessionsData = await loadSessions();
+            sessionsData.sessions = sessionsData.sessions.filter(s => s.userId !== user.id);
+            await saveSessions(sessionsData);
+        }
+
+        console.log(`[Darklock Profile] Account disabled: ${user.username}`);
+
+        res.json({
+            success: true,
+            message: 'Account disabled successfully'
+        });
+    } catch (err) {
+        console.error('[Darklock Profile] Account disable error:', err);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to disable account'
+        });
+    }
+});
+
+/**
+ * DELETE /profile/api/delete - Permanently delete user account
+ * Requires password verification and 2FA if enabled
+ */
+router.delete('/api/delete', requireAuth, async (req, res) => {
+    try {
+        const { password, totpCode } = req.body;
+
+        if (!password) {
+            return res.status(400).json({
+                success: false,
+                error: 'Password is required'
+            });
+        }
+
+        const { source, user, usersData } = await getUserRecord(req.user.userId);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'User not found'
+            });
+        }
+
+        const role = user.role || user.role_name || user.roleName;
+        if (role === 'owner' || role === 'admin') {
+            return res.status(403).json({
+                success: false,
+                error: 'Cannot delete admin accounts. Please contact system administrator.'
+            });
+        }
+
+        const passwordValid = await bcrypt.compare(password, user.password);
+        if (!passwordValid) {
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid password'
+            });
+        }
+
+        const twoFactorEnabled = source === 'db'
+            ? (user.two_factor_enabled === 1 || user.two_factor_enabled === true)
+            : !!user.twoFactorEnabled;
+
+        if (twoFactorEnabled) {
+            if (!totpCode) {
+                return res.status(400).json({
+                    success: false,
+                    error: '2FA code is required'
+                });
+            }
+
+            const verified = speakeasy.totp.verify({
+                secret: source === 'db' ? user.two_factor_secret : user.twoFactorSecret,
+                encoding: 'base32',
+                token: totpCode,
+                window: 2
+            });
+
+            if (!verified) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'Invalid 2FA code'
+                });
+            }
+        }
+
+        if (source === 'db') {
+            await db.revokeAllUserSessions(user.id);
+            await db.run(`DELETE FROM users WHERE id = ?`, [user.id]);
+        } else {
+            usersData.users = usersData.users.filter(u => u.id !== user.id);
+            await saveUsers(usersData);
+
+            const sessionsData = await loadSessions();
+            sessionsData.sessions = sessionsData.sessions.filter(s => s.userId !== user.id);
+            await saveSessions(sessionsData);
+        }
+
+        console.log(`[Darklock Profile] Account deleted: ${user.username} (${user.email})`);
+
+        res.json({
+            success: true,
+            message: 'Account deleted successfully'
+        });
+    } catch (err) {
+        console.error('[Darklock Profile] Account delete error:', err);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to delete account'
         });
     }
 });

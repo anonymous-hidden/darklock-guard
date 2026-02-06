@@ -72,12 +72,24 @@ module.exports = {
                     ViewChannel: false
                 }).catch(() => {});
 
-                // 3. Restrict unverified from all other channels
-                const textChannels = interaction.guild.channels.cache.filter(ch => ch.type === 0 && ch.id !== channel.id);
-                for (const [, ch] of textChannels) {
+                // 3. Restrict unverified from all other channels (text/voice/stage/forum/media)
+                const blockedTypes = new Set([
+                    0,  // GUILD_TEXT
+                    2,  // GUILD_VOICE
+                    5,  // GUILD_ANNOUNCEMENT
+                    13, // GUILD_STAGE_VOICE
+                    15, // GUILD_FORUM
+                    16  // GUILD_MEDIA
+                ]);
+
+                const otherChannels = interaction.guild.channels.cache.filter(ch => blockedTypes.has(ch.type) && ch.id !== channel.id);
+                for (const [, ch] of otherChannels) {
                     await ch.permissionOverwrites.edit(unverifiedRole.id, {
                         ViewChannel: false,
-                        SendMessages: false
+                        SendMessages: false,
+                        SendMessagesInThreads: false,
+                        Connect: false,
+                        Speak: false
                     }).catch(() => {});
                 }
 

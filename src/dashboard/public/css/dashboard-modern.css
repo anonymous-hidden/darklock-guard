@@ -148,7 +148,7 @@ body {
     display: flex;
     flex-direction: column;
     z-index: 100;
-    overflow-y: auto;
+    overflow: hidden;
 }
 
 .sidebar::-webkit-scrollbar {
@@ -167,6 +167,7 @@ body {
 .sidebar-header {
     padding: 1.5rem;
     border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
 .sidebar-brand {
@@ -201,6 +202,7 @@ body {
 .server-selector {
     padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
 .server-current {
@@ -251,6 +253,10 @@ body {
     transition: transform 0.3s ease;
 }
 
+.server-dropdown-icon.rotated {
+    transform: rotate(180deg);
+}
+
 /* Server Dropdown */
 .server-dropdown {
     display: none;
@@ -264,8 +270,11 @@ body {
     border-radius: 12px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
     z-index: 100;
-    max-height: 300px;
-    overflow-y: auto;
+    overflow: hidden;
+}
+
+.server-dropdown.open {
+    display: block;
 }
 
 .server-selector {
@@ -284,6 +293,25 @@ body {
 
 .server-dropdown-list {
     padding: 0.5rem;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.server-dropdown-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.server-dropdown-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.server-dropdown-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.server-dropdown-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .server-dropdown-item {
@@ -298,6 +326,16 @@ body {
 
 .server-dropdown-item:hover {
     background: rgba(255, 255, 255, 0.05);
+}
+
+.server-dropdown-item.active {
+    background: rgba(0, 240, 255, 0.1);
+    border: 1px solid rgba(0, 240, 255, 0.3);
+}
+
+.server-dropdown-check {
+    color: var(--accent-primary);
+    margin-left: auto;
 }
 
 .server-dropdown-item img {
@@ -326,6 +364,29 @@ body {
     color: var(--text-muted);
 }
 
+.server-dropdown-add-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, var(--primary-color, #5865f2), #4752c4);
+    color: white;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.server-dropdown-add-btn:hover {
+    background: linear-gradient(135deg, #4752c4, #3c45a5);
+    transform: translateY(-1px);
+}
+
+.server-dropdown-add-btn i {
+    font-size: 16px;
+}
+
 .server-dropdown-loading,
 .server-dropdown-empty {
     padding: 1rem;
@@ -338,6 +399,26 @@ body {
 .sidebar-nav {
     flex: 1;
     padding: 1rem 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .nav-section {
@@ -410,6 +491,7 @@ body {
 .sidebar-user {
     padding: 1rem 1.5rem;
     border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
 .user-block {
@@ -1674,4 +1756,164 @@ body {
     .update-popup-button {
         width: 100%;
     }
+}
+/* ============================================== */
+/* Access Code Modal Styles                       */
+/* ============================================== */
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: var(--surface-color, #2f3136);
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+    width: 90%;
+    max-width: 500px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-header h2 i {
+    color: var(--primary-color, #5865f2);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #b9bbbe;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-body .form-group {
+    margin-bottom: 0;
+}
+
+.modal-body label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #b9bbbe;
+    margin-bottom: 8px;
+}
+
+.modal-body .form-control {
+    width: 100%;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: #ffffff;
+    font-size: 16px;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 2px;
+    transition: all 0.2s;
+}
+
+.modal-body .form-control:focus {
+    outline: none;
+    border-color: var(--primary-color, #5865f2);
+    box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.1);
+}
+
+.modal-footer {
+    display: flex;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.1);
+    justify-content: flex-end;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: var(--primary-color, #5865f2);
+    color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #4752c4;
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
 }

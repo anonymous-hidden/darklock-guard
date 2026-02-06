@@ -3,6 +3,12 @@
 Discord security and moderation bot with dashboard, analytics, ticket system, leveling, and Darklock Guard platform.
 
 ---
+## darklock app
+# start
+pgrep -f "tauri dev" > /dev/null && echo "Already running" || (cd "/home/cayden/discord bot/discord bot/guard-v2/desktop" && npx tauri dev) 
+
+
+
 
 ## Quick Start (Copy & Paste)
 
@@ -18,13 +24,15 @@ cp .env.example .env
 nano .env  # Edit with your settings
 
 # Generate anti-tampering baseline
-node file-protection/agent/baseline-generator.js
+0
 
 # Run the bot (choose one)
 npm start       # Production mode
 npm run dev     # Development mode (auto-restart on file changes)
 ./startup.sh    # With baseline generation
 ```
+
+cd /home/cayden/discord\ bot/discord\ bot/ainti-tampering-app/tauri-app && DARKLOCK_API_URL=http://localhost:3002 npm run tauri:dev
 
 ---
 
@@ -43,7 +51,7 @@ npm run dev     # Development mode (auto-restart on file changes)
 # Navigate to project
 cd /home/cayden/discord\ bot
 
-# Install dependencies
+# Install dependenciesv
 npm install
 
 # Copy and configure environment
@@ -119,6 +127,11 @@ npm run dev
 chmod +x startup.sh
 ./startup.sh
 ```
+
+
+cd "/home/cayden/discord bot/discord bot/guard-v2/desktop" && npx tauri dev
+
+
 
 ---
 
@@ -260,7 +273,7 @@ node darklock/check-downloads.js       # Check Darklock downloads
 ### Generate Baseline
 ```bash
 cd /home/cayden/discord\ bot
-node file-protection/agent/baseline-generator.js
+
 ```
 
 ### Test Anti-Tampering
@@ -621,4 +634,83 @@ npm test
 - **npm Registry**: https://www.npmjs.com/
 
 For issues, check logs: `tail -f logs/combined.log`
+
+---
+
+# Raspberry Pi Pico Hardware Watchdog (MicroPython)
+
+## Architecture
+This watchdog runs on a Raspberry Pi Pico (RP2040) and continuously checks a server health endpoint. It maintains a simple state machine (**OK → DEGRADED → FAIL**) based on retry outcomes. When a failure is confirmed, it asserts a GPIO output (LED/relay), sends a webhook alert, and can optionally call a recovery endpoint. It survives OS or bot failures because it runs on a separate microcontroller.
+
+**Network options**:
+- **Pico W**: Uses built‑in Wi‑Fi.
+- **Pico (non‑W)**: Uses an external **ESP8266 in AT mode** over UART. (Required because Pico has no Wi‑Fi.)
+
+## Files (must upload to Pico)
+Upload these files to the Pico filesystem:
+- [main.py](main.py)
+- [config.py](config.py)
+- [network.py](network.py)
+- [state.py](state.py)
+
+## Flash MicroPython
+1. Download the official MicroPython UF2 for Raspberry Pi Pico from https://micropython.org/download/rp2-pico/
+2. Hold **BOOTSEL** and connect the Pico to USB.
+3. Drag-and-drop the UF2 onto the Pico’s mass-storage drive.
+
+## Wiring (Pico + ESP8266 AT)
+### 1) Watchdog GPIO (LED or Relay)
+- **GPIO_FAIL_PIN (default GP15)** → series resistor (220Ω) → LED → GND
+- **GPIO_OK_PIN (default GP14)** → series resistor (220Ω) → LED → GND
+
+If driving a relay, use a transistor and flyback diode. Do **not** drive a relay coil directly from the Pico pin.
+
+### 2) ESP8266 UART
+- Pico **GP0 (TX)** → ESP8266 **RX**
+- Pico **GP1 (RX)** → ESP8266 **TX**
+- Pico **3V3** → ESP8266 **VCC**
+- Pico **GND** → ESP8266 **GND**
+
+Use 3.3V only. Ensure ESP8266 is flashed with AT firmware and supports `AT+CIPSTART`/`AT+CIPSEND`.
+
+## Configuration (no reflashing needed)
+Edit [config.py](config.py) directly on the Pico:
+- `WIFI_SSID` / `WIFI_PASSWORD` must be set for Pico W or ESP8266.
+- `HEALTH_URL` → your health endpoint
+- `WEBHOOK_URL` → Discord webhook for alerts
+- `SHUTDOWN_URL` → optional recovery endpoint
+- `INTERVAL_S`, `TIMEOUT_MS`, `RETRIES`
+- `GPIO_FAIL_PIN`, `GPIO_OK_PIN`
+
+## Health Endpoint Contract
+The endpoint must return JSON like:
+```
+{
+	"status": "ok",
+	"integrity": "pass"
+}
+```
+Any mismatch, invalid JSON, or HTTP errors trigger a failure path.
+
+## Testing Failure Detection
+1. Set `HEALTH_URL` to a valid endpoint and verify **OK** (OK LED on).
+2. Stop the server or block the endpoint.
+3. The watchdog will transition **OK → DEGRADED → FAIL** after retries and thresholds.
+4. Confirm:
+	 - FAIL LED/relay toggles
+	 - Webhook alert received
+	 - Optional recovery endpoint called
+
+## Integration Notes
+### Discord bot health endpoint
+Expose `/health` from the bot or web dashboard that returns `status` and `integrity`. The watchdog checks it every `INTERVAL_S`.
+
+### Darklock integrity checks
+Include Darklock results in the health JSON (e.g., `integrity: "pass" | "fail"`). Any integrity failure triggers immediate **FAIL**.
+
+### Automated recovery/alerting
+On **FAIL**, the watchdog:
+1) asserts GPIO (LED/relay),
+2) sends a Discord webhook alert,
+3) optionally calls `SHUTDOWN_URL` (use this to trigger a graceful restart or emergency shutdown on the host).
 

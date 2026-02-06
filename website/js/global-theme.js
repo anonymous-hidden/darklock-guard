@@ -7,9 +7,9 @@
 (function() {
     'use strict';
     
-    const DEFAULT_THEME = 'christmas';
+    const DEFAULT_THEME = 'darklock';
     const THEME_STORAGE_KEY = 'DarkLock-theme';
-    const THEME_CSS_PATH = '/css/themes/';
+    const THEME_CSS_ENDPOINT = '/api/v3/theme/css';
     
     /**
      * Create and inject the theme stylesheet link
@@ -31,7 +31,8 @@
      */
     function applyTheme(themeName) {
         const themeLink = createThemeLink();
-        themeLink.href = `${THEME_CSS_PATH}${themeName}.css`;
+        // Always use the API endpoint - it returns CSS based on active theme in database
+        themeLink.href = THEME_CSS_ENDPOINT;
         
         // Remove any existing theme classes from body and add the new one
         if (document.body) {
@@ -42,19 +43,21 @@
                 }
             });
             // Add new theme class (e.g., christmas-mode, halloween-mode)
-            document.body.classList.add(`${themeName}-mode`);
-            document.body.classList.add(`theme-${themeName}`);
+            if (themeName && themeName !== 'none') {
+                document.body.classList.add(`${themeName}-mode`);
+                document.body.classList.add(`theme-${themeName}`);
+            }
         }
         
         // Store in localStorage for instant loading on next page
         try {
-            localStorage.setItem(THEME_STORAGE_KEY, themeName);
+            localStorage.setItem(THEME_STORAGE_KEY, themeName || 'darklock');
         } catch (e) {
             console.warn('Could not save theme to localStorage:', e);
         }
         
         // Dispatch event for any listeners
-        document.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: themeName } }));
+        document.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: themeName || 'darklock' } }));
     }
     
     /**

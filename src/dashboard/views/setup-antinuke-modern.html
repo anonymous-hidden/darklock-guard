@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="">
+    <title>Anti-Nuke Protection - DarkLock Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/premium-gating.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <script src="/js/premium-gating.js"></script>
+    <style>
+        .setup-page {
+            min-height: 100vh;
+            background: var(--ds-surface-0);
+        }
+
+        .setup-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--ds-space-md) var(--ds-space-xl);
+            background: var(--ds-surface-1);
+            border-bottom: 1px solid var(--ds-border);
+            backdrop-filter: blur(12px);
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--ds-surface-2);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            color: var(--ds-text-primary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all var(--ds-transition-fast);
+        }
+
+        .back-button:hover {
+            background: var(--ds-surface-3);
+            border-color: var(--ds-primary);
+            transform: translateX(-2px);
+        }
+
+        .setup-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+            font-size: 14px;
+            color: var(--ds-text-muted);
+        }
+
+        .setup-breadcrumb a {
+            color: var(--ds-text-muted);
+            text-decoration: none;
+        }
+
+        .setup-breadcrumb a:hover {
+            color: var(--ds-primary);
+        }
+
+        .setup-breadcrumb-current {
+            color: var(--ds-text-primary);
+            font-weight: 500;
+        }
+
+        .setup-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: var(--ds-space-xl) var(--ds-space-lg);
+        }
+
+        .setup-header {
+            margin-bottom: var(--ds-space-xl);
+        }
+
+        .setup-header-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            background: var(--ds-danger-bg);
+            border: 1px solid var(--ds-danger-border);
+            border-radius: var(--ds-radius-lg);
+            margin-bottom: var(--ds-space-md);
+        }
+
+        .setup-header-icon i {
+            font-size: 24px;
+            color: var(--ds-danger);
+        }
+
+        .setup-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--ds-text-primary);
+            margin: 0 0 var(--ds-space-sm) 0;
+        }
+
+        .setup-header p {
+            color: var(--ds-text-muted);
+            font-size: 15px;
+            margin: 0;
+        }
+
+        .setup-card {
+            background: var(--ds-surface-1);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-lg);
+            margin-bottom: var(--ds-space-lg);
+            overflow: hidden;
+        }
+
+        .setup-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--ds-space-lg);
+            border-bottom: 1px solid var(--ds-border);
+            background: var(--ds-surface-2);
+        }
+
+        .setup-card-title {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+        }
+
+        .setup-card-title i {
+            color: var(--ds-danger);
+            font-size: 16px;
+        }
+
+        .setup-card-title h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--ds-text-primary);
+            margin: 0;
+        }
+
+        .setup-card-body {
+            padding: var(--ds-space-lg);
+        }
+
+        .setup-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--ds-space-md);
+            background: var(--ds-surface-0);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            margin-bottom: var(--ds-space-md);
+        }
+
+        .setup-toggle-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .setup-toggle-info h4 {
+            margin: 0 0 4px 0;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--ds-text-primary);
+        }
+
+        .setup-toggle-info p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--ds-text-muted);
+        }
+
+        .setup-form-group {
+            margin-bottom: var(--ds-space-lg);
+        }
+
+        .setup-form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .setup-form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--ds-text-primary);
+            margin-bottom: var(--ds-space-xs);
+        }
+
+        .setup-form-desc {
+            font-size: 13px;
+            color: var(--ds-text-muted);
+            margin-bottom: var(--ds-space-sm);
+        }
+
+        .setup-form-input,
+        .setup-form-select {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--ds-surface-0);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            color: var(--ds-text-primary);
+            font-size: 14px;
+            transition: all var(--ds-transition-fast);
+        }
+
+        .setup-form-input:focus,
+        .setup-form-select:focus {
+            outline: none;
+            border-color: var(--ds-primary);
+            box-shadow: 0 0 0 3px var(--ds-primary-shadow);
+        }
+
+        .setup-form-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--ds-space-md);
+        }
+
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: var(--ds-space-sm);
+        }
+
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            gap: var(--ds-space-sm);
+            padding: var(--ds-space-sm);
+            background: var(--ds-surface-0);
+            border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md);
+            cursor: pointer;
+            transition: all var(--ds-transition-fast);
+        }
+
+        .checkbox-option:hover {
+            border-color: var(--ds-primary);
+            background: var(--ds-surface-2);
+        }
+
+        .checkbox-option input {
+            margin: 0;
+        }
+
+        .checkbox-option span {
+            color: var(--ds-text-primary);
+        }
+
+        .setup-status-msg {
+            display: none;
+            padding: var(--ds-space-md);
+            border-radius: var(--ds-radius-md);
+            font-size: 14px;
+            text-align: center;
+            margin-top: var(--ds-space-md);
+        }
+
+        .setup-status-msg.success {
+            display: block;
+            background: var(--ds-success-bg);
+            border: 1px solid var(--ds-success-border);
+            color: var(--ds-success);
+        }
+
+        .setup-status-msg.error {
+            display: block;
+            background: var(--ds-danger-bg);
+            border: 1px solid var(--ds-danger-border);
+            color: var(--ds-danger);
+        }
+    </style>
+</head>
+<body class="setup-page">
+    <!-- Navigation -->
+    <nav class="setup-nav">
+        <div style="display: flex; align-items: center; gap: var(--ds-space-lg);">
+            <a href="/dashboard" class="back-button">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+            </a>
+            <div class="setup-breadcrumb">
+                <a href="/dashboard"><i class="fas fa-home"></i></a>
+                <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                <a href="/dashboard">Dashboard</a>
+                <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                <span class="setup-breadcrumb-current">Anti-Nuke</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="setup-container">
+        <div class="setup-header">
+            <div class="setup-header-icon">
+                <i class="fas fa-radiation"></i>
+            </div>
+            <h1>Anti-Nuke Protection</h1>
+            <p>Protect your server from malicious administrative actions and destructive attacks</p>
+        </div>
+
+        <!-- Main Toggle Card -->
+        <div class="setup-card">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3>Anti-Nuke System</h3>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <div class="setup-toggle-row" style="margin-bottom: var(--ds-space-lg);">
+                    <div class="setup-toggle-info">
+                        <h4>Enable Anti-Nuke Protection</h4>
+                        <p>Automatically detect and prevent destructive actions</p>
+                    </div>
+                    <label class="ds-toggle">
+                        <input type="checkbox" id="antinukeEnabled">
+                        <span class="ds-toggle-slider"></span>
+                    </label>
+                </div>
+
+                <div class="setup-form-row">
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Action Limit (per timeframe)</label>
+                        <p class="setup-form-desc">Maximum actions before triggering protection</p>
+                        <input type="number" class="setup-form-input" id="actionLimit" value="5" min="1" max="50">
+                    </div>
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Detection Window (seconds)</label>
+                        <p class="setup-form-desc">Time period to count actions</p>
+                        <input type="number" class="setup-form-input" id="detectionWindow" value="10" min="5" max="120">
+                    </div>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Punishment Action</label>
+                    <p class="setup-form-desc">What happens when anti-nuke is triggered</p>
+                    <select class="setup-form-select" id="punishmentType">
+                        <option value="kick">👢 Kick from Server</option>
+                        <option value="ban">🔨 Ban from Server</option>
+                        <option value="remove_roles">🚫 Remove All Roles</option>
+                        <option value="timeout">⏱️ Timeout (28 days)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Protected Resources Card -->
+        <div class="setup-card">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-lock"></i>
+                    <h3>Protected Resources</h3>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <p class="setup-form-desc" style="margin-bottom: var(--ds-space-md);">Select which actions to monitor and protect against</p>
+                
+                <div class="checkbox-grid">
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="protect_channel_delete" checked>
+                        <span>Channel Deletions</span>
+                    </label>
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="protect_channel_create" checked>
+                        <span>Channel Creations</span>
+                    </label>
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="protect_role_delete" checked>
+                        <span>Role Deletions</span>
+                    </label>
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="protect_role_create" checked>
+                        <span>Role Creations</span>
+                    </label>
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="protect_ban" checked>
+                        <span>Mass Bans</span>
+                    </label>
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="protect_kick" checked>
+                        <span>Mass Kicks</span>
+                    </label>
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="protect_webhook" checked>
+                        <span>Webhook Actions</span>
+                    </label>
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="protect_emoji" checked>
+                        <span>Emoji Deletions</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Whitelisted Roles Card -->
+        <div class="setup-card" data-premium-feature="anti-nuke-advanced">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-user-shield"></i>
+                    <h3>Whitelisted Roles</h3>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <p class="setup-form-desc" style="margin-bottom: var(--ds-space-md);">Roles that are exempt from anti-nuke detection</p>
+                
+                <div id="whitelistedRoles" class="checkbox-grid">
+                    <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--ds-text-muted);">
+                        <i class="fas fa-spinner fa-spin"></i> Loading roles...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <div style="display: flex; justify-content: flex-end; gap: var(--ds-space-md); margin-top: var(--ds-space-lg);">
+            <a href="/dashboard" class="ds-btn ds-btn-secondary">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+            <button class="ds-btn ds-btn-primary" id="saveBtn" onclick="saveSettings()">
+                <i class="fas fa-save"></i> Save Settings
+            </button>
+        </div>
+
+        <div class="setup-status-msg" id="statusMsg"></div>
+    </main>
+
+    <script src="/js/secure-auth.js"></script>
+    <script>
+        let currentGuildId = null;
+        let roles = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await SecureAuth.init();
+            currentGuildId = localStorage.getItem('selectedGuildId');
+            if (!currentGuildId) {
+                showStatus('error', 'No server selected. Please return to dashboard and select a server.');
+                return;
+            }
+
+            await loadRoles();
+            await loadSettings();
+        });
+
+        async function loadRoles() {
+            try {
+                const response = await fetch(`/api/guild/${currentGuildId}/roles`, {
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    roles = Array.isArray(data) ? data : (data.roles || []);
+                    renderRolesCheckboxes();
+                }
+            } catch (error) {
+                console.error('Error loading roles:', error);
+            }
+        }
+
+        function renderRolesCheckboxes() {
+            const container = document.getElementById('whitelistedRoles');
+            if (roles.length === 0) {
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: var(--ds-text-muted);">No roles found</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            roles.forEach(role => {
+                if (role.name !== '@everyone') {
+                    const label = document.createElement('label');
+                    label.className = 'checkbox-option';
+                    label.innerHTML = `
+                        <input type="checkbox" value="${role.id}" class="whitelist-role">
+                        <span>${role.name}</span>
+                    `;
+                    container.appendChild(label);
+                }
+            });
+        }
+
+        async function loadSettings() {
+            try {
+                const response = await fetch(`/api/settings/antinuke?guildId=${currentGuildId}`, {
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const settings = await response.json();
+                    
+                    document.getElementById('antinukeEnabled').checked = settings.enabled || false;
+                    document.getElementById('actionLimit').value = settings.actionLimit || 5;
+                    document.getElementById('detectionWindow').value = settings.detectionWindow || 10;
+                    document.getElementById('punishmentType').value = settings.punishmentType || 'kick';
+
+                    // Protected resources
+                    if (settings.protections) {
+                        Object.keys(settings.protections).forEach(key => {
+                            const checkbox = document.getElementById(`protect_${key}`);
+                            if (checkbox) checkbox.checked = settings.protections[key];
+                        });
+                    }
+
+                    // Whitelisted roles
+                    if (settings.whitelistedRoles && Array.isArray(settings.whitelistedRoles)) {
+                        document.querySelectorAll('.whitelist-role').forEach(checkbox => {
+                            checkbox.checked = settings.whitelistedRoles.includes(checkbox.value);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        async function saveSettings() {
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            const protections = {};
+            ['channel_delete', 'channel_create', 'role_delete', 'role_create', 'ban', 'kick', 'webhook', 'emoji'].forEach(key => {
+                const checkbox = document.getElementById(`protect_${key}`);
+                if (checkbox) protections[key] = checkbox.checked;
+            });
+
+            const whitelistedRoles = Array.from(document.querySelectorAll('.whitelist-role:checked')).map(cb => cb.value);
+
+            const settings = {
+                enabled: document.getElementById('antinukeEnabled').checked,
+                actionLimit: parseInt(document.getElementById('actionLimit').value),
+                detectionWindow: parseInt(document.getElementById('detectionWindow').value),
+                punishmentType: document.getElementById('punishmentType').value,
+                protections: protections,
+                whitelistedRoles: whitelistedRoles
+            };
+
+            try {
+                const response = await fetch(`/api/settings/antinuke?guildId=${currentGuildId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(settings)
+                });
+
+                if (response.ok) {
+                    showStatus('success', 'Settings saved successfully!');
+                } else {
+                    const error = await response.json();
+                    showStatus('error', error.message || 'Failed to save settings');
+                }
+            } catch (error) {
+                showStatus('error', 'An error occurred while saving settings');
+                console.error(error);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Settings';
+            }
+        }
+
+        function showStatus(type, message) {
+            const statusMsg = document.getElementById('statusMsg');
+            statusMsg.className = `setup-status-msg ${type}`;
+            statusMsg.textContent = message;
+            setTimeout(() => {
+                statusMsg.className = 'setup-status-msg';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

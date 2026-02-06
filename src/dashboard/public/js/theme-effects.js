@@ -42,8 +42,8 @@
     // ==========================================
     // INITIALIZATION
     // ==========================================
-    function init() {
-        detectTheme();
+    async function init() {
+        await detectTheme();
         createEffectsContainer();
         setupEventListeners();
         startThemeEffects();
@@ -59,17 +59,31 @@
         console.log('🎉 Theme Effects loaded! Try finding the easter eggs...');
     }
 
-    function detectTheme() {
-        const themeLink = document.getElementById('dynamic-theme-stylesheet');
-        if (themeLink && themeLink.href) {
-            const match = themeLink.href.match(/themes\/([^.]+)\.css/);
-            if (match) {
-                currentTheme = match[1];
+    async function detectTheme() {
+        // First try to fetch from API
+        try {
+            const response = await fetch('/api/current-theme');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.theme) {
+                    currentTheme = data.theme;
+                    localStorage.setItem('DarkLock-theme', currentTheme);
+                    return;
+                }
             }
+        } catch (e) {
+            console.warn('Could not fetch theme from API:', e);
         }
-        // Also check localStorage
+        
+        // Fallback to localStorage
         const cached = localStorage.getItem('DarkLock-theme');
-        if (cached) currentTheme = cached;
+        if (cached) {
+            currentTheme = cached;
+            return;
+        }
+        
+        // Default theme
+        currentTheme = 'darklock';
     }
 
     function createEffectsContainer() {

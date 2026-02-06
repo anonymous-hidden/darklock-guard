@@ -491,6 +491,8 @@
             showState(errorState);
         }
 
+        let method = 'captcha';
+
         async function initVerification() {
             try {
                 const response = await fetch('/api/web-verify/init', {
@@ -523,6 +525,7 @@
                 if (data.userId) userId = data.userId;
                 maxAttempts = data.maxAttempts || 3;
                 currentAttempts = data.attempts || 0;
+                method = data.method || 'captcha';
 
                 // If already verified
                 if (data.alreadyVerified) {
@@ -530,7 +533,14 @@
                     return;
                 }
 
-                // Show captcha
+                // Web method: auto-complete without code entry
+                if (method === 'web') {
+                    showState(loadingState);
+                    await submitVerification(true);
+                    return;
+                }
+
+                // Captcha/code methods: show the code
                 if (data.captchaCode) {
                     document.getElementById('captchaDisplay').textContent = data.captchaCode;
                 }
@@ -557,21 +567,31 @@
             }
         }
 
-        async function submitVerification() {
-            const code = document.getElementById('captchaInput').value.trim();
-            if (!code) {
+        async function submitVerification(auto = false) {
+            const code = document.getElementById('captchaInput')?.value?.trim() || '';
+            if (!code && method !== 'web') {
                 return;
             }
 
             const btn = document.getElementById('verifyBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<div class="spinner"></div> Verifying...';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<div class="spinner"></div> Verifying...';
+            }
 
             try {
+                // Ensure token/guild/user are present in payload (fallback from URL if needed)
+                if (!token && pathParts.length === 2 && pathParts[0] === 'verify') {
+                    token = pathParts[1];
+                }
+
+                const payload = { token, guildId, userId, code: method === 'web' ? undefined : code };
+                console.log('[WebVerify] Submitting:', { method, hasToken: !!token, hasGuildId: !!guildId, hasUserId: !!userId, hasCode: !!code });
+
                 const response = await fetch('/api/web-verify/submit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token, guildId, userId, code })
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
@@ -583,22 +603,26 @@
                 } else if (data.locked) {
                     showError('Too many failed attempts. Please contact a server administrator.');
                 } else {
-                    currentAttempts++;
-                    updateAttemptsDisplay();
-                    
-                    // Shake animation
-                    const input = document.getElementById('captchaInput');
-                    input.style.borderColor = 'var(--error)';
-                    input.value = '';
-                    input.placeholder = data.error || 'Incorrect code, try again';
-                    
-                    setTimeout(() => {
-                        input.style.borderColor = '';
-                        input.placeholder = 'Enter the code above';
-                    }, 2000);
-                    
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-check"></i> Verify';
+                    if (method !== 'web') {
+                        currentAttempts++;
+                        updateAttemptsDisplay();
+                        
+                        // Shake animation
+                        const input = document.getElementById('captchaInput');
+                        input.style.borderColor = 'var(--error)';
+                        input.value = '';
+                        input.placeholder = data.error || 'Incorrect code, try again';
+                        
+                        setTimeout(() => {
+                            input.style.borderColor = '';
+                            input.placeholder = 'Enter the code above';
+                        }, 2000);
+                        
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-check"></i> Verify';
+                    } else {
+                        showError(data.error || 'Verification failed');
+                    }
                 }
             } catch (err) {
                 console.error('Submit error:', err);

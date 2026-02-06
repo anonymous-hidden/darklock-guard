@@ -10,9 +10,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/css/design-system.css">
-    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <link rel="stylesheet" href="/css/premium-gating.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
     <script src="/js/global-theme.js"></script>
     <script src="/js/theme-effects.js"></script>
+    <script src="/js/premium-gating.js"></script>
     <style>
         .console-page {
             min-height: 100vh;
@@ -562,11 +564,18 @@
         let consoleLines = [];
         let ws = null;
 
+        // Storage keys
+        const STORAGE_KEY = 'darklock_console_data';
+        const STORAGE_TIMESTAMP_KEY = 'darklock_console_timestamp';
+        const MAX_STORAGE_AGE = 24 * 60 * 60 * 1000; // 24 hours
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
+            loadFromStorage();
             connectWebSocket();
             updateUptime();
             setInterval(updateUptime, 1000);
+            setInterval(saveToStorage, 10000); // Auto-save every 10 seconds
         });
 
         function connectWebSocket() {
@@ -626,6 +635,78 @@
                     // Silent fail for polling
                 }
             }, 5000);
+        }
+
+        function saveToStorage() {
+            try {
+                const data = {
+                    lines: consoleLines.slice(-1000), // Keep last 1000 lines
+                    lineCount,
+                    errorCount,
+                    warningCount,
+                    startTime
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                localStorage.setItem(STORAGE_TIMESTAMP_KEY, Date.now().toString());
+            } catch (e) {
+                console.error('Failed to save console data:', e);
+            }
+        }
+
+        function loadFromStorage() {
+            try {
+                const timestamp = localStorage.getItem(STORAGE_TIMESTAMP_KEY);
+                const now = Date.now();
+                
+                // Check if stored data is not too old
+                if (timestamp && (now - parseInt(timestamp)) < MAX_STORAGE_AGE) {
+                    const stored = localStorage.getItem(STORAGE_KEY);
+                    if (stored) {
+                        const data = JSON.parse(stored);
+                        
+                        // Restore state
+                        consoleLines = data.lines || [];
+                        lineCount = data.lineCount || 0;
+                        errorCount = data.errorCount || 0;
+                        warningCount = data.warningCount || 0;
+                        if (data.startTime) startTime = data.startTime;
+                        
+                        // Restore lines to DOM
+                        const output = document.getElementById('consoleOutput');
+                        consoleLines.forEach(line => {
+                            const lineEl = document.createElement('div');
+                            lineEl.className = 'console-line';
+                            lineEl.dataset.level = line.level;
+                            lineEl.innerHTML = `
+                                <span class="console-time">${line.time}</span>
+                                <span class="console-level ${line.level}">${line.level.toUpperCase()}</span>
+                                <span class="console-message ${line.level}">${escapeHtml(line.message)}</span>
+                            `;
+                            
+                            if (currentFilter !== 'all' && line.level !== currentFilter) {
+                                lineEl.style.display = 'none';
+                            }
+                            
+                            output.appendChild(lineEl);
+                        });
+                        
+                        // Scroll to bottom
+                        output.scrollTop = output.scrollHeight;
+                        
+                        // Update stats
+                        updateStats();
+                        
+                        // Add restoration message
+                        addLine('info', `Restored ${consoleLines.length} log entries from previous session`);
+                    }
+                } else {
+                    // Clear old data
+                    localStorage.removeItem(STORAGE_KEY);
+                    localStorage.removeItem(STORAGE_TIMESTAMP_KEY);
+                }
+            } catch (e) {
+                console.error('Failed to load console data:', e);
+            }
         }
 
         function updateStatus(status) {
@@ -744,6 +825,11 @@
             errorCount = 0;
             warningCount = 0;
             updateStats();
+            
+            // Clear storage
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(STORAGE_TIMESTAMP_KEY);
+            
             addLine('info', 'Console cleared');
         }
 

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Theme Manager - DarkLock</title>
     <link rel="stylesheet" href="/css/dashboard-pro.css">
-    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/css/themes/christmas.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="/js/global-theme.js"></script>
     <script src="/js/theme-effects.js"></script>
@@ -564,11 +564,11 @@
             indicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Applying theme...</span>';
             
             try {
-                const response = await SecureAuth.fetch('/api/settings/theme', {
+                const response = await SecureAuth.fetch('/api/v3/theme/set', {
                     method: 'POST',
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ theme: selectedTheme })
+                    body: JSON.stringify({ themeName: selectedTheme })
                 });
                 
                 if (!response.ok) throw new Error('Failed to save theme');
@@ -602,11 +602,11 @@
             }
             
             try {
-                await SecureAuth.fetch('/api/settings/theme-schedule', {
+                await SecureAuth.fetch('/api/v3/theme/auto-holiday', {
                     method: 'POST',
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ schedules: enabledSchedules })
+                    body: JSON.stringify({ enabled: enabledSchedules.length > 0 })
                 });
             } catch (e) {
                 console.error('Failed to save schedule:', e);
@@ -629,7 +629,7 @@
         // Load current settings
         async function loadSettings() {
             try {
-                const response = await fetch('/api/settings', {
+                const response = await SecureAuth.fetch('/api/v3/themes', {
                     credentials: 'include'
                 });
                 
@@ -643,8 +643,8 @@
                 }
                 
                 const data = await response.json();
-                currentTheme = data.settings?.theme || 'christmas';
-                enabledSchedules = data.settings?.theme_schedules ? JSON.parse(data.settings.theme_schedules) : [];
+                currentTheme = data.active || 'darklock';
+                enabledSchedules = data.autoHoliday ? ['auto'] : [];
                 
                 updateCurrentThemeDisplay();
                 renderThemes();

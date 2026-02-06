@@ -1,4 +1,4 @@
-use crate::{RemoteCommandRecord, ServiceState};
+use crate::service_state::{RemoteCommandRecord, ServiceState};
 use anyhow::{anyhow, Result};
 use chrono::SecondsFormat;
 use guard_core::device_state::{DeviceState, RemoteActivity, UpdateChannel, UpdateState};

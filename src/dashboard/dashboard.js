@@ -167,6 +167,42 @@ class SecurityDashboard {
                     return res.status(401).json({ error: 'User not authenticated' });
                 }
 
+                // Check if user already has an active premium subscription
+                try {
+                    const existingSubscription = await new Promise((resolve, reject) => {
+                        this.bot.database.db.get(
+                            `SELECT subscription_id, status, plan_type, current_period_end 
+                             FROM stripe_subscriptions 
+                             WHERE customer_email = (
+                                 SELECT email FROM users WHERE discord_id = ?
+                             ) AND status IN ('active', 'trialing')
+                             ORDER BY created_at DESC
+                             LIMIT 1`,
+                            [userId],
+                            (err, row) => {
+                                if (err) reject(err);
+                                else resolve(row);
+                            }
+                        );
+                    });
+
+                    if (existingSubscription) {
+                        console.log('[Stripe Checkout] User already has active subscription:', existingSubscription);
+                        const periodEnd = new Date(existingSubscription.current_period_end * 1000);
+                        return res.status(400).json({ 
+                            error: 'You already have an active premium subscription',
+                            subscription: {
+                                plan: existingSubscription.plan_type,
+                                status: existingSubscription.status,
+                                renewsAt: periodEnd.toISOString()
+                            }
+                        });
+                    }
+                } catch (dbError) {
+                    console.error('[Stripe Checkout] Error checking existing subscription:', dbError);
+                    // Continue if table doesn't exist yet - this is fine for first-time setup
+                }
+
                 const priceId = plan === 'yearly' ? this.billingConfig.enterprisePriceId : this.billingConfig.proPriceId;
 
                 if (!priceId) {
@@ -216,7 +252,10 @@ class SecurityDashboard {
                 });
 
                 console.log('[Stripe Checkout] Session created:', session.id);
-                res.json({ sessionId: session.id });
+                res.json({ 
+                    sessionId: session.id,
+                    url: session.url 
+                });
             } catch (error) {
                 console.error('[Stripe Checkout] Error:', error.message, error.stack);
                 const errorMessage = process.env.NODE_ENV === 'production' 
@@ -488,6 +527,116 @@ The GuardianBot Team`
             res.json({ received: true });
         });
 
+        // ============================
+        // Premium gating middleware - Checks Stripe subscriptions
+        // ============================
+        this.requirePremium = async (req, res, next) => {
+            try {
+                const userId = req.user?.userId;
+                if (!userId) {
+                    // For HTML pages, redirect to login
+                    if (req.path.endsWith('.html') || !req.path.startsWith('/api/')) {
+                        return res.redirect('/login?premium_required=true');
+                    }
+                    return res.status(401).json({ error: 'Unauthorized - valid JWT required', premium: true });
+                }
+
+                const entitlement = await this.getUserPlan(userId);
+                req.user.plan = entitlement.plan;
+                req.user.isPremium = entitlement.isPremium;
+
+                if (!entitlement.isPremium) {
+                    console.log('[Premium Gate] Access denied for user:', userId);
+                    // For HTML pages, show upgrade page
+                    if (req.path.endsWith('.html') || !req.path.startsWith('/api/')) {
+                        return res.status(403).send(`
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <title>Premium Required - DarkLock</title>
+                                <link rel="stylesheet" href="/css/premium-gating.css">
+                                <style>
+                                    body { margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-family: 'Inter', sans-serif; }
+                                    .premium-required { background: white; border-radius: 20px; padding: 60px 40px; max-width: 500px; text-align: center; box-shadow: 0 25px 80px rgba(0,0,0,0.3); }
+                                    .premium-required h1 { margin: 0 0 20px; color: #1a1a2e; font-size: 32px; }
+                                    .premium-required p { color: #666; margin: 0 0 30px; line-height: 1.6; }
+                                    .premium-icon { width: 80px; height: 80px; background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 30px; }
+                                    .premium-icon i { font-size: 40px; color: #000; }
+                                    .btn-upgrade { background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: #000; border: none; padding: 16px 40px; border-radius: 10px; font-weight: 700; font-size: 16px; cursor: pointer; text-decoration: none; display: inline-block; margin: 10px; }
+                                    .btn-back { background: #e0e0e0; color: #333; border: none; padding: 16px 40px; border-radius: 10px; font-weight: 600; font-size: 16px; cursor: pointer; text-decoration: none; display: inline-block; margin: 10px; }
+                                </style>
+                                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+                            </head>
+                            <body>
+                                <div class="premium-required">
+                                    <div class="premium-icon"><i class="fas fa-crown"></i></div>
+                                    <h1>Premium Feature</h1>
+                                    <p>This feature is only available to premium subscribers. Upgrade now to unlock advanced analytics, tickets, anti-nuke, anti-phishing, and more!</p>
+                                    <a href="/payment.html" class="btn-upgrade"><i class="fas fa-crown"></i> Upgrade to Premium</a>
+                                    <a href="/dashboard" class="btn-back"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+                                </div>
+                            </body>
+                            </html>
+                        `);
+                    }
+                    return res.status(403).json({ error: 'Premium subscription required', premium: true });
+                }
+
+                console.log('[Premium Gate] Access granted for user:', userId);
+                next();
+            } catch (e) { 
+                console.error('[Premium Gate] Error:', e);
+                return res.status(500).json({ error: 'Authentication error' }); 
+            }
+        };
+        
+        // Legacy requirePro middleware - alias to requirePremium
+        this.requirePro = this.requirePremium;
+
+        // Server-side premium gate for all premium page paths (prevents direct URL bypass)
+        // FAIR MODEL: Only lock truly advanced features, keep core functionality free
+        const premiumPaths = new Set([
+            '/dashboard/console',           // Premium: Advanced bot console
+            '/access-generator',            // Premium: Access code generation
+            '/access-share'                 // Premium: Access sharing
+            // FREE: tickets, analytics, help, all setup pages (anti-raid, anti-spam, moderation, antinuke, anti-phishing, verification, autorole)
+        ]);
+
+        this.app.use((req, res, next) => {
+            if (!premiumPaths.has(req.path)) return next();
+
+            // Run auth first, then premium check; handlers respond on failure
+            this.authenticateToken(req, res, (authErr) => {
+                if (authErr) return; // authenticateToken already handled the response
+                this.requirePremium(req, res, next);
+            });
+        });
+
+        // FAIR MODEL: Only lock advanced API endpoints
+        const premiumApiPrefixes = [
+            '/api/console',                 // Premium: Bot console API
+            '/api/ai'                       // Premium: AI features
+            // FREE: analytics, security, actions, lockdown, logs, tickets, verification, snapshots, rollback, alerts
+        ];
+
+        const premiumApiExact = new Set([
+            '/api/update-advanced-settings',    // Premium: Advanced settings only
+            '/api/advanced-settings'            // Premium: Advanced settings only
+            // FREE: overview-stats, levels/reset
+        ]);
+
+        this.app.use((req, res, next) => {
+            if (!req.path.startsWith('/api/')) return next();
+
+            const isPremiumApi = premiumApiPrefixes.some(prefix => req.path.startsWith(prefix)) || premiumApiExact.has(req.path);
+            if (!isPremiumApi) return next();
+
+            this.authenticateToken(req, res, (authErr) => {
+                if (authErr) return;
+                this.requirePremium(req, res, next);
+            });
+        });
+
         // Static files
         // Serve the marketing website under /site to avoid asset path conflicts with dashboard
         this.app.use('/site', express.static(path.join(process.cwd(), 'website')));
@@ -550,11 +699,19 @@ The GuardianBot Team`
             // Users table
             await this.bot.database.run(`CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
+                discord_id TEXT,
                 email TEXT,
                 is_pro INTEGER DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME
             )`);
+            
+            // Add discord_id column if it doesn't exist (migration for existing tables)
+            try {
+                await this.bot.database.run(`ALTER TABLE users ADD COLUMN discord_id TEXT`);
+            } catch (e) {
+                // Column already exists, ignore error
+            }
 
             // Activation codes
             await this.bot.database.run(`CREATE TABLE IF NOT EXISTS activation_codes (
@@ -615,9 +772,98 @@ The GuardianBot Team`
                 layout_fontsize TEXT DEFAULT 'medium',
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )`);
+
+            // Access codes table for dashboard access
+            await this.bot.database.run(`CREATE TABLE IF NOT EXISTS access_codes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT UNIQUE NOT NULL,
+                guild_id TEXT NOT NULL,
+                permission_level TEXT NOT NULL DEFAULT 'viewer',
+                code_type TEXT NOT NULL DEFAULT 'single',
+                max_uses INTEGER DEFAULT 1,
+                uses_remaining INTEGER DEFAULT 1,
+                created_by TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                expires_at DATETIME,
+                note TEXT,
+                revoked INTEGER DEFAULT 0,
+                revoked_at DATETIME
+            )`);
+
+            // Access code redemptions tracking
+            await this.bot.database.run(`CREATE TABLE IF NOT EXISTS access_code_redemptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                guild_id TEXT NOT NULL,
+                redeemed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(code, user_id)
+            )`);
+
+            // Stripe subscriptions table for premium tracking
+            await this.bot.database.run(`CREATE TABLE IF NOT EXISTS stripe_subscriptions (
+                subscription_id TEXT PRIMARY KEY,
+                customer_id TEXT NOT NULL,
+                customer_email TEXT,
+                guild_id TEXT,
+                user_id TEXT,
+                status TEXT NOT NULL DEFAULT 'inactive',
+                plan_type TEXT,
+                current_period_start INTEGER,
+                current_period_end INTEGER,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )`);
         } catch (e) {
             throw e;
         }
+    }
+
+    async getUserPlan(userId) {
+        if (!userId) return { plan: 'free', isPremium: false };
+        if (userId === 'admin') return { plan: 'premium', isPremium: true };
+
+        let subscription = null;
+        let user = null;
+
+        try {
+            subscription = await new Promise((resolve) => {
+                this.bot.database.db.get(
+                    `SELECT ss.subscription_id, ss.status
+                     FROM stripe_subscriptions ss
+                     LEFT JOIN users u ON u.email = ss.customer_email
+                     WHERE (ss.user_id = ? OR u.discord_id = ?)
+                     AND ss.status IN ('active', 'trialing')
+                     ORDER BY ss.created_at DESC
+                     LIMIT 1`,
+                    [userId, userId],
+                    (err, row) => {
+                        if (err) resolve(null);
+                        else resolve(row);
+                    }
+                );
+            });
+        } catch (e) {
+            subscription = null;
+        }
+
+        try {
+            user = await new Promise((resolve) => {
+                this.bot.database.db.get(
+                    `SELECT is_pro FROM users WHERE discord_id = ? OR id = ?`,
+                    [userId, userId],
+                    (err, row) => {
+                        if (err) resolve(null);
+                        else resolve(row);
+                    }
+                );
+            });
+        } catch (e) {
+            user = null;
+        }
+
+        const isPremium = Boolean(subscription) || Boolean(user && user.is_pro);
+        return { plan: isPremium ? 'premium' : 'free', isPremium };
     }
 
     // Simple cookie parser (avoid extra dependency)
@@ -643,19 +889,29 @@ The GuardianBot Team`
             res.sendFile(path.join(__dirname, 'views/landing.html'));
         });
 
+        // Web verification page (public - no auth required)
+        this.app.get('/verify/:token', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/web-verify.html'));
+        });
+
+        // Web verification API endpoints
+        this.app.post('/api/web-verify/init', this.handleWebVerifyInit.bind(this));
+        this.app.post('/api/web-verify/submit', this.handleWebVerifySubmit.bind(this));
+        this.app.post('/api/web-verify/refresh', this.handleWebVerifyRefresh.bind(this));
+
         // Main dashboard (authenticated UI)
         this.app.get('/dashboard', (req, res) => {
+            console.log('\n========== /dashboard ROUTE HIT ==========');
+            console.log('[/dashboard] Request cookies:', Object.keys(req.cookies));
+            console.log('[/dashboard] Has dashboardToken?:', !!req.cookies.dashboardToken);
+            console.log('[/dashboard] Serving index-modern.html');
+            console.log('==========================================\n');
             res.sendFile(path.join(__dirname, 'views/index-modern.html'));
         });
 
-        // Bot Console view
-        this.app.get('/dashboard/console', (req, res) => {
+        // Bot Console view (PREMIUM)
+        this.app.get('/dashboard/console', this.authenticateToken.bind(this), this.requirePremium, (req, res) => {
             res.sendFile(path.join(__dirname, 'views/console.html'));
-        });
-
-        // Logs & Audit view
-        this.app.get('/dashboard/logs', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/logs.html'));
         });
 
         // Bot Console API: fetch per-guild logs
@@ -682,13 +938,13 @@ The GuardianBot Team`
             }
         });
 
-        // Tickets management page
-        this.app.get('/tickets', (req, res) => {
+        // Tickets management page (PREMIUM)
+        this.app.get('/tickets', this.authenticateToken.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/tickets-enhanced.html'));
         });
 
-        // Analytics dashboard page
-        this.app.get('/analytics', (req, res) => {
+        // Analytics dashboard page (PREMIUM)
+        this.app.get('/analytics', this.authenticateToken.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/analytics-modern.html'));
         });
 
@@ -701,7 +957,7 @@ The GuardianBot Team`
             res.sendFile(path.join(__dirname, 'views/setup-tickets.html'));
         });
 
-        this.app.get('/setup/moderation', (req, res) => {
+        this.app.get('/setup/moderation', this.authenticateToken.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-moderation.html'));
         });
 
@@ -714,9 +970,9 @@ The GuardianBot Team`
             res.sendFile(path.join(__dirname, 'views/setup-ai.html'));
         });
 
-        // Anti-nuke setup page
-        this.app.get('/setup/antinuke', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/setup-security.html'));
+        // Anti-nuke setup page - FREE
+        this.app.get('/setup/antinuke', this.authenticateToken.bind(this), (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/setup-antinuke-modern.html'));
         });
 
         // Access code page for non-admin users
@@ -729,10 +985,11 @@ The GuardianBot Team`
             res.sendFile(path.join(__dirname, 'views/access-code.html'));
         });
 
-        // Welcome setup page
+        // Welcome & Goodbye setup page
         this.app.get('/setup/welcome', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/welcome.html'));
+            res.sendFile(path.join(__dirname, 'views/setup-welcome-goodbye-redesign.html'));
         });
+        
         // Anti-Raid setup page
         this.app.get('/setup/anti-raid', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-anti-raid.html'));
@@ -743,34 +1000,34 @@ The GuardianBot Team`
             res.sendFile(path.join(__dirname, 'views/setup-anti-spam.html'));
         });
 
-        // Anti-Phishing setup page
-        this.app.get('/setup/anti-phishing', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/setup-anti-phishing.html'));
+        // Anti-Phishing setup page (PREMIUM)
+        this.app.get('/setup/anti-phishing', this.authenticateToken.bind(this), this.requirePremium, (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/setup-anti-phishing-modern.html'));
         });
 
-        // Verification settings page
-        this.app.get('/setup/verification', (req, res) => {
+        // Verification settings page - FREE
+        this.app.get('/setup/verification', this.authenticateToken.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-verification.html'));
         });
 
-        // Auto Role & Reaction Roles page
-        this.app.get('/setup/autorole', (req, res) => {
+        // Auto Role & Reaction Roles page (PREMIUM)
+        this.app.get('/setup/autorole', this.authenticateToken.bind(this), this.requirePremium, (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-autorole.html'));
         });
 
-        // Access Generator page (new modern UI)
-        this.app.get('/access-generator', (req, res) => {
+        // Access Generator page (PREMIUM)
+        this.app.get('/access-generator', this.authenticateToken.bind(this), this.requirePremium, (req, res) => {
             res.sendFile(path.join(__dirname, 'views/access-generator.html'));
         });
 
-        // Access Share page
-        this.app.get('/access-share', (req, res) => {
+        // Access Share page (PREMIUM)
+        this.app.get('/access-share', this.authenticateToken.bind(this), this.requirePremium, (req, res) => {
             res.sendFile(path.join(__dirname, 'views/access-share.html'));
         });
 
 
-        // Help page with command reference
-        this.app.get('/help', (req, res) => {
+        // Help page with command reference - FREE
+        this.app.get('/help', this.authenticateToken.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/help-modern.html'));
         });
         this.app.get('/commands', (req, res) => {
@@ -822,13 +1079,21 @@ The GuardianBot Team`
 
         const apiLimiter = rateLimit({
             windowMs: 15 * 60 * 1000, // 15 minutes
-            max: 100, // 100 requests per IP
+            max: 1000, // 1000 requests per IP (generous for dashboard)
             message: { error: 'Too many requests, please try again later' },
             standardHeaders: true,
             legacyHeaders: false,
             skip: (req) => {
                 // Skip rate limiting for admin API routes (they have their own rate limiters)
-                return req.path.startsWith('/v3/') || req.path.startsWith('/admin/');
+                // Also skip for theme/static endpoints that are called frequently
+                return req.path.startsWith('/v3/') || 
+                       req.path.startsWith('/admin/') ||
+                       req.path.includes('theme') ||
+                       req.path.includes('csrf') ||
+                       req.path.includes('current-theme') ||
+                       req.path.startsWith('/static/') ||
+                       req.path.endsWith('.css') ||
+                       req.path.endsWith('.js');
             }
         });
 
@@ -866,20 +1131,66 @@ The GuardianBot Team`
             res.json({ csrfToken: req.session.csrfToken });
         });
 
-        // Current theme endpoint (returns default if not authenticated)
-        this.app.get('/current-theme', (req, res) => {
-            res.json({ theme: 'dark', customColors: null });
+        // Current theme endpoint (public - returns theme from database)
+        this.app.get('/api/current-theme', async (req, res) => {
+            try {
+                const themeManager = require('../../darklock/utils/theme-manager');
+                const activeTheme = await themeManager.getActiveTheme();
+                
+                res.json({
+                    success: true,
+                    theme: activeTheme.name,
+                    colors: activeTheme.theme.colors,
+                    autoHoliday: activeTheme.autoHoliday,
+                    currentHoliday: activeTheme.currentHoliday
+                });
+            } catch (err) {
+                console.error('[Dashboard] Get current theme error:', err);
+                res.json({
+                    success: true,
+                    theme: 'darklock',
+                    colors: null
+                });
+            }
+        });
+
+        // Public theme CSS endpoint (avoid /signin HTML redirects for stylesheet requests)
+        this.app.get('/api/v3/theme/css', async (req, res) => {
+            try {
+                const themeManager = require('../../darklock/utils/theme-manager');
+                const activeTheme = await themeManager.getActiveTheme();
+                const colors = activeTheme.theme.colors;
+
+                const css = `:root {
+${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n')}
+}
+
+/* Theme applies to bot dashboard and site only, not admin panel */`;
+
+                res.setHeader('Content-Type', 'text/css');
+                res.setHeader('Cache-Control', 'public, max-age=300');
+                res.send(css);
+            } catch (err) {
+                console.error('[Dashboard] Get theme CSS error:', err);
+                res.status(500).send('/* Error loading theme */');
+            }
         });
 
         // === PROTECTED API ROUTES - All require authentication ===
-        // Apply auth middleware to all /api/* routes
-        this.app.use('/api/', this.authenticateToken.bind(this));
+        // Apply auth middleware to all /api/* routes (except /api/current-theme, /api/v3/theme/css and /api/csrf-token)
+        this.app.use('/api/', (req, res, next) => {
+            // Skip auth for public endpoints
+            if (req.path === '/current-theme' || req.path === '/csrf-token' || req.path === '/v3/theme/css') {
+                return next();
+            }
+            this.authenticateToken(req, res, next);
+        });
 
         // Bot health endpoint (authenticated)
         this.app.get('/api/bot/health', this.getBotHealth.bind(this));
         
         // User authentication endpoint
-        this.app.get('/api/me', (req, res) => {
+        this.app.get('/api/me', async (req, res) => {
             // authenticateToken middleware already applied via /api/* route above
             console.log('\n========================================');
             console.log('[/api/me] Ã¢Å“â€¦ REQUEST RECEIVED');
@@ -890,6 +1201,8 @@ The GuardianBot Team`
             console.log('[/api/me] Username:', req.user?.username);
             console.log('========================================\n');
             
+            const entitlement = await this.getUserPlan(req.user?.userId);
+
             res.json({
                 success: true,
                 user: {
@@ -901,9 +1214,85 @@ The GuardianBot Team`
                     role: req.user.role,
                     hasAccess: req.user.hasAccess,
                     accessGuild: req.user.accessGuild,
-                    guilds: req.user.guilds || []
+                    guilds: req.user.guilds || [],
+                    plan: entitlement.plan,
+                    isPremium: entitlement.isPremium
                 }
             });
+        });
+
+        // Auth aliases used by SecureAuth client
+        this.app.get('/api/auth/check', (req, res) => {
+            console.log('\n========== /api/auth/check ENDPOINT ==========');
+            console.log('[/api/auth/check] Cookies:', Object.keys(req.cookies));
+            console.log('[/api/auth/check] Has dashboardToken?:', !!req.cookies.dashboardToken);
+            console.log('[/api/auth/check] req.user:', req.user);
+            
+            // Check cookie directly since this endpoint might be called before authenticateToken middleware
+            const token = req.cookies?.dashboardToken;
+            if (!token) {
+                console.log('[/api/auth/check] ❌ No token in cookie');
+                console.log('==============================================\n');
+                return res.json({ authenticated: false, ok: false });
+            }
+            
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                console.log('[/api/auth/check] ✅ Token valid for user:', decoded.userId);
+                console.log('==============================================\n');
+                return res.json({ authenticated: true, ok: true });
+            } catch (error) {
+                console.log('[/api/auth/check] ❌ Token invalid:', error.message);
+                console.log('==============================================\n');
+                return res.json({ authenticated: false, ok: false });
+            }
+        });
+
+        this.app.get('/api/auth/me', async (req, res) => {
+            if (!req.user?.userId) return res.status(401).json({ error: 'Unauthorized' });
+            const entitlement = await this.getUserPlan(req.user.userId);
+            res.json({
+                id: req.user.userId,
+                userId: req.user.userId,
+                username: req.user.username,
+                globalName: req.user.globalName,
+                avatar: req.user.avatar,
+                role: req.user.role,
+                hasAccess: req.user.hasAccess,
+                accessGuild: req.user.accessGuild,
+                guilds: req.user.guilds || [],
+                plan: entitlement.plan,
+                isPremium: entitlement.isPremium
+            });
+        });
+        
+        // Premium status endpoint
+        this.app.get('/api/premium/status', this.authenticateToken.bind(this), async (req, res) => {
+            try {
+                const userId = req.user?.userId;
+                if (!userId) {
+                    return res.json({ isPremium: false, tier: 'free' });
+                }
+                const entitlement = await this.getUserPlan(userId);
+                console.log('[Premium Status] User:', userId, 'isPremium:', entitlement.isPremium);
+
+                res.json({
+                    isPremium: entitlement.isPremium,
+                    tier: entitlement.plan,
+                    plan: entitlement.plan,
+                    status: entitlement.isPremium ? 'active' : 'inactive',
+                    expiresAt: null,
+                    features: entitlement.isPremium ? [
+                        'anti-nuke', 'anti-phishing', 'moderation-advanced',
+                        'verification', 'autorole', 'console', 'access-generator',
+                        'access-share', 'tickets', 'analytics-advanced', 'logs-full',
+                        'backup', 'priority-support'
+                    ] : []
+                });
+            } catch (error) {
+                console.error('[Premium Status] Error:', error);
+                res.json({ isPremium: false, tier: 'free' });
+            }
         });
         
         // Analytics endpoints (authenticated + guild check)
@@ -932,41 +1321,7 @@ The GuardianBot Team`
         this.app.post('/api/levels/reset', this.resetGuildLevels.bind(this));
         // Advanced settings update endpoint
         this.app.post('/api/update-advanced-settings', this.updateAdvancedSettings.bind(this));
-        // ============================
-        // Pro gating middleware - FIXED: Use JWT identity only
-        // ============================
-        const requirePro = async (req, res, next) => {
-            try {
-                // CRITICAL FIX: Get userId from JWT token, NOT from user-supplied headers
-                const userId = req.user?.userId;
-                if (!userId) return res.status(401).json({ error: 'Unauthorized - valid JWT required' });
-                
-                const row = await this.bot.database.get(`SELECT is_pro FROM users WHERE id = ?`, [userId]);
-                if (!row || !row.is_pro) return res.status(403).json({ error: 'Pro subscription required' });
-                next();
-            } catch (e) { 
-                console.error('[Security] Pro gating error:', e);
-                return res.status(500).json({ error: 'Authentication error' }); 
-            }
-        };
-        const requireProOrTrial = async (req, res, next) => {
-            try {
-                // CRITICAL FIX: Get userId from JWT token, NOT from user-supplied headers
-                const userId = req.user?.userId;
-                if (!userId) return res.status(401).json({ error: 'Unauthorized - valid JWT required' });
-                
-                const row = await this.bot.database.get(`SELECT is_pro FROM users WHERE id = ?`, [userId]);
-                if (!row || (!row.is_pro)) {
-                    // TODO: trial logic placeholder; allow read-only if trial flag set
-                    return res.status(403).json({ error: 'Pro subscription required' });
-                }
-                next();
-            } catch (e) { 
-                console.error('[Security] Pro gating error:', e);
-                return res.status(500).json({ error: 'Authentication error' }); 
-            }
-        };
-
+        
         // ============================
         // Free vs Pro rate limits
         // ============================
@@ -1011,9 +1366,7 @@ The GuardianBot Team`
             return { ok: true };
         };
 
-        // Expose for other modules
-        this.requirePro = requirePro;
-        this.requireProOrTrial = requireProOrTrial;
+        // Expose for other modules (requirePremium already set earlier in this method)
         this.enforceLimits = enforceLimits;
 
         // PayPal routes
@@ -1082,33 +1435,33 @@ The GuardianBot Team`
                     // Apply Pro gating to endpoints
                     // ============================
                     // Snapshots & rollback
-                    this.app.post('/api/snapshots/create', requirePro, async (req, res) => {
+                    this.app.post('/api/snapshots/create', this.requirePremium, async (req, res) => {
                         const { guildId, userId } = req.body || {};
                         const lim = await enforceLimits(guildId, 'snapshots', userId);
                         if (!lim.ok) return res.status(429).json({ error: lim.error });
                         // TODO: implement snapshot creation
                         return res.json({ success: true });
                     });
-                    this.app.post('/api/rollback/execute', requirePro, async (req, res) => {
+                    this.app.post('/api/rollback/execute', this.requirePremium, async (req, res) => {
                         const { guildId } = req.body || {};
                         // TODO: implement rollback
                         return res.json({ success: true });
                     });
 
                     // Verification staff actions
-                    this.app.post('/api/verification/approve', requirePro, async (req, res) => { return res.json({ success: true }); });
-                    this.app.post('/api/verification/deny', requirePro, async (req, res) => { return res.json({ success: true }); });
+                    this.app.post('/api/verification/approve', this.requirePremium, async (req, res) => { return res.json({ success: true }); });
+                    this.app.post('/api/verification/deny', this.requirePremium, async (req, res) => { return res.json({ success: true }); });
 
                     // Analytics
-                    this.app.get('/api/analytics/drilldown', requirePro, async (req, res) => { return res.json({ success: true, data: [] }); });
-                    this.app.get('/api/analytics/export', requirePro, async (req, res) => { return res.json({ success: true, url: null }); });
+                    this.app.get('/api/analytics/drilldown', this.requirePremium, async (req, res) => { return res.json({ success: true, data: [] }); });
+                    this.app.get('/api/analytics/export', this.requirePremium, async (req, res) => { return res.json({ success: true, url: null }); });
 
                     // Tickets
-                    this.app.get('/api/tickets/transcripts', requirePro, async (req, res) => { return res.json({ success: true, transcripts: [] }); });
-                    this.app.post('/api/tickets/ratings', requirePro, async (req, res) => { return res.json({ success: true }); });
+                    this.app.get('/api/tickets/transcripts', this.requirePremium, async (req, res) => { return res.json({ success: true, transcripts: [] }); });
+                    this.app.post('/api/tickets/ratings', this.requirePremium, async (req, res) => { return res.json({ success: true }); });
 
                     // Alerts
-                    this.app.post('/api/alerts/notify', requirePro, async (req, res) => {
+                    this.app.post('/api/alerts/notify', this.requirePremium, async (req, res) => {
                         try {
                             const alerts = require('../utils/alerts');
                             const { guildId, type, details, userId } = req.body || {};
@@ -1439,6 +1792,7 @@ The GuardianBot Team`
         });
         
         // Protected API routes (require authentication) - MOVED BEFORE SETUP ENDPOINTS FOR SECURITY
+        console.log('[ROUTE SETUP] Registering /api authentication middleware');
         this.app.use('/api', this.authenticateToken.bind(this));
         
         // Setup API endpoints (now protected by authentication)
@@ -1641,6 +1995,12 @@ The GuardianBot Team`
         // Multi-server management routes
         this.app.get('/api/servers/list', this.getUserServers.bind(this));
         this.app.post('/api/servers/select', this.selectServer.bind(this));
+
+        // Access code routes for dashboard access control
+        this.app.post('/api/access-codes/generate', this.generateAccessCode.bind(this));
+        this.app.post('/api/access-codes/redeem', this.redeemAccessCode.bind(this));
+        this.app.get('/api/guild/:guildId/access-codes', this.getGuildAccessCodes.bind(this));
+        this.app.post('/api/access-codes/:code/revoke', this.revokeAccessCode.bind(this));
         this.app.get('/api/servers/current', this.getCurrentServer.bind(this));
 
         // Shared access management routes
@@ -2220,6 +2580,10 @@ The GuardianBot Team`
             console.log('[authenticateToken] Ã¢Å“â€¦ TOKEN VERIFIED for user:', decoded.username);
             console.log('================================================\n');
             req.user = decoded;
+            if (!req.user.plan) req.user.plan = 'free';
+            if (typeof req.user.isPremium !== 'boolean') {
+                req.user.isPremium = req.user.plan === 'premium' || req.user.role === 'admin';
+            }
             next();
         } catch (error) {
             console.error('[authenticateToken] Ã¢ÂÅ’ TOKEN VERIFICATION FAILED:', error.message);
@@ -2367,12 +2731,32 @@ The GuardianBot Team`
 
                 if (isValid) {
                     const token = jwt.sign(
-                        { userId: 'admin', role: 'admin', username: 'admin' },
+                        { userId: 'admin', role: 'admin', username: 'admin', plan: 'premium', isPremium: true },
                         process.env.JWT_SECRET,
                         { expiresIn: '24h' }
                     );
 
-                    return res.json({ token, user: { id: 'admin', role: 'admin', username: 'admin' } });
+                    const cookieSecure = process.env.NODE_ENV === 'production' && (req.secure || req.headers['x-forwarded-proto'] === 'https');
+                    console.log('[AUTH] Setting admin dashboardToken cookie:', {
+                        secure: cookieSecure,
+                        sameSite: cookieSecure ? 'strict' : 'lax',
+                        httpOnly: true,
+                        path: '/',
+                        env: process.env.NODE_ENV,
+                        isSecure: req.secure,
+                        protocol: req.protocol,
+                        forwardedProto: req.headers['x-forwarded-proto']
+                    });
+                    
+                    res.cookie('dashboardToken', token, {
+                        httpOnly: true,
+                        secure: cookieSecure,
+                        sameSite: cookieSecure ? 'strict' : 'lax',
+                        maxAge: 24 * 60 * 60 * 1000,
+                        path: '/'
+                    });
+
+                    return res.json({ success: true, token, user: { id: 'admin', role: 'admin', username: 'admin' } });
                 }
             }
 
@@ -2590,6 +2974,8 @@ The GuardianBot Team`
                 this.bot.logger.info(`[OAuth Security] Non-admin user ${user.username} (${user.id}) logged in - will see access code page`);
             }
 
+            const entitlement = await this.getUserPlan(user.id);
+
             // CRITICAL FIX: Create JWT WITHOUT Discord access token
             // Keep access token server-side only to prevent disclosure
             const token = jwt.sign(
@@ -2601,7 +2987,9 @@ The GuardianBot Team`
                     role: userRole, // 'admin' or 'user'
                     hasAccess: hasAccess,
                     accessGuild: accessGuild, // Store which guild this admin access is from
-                    issuedAt: Date.now()
+                    issuedAt: Date.now(),
+                    plan: entitlement.plan,
+                    isPremium: entitlement.isPremium
                     // CRITICALLY REMOVED: accessToken - NEVER store in JWT
                 },
                 process.env.JWT_SECRET,
@@ -2624,18 +3012,19 @@ The GuardianBot Team`
             // CRITICAL FIX: Set cookie with HttpOnly, Secure, SameSite flags
             console.log('\n========================================');
             console.log('[OAuth Callback] Setting dashboardToken cookie...');
+            const cookieSecure = process.env.NODE_ENV === 'production' && (req.secure || req.headers['x-forwarded-proto'] === 'https');
             console.log('[OAuth Callback] Cookie options:', {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
+                secure: cookieSecure,
+                sameSite: cookieSecure ? 'strict' : 'lax',
                 maxAge: 24 * 60 * 60 * 1000,
                 path: '/'
             });
             
             res.cookie('dashboardToken', token, {
                 httpOnly: true, // CRITICAL: Prevents JavaScript from accessing the token
-                secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
-                sameSite: 'strict', // CSRF protection - only send on same-site requests
+                secure: cookieSecure, // Only send over HTTPS in production
+                sameSite: cookieSecure ? 'strict' : 'lax', // CSRF protection - only send on same-site requests
                 maxAge: 24 * 60 * 60 * 1000, // 24 hours
                 path: '/' // Available to entire domain
             });
@@ -3810,18 +4199,18 @@ The GuardianBot Team`
     async updateSecuritySettings(req, res) {
         try {
             const guildId = req.query.guildId || this.getDefaultGuildId();
-            if (!guildId) {
-                return res.status(400).json({ error: 'Missing guildId' });
+            if (!guildId || !/^\d{17,20}$/.test(String(guildId))) {
+                return res.status(400).json({ error: 'Invalid or missing guildId' });
             }
             
             const settings = req.body;
-            if (!settings || typeof settings !== 'object') {
-                return res.status(400).json({ error: 'No settings provided' });
+            if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+                return res.status(400).json({ error: 'Invalid settings format' });
             }
             
-            this.bot.logger.info(`[SETTINGS] Saving security settings for guild ${guildId}:`, settings);
+            this.bot.logger.info(`[SETTINGS] Saving security settings for guild ${guildId}`);
             
-            // Valid security setting fields
+            // Valid security setting fields (whitelist for SQL safety)
             const validFields = [
                 'anti_raid_enabled', 'anti_spam_enabled', 'anti_links_enabled', 
                 'anti_phishing_enabled', 'antinuke_enabled', 'verification_enabled', 
@@ -3860,18 +4249,21 @@ The GuardianBot Team`
                 [guildId]
             );
             
-            // Update each field individually and send confirmations
+            // Build atomic update query (all fields at once)
+            const setClauses = Object.keys(updates).map(f => `${f} = ?`).join(', ');
+            const values = Object.values(updates).map(v => v ? 1 : 0);
+            await this.bot.database.run(
+                `UPDATE guild_configs SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`,
+                [...values, guildId]
+            );
+            
+            // Post-update: send confirmations and logs
             const userId = req.user?.id || 'Dashboard User';
             
             for (const [field, value] of Object.entries(updates)) {
                 const oldValue = currentSettings ? currentSettings[field] : null;
-                
-                await this.bot.database.run(
-                    `UPDATE guild_configs SET ${field} = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`,
-                    [value ? 1 : 0, guildId]
-                );
 
-                // Insert audit log for this change
+                // Insert audit log for this change (non-blocking)
                 try {
                     await this.bot.database.insertAuditLog({
                         guild_id: guildId,
@@ -5877,20 +6269,29 @@ The GuardianBot Team`
         try {
             const guild = this.getGuildFromRequest(req);
             if (!guild) {
-                return res.json([]);
+                return res.json({ tickets: [], count: 0 });
             }
 
-            const limit = parseInt(req.query.limit) || 10;
+            const limit = parseInt(req.query.limit) || 100;
+            const status = req.query.status;
             
-            const query = `
+            let query = `
                 SELECT *
                 FROM tickets
                 WHERE guild_id = ?
-                ORDER BY created_at DESC 
-                LIMIT ?
             `;
+            
+            const params = [guild.id];
+            
+            if (status) {
+                query += ' AND status = ?';
+                params.push(status);
+            }
+            
+            query += ' ORDER BY created_at DESC LIMIT ?';
+            params.push(limit);
 
-            const tickets = await this.bot.database.all(query, [guild.id, limit]);
+            const tickets = await this.bot.database.all(query, params);
             
             // Format tickets for dashboard
             const formattedTickets = await Promise.all(tickets.map(async ticket => {
@@ -7950,9 +8351,9 @@ The GuardianBot Team`
     }
     async getTicketSettings(req, res) {
         try {
-            const guild = this.bot.client.guilds.cache.first();
+            const guild = this.getGuildFromRequest(req);
             if (!guild) {
-                return res.json({ settings: {} });
+                return res.status(400).json({ error: 'No guild found', settings: {} });
             }
 
             const config = await this.bot.database.get(
@@ -7983,7 +8384,7 @@ The GuardianBot Team`
 
     async saveTicketSettings(req, res) {
         try {
-            const guild = this.bot.client.guilds.cache.first();
+            const guild = this.getGuildFromRequest(req);
             if (!guild) {
                 return res.status(400).json({ error: 'No guild found' });
             }
@@ -12084,10 +12485,11 @@ The GuardianBot Team`
             );
 
             // Update the cookie with new token
+            const cookieSecure = process.env.NODE_ENV === 'production' && (req.secure || req.headers['x-forwarded-proto'] === 'https');
             res.cookie('dashboardToken', newToken, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
+                secure: cookieSecure,
+                sameSite: cookieSecure ? 'strict' : 'lax',
                 maxAge: 24 * 60 * 60 * 1000,
                 path: '/'
             });
@@ -12102,6 +12504,554 @@ The GuardianBot Team`
         } catch (error) {
             this.bot.logger.error('Error redeeming access code:', error);
             res.status(500).json({ error: 'Failed to redeem access code' });
+        }
+    }
+
+    /**
+     * Initialize web verification session
+     */
+    async handleWebVerifyInit(req, res) {
+        try {
+            const { token, guildId, userId } = req.body;
+
+            // Lookup by token first
+            if (token) {
+                const session = await this.bot.database?.get(
+                    `SELECT * FROM verification_sessions WHERE token = ? AND status = 'pending'`,
+                    [token]
+                );
+
+                if (!session) {
+                    return res.status(404).json({ error: 'Invalid or expired verification link' });
+                }
+
+                // Check expiry
+                if (session.expires_at && new Date(session.expires_at) < new Date()) {
+                    await this.bot.database?.run(
+                        `UPDATE verification_sessions SET status = 'expired' WHERE id = ?`,
+                        [session.id]
+                    );
+                    return res.status(410).json({ error: 'Verification link expired. Please request a new one.' });
+                }
+
+                const guild = this.bot.client.guilds.cache.get(session.guild_id);
+
+                // If method needs a visible code, generate a fresh one and update the session
+                let captchaCode = null;
+                if (session.method === 'captcha') {
+                    const crypto = require('crypto');
+                    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                    captchaCode = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+                    const codeHash = crypto.createHash('sha256').update(captchaCode.toLowerCase()).digest('hex');
+                    const newExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+                    await this.bot.database?.run(
+                        `UPDATE verification_sessions SET code_hash = ?, expires_at = ?, attempts = 0 WHERE id = ?`,
+                        [codeHash, newExpiry, session.id]
+                    );
+                }
+
+                return res.json({
+                    success: true,
+                    guildId: session.guild_id,
+                    userId: session.user_id,
+                    guildName: guild?.name || 'Unknown Server',
+                    guildIcon: guild?.iconURL() || null,
+                    method: session.method,
+                    riskScore: session.risk_score,
+                    captchaCode,
+                    maxAttempts: 5,
+                    attempts: session.attempts || 0
+                });
+            }
+
+            // Legacy: lookup by guildId/userId
+            if (guildId && userId) {
+                const session = await this.bot.database?.get(
+                    `SELECT * FROM verification_sessions 
+                     WHERE guild_id = ? AND user_id = ? AND status = 'pending'
+                     ORDER BY created_at DESC LIMIT 1`,
+                    [guildId, userId]
+                );
+
+                if (session) {
+                    const guild = this.bot.client.guilds.cache.get(guildId);
+                    return res.json({
+                        success: true,
+                        guildId,
+                        userId,
+                        guildName: guild?.name || 'Unknown Server',
+                        guildIcon: guild?.iconURL() || null,
+                        method: session.method,
+                        riskScore: session.risk_score,
+                        captchaCode: null,
+                        maxAttempts: 5,
+                        attempts: session.attempts || 0
+                    });
+                }
+            }
+
+            return res.status(404).json({ error: 'No pending verification found' });
+        } catch (error) {
+            this.bot.logger?.error('Web verify init error:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    }
+
+    /**
+     * Submit web verification
+     */
+    async handleWebVerifySubmit(req, res) {
+        try {
+            console.log('[WebVerify] Raw body:', JSON.stringify(req.body));
+            const { token, code, challenge, guildId, userId } = req.body;
+            
+            console.log('[WebVerify] Submit received:', { hasToken: !!token, hasGuildId: !!guildId, hasUserId: !!userId, hasCode: !!code });
+            this.bot.logger?.info('[WebVerify] Submit received:', { hasToken: !!token, hasGuildId: !!guildId, hasUserId: !!userId, hasCode: !!code });
+
+            // Allow legacy fallback when token is missing but guild/user provided
+            let session = null;
+            if (token) {
+                session = await this.bot.database?.get(
+                    `SELECT * FROM verification_sessions WHERE token = ? AND status = 'pending'`,
+                    [token]
+                );
+            } else if (guildId && userId) {
+                session = await this.bot.database?.get(
+                    `SELECT * FROM verification_sessions WHERE guild_id = ? AND user_id = ? AND status = 'pending'
+                     ORDER BY created_at DESC LIMIT 1`,
+                    [guildId, userId]
+                );
+            } else {
+                this.bot.logger?.warn('[WebVerify] Submit failed: no token or guild/user IDs');
+                return res.status(400).json({ error: 'Token or guild/user IDs required' });
+            }
+
+            if (!session) {
+                this.bot.logger?.warn('[WebVerify] Session not found:', { token, guildId, userId });
+                return res.status(404).json({ error: 'Invalid or expired session' });
+            }
+
+            this.bot.logger?.info('[WebVerify] Session found:', { method: session.method, hasCodeHash: !!session.code_hash });
+
+            // Check expiry
+            if (session.expires_at && new Date(session.expires_at) < new Date()) {
+                await this.bot.database?.run(
+                    `UPDATE verification_sessions SET status = 'expired' WHERE id = ?`,
+                    [session.id]
+                );
+                return res.status(410).json({ error: 'Session expired' });
+            }
+
+            // Simple challenge verification (for web method - no code needed)
+            if (session.method === 'web') {
+                // Web verification just requires clicking - verify immediately
+                this.bot.logger?.info('[WebVerify] Completing web verification (no code needed)');
+                await this.completeWebVerification(session);
+                return res.json({ success: true, message: 'Verification complete!' });
+            }
+
+            // Captcha/code verification
+            if (code) {
+                const crypto = require('crypto');
+                const codeHash = crypto.createHash('sha256').update(code.toLowerCase()).digest('hex');
+                
+                if (codeHash !== session.code_hash) {
+                    // Increment attempts
+                    await this.bot.database?.run(
+                        `UPDATE verification_sessions SET attempts = attempts + 1 WHERE id = ?`,
+                        [session.id]
+                    );
+                    
+                    const updated = await this.bot.database?.get(
+                        `SELECT attempts FROM verification_sessions WHERE id = ?`, 
+                        [session.id]
+                    );
+                    
+                    if (updated?.attempts >= 5) {
+                        await this.bot.database?.run(
+                            `UPDATE verification_sessions SET status = 'failed' WHERE id = ?`,
+                            [session.id]
+                        );
+                        return res.status(403).json({ error: 'Too many failed attempts. Please contact staff.' });
+                    }
+                    
+                    return res.status(400).json({ 
+                        error: 'Incorrect code',
+                        remaining: 5 - (updated?.attempts || 0)
+                    });
+                }
+
+                // Code correct
+                await this.completeWebVerification(session);
+                return res.json({ success: true, message: 'Verification complete!' });
+            }
+
+            return res.status(400).json({ error: 'Verification submission incomplete' });
+        } catch (error) {
+            this.bot.logger?.error('Web verify submit error:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    }
+
+    /**
+     * Refresh verification code
+     */
+    async handleWebVerifyRefresh(req, res) {
+        try {
+            const { token } = req.body;
+
+            if (!token) {
+                return res.status(400).json({ error: 'Token required' });
+            }
+
+            const session = await this.bot.database?.get(
+                `SELECT * FROM verification_sessions WHERE token = ?`,
+                [token]
+            );
+
+            if (!session || session.status !== 'pending') {
+                return res.status(404).json({ error: 'Invalid session' });
+            }
+
+            // Generate new code
+            const crypto = require('crypto');
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = '';
+            for (let i = 0; i < 6; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            const codeHash = crypto.createHash('sha256').update(code.toLowerCase()).digest('hex');
+
+            // Update session
+            const newExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+            await this.bot.database?.run(
+                `UPDATE verification_sessions SET code_hash = ?, expires_at = ?, attempts = 0 WHERE id = ?`,
+                [codeHash, newExpiry, session.id]
+            );
+
+            // Try to DM new code to user
+            try {
+                const guild = this.bot.client.guilds.cache.get(session.guild_id);
+                const member = await guild?.members.fetch(session.user_id);
+                if (member) {
+                    await member.send({
+                        embeds: [{
+                            title: '🔄 New Verification Code',
+                            description: `Your new verification code for **${guild.name}** is:\n\n**\`${code}\`**`,
+                            color: 0x00d4ff
+                        }]
+                    });
+                }
+            } catch (dmError) {
+                // DM failed - code still available via API response in dev mode
+            }
+
+            return res.json({ 
+                success: true, 
+                message: 'New code sent to your DMs',
+                expiresAt: newExpiry,
+                captchaCode: code
+            });
+        } catch (error) {
+            this.bot.logger?.error('Web verify refresh error:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    }
+
+    /**
+     * Complete web verification and assign roles
+     */
+    async completeWebVerification(session) {
+        const guild = this.bot.client.guilds.cache.get(session.guild_id);
+        if (!guild) throw new Error('Guild not found');
+
+        const member = await guild.members.fetch(session.user_id).catch(() => null);
+        if (!member) throw new Error('Member not found');
+
+        const config = await this.bot.database?.getGuildConfig(session.guild_id);
+
+        // Add verified role
+        if (config?.verified_role_id) {
+            const role = guild.roles.cache.get(config.verified_role_id);
+            if (role) {
+                await member.roles.add(role).catch(() => {});
+            }
+        }
+
+        // Remove unverified role
+        if (config?.unverified_role_id) {
+            const role = guild.roles.cache.get(config.unverified_role_id);
+            if (role) {
+                await member.roles.remove(role).catch(() => {});
+            }
+        }
+
+        // Delete any old sessions for this user to avoid UNIQUE constraint issues
+        await this.bot.database?.run(
+            `DELETE FROM verification_sessions 
+             WHERE guild_id = ? AND user_id = ? AND id != ?`,
+            [session.guild_id, session.user_id, session.id]
+        );
+
+        // Update session status
+        await this.bot.database?.run(
+            `UPDATE verification_sessions 
+             SET status = 'completed', completed_at = CURRENT_TIMESTAMP, completed_by = ?
+             WHERE id = ?`,
+            ['web', session.id]
+        );
+
+        // Log to forensics
+        if (this.bot.forensicsManager) {
+            await this.bot.forensicsManager.logAuditEvent({
+                guildId: session.guild_id,
+                eventType: 'verification_complete',
+                eventCategory: 'verification',
+                executor: { id: session.user_id },
+                target: { id: session.user_id, type: 'user' },
+                metadata: { method: 'web', via: 'dashboard' }
+            });
+        }
+
+        this.bot.logger?.info(`[WebVerify] Verified ${session.user_id} in ${session.guild_id}`);
+    }
+
+    // ==================== Access Code Management ====================
+
+    async generateAccessCode(req, res) {
+        try {
+            const { guildId, type, permission, expiry, note } = req.body;
+            const userId = req.user?.discordId || req.user?.userId;
+
+            if (!guildId || !userId) {
+                return res.status(400).json({ error: 'Missing required fields' });
+            }
+
+            // Verify user has admin access to this guild
+            const guild = this.bot.client.guilds.cache.get(guildId);
+            if (!guild) {
+                return res.status(404).json({ error: 'Guild not found' });
+            }
+
+            const member = await guild.members.fetch(userId).catch(() => null);
+            const hasAdminAccess = member && (
+                member.permissions.has('Administrator') || 
+                guild.ownerId === userId
+            );
+
+            if (!hasAdminAccess && userId !== 'admin') {
+                return res.status(403).json({ error: 'Admin access required to generate codes' });
+            }
+
+            // Generate unique code
+            const code = this.generateUniqueCode();
+
+            // Calculate expiry date
+            let expiresAt = null;
+            if (expiry !== 'never') {
+                const now = new Date();
+                if (expiry === '1h') expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
+                else if (expiry === '24h') expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+                else if (expiry === '7d') expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+                else if (expiry === '30d') expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            }
+
+            // Determine max uses
+            let maxUses = 1;
+            if (type === 'multi') maxUses = 10;
+            else if (type === 'unlimited') maxUses = 999999;
+
+            // Insert into database
+            await this.bot.database.run(`
+                INSERT INTO access_codes (code, guild_id, permission_level, code_type, max_uses, uses_remaining, created_by, expires_at, note)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [code, guildId, permission || 'viewer', type, maxUses, maxUses, userId, expiresAt?.toISOString(), note]);
+
+            this.bot.logger.info(`[AccessCode] Generated code ${code} for guild ${guildId} by ${userId}`);
+
+            res.json({
+                success: true,
+                code,
+                expiresAt: expiresAt?.toISOString(),
+                permission: permission || 'viewer',
+                type
+            });
+        } catch (error) {
+            this.bot.logger.error('[AccessCode] Error generating code:', error);
+            res.status(500).json({ error: 'Failed to generate access code' });
+        }
+    }
+
+    generateUniqueCode() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        const segments = [];
+        for (let i = 0; i < 4; i++) {
+            let segment = '';
+            for (let j = 0; j < 4; j++) {
+                segment += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            segments.push(segment);
+        }
+        return segments.join('-');
+    }
+
+    async redeemAccessCode(req, res) {
+        try {
+            const { code } = req.body;
+            const userId = req.user?.discordId || req.user?.userId;
+
+            if (!code || !userId) {
+                return res.status(400).json({ error: 'Missing code or user ID' });
+            }
+
+            // Fetch the access code
+            const accessCode = await this.bot.database.get(`
+                SELECT * FROM access_codes WHERE code = ? AND revoked = 0
+            `, [code]);
+
+            if (!accessCode) {
+                return res.status(404).json({ error: 'Invalid or revoked access code' });
+            }
+
+            // Check if expired
+            if (accessCode.expires_at) {
+                const expiryDate = new Date(accessCode.expires_at);
+                if (expiryDate < new Date()) {
+                    return res.status(400).json({ error: 'Access code has expired' });
+                }
+            }
+
+            // Check if uses remaining
+            if (accessCode.uses_remaining <= 0) {
+                return res.status(400).json({ error: 'Access code has no uses remaining' });
+            }
+
+            // Check if user already redeemed this code
+            const existing = await this.bot.database.get(`
+                SELECT * FROM access_code_redemptions WHERE code = ? AND user_id = ?
+            `, [code, userId]);
+
+            if (existing) {
+                return res.status(400).json({ error: 'You have already redeemed this code' });
+            }
+
+            // Grant dashboard access based on permission level
+            await this.bot.database.run(`
+                INSERT OR REPLACE INTO dashboard_access (user_id, guild_id, access_level, granted_by, granted_at)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            `, [userId, accessCode.guild_id, accessCode.permission_level, accessCode.created_by]);
+
+            // Record redemption
+            await this.bot.database.run(`
+                INSERT INTO access_code_redemptions (code, user_id, guild_id)
+                VALUES (?, ?, ?)
+            `, [code, userId, accessCode.guild_id]);
+
+            // Decrement uses remaining
+            await this.bot.database.run(`
+                UPDATE access_codes SET uses_remaining = uses_remaining - 1 WHERE code = ?
+            `, [code]);
+
+            // Get server name
+            const guild = this.bot.client.guilds.cache.get(accessCode.guild_id);
+            const serverName = guild?.name || 'Server';
+
+            this.bot.logger.info(`[AccessCode] User ${userId} redeemed code ${code} for guild ${accessCode.guild_id}`);
+
+            res.json({
+                success: true,
+                serverName,
+                guildId: accessCode.guild_id,
+                permission: accessCode.permission_level
+            });
+        } catch (error) {
+            this.bot.logger.error('[AccessCode] Error redeeming code:', error);
+            res.status(500).json({ error: 'Failed to redeem access code' });
+        }
+    }
+
+    async getGuildAccessCodes(req, res) {
+        try {
+            const { guildId } = req.params;
+            const userId = req.user?.discordId || req.user?.userId;
+
+            if (!guildId) {
+                return res.status(400).json({ error: 'Guild ID required' });
+            }
+
+            // Verify user has access to this guild
+            const guild = this.bot.client.guilds.cache.get(guildId);
+            if (!guild) {
+                return res.status(404).json({ error: 'Guild not found' });
+            }
+
+            const member = await guild.members.fetch(userId).catch(() => null);
+            const hasAccess = member && (
+                member.permissions.has('Administrator') || 
+                guild.ownerId === userId
+            );
+
+            if (!hasAccess && userId !== 'admin') {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            // Get all non-revoked codes for this guild
+            const codes = await this.bot.database.all(`
+                SELECT code, permission_level as permission, code_type, max_uses, uses_remaining as usesRemaining, 
+                       created_at as createdAt, expires_at as expiresAt, note, revoked
+                FROM access_codes 
+                WHERE guild_id = ? AND revoked = 0
+                ORDER BY created_at DESC
+            `, [guildId]);
+
+            res.json(codes);
+        } catch (error) {
+            this.bot.logger.error('[AccessCode] Error fetching codes:', error);
+            res.status(500).json({ error: 'Failed to fetch access codes' });
+        }
+    }
+
+    async revokeAccessCode(req, res) {
+        try {
+            const { code } = req.params;
+            const userId = req.user?.discordId || req.user?.userId;
+
+            // Get the access code
+            const accessCode = await this.bot.database.get(`
+                SELECT * FROM access_codes WHERE code = ?
+            `, [code]);
+
+            if (!accessCode) {
+                return res.status(404).json({ error: 'Access code not found' });
+            }
+
+            // Verify user has permission to revoke (must be admin of the guild)
+            const guild = this.bot.client.guilds.cache.get(accessCode.guild_id);
+            if (!guild) {
+                return res.status(404).json({ error: 'Guild not found' });
+            }
+
+            const member = await guild.members.fetch(userId).catch(() => null);
+            const hasAccess = member && (
+                member.permissions.has('Administrator') || 
+                guild.ownerId === userId
+            );
+
+            if (!hasAccess && userId !== 'admin') {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            // Revoke the code
+            await this.bot.database.run(`
+                UPDATE access_codes SET revoked = 1, revoked_at = CURRENT_TIMESTAMP WHERE code = ?
+            `, [code]);
+
+            this.bot.logger.info(`[AccessCode] Code ${code} revoked by ${userId}`);
+
+            res.json({ success: true });
+        } catch (error) {
+            this.bot.logger.error('[AccessCode] Error revoking code:', error);
+            res.status(500).json({ error: 'Failed to revoke access code' });
         }
     }
 }

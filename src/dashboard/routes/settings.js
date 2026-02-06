@@ -4,6 +4,7 @@
  */
 
 const express = require('express');
+const { enforceTierLimits } = require('../../services/tier-enforcement');
 
 /**
  * Create settings routes
@@ -26,7 +27,11 @@ function createSettingsRoutes(dashboard) {
                 return res.status(403).json({ error: 'No access to this guild' });
             }
 
-            const settings = await dashboard.bot.database.getGuildConfig(guildId);
+            // Read through ConfigService (cached, validated)
+            const configService = dashboard.bot.configService;
+            const settings = configService
+                ? await configService.get(guildId)
+                : await dashboard.bot.database.getGuildConfig(guildId);
             res.json(settings || {});
         } catch (error) {
             dashboard.bot.logger?.error('[Settings] Failed to get settings:', error);
@@ -53,7 +58,29 @@ function createSettingsRoutes(dashboard) {
                 return res.status(400).json({ error: validation.error });
             }
 
-            await dashboard.bot.database.updateGuildConfig(guildId, updates);
+            // Tier enforcement: block settings the guild's plan doesn't allow
+            const tierCheck = await enforceTierLimits(dashboard.bot, guildId, updates);
+            if (tierCheck.blocked.length > 0) {
+                return res.status(403).json({
+                    error: 'Feature not available on your plan',
+                    blocked: tierCheck.blocked,
+                    currentTier: tierCheck.tier,
+                    requiredTier: tierCheck.requiredTier,
+                    code: 'TIER_LIMIT_EXCEEDED'
+                });
+            }
+
+            // Write through ConfigService (validates, persists, invalidates cache, emits events)
+            const configService = dashboard.bot.configService;
+            if (configService) {
+                const result = await configService.update(guildId, tierCheck.allowed, req.user.userId);
+                if (!result.success) {
+                    return res.status(400).json({ error: result.errors.join(', ') });
+                }
+            } else {
+                // Fallback: direct DB write if ConfigService not initialized
+                await dashboard.bot.database.updateGuildConfig(guildId, tierCheck.allowed);
+            }
 
             // Log the change
             if (dashboard.bot.logger) {
@@ -62,7 +89,7 @@ function createSettingsRoutes(dashboard) {
                     adminTag: req.user.username,
                     guildId,
                     eventType: 'settings_update',
-                    afterData: updates
+                    afterData: tierCheck.allowed
                 });
             }
 
@@ -149,7 +176,28 @@ function createSettingsRoutes(dashboard) {
                 updateData[column] = enabled ? 1 : 0;
             }
 
-            await dashboard.bot.database.updateGuildConfig(guildId, updateData);
+            // Tier enforcement: block pro/enterprise features on free tier
+            const tierCheck = await enforceTierLimits(dashboard.bot, guildId, updateData);
+            if (tierCheck.blocked.length > 0) {
+                return res.status(403).json({
+                    error: 'Feature not available on your plan',
+                    blocked: tierCheck.blocked,
+                    currentTier: tierCheck.tier,
+                    requiredTier: tierCheck.requiredTier,
+                    code: 'TIER_LIMIT_EXCEEDED'
+                });
+            }
+
+            // Write through ConfigService (validates, persists, invalidates cache, emits events)
+            const configService = dashboard.bot.configService;
+            if (configService) {
+                const result = await configService.update(guildId, tierCheck.allowed, req.user.userId);
+                if (!result.success) {
+                    return res.status(400).json({ error: result.errors.join(', ') });
+                }
+            } else {
+                await dashboard.bot.database.updateGuildConfig(guildId, tierCheck.allowed);
+            }
 
             // Log the change
             if (dashboard.bot.logger) {
@@ -237,7 +285,16 @@ function createSettingsRoutes(dashboard) {
                 }
             }
 
-            await dashboard.bot.database.updateGuildConfig(guildId, updates);
+            // Write through ConfigService (validates, persists, invalidates cache, emits events)
+            const configService = dashboard.bot.configService;
+            if (configService) {
+                const result = await configService.update(guildId, updates, req.user.userId);
+                if (!result.success) {
+                    return res.status(400).json({ error: result.errors.join(', ') });
+                }
+            } else {
+                await dashboard.bot.database.updateGuildConfig(guildId, updates);
+            }
 
             if (dashboard.bot.logger) {
                 await dashboard.bot.logger.logDashboardAction({
@@ -274,6 +331,12 @@ function createSettingsRoutes(dashboard) {
             const exportData = { ...config };
             delete exportData.webhook_url;
             delete exportData.api_keys;
+            // Strip all secret/token/key/password fields
+            for (const key of Object.keys(exportData)) {
+                if (/_token$|_secret$|_key$|_password$|_hash$/.test(key)) {
+                    delete exportData[key];
+                }
+            }
 
             res.setHeader('Content-Type', 'application/json');
             res.setHeader('Content-Disposition', `attachment; filename="guild-${guildId}-config.json"`);

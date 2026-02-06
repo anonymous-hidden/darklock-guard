@@ -30,7 +30,7 @@ const debugLogger = require('./utils/debug-logger');
 const authRoutes = require('./routes/auth');
 const { router: dashboardRoutes, requireAuth } = require('./routes/dashboard');
 const profileRoutes = require('./routes/profile');
-const platformRoutes = require('./routes/platform');
+const { router: platformRoutes, setDiscordBot: setPlatformDiscordBot } = require('./routes/platform');
 const { 
     router: adminAuthRoutes, 
     initializeAdminTables, 
@@ -65,6 +65,7 @@ class DarklockPlatform {
             setDiscordBot(this.discordBot);
             setDiscordBotV2(this.discordBot);
             setDiscordBotV3(this.discordBot);
+            setPlatformDiscordBot?.(this.discordBot);
         }
         
         this.setupMiddleware();
@@ -80,6 +81,7 @@ class DarklockPlatform {
         setDiscordBot(bot);
         setDiscordBotV2(bot);
         setDiscordBotV3(bot);
+        setPlatformDiscordBot?.(bot);
         debugLogger.log('[Darklock Platform] Discord bot reference set');
     }
     
@@ -183,8 +185,8 @@ class DarklockPlatform {
             legacyHeaders: false,
             message: { success: false, error: 'Too many requests, please try again later.' },
             skip: (req) => {
-                // Skip rate limiting for static assets and admin API (has its own rate limiter)
-                return req.path.includes('/static/') || req.path.startsWith('/api/v3/');
+                // Skip rate limiting only for static assets
+                return req.path.includes('/static/');
             }
         });
         this.app.use('/platform', globalLimiter);
@@ -215,6 +217,10 @@ class DarklockPlatform {
             }
         });
         this.app.use('/platform/profile/api/2fa/verify', twoFALimiter);
+        
+        // Stripe webhook needs raw body - must be before express.json()
+        // (premium-success page uses normal JSON parsing)
+        this.app.use('/platform/premium/webhook', express.raw({ type: 'application/json' }));
         
         // Body parsers with size limits
         this.app.use(express.json({ limit: '10kb' }));
@@ -607,18 +613,7 @@ class DarklockPlatform {
         });
 
         // API endpoint for metrics
-        this.app.get('/platform/api/metrics', (req, res) => {
-            const uptime = process.uptime();
-            const uptimeHours = uptime / 3600;
-            const uptimePercent = Math.min(99.99, 99 + (uptimeHours / 1000)).toFixed(2) + '%';
-            
-            res.json({
-                uptime: uptimePercent,
-                responseTime: '< 100ms',
-                status: 'operational',
-                timestamp: new Date().toISOString()
-            });
-        });
+        // No-op here; bot reference injection handled in constructor/setBot
         
         // Public Status API - for status page
         this.app.get('/api/public/status', async (req, res) => {
@@ -802,6 +797,13 @@ class DarklockPlatform {
             res.sendFile(path.join(__dirname, 'views/admin-v2.html'));
         });
         
+        // Admin SPA catch-all - handles /admin/users etc
+        this.app.get('/admin/*', requireAdminAuth, (req, res) => {
+            // Skip if it's /admin/v2
+            if (req.path === '/admin/v2') return;
+            res.sendFile(path.join(__dirname, 'views/admin-v3.html'));
+        });
+        
         // Admin dashboard legacy route redirect
         this.app.get('/admin/dashboard', requireAdminAuth, (req, res) => {
             res.redirect('/admin');
@@ -855,6 +857,16 @@ class DarklockPlatform {
         // Profile API routes
         this.app.use('/platform/profile', profileRoutes);
         
+        // Premium payment routes
+        const premiumRoutes = require('./routes/premium-api');
+        this.app.use('/platform/premium', premiumRoutes);
+        
+        // Updates routes (public + admin)
+        const updatesRoutes = require('./routes/platform/updates');
+        const adminUpdatesRoutes = require('./routes/platform/admin-updates');
+        this.app.use('/platform/update', updatesRoutes);
+        this.app.use('/api', adminUpdatesRoutes);
+        
         // Platform portal routes (Connected Mode)
         this.app.use('/platform', platformRoutes);
         
@@ -882,6 +894,9 @@ class DarklockPlatform {
         if (bot) {
             this.discordBot = bot;
             setDiscordBot(bot);
+            setDiscordBotV2(bot);
+            setDiscordBotV3(bot);
+            setPlatformDiscordBot?.(bot);
             console.log('[Darklock Platform] Discord bot reference set for admin API');
         }
         
@@ -1230,6 +1245,15 @@ class DarklockPlatform {
         
         // Profile API routes
         existingApp.use('/platform/profile', profileRoutes);
+        
+        // Updates routes (public + admin)
+        console.log('[Darklock Platform] Loading updates routes...');
+        const updatesRoutes = require('./routes/platform/updates');
+        const adminUpdatesRoutes = require('./routes/platform/admin-updates');
+        console.log('[Darklock Platform] Registering updates routes at /platform/update and /api');
+        existingApp.use('/platform/update', updatesRoutes);
+        existingApp.use('/api', adminUpdatesRoutes);
+        console.log('[Darklock Platform] Updates routes mounted successfully');
         
         // Platform portal routes (Connected Mode)
         existingApp.use('/platform', platformRoutes);

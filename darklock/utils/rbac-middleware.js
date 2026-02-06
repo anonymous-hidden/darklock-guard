@@ -470,9 +470,13 @@ function getVisibleTabs(adminUser) {
         { id: 'permissions', name: 'Permissions', icon: 'shield-alt', minLevel: 90, hidden: true },
         { id: 'bot', name: 'Discord Bot Control', icon: 'robot', minLevel: 50 },
         { id: 'platform', name: 'Platform Control', icon: 'server', minLevel: 50 },
+        { id: 'updates', name: 'Updates', icon: 'rocket', minLevel: 50 },
+        { id: 'dashboards', name: 'External Dashboards', icon: 'external-link-alt', minLevel: 0 },
+        { id: 'themes', name: 'Theme Manager', icon: 'palette', minLevel: 50 },
         { id: 'logs', name: 'Logs', icon: 'scroll', minLevel: 30 },
         { id: 'audit', name: 'Audit Trail', icon: 'clipboard-list', minLevel: 50 },
         { id: 'security', name: 'Security Center', icon: 'shield-halved', minLevel: 70 },
+        { id: 'profile', name: 'Profile & Security', icon: 'user-lock', minLevel: 0 },
         { id: 'integrations', name: 'Integrations', icon: 'plug', minLevel: 70 },
         { id: 'settings', name: 'Settings', icon: 'cog', minLevel: 50 }
     ];

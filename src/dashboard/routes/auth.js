@@ -342,7 +342,6 @@ class AuthRoutes {
 
             res.json({ 
                 success: true, 
-                token,
                 user: {
                     username: admin.username,
                     role: admin.role
@@ -431,6 +430,16 @@ class AuthRoutes {
                 return res.status(401).json({ error: 'Session invalid' });
             }
 
+            // Enforce maximum refresh window: 7 days from session creation
+            const MAX_REFRESH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+            const sessionAge = Date.now() - new Date(session.createdAt).getTime();
+            if (sessionAge > MAX_REFRESH_WINDOW_MS) {
+                session.revoked = true;
+                session.revokedAt = new Date();
+                sessionStore.set(decoded.sessionId, session);
+                return res.status(401).json({ error: 'Session expired. Please log in again.' });
+            }
+
             // Extend session
             session.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
             sessionStore.set(decoded.sessionId, session);
@@ -451,7 +460,7 @@ class AuthRoutes {
                 maxAge: 24 * 60 * 60 * 1000
             });
 
-            res.json({ success: true, token: newToken });
+            res.json({ success: true });
 
         } catch (error) {
             res.status(401).json({ error: 'Token refresh failed' });

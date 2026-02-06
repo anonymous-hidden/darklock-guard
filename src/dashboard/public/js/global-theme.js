@@ -7,9 +7,9 @@
 (function() {
     'use strict';
     
-    const DEFAULT_THEME = 'none'; // Use 'none' as default for no theme
+    const DEFAULT_THEME = 'darklock'; // Default theme
     const THEME_STORAGE_KEY = 'DarkLock-theme';
-    const THEME_CSS_PATH = '/css/themes/';
+    const THEME_CSS_ENDPOINT = '/api/v3/theme/css';
     
     /**
      * Create and inject the theme stylesheet link
@@ -32,12 +32,9 @@
     function applyTheme(themeName) {
         const themeLink = createThemeLink();
         
-        // If theme is 'none', clear the stylesheet
-        if (!themeName || themeName === 'none') {
-            themeLink.href = '';
-        } else {
-            themeLink.href = `${THEME_CSS_PATH}${themeName}.css`;
-        }
+        // Always use the API endpoint for theme CSS
+        // The endpoint returns CSS based on the active theme in the database
+        themeLink.href = THEME_CSS_ENDPOINT;
         
         // Remove any existing theme classes from body and add the new one
         if (document.body) {

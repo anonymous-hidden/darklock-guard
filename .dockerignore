@@ -1,0 +1,35 @@
+# Dependencies
+node_modules
+npm-debug.log
+
+# Runtime data (mounted as volumes)
+logs
+*.log
+data
+uploads
+file-protection/backups
+file-protection/logs
+file-protection/config/baseline.json
+
+# Development and test directories (not needed in container)
+guard-v2/
+archive/
+tests/
+temp/
+
+# Version control
+.git
+.gitignore
+
+# Environment files (provided via docker-compose env_file)
+.env
+.env.*
+
+# Documentation (not needed at runtime)
+*.md
+docs/
+
+# OS files
+.DS_Store
+Thumbs.db
+

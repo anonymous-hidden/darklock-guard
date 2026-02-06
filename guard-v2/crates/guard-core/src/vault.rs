@@ -3,12 +3,15 @@ use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose, Engine as _};
 use chrono::{DateTime, Utc};
 use ed25519_dalek::{SigningKey, VerifyingKey};
+use parking_lot::RwLock;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 pub const VAULT_MAGIC: &[u8] = b"DLOCK02\0";
 pub const VAULT_VERSION: u32 = 2;
@@ -93,13 +96,29 @@ pub struct VaultPayload {
     pub nonce_cache: Vec<NonceCacheEntry>,
     #[serde(default = "random_secret")]
     pub ipc_shared_secret: String,
+    #[serde(default)]
+    pub kv: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Vault {
     pub header: VaultHeader,
     pub payload: VaultPayload,
     path: PathBuf,
+    key: Zeroizing<Vec<u8>>,
+    kv: RwLock<HashMap<String, String>>,
+}
+
+impl Clone for Vault {
+    fn clone(&self) -> Self {
+        Self {
+            header: self.header.clone(),
+            payload: self.payload.clone(),
+            path: self.path.clone(),
+            key: self.key.clone(),
+            kv: RwLock::new(self.kv.read().clone()),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -120,6 +139,7 @@ impl Vault {
         }
         let salt = generate_salt();
         let nonce = generate_nonce();
+        let key = derive_key(password, &salt)?;
         let signing_key = generate_signing_key();
         let verifying_key: VerifyingKey = signing_key.verifying_key();
         let device_id = device_id_from_public_key(&verifying_key);
@@ -156,6 +176,7 @@ impl Vault {
             },
             nonce_cache: vec![],
             ipc_shared_secret: ipc_secret,
+            kv: HashMap::new(),
         };
 
         let header = VaultHeader {
@@ -172,6 +193,8 @@ impl Vault {
             header,
             payload,
             path: path.as_ref().to_path_buf(),
+            key: key.clone(),
+            kv: RwLock::new(HashMap::new()),
         };
         vault.save(password)?;
         Ok(vault)
@@ -191,6 +214,7 @@ impl Vault {
         let mut payload: VaultPayload =
             serde_json::from_slice(&plaintext).map_err(|e| anyhow!("parse vault: {e}"))?;
         migrate_payload(&mut payload)?;
+        let kv = payload.kv.clone();
         let vault = Vault {
             header: VaultHeader {
                 config_version: payload.config_version,
@@ -198,6 +222,8 @@ impl Vault {
             },
             payload,
             path: path.as_ref().to_path_buf(),
+            key: key.clone(),
+            kv: RwLock::new(kv),
         };
         Ok(vault)
     }
@@ -205,13 +231,57 @@ impl Vault {
     pub fn save(&mut self, password: &str) -> Result<()> {
         self.payload.last_modified = Utc::now();
         self.payload.config_version = CURRENT_CONFIG_VERSION;
-        let plaintext = serde_json::to_vec(&self.payload)?;
+        let mut payload = self.payload.clone();
+        payload.kv = self.kv.read().clone();
+        let plaintext = serde_json::to_vec(&payload)?;
         let key = derive_key(password, &self.header.salt)?;
+        self.key = key.clone();
+        // Generate fresh nonce for every save to prevent XChaCha20-Poly1305 nonce reuse
+        let new_nonce = generate_nonce();
+        self.header.nonce = new_nonce;
         let ciphertext = encrypt(&key, &self.header.nonce, &plaintext)?;
         let mut file = File::create(&self.path)?;
         file.write_all(&VaultHeader::to_bytes(&self.header)?)?;
         file.write_all(&ciphertext)?;
         file.flush()?;
+        Ok(())
+    }
+
+    pub fn save_with_key(&mut self) -> Result<()> {
+        let mut payload = self.payload.clone();
+        payload.last_modified = Utc::now();
+        payload.config_version = CURRENT_CONFIG_VERSION;
+        payload.kv = self.kv.read().clone();
+        let plaintext = serde_json::to_vec(&payload)?;
+        // Generate fresh nonce for every save to prevent XChaCha20-Poly1305 nonce reuse
+        let new_nonce = generate_nonce();
+        self.header.nonce = new_nonce;
+        let ciphertext = encrypt(&self.key, &self.header.nonce, &plaintext)?;
+        let mut file = File::create(&self.path)?;
+        file.write_all(&VaultHeader::to_bytes(&self.header)?)?;
+        file.write_all(&ciphertext)?;
+        file.flush()?;
+        Ok(())
+    }
+
+    pub fn get(&self, key: &str) -> Result<Option<Vec<u8>>> {
+        let guard = self.kv.read();
+        if let Some(value) = guard.get(key) {
+            let decoded = general_purpose::STANDARD
+                .decode(value)
+                .map_err(|e| anyhow!("decode kv value: {e}"))?;
+            Ok(Some(decoded))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn set(&mut self, key: &str, value: &[u8]) -> Result<()> {
+        let mut guard = self.kv.write();
+        let encoded = general_purpose::STANDARD.encode(value);
+        guard.insert(key.to_string(), encoded);
+        drop(guard);
+        self.save_with_key()?;
         Ok(())
     }
 

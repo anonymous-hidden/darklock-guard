@@ -1,6 +1,6 @@
 use crate::connected::state::NonceBook;
 use crate::connected::verifier::{canonical_result_message, Verifier};
-use crate::ServiceState;
+use crate::service_state::ServiceState;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use guard_core::device_state::RemoteActivityStatus;
@@ -18,7 +18,7 @@ use tracing::{info, warn};
 
 use super::api_client::ApiClient;
 use super::telemetry::record_command_event;
-use crate::RemoteCommandRecord;
+use crate::service_state::RemoteCommandRecord;
 
 #[derive(Clone, Debug)]
 pub struct ServerCommand {
@@ -82,13 +82,12 @@ fn record_remote_activity(
     cmd: &ServerCommand,
     status: RemoteActivityStatus,
 ) {
-    if let Ok(mut guard) = std::panic::catch_unwind(|| state.lock()) {
-        guard.last_remote_command = Some(RemoteCommandRecord {
-            command: cmd.command.clone(),
-            timestamp: Utc::now(),
-            status,
-        });
-    }
+    let mut guard = state.lock();
+    guard.last_remote_command = Some(RemoteCommandRecord {
+        command: cmd.command.clone(),
+        timestamp: Utc::now(),
+        status,
+    });
 }
 
 pub fn spawn_command_loop(
@@ -217,7 +216,8 @@ async fn execute_enter_safe_mode(
         // Persist safe mode state to vault
         guard.vault.payload.state.safe_mode = true;
         guard.vault.payload.state.safe_mode_reason = Some("REMOTE_COMMAND".to_string());
-        guard.vault.save(&guard.password)?;
+        let password = guard.password.clone();
+        guard.vault.save(&password)?;
     }
 
     info!(command_id = %cmd.id, "safe mode entered via remote command");

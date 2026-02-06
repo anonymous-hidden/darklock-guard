@@ -4,306 +4,350 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Darklock Guard - Device Monitor</title>
-    <link rel="stylesheet" href="/platform/static/css/dashboard.css">
+    <link rel="stylesheet" href="/platform/static/css/main.css">
     <style>
+        body {
+            padding-top: 80px;
+            background: var(--bg-primary);
+            min-height: 100vh;
+        }
+
         .monitor-container {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 30px;
+            padding: 2rem 1.5rem;
         }
 
         .monitor-header {
-            background: rgba(26, 31, 58, 0.95);
-            border: 1px solid rgba(124, 77, 255, 0.3);
-            border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-lg);
         }
 
-        .monitor-header h1 {
-            margin: 0 0 10px 0;
-            font-size: 28px;
-            background: linear-gradient(135deg, #7c4dff, #00d4ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .monitor-header-icon {
+            width: 64px;
+            height: 64px;
+            flex-shrink: 0;
         }
 
-        .monitor-header p {
-            margin: 0;
-            color: #a8b2d1;
-            font-size: 14px;
+        .monitor-header-content h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .monitor-header-content h1::after {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--accent-success);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-success);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .monitor-header-content p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
         }
 
         .architecture-notice {
-            background: rgba(124, 77, 255, 0.1);
-            border: 1px solid rgba(124, 77, 255, 0.3);
-            border-radius: 8px;
-            padding: 16px 20px;
-            margin-bottom: 30px;
+            background: rgba(59, 130, 246, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-left: 3px solid var(--accent-primary);
+            border-radius: var(--border-radius);
+            padding: 1.25rem;
+            margin-bottom: 2rem;
             display: flex;
-            align-items: flex-start;
-            gap: 12px;
+            gap: 1rem;
         }
 
         .architecture-notice svg {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
+            color: var(--accent-primary);
             flex-shrink: 0;
-            color: #7c4dff;
+            margin-top: 2px;
         }
 
         .architecture-notice-content h4 {
-            margin: 0 0 6px 0;
-            color: #fff;
-            font-size: 14px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
         }
 
         .architecture-notice-content p {
-            margin: 0;
-            color: #a8b2d1;
-            font-size: 13px;
-            line-height: 1.5;
+            font-size: 0.8125rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
         }
 
-        .status-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .status-card {
-            background: rgba(26, 31, 58, 0.95);
-            border: 1px solid rgba(124, 77, 255, 0.3);
-            border-radius: 12px;
-            padding: 20px;
-        }
-
-        .status-card h3 {
-            margin: 0 0 15px 0;
-            font-size: 14px;
-            color: #a8b2d1;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .status-value {
-            font-size: 32px;
+        .architecture-notice-content strong {
+            color: var(--accent-primary);
             font-weight: 600;
-            color: #fff;
         }
-
-        .status-value.success { color: #4caf50; }
-        .status-value.warning { color: #ff9800; }
-        .status-value.danger { color: #f44336; }
-        .status-value.offline { color: #666; }
 
         .device-status-card {
-            background: rgba(26, 31, 58, 0.95);
-            border: 1px solid rgba(124, 77, 255, 0.3);
-            border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 30px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
         }
 
         .device-status-card h2 {
-            margin: 0 0 20px 0;
-            font-size: 20px;
-            color: #fff;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .device-status-card svg {
+            color: var(--accent-primary);
         }
 
         .device-item {
-            background: rgba(10, 14, 39, 0.6);
-            border: 1px solid rgba(124, 77, 255, 0.2);
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 15px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all var(--transition-base);
+        }
+
+        .device-item:hover {
+            border-color: var(--border-color-hover);
+            box-shadow: var(--shadow-md);
         }
 
         .device-header {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            margin-bottom: 15px;
+            align-items: center;
+            margin-bottom: 1rem;
         }
 
         .device-name {
-            font-size: 16px;
-            font-weight: 600;
-            color: #fff;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 0.75rem;
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text-primary);
         }
 
         .device-status-badge {
-            padding: 4px 10px;
+            padding: 0.25rem 0.75rem;
             border-radius: 12px;
-            font-size: 11px;
+            font-size: 0.6875rem;
             font-weight: 600;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .device-status-badge.secure {
-            background: rgba(76, 175, 80, 0.2);
-            color: #4caf50;
-        }
-
-        .device-status-badge.changed {
-            background: rgba(255, 152, 0, 0.2);
-            color: #ff9800;
-        }
-
-        .device-status-badge.compromised {
-            background: rgba(244, 67, 54, 0.2);
-            color: #f44336;
+        .device-status-badge.active {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: var(--accent-success);
         }
 
         .device-status-badge.offline {
-            background: rgba(102, 102, 102, 0.2);
-            color: #888;
+            background: rgba(100, 116, 139, 0.1);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            color: var(--text-muted);
         }
 
         .device-stats {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            margin-bottom: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
         }
 
         .device-stat {
             text-align: center;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
         }
 
         .device-stat-value {
-            font-size: 20px;
-            font-weight: 600;
-            color: #fff;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .device-stat-label {
-            font-size: 11px;
-            color: #a8b2d1;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .device-meta {
             display: flex;
-            gap: 20px;
-            font-size: 12px;
-            color: #a8b2d1;
-            border-top: 1px solid rgba(124, 77, 255, 0.2);
-            padding-top: 15px;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
         }
 
         .activity-log {
-            background: rgba(26, 31, 58, 0.95);
-            border: 1px solid rgba(124, 77, 255, 0.3);
-            border-radius: 12px;
-            padding: 25px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
         }
 
         .activity-log h2 {
-            margin: 0 0 20px 0;
-            font-size: 20px;
-            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 0 0 1.5rem 0;
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            font-weight: 600;
         }
 
         .log-entry {
-            background: rgba(10, 14, 39, 0.6);
-            border-left: 3px solid #7c4dff;
-            padding: 12px 15px;
-            margin-bottom: 10px;
-            border-radius: 0 6px 6px 0;
+            background: var(--bg-primary);
+            border-left: 3px solid var(--accent-primary);
+            padding: 0.875rem 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+            transition: all var(--transition-base);
         }
 
-        .log-entry.warning { border-left-color: #ff9800; }
-        .log-entry.error { border-left-color: #f44336; }
-        .log-entry.success { border-left-color: #4caf50; }
+        .log-entry:hover {
+            background: var(--bg-hover);
+        }
+
+        .log-entry.warning { border-left-color: var(--accent-warning); }
+        .log-entry.error { border-left-color: var(--accent-danger); }
+        .log-entry.success { border-left-color: var(--accent-success); }
 
         .log-time {
-            font-size: 11px;
-            color: #a8b2d1;
-            margin-bottom: 5px;
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.375rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .log-message {
-            font-size: 14px;
-            color: #fff;
+            font-size: 0.875rem;
+            color: var(--text-primary);
         }
 
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
-            color: #a8b2d1;
+            padding: 4rem 1.25rem;
+            color: var(--text-secondary);
         }
 
         .empty-state svg {
             width: 64px;
             height: 64px;
-            margin-bottom: 20px;
-            opacity: 0.5;
+            margin-bottom: 1.25rem;
+            opacity: 0.3;
+            color: var(--accent-primary);
         }
 
         .empty-state h3 {
-            color: #fff;
-            margin: 0 0 10px 0;
+            color: var(--text-primary);
+            margin: 0 0 0.75rem 0;
+            font-size: 1.125rem;
         }
 
         .empty-state p {
-            margin: 0 0 20px 0;
+            margin: 0 0 1.5rem 0;
             max-width: 400px;
             margin-left: auto;
             margin-right: auto;
             line-height: 1.6;
+            font-size: 0.875rem;
         }
 
         .download-btn {
-            background: linear-gradient(135deg, #7c4dff, #00d4ff);
+            background: var(--gradient-primary);
             border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            color: #fff;
+            padding: 0.875rem 1.5rem;
+            border-radius: var(--border-radius);
+            color: white;
             font-weight: 600;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 0.5rem;
             text-decoration: none;
+            transition: all var(--transition-base);
+            box-shadow: var(--shadow-md), 0 0 20px rgba(59, 130, 246, 0.3);
         }
 
         .download-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(124, 77, 255, 0.4);
+            box-shadow: var(--shadow-lg), 0 0 30px rgba(59, 130, 246, 0.4);
         }
 
         .source-badge {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            background: rgba(0, 212, 255, 0.1);
-            border: 1px solid rgba(0, 212, 255, 0.3);
+            gap: 0.5rem;
+            padding: 0.375rem 0.75rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
             border-radius: 12px;
-            font-size: 11px;
-            color: #00d4ff;
+            font-size: 0.6875rem;
+            color: var(--accent-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
         }
 
         .last-sync {
-            font-size: 12px;
-            color: #a8b2d1;
-            margin-top: 10px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 1rem;
+            text-align: center;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
         }
     </style>
 </head>
 <body>
     <div class="monitor-container">
         <div class="monitor-header">
-            <h1>Darklock Guard - Device Monitor</h1>
-            <p>View protection status from your connected devices (read-only)</p>
+            <img src="/platform/static/icons/darklock-guard.png" alt="Darklock Guard" class="monitor-header-icon">
+            <div class="monitor-header-content">
+                <h1>Darklock Guard Monitor</h1>
+                <p>View protection status from your connected devices (read-only)</p>
+            </div>
         </div>
 
         <!-- Architecture Notice -->

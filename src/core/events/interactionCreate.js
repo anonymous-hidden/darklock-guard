@@ -3,14 +3,23 @@
  * Handles all Discord interactions (commands, buttons, select menus, modals)
  */
 
-const { Collection, PermissionFlagsBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder } = require('discord.js');
+const { Collection, PermissionFlagsBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const path = require('path');
+const InteractionGuard = require('../../utils/InteractionGuard');
 
 // Import the new help v2 handler
 const { handleHelpInteraction, PREFIX: HELP_PREFIX } = require('../interactions/helpV2Handler');
 
-// Bot maintenance check
+// Bot maintenance check — cached to avoid opening a new SQLite connection per interaction
+let _maintenanceCache = { data: { enabled: false }, expiresAt: 0 };
+const MAINTENANCE_CACHE_TTL = 10000; // 10 seconds
+
 async function isBotInMaintenance() {
+    const now = Date.now();
+    if (now < _maintenanceCache.expiresAt) {
+        return _maintenanceCache.data;
+    }
+
     try {
         const darklockDbPath = path.join(process.cwd(), 'data', 'darklock.db');
         const sqlite3 = require('sqlite3').verbose();
@@ -23,13 +32,18 @@ async function isBotInMaintenance() {
             });
         });
         
-        if (!result?.value) return { enabled: false };
+        if (!result?.value) {
+            _maintenanceCache = { data: { enabled: false }, expiresAt: now + MAINTENANCE_CACHE_TTL };
+            return _maintenanceCache.data;
+        }
         
         const data = JSON.parse(result.value);
+        _maintenanceCache = { data, expiresAt: now + MAINTENANCE_CACHE_TTL };
         return data;
     } catch (err) {
         console.error('[Bot Maintenance] Check failed:', err.message);
-        return { enabled: false };
+        _maintenanceCache = { data: { enabled: false }, expiresAt: now + MAINTENANCE_CACHE_TTL };
+        return _maintenanceCache.data;
     }
 }
 
@@ -383,6 +397,20 @@ async function handleContextMenuCommand(interaction, bot) {
  * Handle button interactions
  */
 async function handleButtonInteraction(interaction, bot) {
+    // Universal rate limit check for all button interactions
+    const customId = interaction.customId || '';
+    let rateCategory = 'general';
+    if (customId.startsWith('verify_') || customId === 'verify_button') rateCategory = 'verify';
+    else if (customId.startsWith('close_ticket_') || customId.startsWith('claim_ticket_') || customId.startsWith('help-ticket-')) rateCategory = 'ticket';
+    else if (customId.startsWith('appeal_')) rateCategory = 'appeal';
+    else if (customId.startsWith('spam_') || customId.startsWith('quarantine_') || customId.startsWith('risk_action_')) rateCategory = 'modAction';
+    
+    if (InteractionGuard.checkRateLimit(interaction, rateCategory)) {
+        try {
+            return interaction.reply({ content: '⏰ You\'re clicking too fast. Please slow down.', flags: [MessageFlags.Ephemeral] });
+        } catch { return; }
+    }
+
     const buttonSuccess = await (async () => {
         try {
             // Reaction role buttons
@@ -1192,6 +1220,12 @@ async function handleDynamicVerifyButton(interaction, bot) {
         const guildId = parts[2];
         const targetUserId = parts[3];
 
+        // Security Rule 4: Custom IDs are untrusted — verify the clicker IS the target
+        if (interaction.user.id !== targetUserId) {
+            bot.logger?.warn(`[Security] verify_user_ spoofing attempt: clicker=${interaction.user.id} target=${targetUserId} guild=${guildId}`);
+            return interaction.reply({ content: '❌ This verification button is not for you.', ephemeral: true });
+        }
+
         // Check pending verification
         const pending = await bot.database.get(
             `SELECT * FROM verification_queue WHERE guild_id = ? AND user_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT 1`,
@@ -1235,72 +1269,87 @@ async function handleDynamicVerifyButton(interaction, bot) {
  * Handle select menu interactions
  */
 async function handleSelectMenu(interaction, bot) {
-    // Channel access role selection
-    if (interaction.customId.startsWith('channel_access_select_')) {
-        const channelAccessHandler = require('../../events/channelAccessHandler');
-        await channelAccessHandler.handleChannelAccessSelect(interaction, bot);
-        return;
-    }
-    // Ticket category selection
-    if (interaction.customId === 'ticket_category_select') {
-        if (bot.enhancedTicketManager) {
-            await bot.enhancedTicketManager.handleTicketButton(interaction);
+    try {
+        // Channel access role selection
+        if (interaction.customId.startsWith('channel_access_select_')) {
+            const channelAccessHandler = require('../../events/channelAccessHandler');
+            await channelAccessHandler.handleChannelAccessSelect(interaction, bot);
+            return;
         }
-    }
-    // Settings category selection
-    else if (interaction.customId === 'settings_category_select') {
-        if (bot.settingsManager) {
-            await bot.settingsManager.handleSettingsInteraction(interaction);
+        // Ticket category selection
+        if (interaction.customId === 'ticket_category_select') {
+            if (bot.enhancedTicketManager) {
+                await bot.enhancedTicketManager.handleTicketButton(interaction);
+            }
         }
-    }
-    // Help category selection
-    else if (interaction.customId === 'help-category-select') {
-        const category = interaction.values[0];
-        
-        if (!bot.helpTicketSystem) {
-            return await interaction.reply({ content: '❌ Help ticket system not available', ephemeral: true });
+        // Settings category selection
+        else if (interaction.customId === 'settings_category_select') {
+            if (bot.settingsManager) {
+                await bot.settingsManager.handleSettingsInteraction(interaction);
+            }
         }
+        // Help category selection
+        else if (interaction.customId === 'help-category-select') {
+            const category = interaction.values?.[0];
+            if (!category) {
+                return await safeInteractionReply(interaction, { content: '❌ Invalid selection.', ephemeral: true });
+            }
+            
+            if (!bot.helpTicketSystem) {
+                return await safeInteractionReply(interaction, { content: '❌ Help ticket system not available', ephemeral: true });
+            }
 
-        // Show modal for the selected category
-        const modal = new ModalBuilder()
-            .setCustomId(`help-ticket-modal-${category}`)
-            .setTitle(`🆘 ${bot.helpTicketSystem.getCategoryLabel(category)}`);
+            // Show modal for the selected category
+            const modal = new ModalBuilder()
+                .setCustomId(`help-ticket-modal-${category}`)
+                .setTitle(`🆘 ${bot.helpTicketSystem.getCategoryLabel(category)}`);
 
-        const subjectInput = new TextInputBuilder()
-            .setCustomId('help-subject')
-            .setLabel('Subject/Title')
-            .setStyle(TextInputStyle.Short)
-            .setPlaceholder('Brief description of your issue')
-            .setMinLength(5)
-            .setMaxLength(100)
-            .setRequired(true);
+            const subjectInput = new TextInputBuilder()
+                .setCustomId('help-subject')
+                .setLabel('Subject/Title')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('Brief description of your issue')
+                .setMinLength(5)
+                .setMaxLength(100)
+                .setRequired(true);
 
-        const reasonInput = new TextInputBuilder()
-            .setCustomId('help-reason')
-            .setLabel('Reason')
-            .setStyle(TextInputStyle.Short)
-            .setPlaceholder('Why do you need help with this?')
-            .setMinLength(5)
-            .setMaxLength(200)
-            .setRequired(true);
+            const reasonInput = new TextInputBuilder()
+                .setCustomId('help-reason')
+                .setLabel('Reason')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('Why do you need help with this?')
+                .setMinLength(5)
+                .setMaxLength(200)
+                .setRequired(true);
 
-        const descriptionInput = new TextInputBuilder()
-            .setCustomId('help-description')
-            .setLabel('Detailed Description')
-            .setStyle(TextInputStyle.Paragraph)
-            .setPlaceholder('Please provide as much detail as possible...')
-            .setMinLength(10)
-            .setMaxLength(2000)
-            .setRequired(true);
+            const descriptionInput = new TextInputBuilder()
+                .setCustomId('help-description')
+                .setLabel('Detailed Description')
+                .setStyle(TextInputStyle.Paragraph)
+                .setPlaceholder('Please provide as much detail as possible...')
+                .setMinLength(10)
+                .setMaxLength(2000)
+                .setRequired(true);
 
-        modal.addComponents(
-            new ActionRowBuilder().addComponents(subjectInput),
-            new ActionRowBuilder().addComponents(reasonInput),
-            new ActionRowBuilder().addComponents(descriptionInput)
-        );
+            modal.addComponents(
+                new ActionRowBuilder().addComponents(subjectInput),
+                new ActionRowBuilder().addComponents(reasonInput),
+                new ActionRowBuilder().addComponents(descriptionInput)
+            );
 
-        await interaction.showModal(modal);
+            await interaction.showModal(modal);
+        }
+    } catch (err) {
+        bot.logger?.error('[InteractionCreate] Select menu handler error:', err);
+        await safeInteractionReply(interaction, { content: '❌ Something went wrong handling that selection.', ephemeral: true });
     }
+}
+
+async function safeInteractionReply(interaction, payload) {
+    if (interaction.replied || interaction.deferred) {
+        return interaction.followUp(payload).catch(() => {});
+    }
+    return interaction.reply(payload).catch(() => {});
 }
 
 /**
@@ -1415,6 +1464,7 @@ async function handleModMailButton(interaction, bot) {
     }
 
     const customId = interaction.customId;
+    const { PermissionFlagsBits } = require('discord.js');
 
     // Guild selection from DM
     if (customId.startsWith('modmail_select_')) {
@@ -1423,9 +1473,20 @@ async function handleModMailButton(interaction, bot) {
         return;
     }
 
+    // Security Rule 4: Staff-only actions require permission check
+    if (interaction.guild && interaction.member) {
+        const isStaff = interaction.member.permissions.has(PermissionFlagsBits.ManageGuild) ||
+                        interaction.member.permissions.has(PermissionFlagsBits.Administrator) ||
+                        interaction.member.permissions.has(PermissionFlagsBits.ModerateMembers);
+        if (!isStaff) {
+            return interaction.reply({ content: '❌ Only staff can manage modmail tickets.', ephemeral: true });
+        }
+    }
+
     // Close ticket button
     if (customId.startsWith('modmail_close_')) {
         const ticketId = parseInt(customId.replace('modmail_close_', ''));
+        if (isNaN(ticketId)) return interaction.reply({ content: '❌ Invalid ticket.', ephemeral: true });
         await interaction.reply('🔒 Closing ticket...');
         await bot.modmail.closeTicket(ticketId, interaction.user.id);
         return;
@@ -1434,6 +1495,7 @@ async function handleModMailButton(interaction, bot) {
     // Claim ticket button
     if (customId.startsWith('modmail_claim_')) {
         const ticketId = parseInt(customId.replace('modmail_claim_', ''));
+        if (isNaN(ticketId)) return interaction.reply({ content: '❌ Invalid ticket.', ephemeral: true });
         const claimed = await bot.modmail.claimTicket(ticketId, interaction.user.id);
         
         if (claimed) {
@@ -1553,23 +1615,41 @@ async function handleAutocomplete(interaction, bot) {
  * Handle modal submissions
  */
 async function handleModalSubmit(interaction, bot) {
-    if (interaction.customId === 'ticket_modal') {
-        await bot.handleTicketSubmit(interaction);
-    } else if (interaction.customId === 'ticket_create_modal') {
-        if (bot.ticketSystem) {
-            await bot.ticketSystem.handleModalSubmit(interaction);
+    // Rate limit modal submissions
+    const modalId = interaction.customId || '';
+    let rateCategory = 'general';
+    if (modalId.startsWith('verify_')) rateCategory = 'verify';
+    else if (modalId.startsWith('appeal_')) rateCategory = 'appeal';
+    else if (modalId.startsWith('ticket_') || modalId.startsWith('help-ticket-')) rateCategory = 'ticket';
+
+    if (InteractionGuard.checkRateLimit(interaction, rateCategory)) {
+        try {
+            return interaction.reply({ content: '⏰ Please slow down. Try again in a moment.', flags: [MessageFlags.Ephemeral] });
+        } catch { return; }
+    }
+
+    try {
+        if (interaction.customId === 'ticket_modal') {
+            await bot.handleTicketSubmit(interaction);
+        } else if (interaction.customId === 'ticket_create_modal') {
+            if (bot.ticketSystem) {
+                await bot.ticketSystem.handleModalSubmit(interaction);
+            }
+        } else if (interaction.customId === 'help-modal') {
+            await bot.handleHelpModal(interaction);
+        } else if (interaction.customId.startsWith('help-ticket-modal-')) {
+            // Handle help ticket modal submission
+            await bot.handleHelpTicketModal(interaction);
+        } else if (interaction.customId.startsWith('appeal_modal_')) {
+            // Handle appeal modal submission
+            await handleAppealModalSubmit(interaction, bot);
+        } else if (interaction.customId.startsWith('verify_modal_')) {
+            // Handle verification code modal submission
+            await handleVerifyModalSubmit(interaction, bot);
         }
-    } else if (interaction.customId === 'help-modal') {
-        await bot.handleHelpModal(interaction);
-    } else if (interaction.customId.startsWith('help-ticket-modal-')) {
-        // Handle help ticket modal submission
-        await bot.handleHelpTicketModal(interaction);
-    } else if (interaction.customId.startsWith('appeal_modal_')) {
-        // Handle appeal modal submission
-        await handleAppealModalSubmit(interaction, bot);
-    } else if (interaction.customId.startsWith('verify_modal_')) {
-        // Handle verification code modal submission
-        await handleVerifyModalSubmit(interaction, bot);
+    } catch (err) {
+        bot.logger?.error('[InteractionCreate] Modal submit error:', err);
+        await safeInteractionReply(interaction, { content: '❌ An error occurred while processing this form.', ephemeral: true });
     }
 }
 
