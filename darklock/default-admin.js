@@ -52,6 +52,9 @@ async function generateHash(password) {
 /**
  * Initialize default admin accounts
  * Only creates if no admins exist in database
+ * 
+ * Checks environment variables first (RENDER_ADMIN_EMAIL, RENDER_ADMIN_PASSWORD)
+ * Falls back to hardcoded defaults if not provided
  */
 async function initializeDefaultAdmins() {
     try {
@@ -66,6 +69,27 @@ async function initializeDefaultAdmins() {
         const now = new Date().toISOString();
         const createdAdmins = [];
 
+        // Check for environment-provided admin credentials
+        const envEmail = process.env.RENDER_ADMIN_EMAIL || process.env.ADMIN_USERNAME;
+        const envPassword = process.env.RENDER_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
+        
+        let primaryEmail = DEFAULT_ADMIN.email;
+        let primaryHash = DEFAULT_ADMIN.passwordHash;
+        
+        // If environment credentials provided, use them
+        if (envEmail && envPassword) {
+            primaryEmail = envEmail;
+            // Check if it's already a hash (starts with $2b$ or $2a$)
+            if (envPassword.startsWith('$2')) {
+                primaryHash = envPassword;
+                console.log('[Default Admin] Using environment-provided admin hash');
+            } else {
+                // Plain text password - hash it
+                primaryHash = await bcrypt.hash(envPassword, 12);
+                console.log('[Default Admin] Hashing environment-provided password');
+            }
+        }
+
         // Create primary admin
         const primaryId = crypto.randomUUID();
         await db.run(`
@@ -73,32 +97,39 @@ async function initializeDefaultAdmins() {
             VALUES (?, ?, ?, ?, ?, ?, 1)
         `, [
             primaryId,
-            DEFAULT_ADMIN.email,
-            DEFAULT_ADMIN.passwordHash,
+            primaryEmail,
+            primaryHash,
             DEFAULT_ADMIN.role,
             now,
             now
         ]);
-        createdAdmins.push(DEFAULT_ADMIN.email);
-        console.log(`[Default Admin] ✅ Created primary admin: ${DEFAULT_ADMIN.email}`);
+        createdAdmins.push(primaryEmail);
+        console.log(`[Default Admin] ✅ Created primary admin: ${primaryEmail}`);
 
-        // Create backup admin
-        const backupId = crypto.randomUUID();
-        await db.run(`
-            INSERT INTO admins (id, email, password_hash, role, created_at, updated_at, active)
-            VALUES (?, ?, ?, ?, ?, ?, 1)
-        `, [
-            backupId,
-            BACKUP_ADMIN.email,
-            BACKUP_ADMIN.passwordHash,
-            BACKUP_ADMIN.role,
-            now,
-            now
-        ]);
-        createdAdmins.push(BACKUP_ADMIN.email);
-        console.log(`[Default Admin] ✅ Created backup admin: ${BACKUP_ADMIN.email}`);
+        // Only create backup admin if using defaults (not environment vars)
+        if (!envEmail) {
+            const backupId = crypto.randomUUID();
+            await db.run(`
+                INSERT INTO admins (id, email, password_hash, role, created_at, updated_at, active)
+                VALUES (?, ?, ?, ?, ?, ?, 1)
+            `, [
+                backupId,
+                BACKUP_ADMIN.email,
+                BACKUP_ADMIN.passwordHash,
+                BACKUP_ADMIN.role,
+                now,
+                now
+            ]);
+            createdAdmins.push(BACKUP_ADMIN.email);
+            console.log(`[Default Admin] ✅ Created backup admin: ${BACKUP_ADMIN.email}`);
+        }
 
-        console.log('[Default Admin] ⚠️  IMPORTANT: Change default passwords immediately!');
+        if (envPassword && !envPassword.startsWith('$2')) {
+            console.log('[Default Admin] ⚠️  IMPORTANT: Environment password was provided in plain text and has been hashed.');
+            console.log('[Default Admin] ⚠️  Consider using a pre-hashed password in environment variables for security.');
+        } else {
+            console.log('[Default Admin] ⚠️  IMPORTANT: Change default passwords immediately!');
+        }
         
         return { created: true, admins: createdAdmins };
     } catch (err) {
