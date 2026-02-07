@@ -5,7 +5,9 @@ module.exports = {
     async execute(member, bot) {
         try {
             const guild = member.guild;
-            const config = await bot.database.getGuildConfig(guild.id);
+            const config = bot.configService
+                ? await bot.configService.resolveEffective(guild.id)
+                : await bot.database.getGuildConfig(guild.id);
 
             const welcomeOn = !!config?.welcome_enabled;
             const verifyOn = !!config?.verification_enabled;

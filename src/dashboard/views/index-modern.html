@@ -1385,8 +1385,10 @@
         }
 
         // Initialize clock
-        updateClock();
-        setInterval(updateClock, 1000);
+        document.addEventListener('DOMContentLoaded', () => {
+            updateClock();
+            setInterval(updateClock, 1000);
+        });
 
         // Quick Actions Management
         const availableActions = [

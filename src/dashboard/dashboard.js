@@ -821,7 +821,6 @@ The GuardianBot Team`
 
     async getUserPlan(userId) {
         if (!userId) return { plan: 'free', isPremium: false };
-        if (userId === 'admin') return { plan: 'premium', isPremium: true };
 
         let subscription = null;
         let user = null;
@@ -1999,15 +1998,15 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         // Use the consolidated handler which validates keys and persists events
         this.app.post('/api/events', this.handleEventPost.bind(this));
         
-        // Guild settings endpoint for bot command sync
-        this.app.post('/api/guilds/:guildId/settings', this.updateGuildSettings.bind(this));
+        // Guild settings endpoint for bot command sync (single registration)
         this.app.post('/api/guilds/:guildId/settings', this.updateGuildSettings.bind(this));
         
         // Guild-specific routes (matching frontend pattern)
         this.app.get('/api/guild/:guildId/channels', this.getGuildChannels.bind(this));
         this.app.get('/api/guild/:guildId/roles', this.getGuildRoles.bind(this));
         this.app.get('/api/guild/:guildId/settings', this.getGuildSpecificSettings.bind(this));
-        this.app.post('/api/guild/:guildId/settings', this.saveGuildSpecificSettings.bind(this));
+        // NOTE: saveGuildSpecificSettings REMOVED — unsafe, no column allowlist.
+        // All settings writes must go through /api/guilds/:guildId/settings which uses updateGuildSettings.
         
         this.app.get('/api/dashboard-data', this.getDashboardData.bind(this));
         
@@ -2225,10 +2224,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
      * @returns {Promise<{authorized: boolean, member: object|null, error: string|null, accessType: string|null}>}
      */
     async checkGuildAccess(userId, guildId, requireManage = true) {
-        // Admin bypass
-        if (userId === 'admin') {
-            return { authorized: true, member: null, error: null, accessType: 'admin' };
-        }
+        // No magic string bypass — admin access is determined by JWT role in the request,
+        // not by a hardcoded userId. The caller must check req.user.role separately if needed.
 
         // Get guild
         const guild = this.bot.client.guilds.cache.get(guildId);
@@ -2642,8 +2639,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
             // Authorization: only allow the guild owner, server admins, or dashboard admins to change permissions
             try {
-                // Dashboard-level admin override
-                if (!(req.user && (req.user.role === 'admin' || req.user.userId === 'admin'))) {
+                // Dashboard-level admin/owner role check (from JWT, not magic userId string)
+                if (!(req.user && (req.user.role === 'admin' || req.user.role === 'owner'))) {
                     const guild = this.bot.client.guilds.cache.get(guildId);
                     if (!guild) return res.status(404).json({ error: 'Guild not found' });
 
@@ -2743,7 +2740,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             req.user = decoded;
             if (!req.user.plan) req.user.plan = 'free';
             if (typeof req.user.isPremium !== 'boolean') {
-                req.user.isPremium = req.user.plan === 'premium' || req.user.role === 'admin';
+                req.user.isPremium = req.user.plan === 'premium' || req.user.role === 'owner';
             }
             next();
         } catch (error) {
@@ -9615,8 +9612,12 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             
             this.bot.logger.info(`[SERVERS] Getting servers for user: ${userId}`);
             
-            if (!userId || userId === 'admin') {
-                // For admin login, return all bot guilds
+            if (!userId) {
+                return res.status(401).json({ error: 'Authentication required' });
+            }
+
+            // If user has dashboard admin role (from JWT), return all bot guilds
+            if (req.user?.role === 'owner') {
                 const botGuilds = Array.from(this.bot.client.guilds.cache.values()).map(guild => ({
                     id: guild.id,
                     name: guild.name,
@@ -9784,8 +9785,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
             const userId = req.user?.discordId || req.user?.userId;
             
-            // For admin, allow access to all servers
-            if (userId === 'admin') {
+            // For dashboard owner role, allow access to all servers
+            if (req.user?.role === 'owner') {
                 return res.json({ 
                     success: true, 
                     server: {
@@ -10250,7 +10251,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             const ticketGuild = ticket.guild_id;
             const guildObj = this.bot.client.guilds.cache.get(ticketGuild);
             let allowed = false;
-            if (req.user?.role === 'admin' || actingUserId === 'admin') allowed = true;
+            if (req.user?.role === 'admin' || req.user?.role === 'owner') allowed = true;
             if (guildObj) {
                 const member = await guildObj.members.fetch(actingUserId).catch(() => null);
                 if (member) {
@@ -10362,7 +10363,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
             const guildObj = this.bot.client.guilds.cache.get(ticket.guild_id);
             let allowed = false;
-            if (req.user?.role === 'admin' || actingUserId === 'admin') allowed = true;
+            if (req.user?.role === 'admin' || req.user?.role === 'owner') allowed = true;
             if (guildObj) {
                 const member = await guildObj.members.fetch(actingUserId).catch(() => null);
                 if (member) {
@@ -10482,7 +10483,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
             const guildObj = this.bot.client.guilds.cache.get(guildId);
             let allowed = false;
-            if (req.user?.role === 'admin' || actingUserId === 'admin') allowed = true;
+            if (req.user?.role === 'admin' || req.user?.role === 'owner') allowed = true;
             if (guildObj) {
                 const member = await guildObj.members.fetch(actingUserId).catch(() => null);
                 if (member) {

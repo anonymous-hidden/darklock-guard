@@ -402,7 +402,9 @@ class AutoMod {
      */
     async logToChannel(message, filterName, reason, action) {
         try {
-            const config = await this.bot.database?.getGuildConfig(message.guildId);
+            const config = this.bot.configService
+                ? await this.bot.configService.resolveEffective(message.guildId)
+                : await this.bot.database?.getGuildConfig(message.guildId);
             const logChannelId = config?.log_channel_id;
             
             if (!logChannelId) return;

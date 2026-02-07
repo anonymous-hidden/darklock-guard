@@ -5,7 +5,7 @@
 
 const EventEmitter = require('events');
 const crypto = require('crypto');
-const { resolveGuildTier, applyTierMask } = require('./tier-enforcement');
+const { resolveGuildTier, applyTierMask, enforceTierLimits } = require('./tier-enforcement');
 
 class ConfigService extends EventEmitter {
     constructor(bot) {
@@ -179,20 +179,38 @@ class ConfigService extends EventEmitter {
             return { success: false, errors: validation.errors };
         }
 
+        // Enforce tier limits — strip out features the guild's plan doesn't allow
+        const tierResult = await enforceTierLimits(this.bot, guildId, validation.config);
+        if (tierResult.blocked.length > 0) {
+            this.bot.logger?.warn(
+                `[ConfigService] Tier-blocked keys for ${guildId}: ${tierResult.blocked.join(', ')} (tier: ${tierResult.tier})`
+            );
+        }
+        // Only write the allowed keys
+        const allowedUpdates = tierResult.allowed;
+        if (Object.keys(allowedUpdates).length === 0) {
+            return {
+                success: false,
+                errors: [`All settings blocked by tier (${tierResult.tier}). Upgrade to ${tierResult.requiredTier} to modify these settings.`],
+                blocked: tierResult.blocked,
+                requiredTier: tierResult.requiredTier
+            };
+        }
+
         // Get current config for diff
         const current = await this.get(guildId);
         const oldVersion = this.generateVersion(current);
 
         try {
             // Atomic update in database
-            await this.bot.database?.updateGuildConfig(guildId, validation.config);
+            await this.bot.database?.updateGuildConfig(guildId, allowedUpdates);
             
             // Refresh cache
             const newConfig = await this.get(guildId, true);
             const newVersion = this.generateVersion(newConfig);
 
             // Emit change events for each modified key
-            for (const [key, newValue] of Object.entries(validation.config)) {
+            for (const [key, newValue] of Object.entries(allowedUpdates)) {
                 const oldValue = current[key];
                 if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
                     // Save to history
@@ -217,9 +235,14 @@ class ConfigService extends EventEmitter {
             }
 
             // Broadcast to dashboard
-            this.broadcastUpdate(guildId, validation.config, newVersion);
+            this.broadcastUpdate(guildId, allowedUpdates, newVersion);
 
-            return { success: true, version: newVersion, config: newConfig };
+            const result = { success: true, version: newVersion, config: newConfig };
+            if (tierResult.blocked.length > 0) {
+                result.blocked = tierResult.blocked;
+                result.requiredTier = tierResult.requiredTier;
+            }
+            return result;
         } catch (err) {
             this.bot.logger?.error(`[ConfigService] Update failed for ${guildId}: ${err.message}`);
             return { success: false, errors: [err.message] };

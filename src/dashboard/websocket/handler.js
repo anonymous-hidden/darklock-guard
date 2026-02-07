@@ -177,8 +177,19 @@ class WebSocketHandler {
     /**
      * Handle console subscription (for real-time bot logs)
      */
-    handleConsoleSubscribe(ws, payload) {
+    async handleConsoleSubscribe(ws, payload) {
         const { guildId } = payload;
+
+        if (!guildId) {
+            return this.send(ws, 'error', { message: 'Guild ID required' });
+        }
+
+        // SECURITY: Verify user has access to this guild before subscribing to its logs
+        const hasAccess = await this.dashboard.checkGuildAccess(ws.userId, guildId);
+        if (!hasAccess?.authorized) {
+            return this.send(ws, 'error', { message: 'No access to guild' });
+        }
+
         ws.consoleSubscription = guildId;
         
         // Send recent console messages

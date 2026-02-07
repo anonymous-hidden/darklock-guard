@@ -397,9 +397,11 @@ router.post('/signin', signinLimiter, async (req, res) => {
         const token = generateAdminToken(admin);
 
         // Set httpOnly secure cookie
+        // Only use secure flag if actually on HTTPS (not just production mode)
+        const isHttps = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https';
         res.cookie('admin_token', token, {
             httpOnly: true, // Prevents XSS access to cookie
-            secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+            secure: isHttps, // HTTPS only when actually using HTTPS
             sameSite: 'lax', // Use 'lax' to allow cookies in same-site navigations and API calls
             maxAge: 60 * 60 * 1000, // 1 hour (matches JWT expiry)
             path: '/'

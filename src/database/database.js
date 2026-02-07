@@ -2214,9 +2214,80 @@ class Database {
         return config;
     }
 
+    // ========================
+    // COLUMN ALLOWLIST (SQL INJECTION PREVENTION)
+    // Only these columns can be written via updateGuildConfig.
+    // Any key not in this set is silently rejected.
+    // ========================
+    static VALID_CONFIG_COLUMNS = new Set([
+        // Security toggles
+        'anti_raid_enabled', 'anti_spam_enabled', 'anti_links_enabled',
+        'anti_phishing_enabled', 'verification_enabled', 'antinuke_enabled',
+        'auto_mod_enabled', 'ai_enabled',
+        // Channel/role IDs
+        'verification_channel_id', 'logs_channel_id', 'log_channel_id',
+        'unverified_role_id', 'verified_role_id', 'mod_role_id', 'admin_role_id',
+        'alert_channel', 'mod_log_channel', 'welcome_channel', 'goodbye_channel',
+        'verified_welcome_channel_id', 'verified_welcome_message',
+        // Thresholds
+        'raid_threshold', 'spam_threshold', 'account_age_hours', 'verification_level',
+        'antinuke_role_limit', 'antinuke_channel_limit', 'antinuke_ban_limit',
+        // Welcome/Goodbye
+        'welcome_enabled', 'welcome_message', 'goodbye_enabled', 'goodbye_message',
+        // Tickets
+        'tickets_enabled', 'ticket_category', 'ticket_panel_channel',
+        'ticket_transcript_channel', 'ticket_support_roles', 'ticket_categories',
+        'ticket_welcome_message', 'ticket_autoclose', 'ticket_autoclose_hours',
+        'ticket_category_id', 'ticket_channel_id', 'ticket_manage_role', 'ticket_log_channel',
+        'ticket_staff_role',
+        // Moderation
+        'dm_on_warn', 'dm_on_kick', 'dm_on_ban', 'max_warnings', 'warning_action',
+        // Verification advanced
+        'verification_method', 'verification_profile', 'verification_timeout_minutes',
+        'verification_min_account_age_days', 'captcha_mode', 'verification_dm_message',
+        'verification_expiration', 'verification_max_attempts', 'verification_cooldown',
+        'verification_fail_action', 'verification_require_captcha', 'verification_log_attempts',
+        'verification_role', 'manual_approval_enabled', 'auto_kick_unverified',
+        'custom_verification_message',
+        // XP system
+        'xp_enabled', 'xp_message', 'xp_voice', 'xp_cooldown',
+        'xp_levelup_channel', 'xp_levelup_message',
+        // Pro/subscription
+        'pro_enabled', 'pro_expires_at',
+        // Customization
+        'ticket_theme', 'dashboard_theme', 'ai_personality', 'workflow_rules',
+        // Permissions
+        'mod_perm_tickets', 'mod_perm_analytics', 'mod_perm_security',
+        'mod_perm_overview', 'mod_perm_customize',
+        'admin_perm_tickets', 'admin_perm_analytics', 'admin_perm_security',
+        'admin_perm_overview', 'admin_perm_customize',
+        // AutoRole / ReactionRoles
+        'autorole_enabled', 'reactionroles_enabled',
+    ]);
+
     async updateGuildConfig(guildId, updates) {
-        const setClause = Object.keys(updates).map(key => `${key} = ?`).join(', ');
-        const values = [...Object.values(updates), guildId];
+        // Filter to only valid columns — reject anything not in the allowlist
+        const safeUpdates = {};
+        const rejectedKeys = [];
+        for (const key of Object.keys(updates)) {
+            if (Database.VALID_CONFIG_COLUMNS.has(key)) {
+                safeUpdates[key] = updates[key];
+            } else {
+                rejectedKeys.push(key);
+            }
+        }
+
+        if (rejectedKeys.length > 0) {
+            console.warn(`[Database] updateGuildConfig rejected invalid columns: ${rejectedKeys.join(', ')}`);
+        }
+
+        if (Object.keys(safeUpdates).length === 0) {
+            console.warn('[Database] updateGuildConfig called with no valid columns');
+            return { changes: 0 };
+        }
+
+        const setClause = Object.keys(safeUpdates).map(key => `${key} = ?`).join(', ');
+        const values = [...Object.values(safeUpdates), guildId];
         
         const result = await this.run(`
             UPDATE guild_configs 
@@ -2224,8 +2295,12 @@ class Database {
             WHERE guild_id = ?
         `, values);
 
-        // Invalidate cache when config is updated
+        // Invalidate BOTH cache layers
         this.invalidateConfigCache(guildId);
+        // Emit event so ConfigService can also invalidate
+        if (this.bot?.configService) {
+            this.bot.configService.invalidate(guildId);
+        }
         
         return result;
     }

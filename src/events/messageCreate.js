@@ -28,8 +28,10 @@ module.exports = {
                 const handled = await bot.userVerification.handleGuildChannelMessage(message);
                 if (handled) return; // Stop further processing if verification consumed message
             }
-            // Get guild configuration
-            const config = await bot.database.getGuildConfig(guildId);
+            // Get guild configuration (tier-masked via configService)
+            const config = bot.configService
+                ? await bot.configService.resolveEffective(guildId)
+                : await bot.database.getGuildConfig(guildId);
 
             // Log the message (if enabled)
             if (config && bot.config.get('logging.logMessages', true)) {

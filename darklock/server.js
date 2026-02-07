@@ -886,6 +886,11 @@ class DarklockPlatform {
         const premiumRoutes = require('./routes/premium-api');
         this.app.use('/platform/premium', premiumRoutes);
         
+        // Web verification routes
+        this.app.post('/api/web-verify/init', this.handleWebVerifyInit.bind(this));
+        this.app.post('/api/web-verify/submit', this.handleWebVerifySubmit.bind(this));
+        this.app.post('/api/web-verify/refresh', this.handleWebVerifyRefresh.bind(this));
+        
         // Updates routes (public + admin)
         const updatesRoutes = require('./routes/platform/updates');
         const adminUpdatesRoutes = require('./routes/platform/admin-updates');
@@ -1371,6 +1376,308 @@ class DarklockPlatform {
         });
     }
     
+    /**
+     * Web Verification Routes
+     */
+    async handleWebVerifyInit(req, res) {
+        try {
+            const { token, guildId, userId } = req.body;
+
+            if (!this.discordBot?.database) {
+                return res.status(503).json({ error: 'Bot database not available' });
+            }
+
+            // Lookup by token first
+            if (token) {
+                const session = await this.discordBot.database.get(
+                    `SELECT * FROM verification_sessions WHERE token = ? AND status = 'pending'`,
+                    [token]
+                );
+
+                if (!session) {
+                    return res.status(404).json({ error: 'Invalid or expired verification link' });
+                }
+
+                // Check expiry
+                if (session.expires_at && new Date(session.expires_at) < new Date()) {
+                    await this.discordBot.database.run(
+                        `UPDATE verification_sessions SET status = 'expired' WHERE id = ?`,
+                        [session.id]
+                    );
+                    return res.status(410).json({ error: 'Verification link expired. Please request a new one.' });
+                }
+
+                const guild = this.discordBot.client?.guilds.cache.get(session.guild_id);
+
+                // If method needs a visible code, generate a fresh one and update the session
+                let captchaCode = null;
+                if (session.method === 'captcha') {
+                    const crypto = require('crypto');
+                    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                    captchaCode = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+                    const codeHash = crypto.createHash('sha256').update(captchaCode.toLowerCase()).digest('hex');
+                    const newExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+                    await this.discordBot.database.run(
+                        `UPDATE verification_sessions SET code_hash = ?, expires_at = ?, attempts = 0 WHERE id = ?`,
+                        [codeHash, newExpiry, session.id]
+                    );
+                }
+
+                return res.json({
+                    success: true,
+                    guildId: session.guild_id,
+                    userId: session.user_id,
+                    guildName: guild?.name || 'Unknown Server',
+                    guildIcon: guild?.iconURL() || null,
+                    method: session.method,
+                    riskScore: session.risk_score,
+                    captchaCode,
+                    maxAttempts: 5,
+                    attempts: session.attempts || 0
+                });
+            }
+
+            // Legacy: lookup by guildId/userId
+            if (guildId && userId) {
+                const session = await this.discordBot.database.get(
+                    `SELECT * FROM verification_sessions 
+                     WHERE guild_id = ? AND user_id = ? AND status = 'pending'
+                     ORDER BY created_at DESC LIMIT 1`,
+                    [guildId, userId]
+                );
+
+                if (session) {
+                    const guild = this.discordBot.client?.guilds.cache.get(guildId);
+                    return res.json({
+                        success: true,
+                        guildId,
+                        userId,
+                        guildName: guild?.name || 'Unknown Server',
+                        guildIcon: guild?.iconURL() || null,
+                        method: session.method,
+                        riskScore: session.risk_score,
+                        captchaCode: null,
+                        maxAttempts: 5,
+                        attempts: session.attempts || 0
+                    });
+                }
+            }
+
+            return res.status(404).json({ error: 'No pending verification found' });
+        } catch (error) {
+            debugLogger.error('[WebVerify] Init error:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    }
+
+    async handleWebVerifySubmit(req, res) {
+        try {
+            const { token, code, challenge, guildId, userId } = req.body;
+            
+            if (!this.discordBot?.database) {
+                return res.status(503).json({ error: 'Bot database not available' });
+            }
+
+            // Allow legacy fallback when token is missing but guild/user provided
+            let session = null;
+            if (token) {
+                session = await this.discordBot.database.get(
+                    `SELECT * FROM verification_sessions WHERE token = ? AND status = 'pending'`,
+                    [token]
+                );
+            } else if (guildId && userId) {
+                session = await this.discordBot.database.get(
+                    `SELECT * FROM verification_sessions WHERE guild_id = ? AND user_id = ? AND status = 'pending'
+                     ORDER BY created_at DESC LIMIT 1`,
+                    [guildId, userId]
+                );
+            } else {
+                return res.status(400).json({ error: 'Token or guild/user IDs required' });
+            }
+
+            if (!session) {
+                return res.status(404).json({ error: 'Invalid or expired session' });
+            }
+
+            // Check expiry
+            if (session.expires_at && new Date(session.expires_at) < new Date()) {
+                await this.discordBot.database.run(
+                    `UPDATE verification_sessions SET status = 'expired' WHERE id = ?`,
+                    [session.id]
+                );
+                return res.status(410).json({ error: 'Session expired' });
+            }
+
+            // Simple challenge verification (for web method - no code needed)
+            if (session.method === 'web') {
+                await this.completeWebVerification(session);
+                return res.json({ success: true, message: 'Verification complete!' });
+            }
+
+            // Captcha/code verification
+            if (code) {
+                const crypto = require('crypto');
+                const codeHash = crypto.createHash('sha256').update(code.toLowerCase()).digest('hex');
+                
+                if (codeHash !== session.code_hash) {
+                    // Increment attempts
+                    await this.discordBot.database.run(
+                        `UPDATE verification_sessions SET attempts = attempts + 1 WHERE id = ?`,
+                        [session.id]
+                    );
+                    
+                    const updated = await this.discordBot.database.get(
+                        `SELECT attempts FROM verification_sessions WHERE id = ?`, 
+                        [session.id]
+                    );
+                    
+                    if (updated?.attempts >= 5) {
+                        await this.discordBot.database.run(
+                            `UPDATE verification_sessions SET status = 'failed' WHERE id = ?`,
+                            [session.id]
+                        );
+                        return res.status(403).json({ error: 'Too many failed attempts. Please contact staff.' });
+                    }
+                    
+                    return res.status(400).json({ 
+                        error: 'Incorrect code',
+                        remaining: 5 - (updated?.attempts || 0)
+                    });
+                }
+
+                // Code correct
+                await this.completeWebVerification(session);
+                return res.json({ success: true, message: 'Verification complete!' });
+            }
+
+            return res.status(400).json({ error: 'Verification submission incomplete' });
+        } catch (error) {
+            debugLogger.error('[WebVerify] Submit error:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    }
+
+    async handleWebVerifyRefresh(req, res) {
+        try {
+            const { token } = req.body;
+
+            if (!this.discordBot?.database) {
+                return res.status(503).json({ error: 'Bot database not available' });
+            }
+
+            if (!token) {
+                return res.status(400).json({ error: 'Token required' });
+            }
+
+            const session = await this.discordBot.database.get(
+                `SELECT * FROM verification_sessions WHERE token = ?`,
+                [token]
+            );
+
+            if (!session || session.status !== 'pending') {
+                return res.status(404).json({ error: 'Invalid session' });
+            }
+
+            // Generate new code
+            const crypto = require('crypto');
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = '';
+            for (let i = 0; i < 6; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            const codeHash = crypto.createHash('sha256').update(code.toLowerCase()).digest('hex');
+
+            // Update session
+            const newExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+            await this.discordBot.database.run(
+                `UPDATE verification_sessions SET code_hash = ?, expires_at = ?, attempts = 0 WHERE id = ?`,
+                [codeHash, newExpiry, session.id]
+            );
+
+            // Try to DM new code to user
+            try {
+                const guild = this.discordBot.client?.guilds.cache.get(session.guild_id);
+                const member = await guild?.members.fetch(session.user_id);
+                if (member) {
+                    await member.send({
+                        embeds: [{
+                            title: '🔄 New Verification Code',
+                            description: `Your new verification code for **${guild.name}** is:\n\n**\`${code}\`**`,
+                            color: 0x00d4ff
+                        }]
+                    });
+                }
+            } catch (dmError) {
+                // DM failed - code still available via API response
+            }
+
+            return res.json({ 
+                success: true, 
+                message: 'New code sent to your DMs',
+                expiresAt: newExpiry,
+                captchaCode: code
+            });
+        } catch (error) {
+            debugLogger.error('[WebVerify] Refresh error:', error);
+            res.status(500).json({ error: 'Server error' });
+        }
+    }
+
+    async completeWebVerification(session) {
+        const guild = this.discordBot.client?.guilds.cache.get(session.guild_id);
+        if (!guild) throw new Error('Guild not found');
+
+        const member = await guild.members.fetch(session.user_id).catch(() => null);
+        if (!member) throw new Error('Member not found');
+
+        const config = await this.discordBot.database?.getGuildConfig(session.guild_id);
+
+        // Add verified role
+        if (config?.verified_role_id) {
+            const role = guild.roles.cache.get(config.verified_role_id);
+            if (role) {
+                await member.roles.add(role).catch(() => {});
+            }
+        }
+
+        // Remove unverified role
+        if (config?.unverified_role_id) {
+            const role = guild.roles.cache.get(config.unverified_role_id);
+            if (role) {
+                await member.roles.remove(role).catch(() => {});
+            }
+        }
+
+        // Delete any old sessions for this user
+        await this.discordBot.database.run(
+            `DELETE FROM verification_sessions 
+             WHERE guild_id = ? AND user_id = ? AND id != ?`,
+            [session.guild_id, session.user_id, session.id]
+        );
+
+        // Update session status
+        await this.discordBot.database.run(
+            `UPDATE verification_sessions 
+             SET status = 'completed', completed_at = CURRENT_TIMESTAMP, completed_by = ?
+             WHERE id = ?`,
+            ['web', session.id]
+        );
+
+        // Log to forensics
+        if (this.discordBot.forensicsManager) {
+            await this.discordBot.forensicsManager.logAuditEvent({
+                guildId: session.guild_id,
+                eventType: 'verification_complete',
+                eventCategory: 'verification',
+                executor: { id: session.user_id },
+                target: { id: session.user_id, type: 'user' },
+                metadata: { method: 'web', via: 'dashboard' }
+            });
+        }
+
+        debugLogger.log(`[WebVerify] Verified ${session.user_id} in ${session.guild_id}`);
+    }
+
     /**
      * Stop server
      */

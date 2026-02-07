@@ -19,6 +19,19 @@ module.exports = {
     async execute(guild, client) {
         try {
             console.log(`[GUILD_CREATE] Bot added to new guild: ${guild.name} (${guild.id})`);
+
+            // Initialize guild config row so all defaults are in place
+            const bot = client.bot || client;
+            if (bot.configService) {
+                await bot.configService.initializeGuild(guild.id);
+                console.log(`[GUILD_CREATE] Initialized config for ${guild.name}`);
+            } else if (bot.database) {
+                await bot.database.run(
+                    'INSERT OR IGNORE INTO guild_configs (guild_id) VALUES (?)',
+                    [guild.id]
+                );
+            }
+
             const owner = await guild.fetchOwner().catch(() => null);
             if (!owner) {
                 console.error(`[GUILD_CREATE] Could not fetch owner of ${guild.name}`);
@@ -47,46 +60,46 @@ async function sendSetupDM(owner, guild, client) {
                 },
                 {
                     name: '??? Security & Protection',
-                    value: '• **Anti-Nuke** - Protects against mass deletions\n• **Anti-Raid** - Detects coordinated attacks\n• **Anti-Spam** - Stops message floods\n• **Anti-Phishing** - Blocks malicious links\n• **Verification System** - Screen new members',
+                    value: 'ï¿½ **Anti-Nuke** - Protects against mass deletions\nï¿½ **Anti-Raid** - Detects coordinated attacks\nï¿½ **Anti-Spam** - Stops message floods\nï¿½ **Anti-Phishing** - Blocks malicious links\nï¿½ **Verification System** - Screen new members',
                     inline: false
                 },
                 {
                     name: '?? Moderation Arsenal',
-                    value: '• Ban, Kick, Timeout, Warn\n• Mass purge & channel lock\n• Case management system\n• Mod notes & user tracking\n• Automated actions & logging',
+                    value: 'ï¿½ Ban, Kick, Timeout, Warn\nï¿½ Mass purge & channel lock\nï¿½ Case management system\nï¿½ Mod notes & user tracking\nï¿½ Automated actions & logging',
                     inline: true
                 },
                 {
                     name: '??? Advanced Tickets',
-                    value: '• Multi-category support\n• Auto transcripts\n• Staff assignment\n• Priority system\n• Full logging & analytics',
+                    value: 'ï¿½ Multi-category support\nï¿½ Auto transcripts\nï¿½ Staff assignment\nï¿½ Priority system\nï¿½ Full logging & analytics',
                     inline: true
                 },
                 {
                     name: '?? Analytics & Insights',
-                    value: '• Server activity tracking\n• Member join/leave patterns\n• Command usage stats\n• Security incident reports\n• Customizable dashboards',
+                    value: 'ï¿½ Server activity tracking\nï¿½ Member join/leave patterns\nï¿½ Command usage stats\nï¿½ Security incident reports\nï¿½ Customizable dashboards',
                     inline: false
                 },
                 {
                     name: '?? Web Dashboard',
-                    value: `Manage everything from your browser!\n• ${process.env.DASHBOARD_URL || 'Configure DASHBOARD_URL in .env'}\n• Real-time settings\n• Visual customization\n• Role & permission management`,
+                    value: `Manage everything from your browser!\nï¿½ ${process.env.DASHBOARD_URL || 'Configure DASHBOARD_URL in .env'}\nï¿½ Real-time settings\nï¿½ Visual customization\nï¿½ Role & permission management`,
                     inline: false
                 },
                 {
                     name: '? Pro Features Available',
-                    value: '• Advanced AI moderation\n• Custom branding & themes\n• Priority support\n• Extended analytics\n• Automation workflows',
+                    value: 'ï¿½ Advanced AI moderation\nï¿½ Custom branding & themes\nï¿½ Priority support\nï¿½ Extended analytics\nï¿½ Automation workflows',
                     inline: false
                 },
                 {
                     name: '? Need Help?',
-                    value: `• **Support Server:** ${CONFIG.SUPPORT_SERVER_INVITE}\n• **Commands:** Use \`/help\` anytime\n• **Setup Wizard:** \`/wizard\` for step-by-step guide`,
+                    value: `ï¿½ **Support Server:** ${CONFIG.SUPPORT_SERVER_INVITE}\nï¿½ **Commands:** Use \`/help\` anytime\nï¿½ **Setup Wizard:** \`/wizard\` for step-by-step guide`,
                     inline: false
                 },
                 {
                     name: '?? Required Permissions',
-                    value: '**Administrator** (recommended) or at minimum:\n• Manage Server, Roles & Channels\n• Kick & Ban Members\n• Manage Messages & Threads\n• View Audit Log\n\n**Important:** My role must be above the roles I manage!',
+                    value: '**Administrator** (recommended) or at minimum:\nï¿½ Manage Server, Roles & Channels\nï¿½ Kick & Ban Members\nï¿½ Manage Messages & Threads\nï¿½ View Audit Log\n\n**Important:** My role must be above the roles I manage!',
                     inline: false
                 }
             )
-            .setFooter({ text: `${guild.name} • Server ID: ${guild.id}` })
+            .setFooter({ text: `${guild.name} ï¿½ Server ID: ${guild.id}` })
             .setTimestamp();
 
         await owner.send({ embeds: [setupEmbed] });
@@ -126,10 +139,10 @@ async function sendSystemChannelFallback(guild, client) {
             .setDescription(
                 `Hey <@${guild.ownerId}>! I tried to DM you setup instructions, but your DMs are closed.\n\n` +
                 '**?? Quick Start:**\n' +
-                '• Type `/wizard` for interactive setup guide\n' +
-                '• Use `/security` to enable protection features\n' +
-                '• Visit the dashboard for full control\n' +
-                `• Get help: ${CONFIG.SUPPORT_SERVER_INVITE}\n\n` +
+                'ï¿½ Type `/wizard` for interactive setup guide\n' +
+                'ï¿½ Use `/security` to enable protection features\n' +
+                'ï¿½ Visit the dashboard for full control\n' +
+                `ï¿½ Get help: ${CONFIG.SUPPORT_SERVER_INVITE}\n\n` +
                 `**?? Dashboard:** ${process.env.DASHBOARD_URL || 'Configure DASHBOARD_URL in .env'}\n` +
                 '**?? Commands:** Type `/help` to see all available commands'
             )

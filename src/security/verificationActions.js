@@ -7,7 +7,10 @@ class VerificationActions {
   }
 
   async getGuildConfig(guildId) {
-    const cfg = await this.bot.database.getGuildConfig(guildId);
+    // Use tier-masked config when available
+    const cfg = this.bot.configService
+      ? await this.bot.configService.resolveEffective(guildId)
+      : await this.bot.database.getGuildConfig(guildId);
     return cfg || {};
   }
 

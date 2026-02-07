@@ -148,10 +148,8 @@ async function requireGuildAccess(bot, userId, guildId, requireManage = true) {
         return { authorized: false, reason: 'Invalid guild ID format' };
     }
     
-    // Special case: admin bypass (only for password-authenticated admins)
-    if (userId === 'admin') {
-        return { authorized: true, accessType: 'admin_bypass' };
-    }
+    // Admin bypass removed — privilege must be determined by JWT role, not magic string.
+    // Callers that need admin override must check req.user.role === 'owner' || req.user.role === 'admin' before calling.
     
     // Get guild from bot cache
     const guild = bot.client?.guilds?.cache?.get(guildId);

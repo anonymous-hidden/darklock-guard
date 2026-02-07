@@ -110,7 +110,7 @@ async function hasFeature(userId, feature) {
  * Middleware: Require Pro plan
  * Returns 403 if user doesn't have Pro
  */
-function requirePro(req, res, next) {
+function requirePro() {
     return async function(req, res, next) {
         try {
             const plan = await getUserPlan(req.user.userId);
@@ -128,6 +128,7 @@ function requirePro(req, res, next) {
             next();
         } catch (err) {
             console.error('[Plan Enforcement] Error in requirePro:', err);
+            // FAIL CLOSED: deny access on error
             res.status(500).json({
                 success: false,
                 error: 'Failed to verify plan status'
@@ -159,6 +160,7 @@ function requireFeature(featureName) {
             next();
         } catch (err) {
             console.error('[Plan Enforcement] Error in requireFeature:', err);
+            // FAIL CLOSED: deny access on error
             res.status(500).json({
                 success: false,
                 error: 'Failed to verify feature access'
@@ -188,37 +190,43 @@ async function enforceSessionLimit(req, res, next) {
         next();
     } catch (err) {
         console.error('[Plan Enforcement] Error enforcing session limit:', err);
-        next(); // Allow on error
+        // FAIL CLOSED: deny access on error
+        res.status(500).json({
+            success: false,
+            error: 'Failed to verify session limit'
+        });
     }
 }
 
 /**
  * Check file size limit
  */
-function enforceFileSizeLimit(req, res, next) {
-    return async function(req, res, next) {
-        try {
-            if (!req.file) {
-                return next();
-            }
-            
-            const features = await getUserFeatures(req.user.userId);
-            
-            if (req.file.size > features.maxFileSize) {
-                return res.status(413).json({
-                    success: false,
-                    error: `File too large. Maximum size: ${Math.round(features.maxFileSize / 1024 / 1024)}MB`,
-                    maxSize: features.maxFileSize,
-                    requiresUpgrade: features.maxFileSize < PLAN_FEATURES.pro.maxFileSize
-                });
-            }
-            
-            next();
-        } catch (err) {
-            console.error('[Plan Enforcement] Error enforcing file size:', err);
-            next(); // Allow on error
+async function enforceFileSizeLimit(req, res, next) {
+    try {
+        if (!req.file) {
+            return next();
         }
-    };
+        
+        const features = await getUserFeatures(req.user.userId);
+        
+        if (req.file.size > features.maxFileSize) {
+            return res.status(413).json({
+                success: false,
+                error: `File too large. Maximum size: ${Math.round(features.maxFileSize / 1024 / 1024)}MB`,
+                maxSize: features.maxFileSize,
+                requiresUpgrade: features.maxFileSize < PLAN_FEATURES.pro.maxFileSize
+            });
+        }
+        
+        next();
+    } catch (err) {
+        console.error('[Plan Enforcement] Error enforcing file size:', err);
+        // FAIL CLOSED: deny access on error
+        res.status(500).json({
+            success: false,
+            error: 'Failed to verify file size limit'
+        });
+    }
 }
 
 /**
