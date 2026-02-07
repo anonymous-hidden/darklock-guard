@@ -1212,21 +1212,30 @@ function setupAccountForms() {
         e.preventDefault();
         
         const newUsername = document.getElementById('newUsername').value;
+        const password = document.getElementById('usernameChangePassword')?.value;
+        
+        if (!password) {
+            showToast('Password is required', 'error');
+            return;
+        }
         
         try {
             const response = await fetch('/platform/profile/api/username', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ newUsername }),
+                body: JSON.stringify({ username: newUsername, password }),
                 credentials: 'include'
             });
             
             const data = await response.json();
             
             if (data.success) {
-                currentUser.username = newUsername;
-                document.getElementById('currentUsernameDisplay').value = newUsername;
+                currentUser.username = data.username || newUsername;
+                document.getElementById('currentUsernameDisplay').value = currentUser.username;
                 document.getElementById('newUsername').value = '';
+                if (document.getElementById('usernameChangePassword')) {
+                    document.getElementById('usernameChangePassword').value = '';
+                }
                 updateUserUI();
                 showToast('Username updated successfully', 'success');
             } else {
@@ -1246,11 +1255,12 @@ function setupAccountForms() {
                 credentials: 'include'
             });
             
-            const data = await response.json();
-            
-            if (data.success) {
+            if (response.ok) {
+                // Get the JSON data
+                const data = await response.json();
+                
                 // Create and download JSON file
-                const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -1261,6 +1271,7 @@ function setupAccountForms() {
                 URL.revokeObjectURL(url);
                 showToast('Data exported successfully', 'success');
             } else {
+                const data = await response.json();
                 showToast(data.error || 'Failed to export data', 'error');
             }
         } catch (err) {

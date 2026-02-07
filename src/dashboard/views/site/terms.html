@@ -3,67 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terms of Service - DarkLock Security</title>
-    <meta name="description" content="DarkLock Terms of Service - Rules and guidelines for using our Discord security bot.">
-    <link rel="stylesheet" href="/css/style.css">
+    <title>Terms of Service - DarkLock</title>
+    <meta name="description" content="DarkLock Terms of Service - Rules and guidelines for using our platform.">
+    <link rel="stylesheet" href="/site/css/style.css">
     <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
     <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        .legal-content {
+        .legal-content { max-width: 900px; margin: 0 auto; padding: 0 var(--space-lg); }
+        .legal-card {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
-            border-radius: var(--radius-xl);
+            border-radius: var(--radius-lg);
             padding: var(--space-2xl);
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        
-        .legal-content h2 {
-            color: var(--accent-primary);
-            margin: var(--space-2xl) 0 var(--space-lg);
-            padding-bottom: var(--space-md);
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .legal-content h2:first-child {
-            margin-top: 0;
-        }
-        
-        .legal-content h3 {
-            color: var(--text-primary);
-            margin: var(--space-lg) 0 var(--space-md);
-        }
-        
-        .legal-content p {
-            color: var(--text-secondary);
-            line-height: 1.8;
-            margin-bottom: var(--space-md);
-        }
-        
-        .legal-content ul, .legal-content ol {
-            color: var(--text-secondary);
-            padding-left: var(--space-xl);
-            margin-bottom: var(--space-md);
-        }
-        
-        .legal-content li {
-            margin-bottom: var(--space-sm);
-            line-height: 1.7;
-        }
-        
-        .legal-content a {
-            color: var(--accent-primary);
-        }
-        
-        .last-updated {
-            color: var(--text-muted);
-            font-size: 0.9rem;
             margin-bottom: var(--space-xl);
         }
+        .legal-card h2 {
+            color: var(--accent-primary);
+            font-size: 1.5rem;
+            margin: var(--space-xl) 0 var(--space-md);
+            padding-bottom: var(--space-sm);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .legal-card h2:first-child { margin-top: 0; }
+        .legal-card h3 { color: var(--text-primary); font-size: 1.15rem; margin: var(--space-lg) 0 var(--space-sm); }
+        .legal-card p { color: var(--text-secondary); line-height: 1.8; margin-bottom: var(--space-md); }
+        .legal-card ul { color: var(--text-secondary); margin-left: 1.5rem; margin-bottom: var(--space-md); }
+        .legal-card li { margin-bottom: var(--space-sm); line-height: 1.8; }
+        .legal-card strong { color: var(--text-primary); }
+        .legal-card a { color: var(--accent-primary); text-decoration: none; }
+        .legal-card a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -118,134 +91,89 @@
             <div class="section-header">
                 <span class="section-badge"><i class="fas fa-file-contract"></i> Legal</span>
                 <h1 class="section-title">Terms of Service</h1>
-                <p class="section-subtitle">Rules and guidelines for using DarkLock</p>
+                <p class="section-subtitle">Last updated: February 6, 2026</p>
             </div>
         </div>
     </section>
 
-    <!-- Terms Content -->
+    <!-- Content -->
     <section style="padding: 0 0 var(--space-4xl);">
-        <div class="container">
-            <div class="legal-content">
-                <p class="last-updated"><i class="fas fa-calendar"></i> Last Updated: January 16, 2026</p>
-
+        <div class="legal-content">
+            <div class="legal-card">
                 <h2>1. Acceptance of Terms</h2>
-                <p>By using DarkLock ("the Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, you may not use the Service.</p>
-                <p>These Terms apply to all users of the Service, including server owners, administrators, and members of servers using DarkLock.</p>
+                <p>By accessing and using DarkLock services, you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use our services.</p>
 
-                <h2>2. Description of Service</h2>
-                <p>DarkLock is a Discord bot providing security, moderation, and utility features for Discord servers. The Service includes:</p>
+                <h2>2. Service Description</h2>
+                <p>DarkLock provides security and moderation services for Discord servers and web applications, including but not limited to:</p>
                 <ul>
-                    <li>Anti-raid and anti-spam protection</li>
-                    <li>Moderation tools and commands</li>
-                    <li>Logging and analytics features</li>
-                    <li>Web dashboard for configuration</li>
-                    <li>Additional premium features for paid subscribers</li>
+                    <li>Anti-spam and anti-raid protection</li>
+                    <li>User authentication and access control</li>
+                    <li>Security monitoring and threat detection</li>
+                    <li>Dashboard and management tools</li>
+                    <li>Premium features and services</li>
                 </ul>
 
-                <h2>3. User Responsibilities</h2>
-                <p>By using DarkLock, you agree to:</p>
+                <h2>3. User Accounts</h2>
+                <p>You are responsible for:</p>
                 <ul>
-                    <li>Comply with Discord's Terms of Service and Community Guidelines</li>
-                    <li>Use the Service only for lawful purposes</li>
-                    <li>Not attempt to abuse, exploit, or circumvent the Service</li>
-                    <li>Not use the Service to harass, harm, or discriminate against others</li>
-                    <li>Not reverse engineer, decompile, or attempt to extract source code</li>
-                    <li>Not resell or redistribute the Service without authorization</li>
+                    <li>Maintaining the confidentiality of your account</li>
+                    <li>All activities that occur under your account</li>
+                    <li>Notifying us immediately of any unauthorized use</li>
+                    <li>Ensuring your account information is accurate and current</li>
                 </ul>
 
-                <h2>4. Account and Server Access</h2>
-                <p>To use certain features of DarkLock:</p>
+                <h2>4. Acceptable Use</h2>
+                <p>You agree NOT to:</p>
                 <ul>
-                    <li>You must have a valid Discord account</li>
-                    <li>You must have appropriate permissions in your Discord server</li>
-                    <li>You are responsible for maintaining the security of your account</li>
-                    <li>You are responsible for all activities that occur under your account</li>
+                    <li>Violate any applicable laws or regulations</li>
+                    <li>Attempt to gain unauthorized access to our systems</li>
+                    <li>Interfere with or disrupt the service</li>
+                    <li>Use the service for illegal or harmful purposes</li>
+                    <li>Abuse, harass, or harm other users</li>
+                    <li>Reverse engineer or attempt to extract source code</li>
                 </ul>
 
                 <h2>5. Premium Services</h2>
-                
-                <h3>5.1 Subscription</h3>
                 <p>Premium features require a paid subscription. By subscribing, you agree to:</p>
                 <ul>
-                    <li>Pay all applicable fees as described at the time of purchase</li>
-                    <li>Provide accurate billing information</li>
-                    <li>Authorize recurring charges for subscription renewals</li>
+                    <li>Pay all applicable fees</li>
+                    <li>Automatic renewal unless cancelled</li>
+                    <li>No refunds for partial periods</li>
+                    <li>Price changes with 30 days notice</li>
                 </ul>
 
-                <h3>5.2 Cancellation and Refunds</h3>
+                <h2>6. Data and Privacy</h2>
+                <p>Your use of the service is also governed by our <a href="/site/privacy">Privacy Policy</a>. We collect and use data as described in that policy.</p>
+
+                <h2>7. Service Availability</h2>
+                <p>We strive for high uptime but cannot guarantee uninterrupted service. We are not liable for:</p>
                 <ul>
-                    <li>You may cancel your subscription at any time</li>
-                    <li>Access to premium features continues until the end of your billing period</li>
-                    <li>Refunds may be issued at our discretion for unused subscription time</li>
-                    <li>No refunds for partial months or already-used features</li>
+                    <li>Temporary service disruptions</li>
+                    <li>Scheduled maintenance</li>
+                    <li>Issues beyond our reasonable control</li>
+                    <li>Third-party service failures</li>
                 </ul>
 
-                <h2>6. Prohibited Uses</h2>
-                <p>You may not use DarkLock to:</p>
+                <h2>8. Intellectual Property</h2>
+                <p>All content, features, and functionality are owned by DarkLock and protected by copyright, trademark, and other laws. You may not copy, modify, or distribute our content without permission.</p>
+
+                <h2>9. Termination</h2>
+                <p>We may terminate or suspend your account immediately, without prior notice, for:</p>
                 <ul>
-                    <li>Violate any laws or regulations</li>
-                    <li>Infringe on intellectual property rights</li>
-                    <li>Transmit malware or harmful code</li>
-                    <li>Spam, phish, or engage in fraudulent activities</li>
-                    <li>Harass, threaten, or harm other users</li>
-                    <li>Impersonate others or misrepresent your identity</li>
-                    <li>Attempt to gain unauthorized access to our systems</li>
-                    <li>Interfere with the proper functioning of the Service</li>
+                    <li>Violation of these Terms</li>
+                    <li>Illegal or abusive behavior</li>
+                    <li>Non-payment of fees</li>
+                    <li>Any reason at our discretion</li>
                 </ul>
 
-                <h2>7. Intellectual Property</h2>
-                <p>The Service and its original content, features, and functionality are owned by DarkLock and are protected by international copyright, trademark, and other intellectual property laws.</p>
-                <p>You are granted a limited, non-exclusive, non-transferable license to use the Service in accordance with these Terms.</p>
+                <h2>10. Limitation of Liability</h2>
+                <p>To the maximum extent permitted by law, DarkLock shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the service.</p>
 
-                <h2>8. Disclaimer of Warranties</h2>
-                <p>THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO:</p>
-                <ul>
-                    <li>MERCHANTABILITY</li>
-                    <li>FITNESS FOR A PARTICULAR PURPOSE</li>
-                    <li>NON-INFRINGEMENT</li>
-                    <li>UNINTERRUPTED OR ERROR-FREE OPERATION</li>
-                </ul>
-                <p>We do not guarantee that the Service will prevent all security threats or that it will be completely free of bugs or errors.</p>
+                <h2>11. Changes to Terms</h2>
+                <p>We reserve the right to modify these terms at any time. Changes will be effective immediately upon posting. Continued use constitutes acceptance of new terms.</p>
 
-                <h2>9. Limitation of Liability</h2>
-                <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, DARKLOCK SHALL NOT BE LIABLE FOR:</p>
-                <ul>
-                    <li>Any indirect, incidental, special, consequential, or punitive damages</li>
-                    <li>Loss of profits, data, or other intangible losses</li>
-                    <li>Damages resulting from unauthorized access to your data</li>
-                    <li>Damages resulting from any third-party conduct on the Service</li>
-                </ul>
-
-                <h2>10. Indemnification</h2>
-                <p>You agree to indemnify and hold harmless DarkLock and its operators from any claims, damages, losses, or expenses arising from:</p>
-                <ul>
-                    <li>Your use of the Service</li>
-                    <li>Your violation of these Terms</li>
-                    <li>Your violation of any third-party rights</li>
-                </ul>
-
-                <h2>11. Termination</h2>
-                <p>We reserve the right to:</p>
-                <ul>
-                    <li>Suspend or terminate your access to the Service at any time</li>
-                    <li>Remove the bot from servers that violate these Terms</li>
-                    <li>Modify or discontinue the Service at any time</li>
-                </ul>
-                <p>Upon termination, your right to use the Service will immediately cease.</p>
-
-                <h2>12. Changes to Terms</h2>
-                <p>We may update these Terms from time to time. We will notify users of significant changes through our Discord server or dashboard. Your continued use of the Service after changes constitutes acceptance of the updated Terms.</p>
-
-                <h2>13. Governing Law</h2>
-                <p>These Terms shall be governed by and construed in accordance with the laws of the jurisdiction in which DarkLock operates, without regard to conflict of law principles.</p>
-
-                <h2>14. Contact</h2>
-                <p>For questions about these Terms, please contact us:</p>
-                <ul>
-                    <li>Discord: <a href="https://discord.gg/r8dvnad9c9" target="_blank">Join our support server</a></li>
-                    <li>Support: <a href="/site/support">Support page</a></li>
-                </ul>
+                <h2>12. Contact</h2>
+                <p>Questions about these terms? Contact us at: <a href="mailto:support@darklock.net">support@darklock.net</a></p>
             </div>
         </div>
     </section>
@@ -264,8 +192,6 @@
                     <p>Enterprise-grade security for Discord communities of all sizes.</p>
                     <div class="social-links">
                         <a href="https://discord.gg/r8dvnad9c9" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
-                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-                        <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
                     </div>
                 </div>
                 
@@ -301,11 +227,16 @@
             </div>
             
             <div class="footer-bottom">
-                <p>&copy; 2025 DarkLock. All rights reserved.</p>
+                <p>&copy; 2026 DarkLock. All rights reserved.</p>
             </div>
         </div>
     </footer>
 
-    <script src="/js/main.js"></script>
+    <script>
+        document.getElementById('navToggle').addEventListener('click', function() {
+            document.getElementById('navMenu').classList.toggle('active');
+            this.classList.toggle('active');
+        });
+    </script>
 </body>
 </html>

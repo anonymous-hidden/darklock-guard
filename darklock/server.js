@@ -331,41 +331,66 @@ class DarklockPlatform {
             const fs = require('fs');
             const latestVersion = '0.1.0';
 
-            // New Tauri bundle locations
-            const bundleBase = path.join(__dirname, '../guard-v2/target/release/bundle');
-            const debPath = path.join(bundleBase, `deb/Darklock Guard_${latestVersion}_amd64.deb`);
-            const portablePath = path.join(bundleBase, 'DarklockGuard-linux-portable.tar.gz');
-
-            // Legacy Windows installers (until new signed builds are produced on Windows)
-            const legacyNsis = path.join(__dirname, 'downloads/darklock-guard-setup.exe');
-            const legacyMsi = path.join(__dirname, 'downloads/darklock-guard-setup.msi');
-
             console.log(`[Darklock] Download request for format: ${format} from IP: ${req.ip}`);
 
-            // Linux packages (new app)
-            if ((format === 'deb' || format === 'linux') && fs.existsSync(debPath)) {
-                console.log('[Darklock] Serving Debian package');
-                return res.download(debPath, `darklock-guard_${latestVersion}_amd64.deb`);
+            // Try multiple file locations in order of preference
+            const fileLocations = {
+                deb: [
+                    path.join(__dirname, 'downloads/darklock-guard_0.1.0_amd64.deb'),
+                    path.join(__dirname, '../guard-v2/target/release/bundle/deb/Darklock Guard_0.1.0_amd64.deb'),
+                    path.join(__dirname, 'downloads/darklock-guard-installer.deb')
+                ],
+                tar: [
+                    path.join(__dirname, 'downloads/darklock-guard-linux-portable.tar.gz'),
+                    path.join(__dirname, '../guard-v2/target/release/bundle/DarklockGuard-linux-portable.tar.gz')
+                ],
+                exe: [
+                    path.join(__dirname, 'downloads/darklock-guard-setup.exe'),
+                    path.join(__dirname, 'downloads/darklocksetup.exe')
+                ],
+                msi: [
+                    path.join(__dirname, 'downloads/darklock-guard-setup.msi'),
+                    path.join(__dirname, 'downloads/darklock-guard-installer.msi')
+                ]
+            };
+
+            // Determine which file type to look for
+            let searchFormats = [];
+            if (format === 'deb' || format === 'linux') {
+                searchFormats = ['deb'];
+            } else if (format === 'tar' || format === 'portable') {
+                searchFormats = ['tar'];
+            } else if (format === 'exe' || format === 'windows') {
+                searchFormats = ['exe'];
+            } else if (format === 'msi') {
+                searchFormats = ['msi'];
+            } else {
+                // Default to deb
+                searchFormats = ['deb'];
             }
 
-            if ((format === 'tar' || format === 'portable') && fs.existsSync(portablePath)) {
-                console.log('[Darklock] Serving portable tarball');
-                return res.download(portablePath, 'darklock-guard-linux-portable.tar.gz');
+            // Try each location for the requested format
+            for (const fmt of searchFormats) {
+                const locations = fileLocations[fmt] || [];
+                for (const filePath of locations) {
+                    if (fs.existsSync(filePath)) {
+                        const fileName = path.basename(filePath);
+                        console.log(`[Darklock] Serving installer: ${fileName}`);
+                        return res.download(filePath, fileName);
+                    }
+                }
             }
 
-            // Windows (legacy)
-            if ((format === 'exe' || format === 'windows') && fs.existsSync(legacyNsis)) {
-                console.log('[Darklock] Serving legacy Windows NSIS installer');
-                return res.download(legacyNsis, 'DarklockGuard-Setup.exe');
+            // If installer not found, log available files and return error
+            console.error(`[Darklock] Installer not found for format: ${format}`);
+            const downloadsDir = path.join(__dirname, 'downloads');
+            if (fs.existsSync(downloadsDir)) {
+                const files = fs.readdirSync(downloadsDir);
+                console.log('[Darklock] Available files in downloads:', files);
             }
 
-            if (format === 'msi' && fs.existsSync(legacyMsi)) {
-                console.log('[Darklock] Serving legacy Windows MSI installer');
-                return res.download(legacyMsi, 'DarklockGuard-Setup.msi');
-            }
-
-            // If installer not found, return themed helper page
-            return res.status(503).send(`
+            // Return themed helper page
+            return res.status(404).send(`
                 <html>
                     <head>
                         <title>Installer Not Available</title>
@@ -869,6 +894,27 @@ class DarklockPlatform {
         
         // Platform portal routes (Connected Mode)
         this.app.use('/platform', platformRoutes);
+        
+        // Site routes (public pages)
+        const siteViewsDir = path.join(__dirname, '../src/dashboard/views/site');
+        this.app.get('/site/privacy', (req, res) => {
+            res.sendFile(path.join(siteViewsDir, 'privacy.html'));
+        });
+        this.app.get('/site/terms', (req, res) => {
+            res.sendFile(path.join(siteViewsDir, 'terms.html'));
+        });
+        this.app.get('/site/security', (req, res) => {
+            res.sendFile(path.join(siteViewsDir, 'security.html'));
+        });
+        this.app.get('/site/docs', (req, res) => {
+            res.sendFile(path.join(siteViewsDir, 'documentation.html'));
+        });
+        this.app.get('/site/status', (req, res) => {
+            res.sendFile(path.join(siteViewsDir, 'status.html'));
+        });
+        this.app.get('/site/bug-report', (req, res) => {
+            res.sendFile(path.join(siteViewsDir, 'bug-reports.html'));
+        });
         
         // Redirect root to platform
         this.app.get('/', (req, res) => {

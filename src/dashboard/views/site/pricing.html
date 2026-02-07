@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pricing - DarkLock Security</title>
     <meta name="description" content="Choose the perfect DarkLock plan for your Discord server. Free and premium options available.">
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/site/css/style.css">
     <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
     <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -187,7 +188,7 @@
         <div class="container">
             <div class="cta-content">
                 <h2>Start Protecting Your Server Today</h2>
-                <p>Join thousands of communities using DarkLock for free.</p>
+                <p>Get started with DarkLock's free tier — no credit card required.</p>
                 <div class="cta-buttons">
                     <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary btn-lg">
                         <i class="fas fa-plus"></i>
@@ -212,8 +213,6 @@
                     <p>Enterprise-grade security for Discord communities of all sizes.</p>
                     <div class="social-links">
                         <a href="https://discord.gg/r8dvnad9c9" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
-                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-                        <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
                     </div>
                 </div>
                 
@@ -249,11 +248,16 @@
             </div>
             
             <div class="footer-bottom">
-                <p>&copy; 2025 DarkLock. All rights reserved.</p>
+                <p>&copy; 2026 DarkLock. All rights reserved.</p>
             </div>
         </div>
     </footer>
 
-    <script src="/js/main.js"></script>
+    <script>
+        document.getElementById('navToggle').addEventListener('click', function() {
+            document.getElementById('navMenu').classList.toggle('active');
+            this.classList.toggle('active');
+        });
+    </script>
 </body>
 </html>

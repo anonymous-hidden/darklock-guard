@@ -3,67 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy - DarkLock Security</title>
+    <title>Privacy Policy - DarkLock</title>
     <meta name="description" content="DarkLock Privacy Policy - Learn how we collect, use, and protect your data.">
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/site/css/style.css">
     <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
     <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        .legal-content {
+        .legal-content { max-width: 900px; margin: 0 auto; padding: 0 var(--space-lg); }
+        .legal-card {
             background: var(--bg-card);
             border: 1px solid var(--border-color);
-            border-radius: var(--radius-xl);
+            border-radius: var(--radius-lg);
             padding: var(--space-2xl);
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        
-        .legal-content h2 {
-            color: var(--accent-primary);
-            margin: var(--space-2xl) 0 var(--space-lg);
-            padding-bottom: var(--space-md);
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .legal-content h2:first-child {
-            margin-top: 0;
-        }
-        
-        .legal-content h3 {
-            color: var(--text-primary);
-            margin: var(--space-lg) 0 var(--space-md);
-        }
-        
-        .legal-content p {
-            color: var(--text-secondary);
-            line-height: 1.8;
-            margin-bottom: var(--space-md);
-        }
-        
-        .legal-content ul, .legal-content ol {
-            color: var(--text-secondary);
-            padding-left: var(--space-xl);
-            margin-bottom: var(--space-md);
-        }
-        
-        .legal-content li {
-            margin-bottom: var(--space-sm);
-            line-height: 1.7;
-        }
-        
-        .legal-content a {
-            color: var(--accent-primary);
-        }
-        
-        .last-updated {
-            color: var(--text-muted);
-            font-size: 0.9rem;
             margin-bottom: var(--space-xl);
         }
+        .legal-card h2 {
+            color: var(--accent-primary);
+            font-size: 1.5rem;
+            margin: var(--space-xl) 0 var(--space-md);
+            padding-bottom: var(--space-sm);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .legal-card h2:first-child { margin-top: 0; }
+        .legal-card h3 { color: var(--text-primary); font-size: 1.15rem; margin: var(--space-lg) 0 var(--space-sm); }
+        .legal-card p { color: var(--text-secondary); line-height: 1.8; margin-bottom: var(--space-md); }
+        .legal-card ul { color: var(--text-secondary); margin-left: 1.5rem; margin-bottom: var(--space-md); }
+        .legal-card li { margin-bottom: var(--space-sm); line-height: 1.8; }
+        .legal-card strong { color: var(--text-primary); }
+        .legal-card a { color: var(--accent-primary); text-decoration: none; }
+        .legal-card a:hover { text-decoration: underline; }
+        .highlight-box {
+            background: rgba(74, 222, 128, 0.1);
+            border-left: 3px solid var(--accent-primary);
+            padding: var(--space-md) var(--space-lg);
+            margin: var(--space-lg) 0;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+        }
+        .highlight-box strong { color: var(--accent-primary); }
     </style>
 </head>
 <body>
@@ -118,109 +100,109 @@
             <div class="section-header">
                 <span class="section-badge"><i class="fas fa-user-shield"></i> Legal</span>
                 <h1 class="section-title">Privacy Policy</h1>
-                <p class="section-subtitle">How we collect, use, and protect your data</p>
+                <p class="section-subtitle">Last updated: February 6, 2026</p>
             </div>
         </div>
     </section>
 
-    <!-- Privacy Content -->
+    <!-- Content -->
     <section style="padding: 0 0 var(--space-4xl);">
-        <div class="container">
-            <div class="legal-content">
-                <p class="last-updated"><i class="fas fa-calendar"></i> Last Updated: January 16, 2026</p>
-
-                <h2>1. Introduction</h2>
-                <p>Welcome to DarkLock ("we," "our," or "us"). We are committed to protecting your privacy and ensuring you understand how we collect, use, and safeguard your information when you use our Discord bot and related services.</p>
-                <p>By using DarkLock, you agree to the collection and use of information in accordance with this policy.</p>
-
-                <h2>2. Information We Collect</h2>
-                
-                <h3>2.1 Information from Discord</h3>
-                <p>When you add DarkLock to your server, we may collect:</p>
+        <div class="legal-content">
+            <div class="legal-card">
+                <h2>1. Information We Collect</h2>
+                <h3>Account Information</h3>
+                <p>When you create a DarkLock account, we collect:</p>
                 <ul>
-                    <li>Server ID and name</li>
-                    <li>User IDs of server members (for moderation features)</li>
-                    <li>Message content (only for active moderation features like anti-spam)</li>
-                    <li>Server configuration and settings</li>
-                    <li>Audit log events for security monitoring</li>
+                    <li>Username and email address</li>
+                    <li>Password (encrypted and hashed)</li>
+                    <li>Discord account information (if using Discord OAuth)</li>
+                    <li>Profile information (avatar, display name)</li>
                 </ul>
 
-                <h3>2.2 Dashboard Information</h3>
-                <p>When you use our web dashboard, we collect:</p>
+                <h3>Usage Data</h3>
+                <p>We automatically collect information about how you use our service:</p>
                 <ul>
-                    <li>Discord OAuth2 data (user ID, username, avatar)</li>
-                    <li>Session information for authentication</li>
-                    <li>IP address for security purposes</li>
+                    <li>Log data (IP address, browser type, access times)</li>
+                    <li>Device information</li>
+                    <li>Feature usage and preferences</li>
+                    <li>Security events and audit logs</li>
                 </ul>
 
-                <h3>2.3 Automatically Collected Information</h3>
-                <ul>
-                    <li>Bot usage statistics and command usage</li>
-                    <li>Error logs for debugging purposes</li>
-                    <li>Performance metrics</li>
-                </ul>
-
-                <h2>3. How We Use Your Information</h2>
+                <h2>2. How We Use Your Information</h2>
                 <p>We use the collected information to:</p>
                 <ul>
-                    <li>Provide and maintain our security services</li>
-                    <li>Detect and prevent spam, raids, and other threats</li>
-                    <li>Process moderation actions</li>
-                    <li>Maintain audit logs as configured</li>
-                    <li>Improve our services and develop new features</li>
-                    <li>Communicate important updates about our service</li>
-                    <li>Ensure compliance with Discord's Terms of Service</li>
+                    <li><strong>Provide Services:</strong> Operate and maintain the DarkLock platform</li>
+                    <li><strong>Security:</strong> Detect and prevent fraudulent activity, monitor security threats</li>
+                    <li><strong>Improvements:</strong> Analyze usage patterns to improve our services</li>
+                    <li><strong>Communications:</strong> Send important updates and security notifications</li>
+                    <li><strong>Support:</strong> Respond to your requests and provide customer service</li>
                 </ul>
 
-                <h2>4. Data Storage and Security</h2>
-                <p>We implement industry-standard security measures to protect your data:</p>
+                <h2>3. Data Storage and Security</h2>
+                <p>We take data security seriously and implement multiple layers of protection:</p>
                 <ul>
-                    <li>All data is encrypted in transit using TLS</li>
-                    <li>Database access is restricted and monitored</li>
-                    <li>Regular security audits are performed</li>
-                    <li>Access to personal data is limited to authorized personnel</li>
+                    <li><strong>Encryption:</strong> All data is encrypted in transit and at rest using industry standards</li>
+                    <li><strong>Password Security:</strong> Passwords are securely hashed and never stored in plain text</li>
+                    <li><strong>Access Controls:</strong> Strict role-based access control (RBAC)</li>
+                    <li><strong>Monitoring:</strong> Continuous security monitoring and intrusion detection</li>
+                    <li><strong>Backups:</strong> Regular encrypted backups with 30-day retention</li>
                 </ul>
 
-                <h2>5. Data Retention</h2>
-                <p>We retain data for as long as necessary to provide our services:</p>
+                <div class="highlight-box">
+                    <strong>🔒 Security Note:</strong> We use industry-standard encryption and never store passwords in plain text. Two-factor authentication (2FA) is available for all accounts.
+                </div>
+
+                <h2>4. Data Sharing and Third Parties</h2>
+                <p>We do not sell your personal information. We may share data only in these situations:</p>
                 <ul>
-                    <li><strong>Server Settings:</strong> Retained until the bot is removed from the server</li>
-                    <li><strong>Moderation Logs:</strong> Retained based on your plan (7-30 days for free, longer for premium)</li>
-                    <li><strong>Message Content:</strong> Processed in real-time and not permanently stored</li>
-                    <li><strong>User Data:</strong> Deleted upon request or when no longer needed</li>
+                    <li><strong>Service Providers:</strong> With trusted partners who help us operate the platform (e.g., hosting providers)</li>
+                    <li><strong>Legal Requirements:</strong> When required by law or to protect our rights</li>
+                    <li><strong>Security Incidents:</strong> With law enforcement during active security investigations</li>
                 </ul>
 
-                <h2>6. Data Sharing</h2>
-                <p>We do not sell your personal data. We may share data only in the following circumstances:</p>
+                <h2>5. Your Rights</h2>
+                <p>You have the following rights regarding your data:</p>
                 <ul>
-                    <li>With your explicit consent</li>
-                    <li>To comply with legal obligations</li>
-                    <li>To protect the rights, property, or safety of our users</li>
-                    <li>With service providers who assist in operating our services (under strict confidentiality agreements)</li>
+                    <li><strong>Access:</strong> Request a copy of your personal data</li>
+                    <li><strong>Export:</strong> Download all your account data (Pro feature)</li>
+                    <li><strong>Correction:</strong> Update inaccurate information</li>
+                    <li><strong>Deletion:</strong> Request account deletion at any time</li>
+                    <li><strong>Opt-Out:</strong> Disable non-essential tracking and analytics</li>
                 </ul>
 
-                <h2>7. Your Rights</h2>
-                <p>You have the right to:</p>
+                <h2>6. Data Retention</h2>
+                <p>We retain your data according to these policies:</p>
                 <ul>
-                    <li><strong>Access:</strong> Request a copy of your data</li>
-                    <li><strong>Correction:</strong> Request correction of inaccurate data</li>
-                    <li><strong>Deletion:</strong> Request deletion of your data</li>
-                    <li><strong>Opt-out:</strong> Disable specific features that collect data</li>
-                    <li><strong>Portability:</strong> Request your data in a portable format</li>
+                    <li><strong>Active Accounts:</strong> Data stored while account is active</li>
+                    <li><strong>Deleted Accounts:</strong> Personal data deleted within 30 days</li>
+                    <li><strong>Logs:</strong> Security logs retained for 90 days (Free) or 365 days (Pro)</li>
+                    <li><strong>Backups:</strong> Backup data purged after retention period</li>
                 </ul>
-                <p>To exercise these rights, please contact us on our <a href="https://discord.gg/r8dvnad9c9" target="_blank">Discord support server</a>.</p>
+
+                <h2>7. Cookies and Tracking</h2>
+                <p>We use cookies for:</p>
+                <ul>
+                    <li><strong>Authentication:</strong> Keeping you logged in securely</li>
+                    <li><strong>Preferences:</strong> Remembering your settings and theme</li>
+                    <li><strong>Analytics:</strong> Understanding how users interact with our platform</li>
+                    <li><strong>Security:</strong> Preventing fraud and detecting suspicious activity</li>
+                </ul>
+                <p>You can disable cookies in your browser, but this may limit functionality.</p>
 
                 <h2>8. Children's Privacy</h2>
-                <p>DarkLock is not intended for users under the age of 13. We do not knowingly collect personal information from children under 13. If you become aware that a child has provided us with personal information, please contact us.</p>
+                <p>DarkLock is not intended for users under 13 years of age. We do not knowingly collect information from children under 13. If we become aware of such data, we will delete it immediately.</p>
 
-                <h2>9. Changes to This Policy</h2>
-                <p>We may update this Privacy Policy from time to time. We will notify users of significant changes through our Discord server or dashboard. Your continued use of our services after changes constitutes acceptance of the updated policy.</p>
+                <h2>9. International Data Transfers</h2>
+                <p>Your data may be transferred and processed in countries other than your own. We ensure appropriate safeguards are in place to protect your data in accordance with this privacy policy.</p>
 
-                <h2>10. Contact Us</h2>
-                <p>If you have questions about this Privacy Policy, please contact us:</p>
+                <h2>10. Changes to This Policy</h2>
+                <p>We may update this privacy policy from time to time. We will notify you of any significant changes via email or through a notice on our platform. Continued use after changes constitutes acceptance.</p>
+
+                <h2>11. Contact Us</h2>
+                <p>If you have questions about this privacy policy or your data:</p>
                 <ul>
-                    <li>Discord: <a href="https://discord.gg/r8dvnad9c9" target="_blank">Join our support server</a></li>
-                    <li>Dashboard: <a href="/site/support">Support page</a></li>
+                    <li><strong>Email:</strong> <a href="mailto:privacy@darklock.net">privacy@darklock.net</a></li>
+                    <li><strong>Support:</strong> <a href="/site/bug-reports">Submit a request</a></li>
                 </ul>
             </div>
         </div>
@@ -240,8 +222,6 @@
                     <p>Enterprise-grade security for Discord communities of all sizes.</p>
                     <div class="social-links">
                         <a href="https://discord.gg/r8dvnad9c9" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
-                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-                        <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
                     </div>
                 </div>
                 
@@ -277,11 +257,16 @@
             </div>
             
             <div class="footer-bottom">
-                <p>&copy; 2025 DarkLock. All rights reserved.</p>
+                <p>&copy; 2026 DarkLock. All rights reserved.</p>
             </div>
         </div>
     </footer>
 
-    <script src="/js/main.js"></script>
+    <script>
+        document.getElementById('navToggle').addEventListener('click', function() {
+            document.getElementById('navMenu').classList.toggle('active');
+            this.classList.toggle('active');
+        });
+    </script>
 </body>
 </html>

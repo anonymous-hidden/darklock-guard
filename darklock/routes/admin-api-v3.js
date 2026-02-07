@@ -179,6 +179,7 @@ function getTabGroup(tabId) {
         logs: 'Monitoring',
         audit: 'Monitoring',
         security: 'Monitoring',
+        'bug-reports': 'Monitoring',
         profile: 'Account',
         themes: 'Configuration',
         integrations: 'Configuration',

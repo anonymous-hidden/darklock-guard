@@ -4,14 +4,76 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Security - DarkLock</title>
-    <meta name="description" content="Learn about DarkLock's security practices and how to report vulnerabilities.">
-    <link rel="stylesheet" href="/css/style.css">
+    <meta name="description" content="Learn about DarkLock's security practices and how we protect your data.">
+    <link rel="stylesheet" href="/site/css/style.css">
     <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
     <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .security-content { max-width: 900px; margin: 0 auto; padding: 0 var(--space-lg); }
+        .security-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: var(--space-2xl);
+            margin-bottom: var(--space-xl);
+        }
+        .security-card h2 {
+            color: var(--accent-primary);
+            font-size: 1.5rem;
+            margin: var(--space-xl) 0 var(--space-md);
+            padding-bottom: var(--space-sm);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .security-card h2:first-child { margin-top: 0; }
+        .security-card p { color: var(--text-secondary); line-height: 1.8; margin-bottom: var(--space-md); }
+        .security-card ul { color: var(--text-secondary); margin-left: 1.5rem; margin-bottom: var(--space-md); }
+        .security-card li { margin-bottom: var(--space-sm); line-height: 1.8; }
+        .security-card strong { color: var(--text-primary); }
+        .security-card code {
+            background: rgba(74, 222, 128, 0.15);
+            color: var(--accent-primary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .security-card a { color: var(--accent-primary); text-decoration: none; }
+        .security-card a:hover { text-decoration: underline; }
+        .highlight-box {
+            background: rgba(74, 222, 128, 0.1);
+            border-left: 3px solid var(--accent-primary);
+            padding: var(--space-md) var(--space-lg);
+            margin: var(--space-lg) 0;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+        }
+        .highlight-box strong { color: var(--accent-primary); }
+        .warning-box {
+            background: rgba(251, 191, 36, 0.1);
+            border-left: 3px solid #fbbf24;
+            padding: var(--space-md) var(--space-lg);
+            margin: var(--space-lg) 0;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+        }
+        .warning-box strong { color: #fbbf24; }
+        .warning-box a { color: #fbbf24; }
+        .security-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(74, 222, 128, 0.2);
+            color: var(--accent-primary);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            margin: 0.5rem 0;
+        }
+    </style>
 </head>
 <body>
     <!-- Animated Background -->
@@ -63,183 +125,100 @@
     <section class="page-header" style="padding: calc(100px + var(--space-3xl)) 0 var(--space-2xl);">
         <div class="container">
             <div class="section-header">
-                <span class="section-badge"><i class="fas fa-lock"></i> Security</span>
-                <h1 class="section-title">Security at DarkLock</h1>
-                <p class="section-subtitle">How we protect your data and our commitment to security</p>
+                <span class="section-badge"><i class="fas fa-shield-halved"></i> Security</span>
+                <h1 class="section-title">Security & Compliance</h1>
+                <p class="section-subtitle">Enterprise-grade security for your peace of mind</p>
             </div>
         </div>
     </section>
 
-    <!-- Security Content -->
-    <section style="padding: 0 0 var(--space-2xl);">
-        <div class="container">
-            <!-- Security Overview -->
-            <div class="features-grid" style="margin-bottom: var(--space-3xl);">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-shield-halved"></i>
-                    </div>
-                    <h3>Defense in Depth</h3>
-                    <p>Multiple layers of security controls protect your data at every level of our infrastructure.</p>
+    <!-- Content -->
+    <section style="padding: 0 0 var(--space-4xl);">
+        <div class="security-content">
+            <div class="security-card">
+                <div class="highlight-box">
+                    <strong>🔒 Security First:</strong> DarkLock is built with security at its core. We employ industry-standard encryption, authentication, and monitoring to protect your data.
                 </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-lock"></i>
-                    </div>
-                    <h3>Encryption</h3>
-                    <p>All data is encrypted in transit using TLS 1.3 and sensitive data is encrypted at rest.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-eye"></i>
-                    </div>
-                    <h3>24/7 Monitoring</h3>
-                    <p>Continuous monitoring and alerting for suspicious activities and potential threats.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-fingerprint"></i>
-                    </div>
-                    <h3>Access Control</h3>
-                    <p>Strict access controls ensure only authorized personnel can access sensitive systems.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-clipboard-check"></i>
-                    </div>
-                    <h3>Regular Audits</h3>
-                    <p>Regular security assessments and code reviews to identify and fix vulnerabilities.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-clock-rotate-left"></i>
-                    </div>
-                    <h3>Incident Response</h3>
-                    <p>Documented incident response procedures for rapid detection and mitigation.</p>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Security Practices Section -->
-    <section id="security" class="security-section">
-        <div class="container">
-            <div class="security-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3xl); align-items: center;">
-                <div class="security-text">
-                    <span class="section-badge">Our Practices</span>
-                    <h2 class="section-title">Security Best Practices</h2>
-                    <p class="section-description" style="color: var(--text-secondary); margin-bottom: var(--space-xl);">
-                        We follow industry best practices and continuously improve our security posture to protect your Discord communities.
-                    </p>
-                    
-                    <div class="security-features">
-                        <div class="security-feature" style="display: flex; gap: var(--space-md); margin-bottom: var(--space-lg);">
-                            <div style="flex-shrink: 0; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: var(--accent-gradient-subtle); border-radius: var(--radius-md);">
-                                <i class="fas fa-code" style="color: var(--accent-primary);"></i>
-                            </div>
-                            <div>
-                                <h4 style="color: var(--text-primary); margin-bottom: var(--space-xs);">Secure Development</h4>
-                                <p style="color: var(--text-secondary); font-size: 0.9rem;">Security-first development practices with code reviews and automated scanning.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="security-feature" style="display: flex; gap: var(--space-md); margin-bottom: var(--space-lg);">
-                            <div style="flex-shrink: 0; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: var(--accent-gradient-subtle); border-radius: var(--radius-md);">
-                                <i class="fas fa-database" style="color: var(--accent-primary);"></i>
-                            </div>
-                            <div>
-                                <h4 style="color: var(--text-primary); margin-bottom: var(--space-xs);">Data Protection</h4>
-                                <p style="color: var(--text-secondary); font-size: 0.9rem;">Minimal data collection, encryption, and strict retention policies.</p>
-                            </div>
-                        </div>
-                        
-                        <div class="security-feature" style="display: flex; gap: var(--space-md); margin-bottom: var(--space-lg);">
-                            <div style="flex-shrink: 0; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: var(--accent-gradient-subtle); border-radius: var(--radius-md);">
-                                <i class="fas fa-server" style="color: var(--accent-primary);"></i>
-                            </div>
-                            <div>
-                                <h4 style="color: var(--text-primary); margin-bottom: var(--space-xs);">Infrastructure Security</h4>
-                                <p style="color: var(--text-secondary); font-size: 0.9rem;">Hardened servers, firewalls, and DDoS protection for high availability.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="security-visual">
-                    <div class="feature-card" style="padding: var(--space-2xl);">
-                        <h3 style="color: var(--accent-primary); margin-bottom: var(--space-lg);"><i class="fas fa-check-circle"></i> Security Checklist</h3>
-                        <ul style="list-style: none;">
-                            <li style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md); color: var(--text-secondary);">
-                                <i class="fas fa-check" style="color: var(--success);"></i>
-                                TLS 1.3 encryption in transit
-                            </li>
-                            <li style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md); color: var(--text-secondary);">
-                                <i class="fas fa-check" style="color: var(--success);"></i>
-                                AES-256 encryption at rest
-                            </li>
-                            <li style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md); color: var(--text-secondary);">
-                                <i class="fas fa-check" style="color: var(--success);"></i>
-                                OAuth2 authentication
-                            </li>
-                            <li style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md); color: var(--text-secondary);">
-                                <i class="fas fa-check" style="color: var(--success);"></i>
-                                Rate limiting & DDoS protection
-                            </li>
-                            <li style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md); color: var(--text-secondary);">
-                                <i class="fas fa-check" style="color: var(--success);"></i>
-                                Regular security audits
-                            </li>
-                            <li style="display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-md); color: var(--text-secondary);">
-                                <i class="fas fa-check" style="color: var(--success);"></i>
-                                Automated vulnerability scanning
-                            </li>
-                            <li style="display: flex; align-items: center; gap: var(--space-md); color: var(--text-secondary);">
-                                <i class="fas fa-check" style="color: var(--success);"></i>
-                                Incident response procedures
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Vulnerability Disclosure -->
-    <section style="padding: var(--space-3xl) 0;">
-        <div class="container" style="max-width: 900px;">
-            <div class="feature-card" style="padding: var(--space-2xl);">
-                <h2 style="color: var(--accent-primary); margin-bottom: var(--space-lg);"><i class="fas fa-bug"></i> Vulnerability Disclosure</h2>
-                <p style="color: var(--text-secondary); margin-bottom: var(--space-lg);">
-                    We take security seriously and appreciate responsible disclosure of vulnerabilities. If you discover a security issue, please report it to us promptly.
-                </p>
-                
-                <h3 style="color: var(--text-primary); margin-bottom: var(--space-md);">How to Report</h3>
-                <ul style="color: var(--text-secondary); padding-left: var(--space-xl); margin-bottom: var(--space-lg);">
-                    <li style="margin-bottom: var(--space-sm);">Contact us privately via our <a href="https://discord.gg/r8dvnad9c9" target="_blank" style="color: var(--accent-primary);">Discord support server</a></li>
-                    <li style="margin-bottom: var(--space-sm);">Provide detailed information about the vulnerability</li>
-                    <li style="margin-bottom: var(--space-sm);">Include steps to reproduce the issue</li>
-                    <li style="margin-bottom: var(--space-sm);">Allow reasonable time for us to address the issue before disclosure</li>
+                <h2>🔐 Encryption</h2>
+                <p>All data transmitted to and from DarkLock is encrypted using industry-standard protocols:</p>
+                <ul>
+                    <li><strong>Transport Encryption</strong> — All web traffic encrypted end-to-end</li>
+                    <li><strong>Data at Rest</strong> — Database encryption using industry standards</li>
+                    <li><strong>Password Security</strong> — Advanced password hashing with salt</li>
+                    <li><strong>Session Management</strong> — Secure token-based authentication</li>
                 </ul>
-                
-                <h3 style="color: var(--text-primary); margin-bottom: var(--space-md);">Our Commitment</h3>
-                <ul style="color: var(--text-secondary); padding-left: var(--space-xl); margin-bottom: var(--space-lg);">
-                    <li style="margin-bottom: var(--space-sm);">We will acknowledge receipt of your report within 48 hours</li>
-                    <li style="margin-bottom: var(--space-sm);">We will provide regular updates on the status of the fix</li>
-                    <li style="margin-bottom: var(--space-sm);">We will not take legal action against researchers acting in good faith</li>
-                    <li style="margin-bottom: var(--space-sm);">We will credit researchers who report valid vulnerabilities (with permission)</li>
-                </ul>
-                
-                <div style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-lg); margin-top: var(--space-lg);">
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">
-                        <i class="fas fa-info-circle" style="color: var(--accent-primary);"></i>
-                        Please do not publicly disclose vulnerabilities until we have had a chance to address them. Responsible disclosure helps protect all users.
-                    </p>
+                <div class="security-badge">
+                    <i class="fas fa-shield-alt"></i> A+ SSL Rating
                 </div>
+
+                <h2>🔑 Authentication & Access Control</h2>
+                <p>Multi-layered authentication to prevent unauthorized access:</p>
+                <ul>
+                    <li><strong>Two-Factor Authentication (2FA)</strong> — Optional TOTP support</li>
+                    <li><strong>Session Management</strong> — Automatic timeout and revocation</li>
+                    <li><strong>Role-Based Access Control (RBAC)</strong> — Granular permissions</li>
+                    <li><strong>IP Whitelisting</strong> — Restrict access by location (Pro)</li>
+                    <li><strong>API Key Management</strong> — Secure API access tokens</li>
+                </ul>
+
+                <h2>🛡️ Threat Protection</h2>
+                <p>Advanced security measures to detect and prevent attacks:</p>
+                <ul>
+                    <li><strong>Rate Limiting</strong> — Prevents brute force attacks</li>
+                    <li><strong>DDoS Protection</strong> — Cloudflare protection</li>
+                    <li><strong>SQL Injection Prevention</strong> — Parameterized queries</li>
+                    <li><strong>XSS Protection</strong> — Content Security Policy headers</li>
+                    <li><strong>CSRF Tokens</strong> — State-changing request protection</li>
+                    <li><strong>Security Headers</strong> — HSTS, X-Frame-Options, CSP</li>
+                </ul>
+
+                <h2>📊 Monitoring & Logging</h2>
+                <p>Continuous security monitoring and audit trails:</p>
+                <ul>
+                    <li><strong>Real-time Alerts</strong> — Suspicious activity detection</li>
+                    <li><strong>Audit Logs</strong> — Complete activity history</li>
+                    <li><strong>Anomaly Detection</strong> — Automated threat detection</li>
+                    <li><strong>Uptime Monitoring</strong> — High-availability infrastructure</li>
+                </ul>
+
+                <h2>🏆 Compliance & Best Practices</h2>
+                <p>DarkLock adheres to industry standards and best practices:</p>
+                <ul>
+                    <li><strong>GDPR Compliant</strong> — EU data protection standards</li>
+                    <li><strong>CCPA Compliant</strong> — California privacy rights</li>
+                    <li><strong>OWASP Top 10</strong> — Protection against common vulnerabilities</li>
+                </ul>
+
+                <h2>🔍 Vulnerability Disclosure</h2>
+                <p>We take security seriously and welcome responsible disclosure:</p>
+                <div class="warning-box">
+                    <strong>⚠️ Found a security issue?</strong> Please report it to <code>security@darklock.net</code> or use our <a href="/site/bug-reports">bug report form</a>. We respond to all reports within 24 hours.
+                </div>
+                <p>We offer:</p>
+                <ul>
+                    <li><strong>Bug Bounty Program</strong> — Rewards for verified vulnerabilities</li>
+                    <li><strong>Hall of Fame</strong> — Recognition for security researchers</li>
+                    <li><strong>Coordinated Disclosure</strong> — 90-day responsible disclosure</li>
+                </ul>
+
+                <h2>🔧 Security Best Practices</h2>
+                <p>How you can stay secure:</p>
+                <ul>
+                    <li>Enable <strong>Two-Factor Authentication</strong> on your account</li>
+                    <li>Use a <strong>strong, unique password</strong> (20+ characters)</li>
+                    <li>Never share your API keys or session tokens</li>
+                    <li>Review your <strong>security logs</strong> regularly</li>
+                    <li>Keep your recovery codes in a safe place</li>
+                    <li>Log out from shared or public devices</li>
+                </ul>
+
+                <h2>📞 Security Contact</h2>
+                <p>For security inquiries, vulnerability reports, or security-related support:</p>
+                <ul>
+                    <li><strong>Email:</strong> <a href="mailto:security@darklock.net">security@darklock.net</a></li>
+                    <li><strong>Emergency:</strong> Use <a href="/site/bug-reports">bug report form</a> for urgent issues</li>
+                </ul>
             </div>
         </div>
     </section>
@@ -248,16 +227,16 @@
     <section class="cta-section">
         <div class="container">
             <div class="cta-content">
-                <h2>Questions About Security?</h2>
-                <p>Contact us if you have any security-related questions or concerns.</p>
+                <h2>Questions About Our Security?</h2>
+                <p>Join our Discord server or contact our security team directly.</p>
                 <div class="cta-buttons">
                     <a href="https://discord.gg/r8dvnad9c9" target="_blank" class="btn btn-primary btn-lg">
                         <i class="fab fa-discord"></i>
-                        <span>Contact Us</span>
+                        <span>Join Support Server</span>
                     </a>
-                    <a href="/site/privacy" class="btn btn-ghost btn-lg">
-                        <i class="fas fa-user-shield"></i>
-                        <span>Privacy Policy</span>
+                    <a href="/site/bug-reports" class="btn btn-ghost btn-lg">
+                        <i class="fas fa-bug"></i>
+                        <span>Report a Vulnerability</span>
                     </a>
                 </div>
             </div>
@@ -278,8 +257,6 @@
                     <p>Enterprise-grade security for Discord communities of all sizes.</p>
                     <div class="social-links">
                         <a href="https://discord.gg/r8dvnad9c9" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
-                        <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
-                        <a href="#" aria-label="GitHub"><i class="fab fa-github"></i></a>
                     </div>
                 </div>
                 
@@ -315,11 +292,16 @@
             </div>
             
             <div class="footer-bottom">
-                <p>&copy; 2025 DarkLock. All rights reserved.</p>
+                <p>&copy; 2026 DarkLock. All rights reserved.</p>
             </div>
         </div>
     </footer>
 
-    <script src="/js/main.js"></script>
+    <script>
+        document.getElementById('navToggle').addEventListener('click', function() {
+            document.getElementById('navMenu').classList.toggle('active');
+            this.classList.toggle('active');
+        });
+    </script>
 </body>
 </html>

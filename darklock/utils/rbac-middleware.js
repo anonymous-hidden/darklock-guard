@@ -476,6 +476,7 @@ function getVisibleTabs(adminUser) {
         { id: 'logs', name: 'Logs', icon: 'scroll', minLevel: 30 },
         { id: 'audit', name: 'Audit Trail', icon: 'clipboard-list', minLevel: 50 },
         { id: 'security', name: 'Security Center', icon: 'shield-halved', minLevel: 70 },
+        { id: 'bug-reports', name: 'Bug Reports', icon: 'bug', minLevel: 30 },
         { id: 'profile', name: 'Profile & Security', icon: 'user-lock', minLevel: 0 },
         { id: 'integrations', name: 'Integrations', icon: 'plug', minLevel: 70 },
         { id: 'settings', name: 'Settings', icon: 'cog', minLevel: 50 }

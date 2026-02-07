@@ -1581,6 +1581,9 @@
                     case 'security':
                         await loadSecurity();
                         break;
+                    case 'bug-reports':
+                        await loadBugReports();
+                        break;
                     case 'profile':
                         await loadProfile();
                         break;
@@ -3335,6 +3338,253 @@
                     showToast(result?.error || 'Failed to revoke', 'error');
                 }
             });
+        }
+
+        // ============================================================================
+        // BUG REPORTS TAB
+        // ============================================================================
+        async function loadBugReports() {
+            const data = await api('/admin/bug-reports');
+            if (!data || !data.reports) return show404();
+
+            const content = document.getElementById('mainContent');
+            
+            const severityCounts = {
+                critical: data.reports.filter(r => r.severity === 'critical').length,
+                high: data.reports.filter(r => r.severity === 'high').length,
+                medium: data.reports.filter(r => r.severity === 'medium').length,
+                low: data.reports.filter(r => r.severity === 'low').length
+            };
+
+            const statusCounts = {
+                open: data.reports.filter(r => r.status === 'open').length,
+                investigating: data.reports.filter(r => r.status === 'investigating').length,
+                resolved: data.reports.filter(r => r.status === 'resolved').length
+            };
+
+            content.innerHTML = `
+                <div class="page-header">
+                    <h1 class="page-title">Bug Reports</h1>
+                    <p class="page-subtitle">Manage submitted bug reports and issues</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Total Reports</span>
+                            <div class="stat-icon info">
+                                <i class="fas fa-bug"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value">${data.reports.length}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Open</span>
+                            <div class="stat-icon warning">
+                                <i class="fas fa-folder-open"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value">${statusCounts.open}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Critical Issues</span>
+                            <div class="stat-icon error">
+                                <i class="fas fa-exclamation-circle"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value">${severityCounts.critical}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Resolved</span>
+                            <div class="stat-icon success">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value">${statusCounts.resolved}</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Bug Reports</span>
+                        <div class="card-actions">
+                            <select id="bugStatusFilter" class="form-input" style="width: auto;">
+                                <option value="all">All Status</option>
+                                <option value="open" selected>Open</option>
+                                <option value="investigating">Investigating</option>
+                                <option value="resolved">Resolved</option>
+                                <option value="closed">Closed</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        ${data.reports.length > 0 ? `
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Type</th>
+                                        <th>Severity</th>
+                                        <th>Title</th>
+                                        <th>Submitted</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bugReportsTable">
+                                    ${data.reports.map(report => `
+                                        <tr data-status="${report.status}" data-severity="${report.severity}">
+                                            <td style="font-family: monospace; font-size: 11px;">#${report.id.toString().slice(-6)}</td>
+                                            <td>
+                                                <span class="badge badge-secondary">
+                                                    ${report.type === 'bug' ? '🐛' : report.type === 'security' ? '🔐' : report.type === 'feature' ? '💡' : report.type === 'performance' ? '⚡' : report.type === 'ui' ? '🎨' : '📝'} ${report.type}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge ${report.severity === 'critical' ? 'badge-error' : report.severity === 'high' ? 'badge-warning' : report.severity === 'medium' ? 'badge-info' : 'badge-success'}">
+                                                    ${report.severity === 'critical' ? '🔴' : report.severity === 'high' ? '🟠' : report.severity === 'medium' ? '🟡' : '🟢'} ${report.severity}
+                                                </span>
+                                            </td>
+                                            <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${report.title}">
+                                                ${report.title}
+                                            </td>
+                                            <td>${new Date(report.timestamp).toLocaleString()}</td>
+                                            <td>
+                                                <select class="form-input" style="width: auto; font-size: 12px;" onchange="updateBugStatus(${report.id}, this.value)">
+                                                    <option value="open" ${report.status === 'open' ? 'selected' : ''}>Open</option>
+                                                    <option value="investigating" ${report.status === 'investigating' ? 'selected' : ''}>Investigating</option>
+                                                    <option value="resolved" ${report.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+                                                    <option value="closed" ${report.status === 'closed' ? 'selected' : ''}>Closed</option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-primary" onclick="viewBugReport(${report.id})">
+                                                    <i class="fas fa-eye"></i> View
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        ` : '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No bug reports submitted yet</p>'}
+                    </div>
+                </div>
+            `;
+
+            // Filter functionality
+            if (data.reports.length > 0) {
+                document.getElementById('bugStatusFilter').addEventListener('change', (e) => {
+                    const filter = e.target.value;
+                    const rows = document.querySelectorAll('#bugReportsTable tr');
+                    rows.forEach(row => {
+                        if (filter === 'all' || row.dataset.status === filter) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                });
+
+                // Auto-filter to open on load
+                const openFilter = document.getElementById('bugStatusFilter');
+                if (openFilter.value === 'open') {
+                    const rows = document.querySelectorAll('#bugReportsTable tr');
+                    rows.forEach(row => {
+                        if (row.dataset.status !== 'open') {
+                            row.style.display = 'none';
+                        }
+                    });
+                }
+            }
+
+            // Store reports globally for view/update functions
+            window.bugReportsData = data.reports;
+        }
+
+        async function updateBugStatus(reportId, newStatus) {
+            const result = await api(`/admin/bug-reports/${reportId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ status: newStatus })
+            });
+
+            if (result?.success) {
+                showToast(`Bug report status updated to ${newStatus}`, 'success');
+                // Update the stored data
+                const report = window.bugReportsData.find(r => r.id === reportId);
+                if (report) report.status = newStatus;
+            } else {
+                showToast(result?.error || 'Failed to update status', 'error');
+            }
+        }
+
+        function viewBugReport(reportId) {
+            const report = window.bugReportsData.find(r => r.id === reportId);
+            if (!report) {
+                showToast('Report not found', 'error');
+                return;
+            }
+
+            const severityColor = {
+                critical: '#ef4444',
+                high: '#f59e0b',
+                medium: '#3b82f6',
+                low: '#22c55e'
+            };
+
+            showCustomModal(`Bug Report #${report.id.toString().slice(-6)}`, `
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div>
+                        <label class="form-label">Type</label>
+                        <p><span class="badge badge-secondary">${report.type}</span></p>
+                    </div>
+                    <div>
+                        <label class="form-label">Severity</label>
+                        <p><span class="badge" style="background: ${severityColor[report.severity]}">${report.severity}</span></p>
+                    </div>
+                    <div>
+                        <label class="form-label">Submitted</label>
+                        <p style="color: var(--text-secondary);">${new Date(report.timestamp).toLocaleString()}</p>
+                    </div>
+                    <div>
+                        <label class="form-label">Environment</label>
+                        <p style="color: var(--text-secondary); font-size: 12px;">${report.environment || 'Not specified'}</p>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label class="form-label">Title</label>
+                    <p style="color: var(--text-primary); font-weight: 600;">${report.title}</p>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label class="form-label">Description</label>
+                    <div style="background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; color: var(--text-secondary); line-height: 1.6; white-space: pre-wrap;">
+${report.description}</div>
+                </div>
+
+                ${report.email ? `
+                <div style="margin-bottom: 1rem;">
+                    <label class="form-label">Contact Email</label>
+                    <p style="color: var(--text-secondary); font-family: monospace;">${report.email}</p>
+                </div>
+                ` : ''}
+
+                <div style="margin-bottom: 1rem;">
+                    <label class="form-label">User Agent</label>
+                    <p style="color: var(--text-muted); font-size: 11px; font-family: monospace; word-break: break-all;">${report.userAgent || 'Not available'}</p>
+                </div>
+            `, [
+                {
+                    text: 'Close',
+                    class: 'btn-secondary',
+                    action: () => closeModal('customModal')
+                }
+            ]);
         }
 
         // ============================================================================

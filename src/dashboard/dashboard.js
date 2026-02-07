@@ -1000,6 +1000,167 @@ The GuardianBot Team`
             res.sendFile(path.join(__dirname, 'views/setup-anti-spam.html'));
         });
 
+        // Site routes (public pages)
+        this.app.get('/site/privacy', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/privacy.html'));
+        });
+
+        this.app.get('/site/terms', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/terms.html'));
+        });
+
+        this.app.get('/site/security', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/security.html'));
+        });
+
+        this.app.get('/site/docs', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/documentation.html'));
+        });
+
+        this.app.get('/site/documentation', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/documentation.html'));
+        });
+
+        this.app.get('/site/status', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/status.html'));
+        });
+
+        this.app.get('/site/bug-report', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/bug-reports.html'));
+        });
+
+        this.app.get('/site/bug-reports', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/bug-reports.html'));
+        });
+
+        this.app.get('/site/features', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/features.html'));
+        });
+
+        this.app.get('/site/pricing', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/pricing.html'));
+        });
+
+        this.app.get('/site/add-bot', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/add-bot.html'));
+        });
+
+        this.app.get('/site/support', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/support.html'));
+        });
+
+        this.app.get('/site/sitemap', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/site/sitemap.html'));
+        });
+
+        // Bug report submission endpoint
+        this.app.post('/api/bug-report', express.json(), async (req, res) => {
+            try {
+                const { type, severity, title, description, environment, email, timestamp, userAgent } = req.body;
+                
+                if (!type || !severity || !title || !description) {
+                    return res.status(400).json({ error: 'Missing required fields' });
+                }
+
+                const bugReport = {
+                    id: Date.now(),
+                    type,
+                    severity,
+                    title,
+                    description,
+                    environment,
+                    email,
+                    timestamp: timestamp || new Date().toISOString(),
+                    userAgent,
+                    status: 'open'
+                };
+
+                // Store in database
+                const db = require('better-sqlite3')(path.join(__dirname, '../../darklock.db'));
+                db.prepare(`CREATE TABLE IF NOT EXISTS bug_reports (
+                    id INTEGER PRIMARY KEY,
+                    type TEXT NOT NULL,
+                    severity TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    environment TEXT,
+                    email TEXT,
+                    timestamp TEXT NOT NULL,
+                    userAgent TEXT,
+                    status TEXT DEFAULT 'open'
+                )`).run();
+
+                db.prepare(`INSERT INTO bug_reports (id, type, severity, title, description, environment, email, timestamp, userAgent, status)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+                    bugReport.id,
+                    bugReport.type,
+                    bugReport.severity,
+                    bugReport.title,
+                    bugReport.description,
+                    bugReport.environment,
+                    bugReport.email,
+                    bugReport.timestamp,
+                    bugReport.userAgent,
+                    bugReport.status
+                );
+                db.close();
+
+                res.json({ success: true, id: bugReport.id });
+            } catch (error) {
+                console.error('Bug report submission error:', error);
+                res.status(500).json({ error: 'Failed to submit bug report' });
+            }
+        });
+
+        // Admin: Get bug reports
+        this.app.get('/api/admin/bug-reports', this.authenticateToken.bind(this), (req, res) => {
+            try {
+                // Check if user is admin
+                const db = require('better-sqlite3')(path.join(__dirname, '../../darklock.db'));
+                const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.userId);
+                
+                if (!user || user.role !== 'admin') {
+                    db.close();
+                    return res.status(403).json({ error: 'Admin access required' });
+                }
+
+                // Get all bug reports
+                const reports = db.prepare(`SELECT * FROM bug_reports ORDER BY timestamp DESC`).all();
+                db.close();
+
+                res.json({ reports });
+            } catch (error) {
+                console.error('Error fetching bug reports:', error);
+                res.status(500).json({ error: 'Failed to fetch bug reports' });
+            }
+        });
+
+        // Admin: Update bug report status
+        this.app.put('/api/admin/bug-reports/:id', this.authenticateToken.bind(this), express.json(), (req, res) => {
+            try {
+                const { status } = req.body;
+                const reportId = req.params.id;
+
+                // Check if user is admin
+                const db = require('better-sqlite3')(path.join(__dirname, '../../darklock.db'));
+                const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.userId);
+                
+                if (!user || user.role !== 'admin') {
+                    db.close();
+                    return res.status(403).json({ error: 'Admin access required' });
+                }
+
+                // Update status
+                db.prepare('UPDATE bug_reports SET status = ? WHERE id = ?').run(status, reportId);
+                db.close();
+
+                res.json({ success: true });
+            } catch (error) {
+                console.error('Error updating bug report:', error);
+                res.status(500).json({ error: 'Failed to update bug report' });
+            }
+        });
+
         // Anti-Phishing setup page (PREMIUM)
         this.app.get('/setup/anti-phishing', this.authenticateToken.bind(this), this.requirePremium, (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-anti-phishing-modern.html'));
