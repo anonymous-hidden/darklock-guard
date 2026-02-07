@@ -265,6 +265,27 @@
         let charts = {};
         let serverDropdownOpen = false;
         let currentUserRole = 'viewer'; // Default role
+        let debugMode = false; // Debug mode from admin settings
+
+        // Fetch debug mode setting from admin panel
+        async function fetchDebugMode() {
+            try {
+                const response = await fetch('/api/v3/settings', { credentials: 'include' });
+                if (response.ok) {
+                    const data = await response.json();
+                    debugMode = data.debug?.enabled === true;
+                }
+            } catch (err) {
+                debugMode = false; // Default to disabled
+            }
+        }
+
+        // Debug-aware console.log wrapper
+        function debugLog(...args) {
+            if (debugMode) {
+                console.log(...args);
+            }
+        }
 
         // Role-based access control helpers
         function canModifySettings() {
@@ -301,7 +322,7 @@
 
             // Show viewer-only notice if needed
             if (currentUserRole === 'viewer') {
-                // Read-only mode (viewer role)
+                debugLog('Dashboard loaded in read-only mode (viewer role)');
             }
         }
 
@@ -318,7 +339,10 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
-            // Initialize clock first
+            // Initialize debug mode first
+            await fetchDebugMode();
+            
+            // Initialize clock
             updateClock();
             setInterval(updateClock, 1000);
             
@@ -408,11 +432,14 @@
         // Load user's servers from API
         async function loadUserServers() {
             try {
+                debugLog('[Dashboard] Fetching server list...');
                 const response = await apiFetch('/api/servers/list');
                 const data = await response.json();
+                debugLog('[Dashboard] Server list response:', data);
 
                 if (data.servers) {
                     userGuilds = data.servers;
+                    debugLog('[Dashboard] userGuilds populated with', userGuilds.length, 'servers:', userGuilds);
 
                     // Set current guild
                     const storedGuildId = localStorage.getItem('selectedGuildId');
@@ -422,11 +449,13 @@
                         currentGuildId = userGuilds[0].id;
                         localStorage.setItem('selectedGuildId', currentGuildId);
                     }
+                    debugLog('[Dashboard] currentGuildId set to:', currentGuildId);
 
                     // Update current server display
                     updateCurrentServerDisplay();
 
                     // Render server dropdown
+                    debugLog('[Dashboard] Calling renderServerDropdown()...');
                     renderServerDropdown();
                 } else {
                     console.warn('[Dashboard] No servers in response data');
@@ -457,6 +486,7 @@
 
         // Render server dropdown
         function renderServerDropdown() {
+            debugLog('[Dashboard] renderServerDropdown() called with', userGuilds.length, 'guilds');
             const list = document.getElementById('serverList');
             
             if (!list) {
@@ -465,9 +495,12 @@
             }
 
             if (userGuilds.length === 0) {
+                debugLog('[Dashboard] No servers, showing empty message');
                 list.innerHTML = '<div class="server-dropdown-empty">No servers available</div>';
                 return;
             }
+
+            debugLog('[Dashboard] Rendering', userGuilds.length, 'servers to dropdown');
             list.innerHTML = userGuilds.map(guild => {
                 // Use icon URL from API if available, otherwise construct it
                 const iconUrl = guild.icon 
@@ -486,6 +519,7 @@
                     </div>
                 `;
             }).join('');
+            debugLog('[Dashboard] Dropdown rendered successfully');
         }
 
         // Access Code Modal Functions
@@ -713,6 +747,7 @@
 
         // Toggle server dropdown
         function toggleServerDropdown(event) {
+            debugLog('[ServerSelector] toggleServerDropdown called, current state:', serverDropdownOpen);
             // Stop event from bubbling to document click listener
             if (event) {
                 event.stopPropagation();
@@ -724,12 +759,22 @@
             const list = document.getElementById('serverList');
             const icon = document.getElementById('serverDropdownIcon');
 
+            debugLog('[ServerSelector] Dropdown element:', dropdown);
+            debugLog('[ServerSelector] List element:', list);
+            debugLog('[ServerSelector] List HTML length:', list?.innerHTML?.length);
+            debugLog('[ServerSelector] List children count:', list?.children?.length);
+
             if (serverDropdownOpen) {
                 dropdown.classList.add('open');
                 icon.classList.add('rotated');
+                debugLog('[ServerSelector] Dropdown opened - classes:', dropdown.className);
+                debugLog('[ServerSelector] Dropdown computed display:', window.getComputedStyle(dropdown).display);
+                debugLog('[ServerSelector] Dropdown computed visibility:', window.getComputedStyle(dropdown).visibility);
+                debugLog('[ServerSelector] Dropdown computed opacity:', window.getComputedStyle(dropdown).opacity);
             } else {
                 dropdown.classList.remove('open');
                 icon.classList.remove('rotated');
+                debugLog('[ServerSelector] Dropdown closed');
             }
         }
 
@@ -742,13 +787,17 @@
 
         // Select a server
         async function selectServer(guildId) {
+            debugLog('[Dashboard] Selecting server:', guildId);
+            
             if (guildId === currentGuildId) {
+                debugLog('[Dashboard] Already selected, closing dropdown');
                 closeServerDropdown();
                 return;
             }
 
             currentGuildId = guildId;
             localStorage.setItem('selectedGuildId', guildId);
+            debugLog('[Dashboard] Updated currentGuildId to:', currentGuildId);
             closeServerDropdown();
 
             // Update current server display
@@ -758,6 +807,7 @@
             renderServerDropdown();
 
             // Reload the dashboard with the new server
+            debugLog('[Dashboard] Calling refreshDashboard()');
             refreshDashboard();
         }
 
@@ -767,6 +817,8 @@
                 // Use the in-memory currentGuildId for immediate updates
                 const guildId = currentGuildId || localStorage.getItem('selectedGuildId');
                 const params = guildId ? `?guildId=${guildId}` : '';
+                
+                debugLog('[Dashboard] Loading with guildId:', guildId);
 
                 // Load multiple endpoints
                 const [overviewRes, serverRes] = await Promise.all([
