@@ -1,11 +1,11 @@
 {
-  "generated": "2026-02-07T00:57:30.853Z",
+  "generated": "2026-02-07T02:38:14.749Z",
   "version": "1.0.0",
   "fileCount": 216,
   "hashes": {
     "/home/cayden/discord bot/discord bot/src/bot.js": "37ae524426428a0c6c4c96ae7f11a57aeca49cb742bb3e8f7511f92c45c7a5fe",
-    "/home/cayden/discord bot/discord bot/src/database/database.js": "69ad21b4cd6e36ccd6a22f9036307aacc979d6b7df0c1772f1794e2ad8a09d93",
-    "/home/cayden/discord bot/discord bot/src/dashboard/dashboard.js": "2fdf7817977bee26c20c901805009a0ee85019c45dfc178299f57f0f7d7f26e7",
+    "/home/cayden/discord bot/discord bot/src/database/database.js": "2a28c3f8133f02d343069fe651d826d825f89eafecee7725a41828828ffe16fc",
+    "/home/cayden/discord bot/discord bot/src/dashboard/dashboard.js": "e5b878382b36c44458b28e25bf09ef5f60ac52d770a3bc3f6c0ce0945c3dd923",
     "/home/cayden/discord bot/discord bot/config.json": "9e07178897d31f863e8fe5523fde62372fc8d3f8968523ceb9d961d7ae402ec6",
     "/home/cayden/discord bot/discord bot/file-protection/agent/anomaly-ai.js": "c4b837c52f62996390c402711263a468ccbbfa2162bfa875a725de4ef081fa4e",
     "/home/cayden/discord bot/discord bot/file-protection/agent/baseline-generator.js": "728f00b71d011a19ce30485270bfd5aeeebe4b65fce7384d45c7621be8670ff3",
@@ -19,7 +19,7 @@
     "/home/cayden/discord bot/discord bot/file-protection/agent/validator.js": "df803b1329264fb28b26f1772392a98aa25ff6dd0a62329fdf96ce6769124ec6",
     "/home/cayden/discord bot/discord bot/file-protection/agent/watcher.js": "a468e4d3d470ff5dda094bbe83b251b811c07f6f01048961bf4f3078c2badeee",
     "/home/cayden/discord bot/discord bot/file-protection/index.js": "48eab394765491a34ef7c8d8de4504c7b887f1aedf0c36f0203e247cb880eab6",
-    "/home/cayden/discord bot/discord bot/darklock/server.js": "827fd4180768a3c84d7d0c98eeec6f4ddb266be0f0dd5e0f41d9076f56ffe644",
+    "/home/cayden/discord bot/discord bot/darklock/server.js": "93a0aae284a8e8502b91002cd1fa70a884861929adc88a5549726771b38e3a15",
     "/home/cayden/discord bot/discord bot/darklock/integration.js": "18a278a04ca9a908f0e1e552eda7965fc2ec347bec2849a37b7a6f70b5118565",
     "/home/cayden/discord bot/discord bot/darklock/start.js": "eb022e2fd3b59c403a46d82c14739bc41ab73cff1be99521a83ce8f10e351ac2",
     "/home/cayden/discord bot/discord bot/security-suite/index.js": "b7da4a176a9e1bd2c9f593bd75327107bde49bbe789d092bc141e9ed66cdb0ee",
@@ -180,12 +180,12 @@
     "/home/cayden/discord bot/discord bot/src/commands/utility/userinfo.js": "8c9db7c5d7c45864d69ff3c5d23c281e3adee048575b655ec3aea387f44ff2cd",
     "/home/cayden/discord bot/discord bot/src/commands/utility/welcome.js": "b024261fd5d16c4b91e888491779752c1b0e037e079b8de5ac0691afb2f699b3",
     "/home/cayden/discord bot/discord bot/src/events/channelAccessHandler.js": "0270c88ae23a18a4384135f5f789e2135e73b38726e6aa2cfd45bd7c6ee4e06e",
-    "/home/cayden/discord bot/discord bot/src/events/guildCreate.js": "823b6456c1f9160198e58786aebb9d240d0a1b65cbb68a314f70b57eded40949",
+    "/home/cayden/discord bot/discord bot/src/events/guildCreate.js": "d0b31ee5b56ce6f3cd80b64e6d67495954b36b9f86711cf36eb0aff5951b082d",
     "/home/cayden/discord bot/discord bot/src/events/guildMemberAdd-verification.js": "0ae195510884ae714c3f3994dd17fff18028ecd79b9a39dca704f6942d729b61",
-    "/home/cayden/discord bot/discord bot/src/events/guildMemberAdd.js": "3ff71132966bf21a8e6ce241a55c76c3475dfdb38b2d7c4dfefb414c2e550553",
+    "/home/cayden/discord bot/discord bot/src/events/guildMemberAdd.js": "ae65c9a35f0b47d11e2ab1f5390452c0a5ba47bf58cb42fcaf891b60b0f734b7",
     "/home/cayden/discord bot/discord bot/src/events/guildMemberRemove.js": "9e1eab357acc686f43e6bf0a9a510682b62be9d2b8e8c750bd90a56890c473e0",
     "/home/cayden/discord bot/discord bot/src/events/interactionHandler.js": "c29d94dd47f1ceeb233713efd5372b084a69d63994a5f4efd7ef02ce0ddd462d",
-    "/home/cayden/discord bot/discord bot/src/events/messageCreate.js": "9361c1a2a819a50d31b9fdfbf1d4a140ba6e5c9c58ce944ffc7e911e447db8e3",
+    "/home/cayden/discord bot/discord bot/src/events/messageCreate.js": "3ce6ce39e0d9a63527a4af20321163a545dc3e9f64e2675cfddc04689ce444c2",
     "/home/cayden/discord bot/discord bot/src/events/messageReactionAdd.js": "27e04ea90ed5d8925a5f2a7478218c585edfb26f676ae2b2ba59796f06373275",
     "/home/cayden/discord bot/discord bot/src/events/messageReactionRemove.js": "ff79f2f2e722181b7dd560666971f4d5cccd0da7c74f589975c7288ff2d77ff7",
     "/home/cayden/discord bot/discord bot/src/events/messageUpdate.js": "037d9f5c7f20d1fb95ab13d2c04dcedbafcbd55ea52baf7326b80102c527088d",
@@ -220,5 +220,5 @@
     "/home/cayden/discord bot/discord bot/darklock/views/terms.html": "c7844b506efaff7ab2d18d7b0dca28cc139a6b322c9f2f4f03818416cee32380",
     "/home/cayden/discord bot/discord bot/darklock/views/updates.html": "8b99ce0534e909098221ff688af896cda9d56b85fd3d69994974a5b242eb731b"
   },
-  "signature": "d7f31a7721f581f3f22dad5b227ba7b2b7e98206d49020a09588a613bc99eac0"
+  "signature": "d7cbafe1316e5c860147c7639401fcc3931f7173a2576f01c60d756a84fcdf81"
 }

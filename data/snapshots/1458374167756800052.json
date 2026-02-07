@@ -1,0 +1,319 @@
+{
+  "guildId": "1458374167756800052",
+  "savedAt": 1770443744994,
+  "channels": [
+    {
+      "id": "1458374168675356775",
+      "name": "Informații",
+      "type": 4,
+      "parentId": null,
+      "position": 0,
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": [
+        {}
+      ]
+    },
+    {
+      "id": "1458374168675356776",
+      "name": "bun-venit-și-reguli",
+      "type": 0,
+      "parentId": "1458374168675356775",
+      "position": 0,
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": [
+        {},
+        {}
+      ]
+    },
+    {
+      "id": "1458374168675356777",
+      "name": "anunțuri",
+      "type": 0,
+      "parentId": "1458374168675356775",
+      "position": 1,
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": [
+        {},
+        {}
+      ]
+    },
+    {
+      "id": "1458374168675356778",
+      "name": "resurse",
+      "type": 0,
+      "parentId": "1458374168675356775",
+      "position": 3,
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": [
+        {},
+        {}
+      ]
+    },
+    {
+      "id": "1458374168675356779",
+      "name": "Canale de text",
+      "type": 4,
+      "parentId": null,
+      "position": 1,
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1458374168675356780",
+      "name": "general",
+      "type": 0,
+      "parentId": "1458374168675356779",
+      "position": 0,
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1458374168675356781",
+      "name": "planuri-de-întâlnire",
+      "type": 0,
+      "parentId": "1458374168675356779",
+      "position": 1,
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1458374168675356782",
+      "name": "în-afara-subiectului",
+      "type": 0,
+      "parentId": "1458374168675356779",
+      "position": 2,
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1458374169069879481",
+      "name": "Lounge",
+      "type": 2,
+      "parentId": "1458374168675356779",
+      "position": 1,
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1458374169069879482",
+      "name": "Sală de întâlnire",
+      "type": 2,
+      "parentId": "1458374168675356779",
+      "position": 0,
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1458376827214102570",
+      "name": "raidprotect-logs",
+      "type": 0,
+      "parentId": "1458374168675356775",
+      "position": 4,
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": [
+        {},
+        {}
+      ]
+    },
+    {
+      "id": "1458376830745575517",
+      "name": "araid-logs",
+      "type": 0,
+      "parentId": "1458374168675356775",
+      "position": 5,
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": [
+        {},
+        {}
+      ]
+    },
+    {
+      "id": "1462736239533752372",
+      "name": "comenzi",
+      "type": 0,
+      "parentId": "1458374168675356775",
+      "position": 2,
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": [
+        {},
+        {}
+      ]
+    },
+    {
+      "id": "1466949573690789969",
+      "name": "ZeD",
+      "type": 11,
+      "parentId": "1458374168675356776",
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1467063989577191487",
+      "name": "Messenger",
+      "type": 11,
+      "parentId": "1458374168675356776",
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1467064205915062376",
+      "name": "Messenger",
+      "type": 11,
+      "parentId": "1458374168675356776",
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1467064436127830128",
+      "name": "Messenger",
+      "type": 11,
+      "parentId": "1458374168675356776",
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1467064642583920745",
+      "name": "Messenger",
+      "type": 11,
+      "parentId": "1458374168675356776",
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1467367541713272873",
+      "name": "EPIC RPG",
+      "type": 11,
+      "parentId": "1458374168675356776",
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1467367565280940062",
+      "name": "EPIC RPG",
+      "type": 11,
+      "parentId": "1458374168675356776",
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1467367566392692983",
+      "name": "EPIC RPG",
+      "type": 11,
+      "parentId": "1458374168675356776",
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1467367645799252090",
+      "name": "EPIC RPG",
+      "type": 11,
+      "parentId": "1458374168675356776",
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1467367709443362909",
+      "name": "EPIC RPG",
+      "type": 11,
+      "parentId": "1458374168675356776",
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1467367822824050859",
+      "name": "EPIC RPG",
+      "type": 11,
+      "parentId": "1458374168675356776",
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1467367976427585596",
+      "name": "EPIC RPG",
+      "type": 11,
+      "parentId": "1458374168675356776",
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1467368118530740267",
+      "name": "OwO",
+      "type": 11,
+      "parentId": "1458374168675356776",
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1467368358713491587",
+      "name": "OwO",
+      "type": 11,
+      "parentId": "1458374168675356776",
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    },
+    {
+      "id": "1468196778862968903",
+      "name": "jonica_boys",
+      "type": 11,
+      "parentId": "1458374168675356776",
+      "topic": null,
+      "nsfw": false,
+      "rateLimitPerUser": 0,
+      "permissionOverwrites": []
+    }
+  ]
+}

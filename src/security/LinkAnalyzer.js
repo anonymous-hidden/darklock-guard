@@ -70,9 +70,7 @@ class LinkAnalyzer {
         const guildId = message.guildId;
         if (!guildId) return { dominated: false, score: 0, urls: [] };
 
-        const config = this.bot.configService
-            ? await this.bot.configService.resolveEffective(guildId)
-            : await this.bot.database.getGuildConfig(guildId).catch(() => ({}));
+        const config = await this.bot.database.getGuildConfig(guildId).catch(() => ({}));
         const featureEnabled = config.anti_links_enabled !== 0 || config.antilinks_enabled !== 0;
         if (!featureEnabled) {
             return { dominated: false, score: 0, urls: [], disabled: true };

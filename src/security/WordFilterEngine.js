@@ -236,10 +236,8 @@ class WordFilterEngine {
             return cached;
         }
         
-        // Fetch from database (tier-masked via configService)
-        const config = this.bot.configService
-            ? await this.bot.configService.resolveEffective(guildId)
-            : await this.bot.database.getGuildConfig(guildId);
+        // Fetch from database
+        const config = await this.bot.database.getGuildConfig(guildId);
         if (!config) return null;
         
         // Build compiled config
