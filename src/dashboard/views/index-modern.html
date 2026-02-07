@@ -301,7 +301,7 @@
 
             // Show viewer-only notice if needed
             if (currentUserRole === 'viewer') {
-                console.log('Dashboard loaded in read-only mode (viewer role)');
+                // Read-only mode (viewer role)
             }
         }
 
@@ -318,6 +318,10 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
+            // Initialize clock first
+            updateClock();
+            setInterval(updateClock, 1000);
+            
             await loadUserData();
             await loadDashboard();
             await loadPremiumStatus(); // Load premium status for Quick Actions
@@ -404,14 +408,11 @@
         // Load user's servers from API
         async function loadUserServers() {
             try {
-                console.log('[Dashboard] Fetching server list...');
                 const response = await apiFetch('/api/servers/list');
                 const data = await response.json();
-                console.log('[Dashboard] Server list response:', data);
 
                 if (data.servers) {
                     userGuilds = data.servers;
-                    console.log('[Dashboard] userGuilds populated with', userGuilds.length, 'servers:', userGuilds);
 
                     // Set current guild
                     const storedGuildId = localStorage.getItem('selectedGuildId');
@@ -421,13 +422,11 @@
                         currentGuildId = userGuilds[0].id;
                         localStorage.setItem('selectedGuildId', currentGuildId);
                     }
-                    console.log('[Dashboard] currentGuildId set to:', currentGuildId);
 
                     // Update current server display
                     updateCurrentServerDisplay();
 
                     // Render server dropdown
-                    console.log('[Dashboard] Calling renderServerDropdown()...');
                     renderServerDropdown();
                 } else {
                     console.warn('[Dashboard] No servers in response data');
@@ -458,7 +457,6 @@
 
         // Render server dropdown
         function renderServerDropdown() {
-            console.log('[Dashboard] renderServerDropdown() called with', userGuilds.length, 'guilds');
             const list = document.getElementById('serverList');
             
             if (!list) {
@@ -467,12 +465,9 @@
             }
 
             if (userGuilds.length === 0) {
-                console.log('[Dashboard] No servers, showing empty message');
                 list.innerHTML = '<div class="server-dropdown-empty">No servers available</div>';
                 return;
             }
-
-            console.log('[Dashboard] Rendering', userGuilds.length, 'servers to dropdown');
             list.innerHTML = userGuilds.map(guild => {
                 // Use icon URL from API if available, otherwise construct it
                 const iconUrl = guild.icon 
@@ -491,7 +486,6 @@
                     </div>
                 `;
             }).join('');
-            console.log('[Dashboard] Dropdown rendered successfully');
         }
 
         // Access Code Modal Functions
@@ -719,7 +713,6 @@
 
         // Toggle server dropdown
         function toggleServerDropdown(event) {
-            console.log('[ServerSelector] toggleServerDropdown called, current state:', serverDropdownOpen);
             // Stop event from bubbling to document click listener
             if (event) {
                 event.stopPropagation();
@@ -731,22 +724,12 @@
             const list = document.getElementById('serverList');
             const icon = document.getElementById('serverDropdownIcon');
 
-            console.log('[ServerSelector] Dropdown element:', dropdown);
-            console.log('[ServerSelector] List element:', list);
-            console.log('[ServerSelector] List HTML length:', list?.innerHTML?.length);
-            console.log('[ServerSelector] List children count:', list?.children?.length);
-
             if (serverDropdownOpen) {
                 dropdown.classList.add('open');
                 icon.classList.add('rotated');
-                console.log('[ServerSelector] Dropdown opened - classes:', dropdown.className);
-                console.log('[ServerSelector] Dropdown computed display:', window.getComputedStyle(dropdown).display);
-                console.log('[ServerSelector] Dropdown computed visibility:', window.getComputedStyle(dropdown).visibility);
-                console.log('[ServerSelector] Dropdown computed opacity:', window.getComputedStyle(dropdown).opacity);
             } else {
                 dropdown.classList.remove('open');
                 icon.classList.remove('rotated');
-                console.log('[ServerSelector] Dropdown closed');
             }
         }
 
@@ -759,17 +742,13 @@
 
         // Select a server
         async function selectServer(guildId) {
-            console.log('[Dashboard] Selecting server:', guildId);
-            
             if (guildId === currentGuildId) {
-                console.log('[Dashboard] Already selected, closing dropdown');
                 closeServerDropdown();
                 return;
             }
 
             currentGuildId = guildId;
             localStorage.setItem('selectedGuildId', guildId);
-            console.log('[Dashboard] Updated currentGuildId to:', currentGuildId);
             closeServerDropdown();
 
             // Update current server display
@@ -779,7 +758,6 @@
             renderServerDropdown();
 
             // Reload the dashboard with the new server
-            console.log('[Dashboard] Calling refreshDashboard()');
             refreshDashboard();
         }
 
@@ -789,8 +767,6 @@
                 // Use the in-memory currentGuildId for immediate updates
                 const guildId = currentGuildId || localStorage.getItem('selectedGuildId');
                 const params = guildId ? `?guildId=${guildId}` : '';
-                
-                console.log('[Dashboard] Loading with guildId:', guildId);
 
                 // Load multiple endpoints
                 const [overviewRes, serverRes] = await Promise.all([
@@ -1390,12 +1366,6 @@
                 tzEl.textContent = tz;
             }
         }
-
-        // Initialize clock
-        document.addEventListener('DOMContentLoaded', () => {
-            updateClock();
-            setInterval(updateClock, 1000);
-        });
 
         // Quick Actions Management
         const availableActions = [
