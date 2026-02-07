@@ -807,6 +807,44 @@ class SecurityBot {
             return;
         }
 
+        // Phase 1: Load new top-level commands (refactored structure)
+        const topLevelFiles = fs.readdirSync(commandsPath)
+            .filter(file => file.endsWith('.js') && !file.includes('.old'));
+        
+        for (const file of topLevelFiles) {
+            try {
+                const filePath = path.join(commandsPath, file);
+                const command = require(filePath);
+                
+                // Skip deprecated commands
+                if (command.deprecated) {
+                    this.logger.warn(`   ⚠️  Deprecated: ${file} → Use ${command.newCommand}`);
+                    continue;
+                }
+                
+                // Validate command structure
+                if (!command.data || !command.execute) {
+                    this.logger.warn(`   ⚠️  Invalid structure: ${file}`);
+                    continue;
+                }
+                
+                const commandName = command.data.name;
+                
+                // Prevent duplicates
+                if (this.commands.has(commandName)) {
+                    this.logger.warn(`   ⚠️  Duplicate: ${commandName} (skipped)`);
+                    continue;
+                }
+                
+                this.commands.set(commandName, command);
+                this.logger.info(`   ✅ ${commandName}`);
+                
+            } catch (error) {
+                this.logger.error(`   ❌ Failed to load ${file}:`, error);
+            }
+        }
+        
+        // Phase 2: Load legacy commands from subfolders (temporary during migration)
         const commandFolders = ['admin', 'moderation', 'security', 'utility'];
         
         for (const folder of commandFolders) {
@@ -814,24 +852,35 @@ class SecurityBot {
             if (!fs.existsSync(folderPath)) continue;
             
             const commandFiles = fs.readdirSync(folderPath)
-                .filter(file => file.endsWith('.js'));
+                .filter(file => file.endsWith('.js') && !file.includes('.old'));
             
             for (const file of commandFiles) {
                 try {
                     const command = require(path.join(folderPath, file));
+                    
+                    // Skip deprecated legacy commands
+                    if (command.deprecated) {
+                        continue;
+                    }
+                    
                     if (command.data && command.execute) {
-                        this.commands.set(command.data.name, command);
-                        this.logger.info(`   ✅ Loaded command: ${command.data.name}`);
-                    } else {
-                        this.logger.warn(`   ⚠️  Command ${file} is missing data or execute function`);
+                        const commandName = command.data.name;
+                        
+                        // Skip if already loaded from top-level (prioritize new structure)
+                        if (this.commands.has(commandName)) {
+                            continue;
+                        }
+                        
+                        this.commands.set(commandName, command);
+                        this.logger.info(`   ✅ ${commandName} (legacy)`);
                     }
                 } catch (error) {
-                    this.logger.error(`   ❌ Failed to load command ${file}:`, error);
+                    this.logger.error(`   ❌ Failed to load ${folder}/${file}:`, error);
                 }
             }
         }
         
-        this.logger.info(`📋 Loaded ${this.commands.size} commands`);
+        this.logger.info(`📋 Loaded ${this.commands.size} commands total`);
     }
 
     async setupEventHandlers() {
