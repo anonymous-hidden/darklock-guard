@@ -887,6 +887,12 @@ class DarklockPlatform {
         this.app.use('/platform/premium', premiumRoutes);
         
         // Web verification routes
+        // GET route to serve the verification page HTML
+        this.app.get('/verify/:token', (req, res) => {
+            res.sendFile(path.join(__dirname, '../src/dashboard/views/web-verify.html'));
+        });
+        
+        // POST routes for verification API
         this.app.post('/api/web-verify/init', this.handleWebVerifyInit.bind(this));
         this.app.post('/api/web-verify/submit', this.handleWebVerifySubmit.bind(this));
         this.app.post('/api/web-verify/refresh', this.handleWebVerifyRefresh.bind(this));
