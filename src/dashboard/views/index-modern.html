@@ -309,6 +309,13 @@
         Chart.defaults.color = 'rgba(255, 255, 255, 0.7)';
         Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
 
+        // Load premium status for Quick Actions (uses premium-gating.js global)
+        async function loadPremiumStatus() {
+            // Premium status is loaded by premium-gating.js
+            // This is a no-op wrapper for compatibility
+            return Promise.resolve();
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             await loadUserData();
@@ -1407,20 +1414,8 @@
             { id: 'invite', name: 'Invite Bot', icon: 'paper-plane', url: '/invite', gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', iconBg: 'rgba(59, 130, 246, 0.2)', premium: false }
         ];
 
-        // Store premium status globally
-        let userPremiumStatus = false;
-
-        // Load premium status
-        async function loadPremiumStatus() {
-            try {
-                const response = await fetch('/api/premium/status', { credentials: 'include' });
-                const data = await response.json();
-                userPremiumStatus = data.isPremium || false;
-            } catch (e) {
-                console.error('Failed to load premium status:', e);
-                userPremiumStatus = false;
-            }
-        }
+        // Note: userPremiumStatus is declared in premium-gating.js
+        // Note: loadPremiumStatus is defined above before DOMContentLoaded
 
         function loadQuickActions() {
             const saved = localStorage.getItem('quickActions');
@@ -1462,7 +1457,9 @@
                 const action = availableActions.find(a => a.id === actionId);
                 if (!action) return '';
                 
-                const isPremiumLocked = action.premium && !userPremiumStatus;
+                // Check premium status from premium-gating.js global object
+                const isPremiumUser = window.userPremiumStatus?.isPremium || false;
+                const isPremiumLocked = action.premium && !isPremiumUser;
                 const lockIcon = isPremiumLocked ? '<i class="fas fa-lock" style="position: absolute; top: 8px; right: 8px; opacity: 0.6; font-size: 12px;"></i>' : '';
                 
                 return `
@@ -1482,7 +1479,8 @@
             event.preventDefault();
             
             // Check if premium is required and user doesn't have it
-            if (isPremium && !userPremiumStatus) {
+            const isPremiumUser = window.userPremiumStatus?.isPremium || false;
+            if (isPremium && !isPremiumUser) {
                 showPremiumModal('This feature requires a premium subscription.');
                 return;
             }
