@@ -25,7 +25,7 @@ class MigrationRunner {
     /**
      * Execute a query (INSERT, UPDATE, CREATE, etc)
      */
-    async run(sql, params = []) {
+    async execSQL(sql, params = []) {
         // Support different DB APIs
         if (typeof this.db.run === 'function') {
             return new Promise((resolve, reject) => {
@@ -180,7 +180,7 @@ class MigrationRunner {
             return { added: false, reason: 'already_exists' };
         }
 
-        await this.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+        await this.execSQL(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
         return { added: true };
     }
 
@@ -192,7 +192,7 @@ class MigrationRunner {
             return { created: false, reason: 'already_exists' };
         }
 
-        await this.run(createSQL);
+        await this.execSQL(createSQL);
         return { created: true };
     }
 
@@ -201,7 +201,7 @@ class MigrationRunner {
     // ═══════════════════════════════════════════════════════════════════
 
     async ensureMigrationTable() {
-        await this.run(`
+        await this.execSQL(`
             CREATE TABLE IF NOT EXISTS schema_migrations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 version TEXT NOT NULL UNIQUE,
@@ -223,7 +223,7 @@ class MigrationRunner {
     }
 
     async recordMigration(version, name, batch, executionTime) {
-        await this.run(`
+        await this.execSQL(`
             INSERT INTO schema_migrations (version, name, batch, execution_time_ms, status)
             VALUES (?, ?, ?, ?, 'applied')
         `, [version, name, batch, executionTime]);
@@ -271,7 +271,7 @@ class MigrationRunner {
                         )
                     `);
                     // Index for fast lookups
-                    await this.run(`CREATE INDEX IF NOT EXISTS idx_strikes_guild_user ON user_strikes(guild_id, user_id)`).catch(() => {});
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_strikes_guild_user ON user_strikes(guild_id, user_id)`).catch(() => {});
                 }
             },
             {
@@ -400,7 +400,7 @@ class MigrationRunner {
                             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                         )
                     `);
-                    await this.run(`CREATE INDEX IF NOT EXISTS idx_scheduled_execute ON scheduled_actions(execute_at, executed)`).catch(() => {});
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_scheduled_execute ON scheduled_actions(execute_at, executed)`).catch(() => {});
                 }
             },
             {
@@ -504,8 +504,8 @@ class MigrationRunner {
                             created_at TEXT DEFAULT CURRENT_TIMESTAMP
                         )
                     `);
-                    await this.run(`CREATE INDEX IF NOT EXISTS idx_audit_guild ON dashboard_audit_logs(guild_id)`).catch(() => {});
-                    await this.run(`CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON dashboard_audit_logs(timestamp)`).catch(() => {});
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_audit_guild ON dashboard_audit_logs(guild_id)`).catch(() => {});
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON dashboard_audit_logs(timestamp)`).catch(() => {});
                 }
             },
             {
@@ -564,12 +564,12 @@ class MigrationRunner {
                     `);
 
                     // Create indexes
-                    await this.run(`CREATE INDEX IF NOT EXISTS idx_verifications_guild_user ON user_verifications(guild_id, user_id)`).catch(() => {});
-                    await this.run(`CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id)`).catch(() => {});
-                    await this.run(`CREATE INDEX IF NOT EXISTS idx_warnings_active ON warnings(active)`).catch(() => {});
-                    await this.run(`CREATE INDEX IF NOT EXISTS idx_strikes_guild_user ON strikes(guild_id, user_id)`).catch(() => {});
-                    await this.run(`CREATE INDEX IF NOT EXISTS idx_strikes_active ON strikes(active)`).catch(() => {});
-                    await this.run(`CREATE INDEX IF NOT EXISTS idx_user_records_trust ON user_records(guild_id, user_id, recent_incidents)`).catch(() => {});
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_verifications_guild_user ON user_verifications(guild_id, user_id)`).catch(() => {});
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_warnings_guild_user ON warnings(guild_id, user_id)`).catch(() => {});
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_warnings_active ON warnings(active)`).catch(() => {});
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_strikes_guild_user ON strikes(guild_id, user_id)`).catch(() => {});
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_strikes_active ON strikes(active)`).catch(() => {});
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_user_records_trust ON user_records(guild_id, user_id, recent_incidents)`).catch(() => {});
                 }
             },
             {
@@ -587,7 +587,7 @@ class MigrationRunner {
                             last_used DATETIME
                         )
                     `);
-                    await this.run(`CREATE INDEX IF NOT EXISTS idx_discord_2fa_enabled ON discord_users_2fa(discord_id, totp_enabled)`).catch(() => {});
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_discord_2fa_enabled ON discord_users_2fa(discord_id, totp_enabled)`).catch(() => {});
                 }
             },
             {
@@ -608,7 +608,7 @@ class MigrationRunner {
                             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                         )
                     `);
-                    await this.run(`CREATE INDEX IF NOT EXISTS idx_updates_published ON dashboard_updates(published, created_at)`).catch(() => {});
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_updates_published ON dashboard_updates(published, created_at)`).catch(() => {});
                 }
             },
             {
@@ -636,8 +636,8 @@ class MigrationRunner {
                             expires_at DATETIME NOT NULL
                         )
                     `);
-                    await this.run(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON user_sessions(user_id)`).catch(() => {});
-                    await this.run(`CREATE INDEX IF NOT EXISTS idx_sessions_expires ON user_sessions(expires_at)`).catch(() => {});
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON user_sessions(user_id)`).catch(() => {});
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_sessions_expires ON user_sessions(expires_at)`).catch(() => {});
                 }
             },
             {
