@@ -149,15 +149,13 @@ module.exports = {
         }
 
         // Get ticket config for permission checks
-        const ticketConfig = await bot.database.get(
-            `SELECT * FROM ticket_config WHERE guild_id = ?`,
-            [interaction.guild.id]
-        ).catch(() => null);
+        // Use TicketSystem.getConfig() which queries guild_configs (where handleSetup saves)
+        const ticketConfig = await bot.ticketSystem.getConfig(interaction.guild.id).catch(() => null);
 
         const isTicketChannel = interaction.channel.name.startsWith('ticket-');
         const isStaff = ticketConfig && (
-            interaction.member.roles.cache.has(ticketConfig.staff_role) ||
-            interaction.member.roles.cache.has(ticketConfig.admin_role) ||
+            interaction.member.roles.cache.has(ticketConfig.ticket_staff_role) ||
+            interaction.member.roles.cache.has(ticketConfig.ticket_manage_role) ||
             interaction.member.permissions.has(PermissionFlagsBits.Administrator)
         );
         const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);

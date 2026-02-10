@@ -108,7 +108,7 @@ async function handleHelpModal(interaction, bot) {
                 new ButtonBuilder()
                     .setLabel('Support Server')
                     .setStyle(ButtonStyle.Link)
-                    .setURL('https://discord.gg/r8dvnad9c9')
+                    .setURL('https://discord.gg/Vsq9PUTrgb')
                     .setEmoji('🤝')
             );
 

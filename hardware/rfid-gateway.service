@@ -1,0 +1,21 @@
+[Unit]
+Description=Darklock RFID Security Gateway
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/ubuntu/darklock/hardware
+ExecStart=/usr/bin/python3 /home/ubuntu/darklock/hardware/rfid_gateway.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening
+MemoryMax=256M
+TasksMax=50
+
+[Install]
+WantedBy=multi-user.target

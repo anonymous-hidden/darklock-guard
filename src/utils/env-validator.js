@@ -22,6 +22,9 @@ class EnvValidator {
         this.validateJWTSecret();
         this.validateAdminPassword();
         this.validateClientSecrets();
+        this.validateInternalApiKey();
+        this.validateOAuthStateSecret();
+        this.validateStripeKeys();
         
         // Optional but recommended
         this.validateOptionalIntegrations();
@@ -132,7 +135,7 @@ class EnvValidator {
 
         if (!clientId) {
             this.warnings.push('DISCORD_CLIENT_ID not set - OAuth login will not work');
-        } else if (!/^\d{17,19}$/.test(clientId)) {
+        } else if (!/^\d{17,20}$/.test(clientId)) {
             this.warnings.push('DISCORD_CLIENT_ID format appears invalid');
         }
 
@@ -140,6 +143,60 @@ class EnvValidator {
             this.warnings.push('DISCORD_CLIENT_SECRET not set - OAuth login will not work');
         } else if (clientSecret.length < 20) {
             this.warnings.push('DISCORD_CLIENT_SECRET appears too short');
+        }
+    }
+
+    /**
+     * Validate internal API key for bot-to-dashboard communication
+     */
+    validateInternalApiKey() {
+        const key = process.env.INTERNAL_API_KEY;
+        if (!key) {
+            this.errors.push('INTERNAL_API_KEY is required - bot event and settings sync endpoints will be disabled without it');
+            return;
+        }
+        if (key === 'change-this-key' || key === 'your_api_key_here') {
+            this.errors.push('INTERNAL_API_KEY is using a default/placeholder value - this is a critical security risk!');
+        }
+        if (key.length < 32) {
+            this.warnings.push('INTERNAL_API_KEY should be at least 32 characters for security');
+        }
+    }
+
+    /**
+     * Validate OAuth state secret for CSRF protection
+     */
+    validateOAuthStateSecret() {
+        const secret = process.env.OAUTH_STATE_SECRET;
+        if (!secret && !process.env.JWT_SECRET) {
+            this.errors.push('OAUTH_STATE_SECRET (or JWT_SECRET) is required for OAuth CSRF protection - OAuth login will be disabled');
+            return;
+        }
+        if (!secret) {
+            this.warnings.push('OAUTH_STATE_SECRET not set - falling back to JWT_SECRET for OAuth state signing');
+        }
+    }
+
+    /**
+     * Validate Stripe payment keys
+     */
+    validateStripeKeys() {
+        const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY;
+        const secretKey = process.env.STRIPE_SECRET_KEY;
+        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+        if (!publishableKey && !secretKey) {
+            this.warnings.push('STRIPE_PUBLISHABLE_KEY and STRIPE_SECRET_KEY not set - payment features will be disabled');
+            return;
+        }
+        if (publishableKey && !publishableKey.startsWith('pk_')) {
+            this.warnings.push('STRIPE_PUBLISHABLE_KEY should start with pk_');
+        }
+        if (secretKey && !secretKey.startsWith('sk_')) {
+            this.warnings.push('STRIPE_SECRET_KEY should start with sk_');
+        }
+        if (!webhookSecret) {
+            this.warnings.push('STRIPE_WEBHOOK_SECRET not set - Stripe webhook verification will be disabled');
         }
     }
 

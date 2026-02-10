@@ -331,14 +331,6 @@
                 • Implement proper error handling<br>
                 • Follow the principle of least privilege
             </p>
-
-            <div class="code-block">
-<span style="color: #a8b2d1;">// ❌ Bad - Never do this</span>
-const apiKey = "sk_live_abc123...";
-
-<span style="color: #a8b2d1;">// ✅ Good - Use environment variables</span>
-const apiKey = process.env.API_KEY;
-            </div>
         </div>
 
         <!-- Vulnerability Reporting -->
@@ -382,16 +374,7 @@ const apiKey = process.env.API_KEY;
         <!-- Security Headers -->
         <div class="security-section">
             <h2>Security Headers</h2>
-            <p>All Darklock pages include comprehensive security headers:</p>
-
-            <div class="code-block">
-<span style="color: #7c4dff;">Content-Security-Policy:</span> default-src 'self'
-<span style="color: #7c4dff;">X-Frame-Options:</span> DENY
-<span style="color: #7c4dff;">X-Content-Type-Options:</span> nosniff
-<span style="color: #7c4dff;">Strict-Transport-Security:</span> max-age=31536000
-<span style="color: #7c4dff;">X-XSS-Protection:</span> 1; mode=block
-<span style="color: #7c4dff;">Referrer-Policy:</span> strict-origin-when-cross-origin
-            </div>
+            <p>All Darklock pages include comprehensive security headers to protect against common web vulnerabilities including XSS, clickjacking, MIME-type sniffing, and more. Our security headers enforce HTTPS, control resource loading, and implement strict security policies.</p>
         </div>
 
         <!-- Incident Response -->

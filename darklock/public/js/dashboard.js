@@ -297,9 +297,17 @@ function populateSettingsForm(settings) {
 function updateUserDisplay() {
     if (!currentUser) return;
     
-    // Update sidebar user info
-    document.getElementById('userName').textContent = currentUser.username;
-    document.getElementById('userRole').textContent = currentUser.role;
+    // Update sidebar user info - remove i18n attribute so translation doesn't overwrite
+    const userNameEl = document.getElementById('userName');
+    const userRoleEl = document.getElementById('userRole');
+    if (userNameEl) {
+        userNameEl.removeAttribute('data-i18n');
+        userNameEl.textContent = currentUser.username;
+    }
+    if (userRoleEl) {
+        userRoleEl.removeAttribute('data-i18n');
+        userRoleEl.textContent = currentUser.role;
+    }
     
     // Update welcome message with personalized greeting
     const welcomeName = document.getElementById('welcomeName');
@@ -559,6 +567,101 @@ async function loadDashboardData() {
     } catch (err) {
         console.error('Error loading dashboard data:', err);
     }
+
+    // Load recent activity
+    loadDashboardRecentActivity();
+
+    // Load service status
+    loadServiceStatus();
+}
+
+async function loadDashboardRecentActivity() {
+    const container = document.getElementById('dashboardRecentActivity');
+    if (!container) return;
+
+    try {
+        const response = await fetch('/platform/dashboard/api/activity', { credentials: 'include' });
+        const data = await response.json();
+
+        if (data.success && data.activity && data.activity.length > 0) {
+            container.innerHTML = `<div class="activity-timeline">
+                ${data.activity.slice(0, 8).map(item => {
+                    const type = item.action?.includes('login') ? 'login' : 
+                                 item.action?.includes('security') || item.action?.includes('password') || item.action?.includes('2fa') ? 'security' :
+                                 item.action?.includes('setting') || item.action?.includes('profile') ? 'settings' : 'info';
+                    return `<div class="activity-item">
+                        <div class="activity-dot ${type}"></div>
+                        <div class="activity-content">
+                            <div class="activity-text">${escapeHtmlSafe(item.action || item.description || 'Activity')}</div>
+                            <div class="activity-time">${formatTimeAgo(item.timestamp || item.date)}</div>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>`;
+        } else {
+            container.innerHTML = `<div class="activity-timeline">
+                <div class="activity-item">
+                    <div class="activity-dot login"></div>
+                    <div class="activity-content">
+                        <div class="activity-text">Logged in to platform</div>
+                        <div class="activity-time">${currentUser?.lastLogin ? formatTimeAgo(currentUser.lastLogin) : 'Just now'}</div>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-dot security"></div>
+                    <div class="activity-content">
+                        <div class="activity-text">Account created</div>
+                        <div class="activity-time">${currentUser?.createdAt ? formatTimeAgo(currentUser.createdAt) : 'Previously'}</div>
+                    </div>
+                </div>
+            </div>`;
+        }
+    } catch (err) {
+        console.error('Error loading recent activity:', err);
+        container.innerHTML = '<div class="empty-state"><span>No recent activity</span></div>';
+    }
+}
+
+async function loadServiceStatus() {
+    const botIndicator = document.getElementById('botServiceIndicator');
+    const botStatus = document.getElementById('botServiceStatus');
+    if (!botIndicator || !botStatus) return;
+
+    // Web platform is always online if we're here
+    botIndicator.className = 'service-indicator checking';
+    botStatus.textContent = 'Checking...';
+
+    try {
+        const response = await fetch('/api/health', { credentials: 'include' });
+        if (response.ok) {
+            botIndicator.className = 'service-indicator online';
+            botStatus.textContent = 'Operational';
+        } else {
+            botIndicator.className = 'service-indicator offline';
+            botStatus.textContent = 'Degraded';
+        }
+    } catch {
+        // If health endpoint doesn't exist, check if bot dashboard loads
+        try {
+            const res = await fetch('/dashboard', { method: 'HEAD', credentials: 'include' });
+            if (res.ok) {
+                botIndicator.className = 'service-indicator online';
+                botStatus.textContent = 'Operational';
+            } else {
+                botIndicator.className = 'service-indicator offline';
+                botStatus.textContent = 'Unavailable';
+            }
+        } catch {
+            botIndicator.className = 'service-indicator offline';
+            botStatus.textContent = 'Unavailable';
+        }
+    }
+}
+
+function escapeHtmlSafe(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
 }
 
 // ============================================================================
@@ -988,7 +1091,7 @@ window.disable2FA = disable2FA;
 // APPS DATA
 // ============================================================================
 async function loadAppsData() {
-    const container = document.getElementById('appsList');
+    const container = document.getElementById('appsGrid');
     container.innerHTML = '<div class="loading-state"><div class="spinner"></div><span>Loading applications...</span></div>';
     
     try {
@@ -1000,36 +1103,36 @@ async function loadAppsData() {
         
         if (data.success && data.apps.length > 0) {
             container.innerHTML = data.apps.map(app => `
-                <div class="dashboard-app-card ${app.status}" ${app.status === 'coming-soon' ? 'title="This application is under development"' : ''}>
-                    <div class="app-card-header">
-                        <div class="app-card-icon ${app.status === 'coming-soon' ? 'disabled' : ''}">
+                <div class="app-card-unified">
+                    <div class="app-card-top">
+                        <div class="app-icon-wrap ${app.status}">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                                 ${app.status === 'active' ? '<path d="M9 12l2 2 4-4"/>' : ''}
                             </svg>
                         </div>
-                        <div class="app-card-info">
-                            <h3 class="app-card-name">${app.name}</h3>
-                            <span class="app-card-status ${app.status}">
-                                ${app.status === 'active' ? '● Active' : 
-                                  app.status === 'coming-soon' ? '◷ Coming Soon' : 
-                                  app.status === 'beta' ? '⚡ Beta' : 'Unavailable'}
+                        <div class="app-title-area">
+                            <h3>${app.name}</h3>
+                            <span class="app-status-badge ${app.status}">
+                                ${app.status === 'active' ? 'Active' : 
+                                  app.status === 'coming-soon' ? 'Coming Soon' : 
+                                  app.status === 'beta' ? 'Beta' : 'Unavailable'}
                             </span>
                         </div>
                     </div>
-                    <p class="app-card-desc">${app.description}</p>
-                    <div class="app-card-features">
-                        ${app.features.map(f => `<span class="app-card-feature">${f}</span>`).join('')}
+                    <p class="app-description">${app.description}</p>
+                    <div class="app-features-list">
+                        ${app.features.map(f => `<span class="app-feature-tag">${f}</span>`).join('')}
                     </div>
-                    ${app.status === 'active' && app.url ? 
-                        `<a href="${app.url}" class="btn btn-primary btn-block">Open Dashboard</a>` :
-                        app.status === 'beta' && app.url ?
-                        `<a href="${app.url}" class="btn btn-secondary btn-block">Try Beta</a>` :
-                        `<div class="app-coming-soon-wrapper">
-                            <button class="btn btn-ghost btn-block" disabled>Coming Soon</button>
-                            <span class="app-tooltip">This feature is under development</span>
-                        </div>`
-                    }
+                    <div class="app-card-actions">
+                        ${app.status === 'active' && app.url ? 
+                            `<a href="${app.url}" class="btn btn-primary btn-sm">Open Dashboard</a>
+                             <a href="/platform/download/${app.id || 'darklock-guard'}" class="btn btn-ghost btn-sm">Download</a>` :
+                          app.status === 'beta' && app.url ?
+                            `<a href="${app.url}" class="btn btn-secondary btn-sm">Try Beta</a>` :
+                            `<button class="btn btn-ghost btn-sm" disabled>Coming Soon</button>`
+                        }
+                    </div>
                 </div>
             `).join('');
         } else {

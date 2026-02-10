@@ -265,7 +265,7 @@ module.exports = {
         switch (subcommand) {
             case 'enable':
                 await bot.database.run(
-                    `INSERT OR REPLACE INTO guild_config (guild_id, anti_raid_enabled) VALUES (?, 1)`,
+                    `INSERT OR REPLACE INTO guild_configs (guild_id, anti_raid_enabled) VALUES (?, 1)`,
                     [guildId]
                 );
                 return interaction.reply({
@@ -279,7 +279,7 @@ module.exports = {
 
             case 'disable':
                 await bot.database.run(
-                    `UPDATE guild_config SET anti_raid_enabled = 0 WHERE guild_id = ?`,
+                    `UPDATE guild_configs SET anti_raid_enabled = 0 WHERE guild_id = ?`,
                     [guildId]
                 );
                 return interaction.reply({
@@ -292,7 +292,7 @@ module.exports = {
 
             case 'status':
                 const config = await bot.database.get(
-                    `SELECT * FROM guild_config WHERE guild_id = ?`,
+                    `SELECT * FROM guild_configs WHERE guild_id = ?`,
                     [guildId]
                 );
                 const enabled = config?.anti_raid_enabled === 1;
@@ -336,7 +336,7 @@ module.exports = {
 
                 values.push(guildId);
                 await bot.database.run(
-                    `UPDATE guild_config SET ${updates.join(', ')} WHERE guild_id = ?`,
+                    `UPDATE guild_configs SET ${updates.join(', ')} WHERE guild_id = ?`,
                     values
                 );
 
@@ -362,7 +362,7 @@ module.exports = {
         switch (subcommand) {
             case 'enable':
                 await bot.database.run(
-                    `INSERT OR REPLACE INTO guild_config (guild_id, anti_spam_enabled) VALUES (?, 1)`,
+                    `INSERT OR REPLACE INTO guild_configs (guild_id, anti_spam_enabled) VALUES (?, 1)`,
                     [guildId]
                 );
                 return interaction.reply({
@@ -375,7 +375,7 @@ module.exports = {
 
             case 'disable':
                 await bot.database.run(
-                    `UPDATE guild_config SET anti_spam_enabled = 0 WHERE guild_id = ?`,
+                    `UPDATE guild_configs SET anti_spam_enabled = 0 WHERE guild_id = ?`,
                     [guildId]
                 );
                 return interaction.reply({
@@ -387,7 +387,7 @@ module.exports = {
 
             case 'status':
                 const config = await bot.database.get(
-                    `SELECT * FROM guild_config WHERE guild_id = ?`,
+                    `SELECT * FROM guild_configs WHERE guild_id = ?`,
                     [guildId]
                 );
                 const enabled = config?.anti_spam_enabled === 1;
@@ -431,7 +431,7 @@ module.exports = {
 
                 values.push(guildId);
                 await bot.database.run(
-                    `UPDATE guild_config SET ${updates.join(', ')} WHERE guild_id = ?`,
+                    `UPDATE guild_configs SET ${updates.join(', ')} WHERE guild_id = ?`,
                     values
                 );
 
@@ -453,7 +453,7 @@ module.exports = {
         switch (subcommand) {
             case 'enable':
                 await bot.database.run(
-                    `INSERT OR REPLACE INTO guild_config (guild_id, anti_phishing_enabled) VALUES (?, 1)`,
+                    `INSERT OR REPLACE INTO guild_configs (guild_id, anti_phishing_enabled) VALUES (?, 1)`,
                     [guildId]
                 );
                 return interaction.reply({
@@ -466,7 +466,7 @@ module.exports = {
 
             case 'disable':
                 await bot.database.run(
-                    `UPDATE guild_config SET anti_phishing_enabled = 0 WHERE guild_id = ?`,
+                    `UPDATE guild_configs SET anti_phishing_enabled = 0 WHERE guild_id = ?`,
                     [guildId]
                 );
                 return interaction.reply({
@@ -478,7 +478,7 @@ module.exports = {
 
             case 'status':
                 const config = await bot.database.get(
-                    `SELECT * FROM guild_config WHERE guild_id = ?`,
+                    `SELECT * FROM guild_configs WHERE guild_id = ?`,
                     [guildId]
                 );
                 const enabled = config?.anti_phishing_enabled === 1;
@@ -523,7 +523,7 @@ module.exports = {
         switch (subcommand) {
             case 'enable':
                 await bot.database.run(
-                    `INSERT OR REPLACE INTO guild_config (guild_id, auto_mod_enabled) VALUES (?, 1)`,
+                    `INSERT OR REPLACE INTO guild_configs (guild_id, auto_mod_enabled) VALUES (?, 1)`,
                     [guildId]
                 );
                 return interaction.reply({
@@ -536,7 +536,7 @@ module.exports = {
 
             case 'disable':
                 await bot.database.run(
-                    `UPDATE guild_config SET auto_mod_enabled = 0 WHERE guild_id = ?`,
+                    `UPDATE guild_configs SET auto_mod_enabled = 0 WHERE guild_id = ?`,
                     [guildId]
                 );
                 return interaction.reply({
@@ -548,7 +548,7 @@ module.exports = {
 
             case 'status':
                 const config = await bot.database.get(
-                    `SELECT * FROM guild_config WHERE guild_id = ?`,
+                    `SELECT * FROM guild_configs WHERE guild_id = ?`,
                     [guildId]
                 );
                 const enabled = config?.auto_mod_enabled === 1;
@@ -604,7 +604,7 @@ module.exports = {
 
                 values.push(guildId);
                 await bot.database.run(
-                    `UPDATE guild_config SET ${updates.join(', ')} WHERE guild_id = ?`,
+                    `UPDATE guild_configs SET ${updates.join(', ')} WHERE guild_id = ?`,
                     values
                 );
 
@@ -805,7 +805,7 @@ module.exports = {
 
                 values.push(guildId);
                 await bot.database.run(
-                    `UPDATE guild_config SET ${updates.join(', ')} WHERE guild_id = ?`,
+                    `UPDATE guild_configs SET ${updates.join(', ')} WHERE guild_id = ?`,
                     values
                 );
 
@@ -829,7 +829,7 @@ module.exports = {
                 await interaction.deferReply();
 
                 const config = await bot.database.get(
-                    `SELECT * FROM guild_config WHERE guild_id = ?`,
+                    `SELECT * FROM guild_configs WHERE guild_id = ?`,
                     [guildId]
                 );
 

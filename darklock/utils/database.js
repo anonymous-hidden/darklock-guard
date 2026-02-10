@@ -591,6 +591,27 @@ class DarklockDatabase {
         `);
     }
 
+    async updateUpdate(updateId, updateData) {
+        const now = new Date().toISOString();
+        await this.run(`
+            UPDATE updates 
+            SET title = ?, version = ?, type = ?, content = ?, updated_at = ?
+            WHERE id = ?
+        `, [
+            updateData.title,
+            updateData.version,
+            updateData.type,
+            updateData.content,
+            now,
+            updateId
+        ]);
+        return this.getUpdateById(updateId);
+    }
+
+    async deleteUpdate(updateId) {
+        await this.run(`DELETE FROM updates WHERE id = ?`, [updateId]);
+    }
+
     async getUsersWithEmailOptIn() {
         return this.all(`
             SELECT id, username, email 

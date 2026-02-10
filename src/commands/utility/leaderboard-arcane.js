@@ -76,7 +76,7 @@ module.exports = {
                 new ButtonBuilder()
                     .setLabel('View leaderboard')
                     .setStyle(ButtonStyle.Link)
-                    .setURL(`${process.env.XP_DASHBOARD_URL || 'http://localhost:3007'}/leaderboard/${guildId}`)
+                    .setURL(`${process.env.XP_DASHBOARD_URL || process.env.DASHBOARD_URL || 'https://discord-security-bot-uyx6.onrender.com'}/leaderboard/${guildId}`)
                     .setEmoji('📊')
             );
 

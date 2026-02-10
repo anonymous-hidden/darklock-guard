@@ -7,7 +7,7 @@
 const { EmbedBuilder, Events } = require('discord.js');
 
 const CONFIG = {
-    SUPPORT_SERVER_INVITE: 'https://discord.gg/r8dvnad9c9',
+    SUPPORT_SERVER_INVITE: 'https://discord.gg/Vsq9PUTrgb',
     BOT_NAME: 'Security Bot',
     BOT_COLOR: '#00d4ff'
 };

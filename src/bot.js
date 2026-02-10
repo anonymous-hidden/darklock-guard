@@ -103,12 +103,7 @@ const VerificationService = require('./services/VerificationService');
 
 class SecurityBot {
     constructor() {
-        // Global error handlers to prevent silent early exits
-        process.on('unhandledRejection', (reason) => {
-            try {
-                console.error('Unhandled Promise Rejection:', reason);
-            } catch {}
-        });
+        // Global error handler for uncaught exceptions (logger may not exist yet)
         process.on('uncaughtException', (err) => {
             try {
                 console.error('Uncaught Exception:', err);
@@ -749,26 +744,8 @@ class SecurityBot {
                 this.logger?.warn && this.logger.warn('Failed to start verification cleanup job:', err?.message || err);
             }
 
-            // Feature gate helper bound to bot instance
-            this.isFeatureEnabledForGuild = async (guildId, feature) => {
-                if (!this.database) return true;
-                const cfg = await this.database.getGuildConfig(guildId);
-                const map = {
-                    ai: 'ai_enabled',
-                    tickets: 'tickets_enabled',
-                    verification: 'verification_enabled',
-                    welcome: 'welcome_enabled',
-                    antinuke: 'antinuke_enabled',
-                    antiraid: 'antiraid_enabled',
-                    antispam: 'antispam_enabled',
-                    antiphishing: 'antiphishing_enabled',
-                    links: 'anti_links_enabled'
-                };
-                const key = map[feature] || feature;
-                // Fail-closed: undefined features are disabled by default
-                if (typeof cfg[key] === 'undefined' || cfg[key] === null) return false;
-                return Boolean(cfg[key]);
-            };
+            // Feature gate helper: uses the class method isFeatureEnabledForGuild() below.
+            // (Arrow function override removed — consolidated into class method)
             
             // Setup event handlers
             await this.setupEventHandlers();
@@ -1780,7 +1757,7 @@ Check the scan report I'm generating now!
 💬 **In-Server Help:** Use \`/help [command]\` for specific commands
 🔍 **Status Check:** Use \`/status\` to verify bot functionality
 🔗 **Website:** https://guardianbot.xyz
-💬 **Community Server:** https://discord.gg/BvGZ38dC
+💬 **Community Server:** https://discord.gg/Vsq9PUTrgb
 
 **Common Issues:**
 • Missing permissions: Grant Administrator permission
@@ -1891,10 +1868,10 @@ I'm performing an initial security scan to check for threats. This will complete
             }
         });
 
-        // Member update events (for timeout notifications and role conflict resolution)
+        // Member update events (role conflict resolution + timeout notifications)
         this.client.on('guildMemberUpdate', async (oldMember, newMember) => {
             try {
-                // Auto-resolve role conflicts (verified + unverified)
+                // 1) Auto-resolve role conflicts (verified + unverified)
                 const cfg = await this.database.getGuildConfig(newMember.guild.id).catch(() => null);
                 if (cfg?.verified_role_id && cfg?.unverified_role_id) {
                     if (newMember.roles.cache.has(cfg.verified_role_id) && newMember.roles.cache.has(cfg.unverified_role_id)) {
@@ -1902,14 +1879,8 @@ I'm performing an initial security scan to check for threats. This will complete
                         this.logger?.info && this.logger.info(`[RoleConflict] Removed Unverified from ${newMember.user.tag} (has Verified)`);
                     }
                 }
-            } catch (err) {
-                this.logger?.warn && this.logger.warn('[RoleConflict] Failed to resolve:', err);
-            }
-        });
-        
-        // Timeout notifications
-        this.client.on('guildMemberUpdate', async (oldMember, newMember) => {
-            try {
+
+                // 2) Timeout notifications
                 const { EmbedBuilder } = require('discord.js');
                 
                 // Check if timeout status changed
@@ -2094,7 +2065,11 @@ I'm performing an initial security scan to check for threats. This will complete
         });
 
         process.on('unhandledRejection', (error) => {
-            this.logger.error('Unhandled promise rejection:', error);
+            try {
+                this.logger.error('Unhandled promise rejection:', error);
+            } catch {
+                console.error('Unhandled Promise Rejection:', error);
+            }
         });
     }
 
@@ -2116,16 +2091,12 @@ I'm performing an initial security scan to check for threats. This will complete
             }
 
             // Fallback small map of command name -> feature flag
+            // NOTE: Only map commands that TRULY should be disabled when feature is off.
+            // Do NOT gate setup/config commands — they need to work to enable the feature!
+            // Do NOT gate core moderation commands (ban, kick, etc.) — they should always work.
             const fallbackMap = {
-                ticket: 'tickets',
-                tix: 'tickets',
                 ai: 'ai',
-                welcome: 'welcome',
-                verify: 'verification',
-                ban: 'antinuke',
-                kick: 'antinuke',
-                timeout: 'antinuke',
-                purge: 'antinuke'
+                verify: 'verification'
             };
 
             const feature = commandName ? (fallbackMap[commandName] || null) : null;
@@ -2543,15 +2514,9 @@ I'm performing an initial security scan to check for threats. This will complete
             this.logger?.warn('Error checking command-level feature flag:', e.message || e);
         }
         const featureMap = {
-            welcome: ['welcome', 'onboarding'],
-            verification: ['verified_setup', 'onboarding'],
-            tickets: ['ticket', 'tickets'],
-            ai: ['ai', 'askai', 'ai_security_help', 'ticket_ai_summarize'],
-            antinuke: ['antinuke', 'security'],
-            antispam: ['antispam', 'spam'],
-            antiraid: ['antiraid', 'raid'],
-            antiphishing: ['antiphishing', 'phishing'],
-            automod: ['automod', 'moderation'],
+            // Only gate commands that are truly feature-specific and should not work without the feature
+            // Do NOT gate setup/config commands or core moderation commands
+            ai: ['ai', 'askai', 'ai_security_help'],
             autorole: ['autorole']
         };
         const isDisabled = (flag) => {
@@ -2574,19 +2539,26 @@ I'm performing an initial security scan to check for threats. This will complete
     }
 
     async isFeatureEnabledForGuild(guildId, feature) {
+        if (!this.database) return false; // Fail-closed when DB unavailable
         const cfg = await this.database.getGuildConfig(guildId);
-        if (feature === 'ai') return !!cfg.ai_enabled;
-        if (feature === 'tickets') return !!cfg.tickets_enabled;
-        if (feature === 'welcome') return !!cfg.welcome_enabled;
-        if (feature === 'verification') return !!cfg.verification_enabled;
-        if (feature === 'antinuke') return !!cfg.antinuke_enabled;
-        if (feature === 'antispam') return !!cfg.anti_spam_enabled;
-        if (feature === 'antiraid') return !!cfg.anti_raid_enabled;
-        if (feature === 'antiphishing') return !!cfg.anti_phishing_enabled;
-        if (feature === 'automod') return !!cfg.auto_mod_enabled;
-        if (feature === 'autorole') return !!cfg.autorole_enabled;
-        // Fail-closed: unknown/unmapped features are disabled by default
-        return false;
+        if (!cfg) return false;
+        const featureMap = {
+            ai: 'ai_enabled',
+            tickets: 'tickets_enabled',
+            welcome: 'welcome_enabled',
+            verification: 'verification_enabled',
+            antinuke: 'antinuke_enabled',
+            antispam: 'anti_spam_enabled',
+            antiraid: 'anti_raid_enabled',
+            antiphishing: 'anti_phishing_enabled',
+            automod: 'auto_mod_enabled',
+            autorole: 'autorole_enabled',
+            links: 'anti_links_enabled',
+            xp: 'xp_enabled'
+        };
+        const key = featureMap[feature];
+        if (!key) return false; // Unknown feature = disabled
+        return !!cfg[key];
     }
 
     isSubscriptionActive(record) {
@@ -3724,12 +3696,12 @@ Our support team will reach out shortly. Please check the ticket channel for upd
                     new ButtonBuilder()
                         .setLabel('Admin Panel')
                         .setStyle(ButtonStyle.Link)
-                        .setURL('https://discord-security-bot-uyxf.onrender.com/dashboard')
+                        .setURL(process.env.DASHBOARD_URL || 'https://discord-security-bot-uyxf.onrender.com/dashboard')
                         .setEmoji('📊'),
                     new ButtonBuilder()
                         .setLabel('Support Server')
                         .setStyle(ButtonStyle.Link)
-                        .setURL('https://discord.gg')
+                        .setURL(process.env.SUPPORT_INVITE || 'https://discord.gg/Vsq9PUTrgb')
                         .setEmoji('🤝')
                 );
 
@@ -3836,7 +3808,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
                                 .setLabel('Mark In Progress')
                                 .setStyle(ButtonStyle.Warning),
                             new ButtonBuilder()
-                                .setURL('https://discord-security-bot-uyx6.onrender.com/admin')
+                                .setURL(process.env.DASHBOARD_URL || 'https://discord-security-bot-uyxf.onrender.com/admin')
                                 .setLabel('View Dashboard')
                                 .setStyle(ButtonStyle.Link)
                         );

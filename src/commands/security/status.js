@@ -154,7 +154,7 @@ module.exports = {
                     new ButtonBuilder()
                         .setLabel('Open Dashboard')
                         .setStyle(ButtonStyle.Link)
-                        .setURL('http://localhost:3001')
+                        .setURL(process.env.DASHBOARD_URL || 'https://discord-security-bot-uyx6.onrender.com')
                         .setEmoji('🌐'),
                     new ButtonBuilder()
                         .setLabel('Refresh Status')

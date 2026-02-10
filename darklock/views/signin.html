@@ -3,71 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    
-    <!-- Security headers via meta tags -->
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta name="referrer" content="strict-origin-when-cross-origin">
-    
     <title>Admin Sign In - Darklock</title>
-    
-    <!-- Prevent caching of login page -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    
     <style>
-        /* CSS Variables for consistent theming */
         :root {
             --bg-primary: #0a0a0f;
-            --bg-secondary: #12121a;
             --bg-card: #1a1a24;
-            --bg-input: #0d0d14;
             --border-color: #2a2a3a;
-            --border-focus: #6366f1;
             --text-primary: #ffffff;
             --text-secondary: #94a3b8;
             --text-muted: #64748b;
-            --accent: #6366f1;
-            --accent-hover: #818cf8;
+            --accent: #8b5cf6;
+            --accent-hover: #a78bfa;
             --error: #ef4444;
-            --error-bg: rgba(239, 68, 68, 0.1);
             --success: #22c55e;
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+            --info: #6366f1;
         }
-
-        /* Reset */
-        *, *::before, *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        /* Base styles */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html, body {
             height: 100%;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
-            line-height: 1.6;
             -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
         }
-
-        /* Container */
         .container {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 1rem;
-            background: 
-                radial-gradient(ellipse at top, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
-                var(--bg-primary);
+            background: radial-gradient(ellipse at top, rgba(139, 92, 246, 0.08) 0%, transparent 50%), var(--bg-primary);
         }
-
-        /* Card */
         .signin-card {
             width: 100%;
             max-width: 400px;
@@ -75,349 +42,191 @@
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 2.5rem;
-            box-shadow: var(--shadow-lg);
-        }
-
-        /* Header */
-        .signin-header {
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.4);
             text-align: center;
-            margin-bottom: 2rem;
         }
-
-        .signin-header .logo {
-            width: 48px;
-            height: 48px;
+        .logo {
+            width: 64px; height: 64px;
             background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1rem;
-            font-size: 1.5rem;
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2rem;
         }
+        h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .subtitle { color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 2rem; }
 
-        .signin-header h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        .signin-header p {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-        }
-
-        /* Form */
-        .signin-form {
-            display: flex;
-            flex-direction: column;
-            gap: 1.25rem;
-        }
-
-        /* Form group */
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .form-group label {
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--text-secondary);
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            background: var(--bg-input);
-            border: 1px solid var(--border-color);
+        /* Status message */
+        .status {
+            display: none;
+            padding: 0.875rem 1rem;
             border-radius: 8px;
-            color: var(--text-primary);
-            font-size: 1rem;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            font-size: 0.875rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
         }
+        .status.visible { display: block; }
+        .status.error { background: rgba(239,68,68,0.1); border: 1px solid var(--error); color: var(--error); }
+        .status.info { background: rgba(99,102,241,0.1); border: 1px solid var(--info); color: var(--info); }
+        .status.success { background: rgba(34,197,94,0.1); border: 1px solid var(--success); color: var(--success); }
 
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--border-focus);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        .form-group input::placeholder {
-            color: var(--text-muted);
-        }
-
-        /* Submit button */
-        .btn-submit {
+        /* RFID button */
+        .btn-rfid {
             width: 100%;
-            padding: 0.875rem 1.5rem;
-            background: var(--accent);
+            padding: 1rem 1.5rem;
+            background: linear-gradient(135deg, #8b5cf6, #a78bfa);
             border: none;
             border-radius: 8px;
             color: white;
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.2s, transform 0.1s;
-            margin-top: 0.5rem;
+            transition: transform 0.1s, opacity 0.2s;
         }
-
-        .btn-submit:hover:not(:disabled) {
-            background: var(--accent-hover);
-        }
-
-        .btn-submit:active:not(:disabled) {
-            transform: scale(0.98);
-        }
-
-        .btn-submit:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        /* Loading state */
-        .btn-submit.loading {
-            position: relative;
-            color: transparent;
-        }
-
-        .btn-submit.loading::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            top: 50%;
-            left: 50%;
-            margin-left: -10px;
-            margin-top: -10px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
+        .btn-rfid:hover:not(:disabled) { opacity: 0.9; }
+        .btn-rfid:active:not(:disabled) { transform: scale(0.98); }
+        .btn-rfid:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-rfid.loading { position: relative; color: transparent; }
+        .btn-rfid.loading::after {
+            content: ''; position: absolute;
+            width: 24px; height: 24px; top: 50%; left: 50%;
+            margin: -12px 0 0 -12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%; border-top-color: white;
             animation: spin 0.8s linear infinite;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Error message */
-        .error-message {
-            display: none;
-            padding: 0.875rem 1rem;
-            background: var(--error-bg);
-            border: 1px solid var(--error);
-            border-radius: 8px;
-            color: var(--error);
-            font-size: 0.875rem;
-            text-align: center;
-        }
-
-        .error-message.visible {
-            display: block;
-        }
-
-        /* Footer */
-        .signin-footer {
+        /* Hardware status indicator */
+        .hw-status {
             margin-top: 2rem;
-            text-align: center;
             padding-top: 1.5rem;
             border-top: 1px solid var(--border-color);
-        }
-
-        .signin-footer p {
             font-size: 0.75rem;
             color: var(--text-muted);
         }
-
-        /* Accessibility */
-        .visually-hidden {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
+        .hw-status .dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+            vertical-align: middle;
         }
+        .dot.online { background: var(--success); }
+        .dot.offline { background: var(--error); }
+        .dot.checking { background: #f59e0b; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-        /* Focus visible for keyboard navigation */
-        *:focus-visible {
-            outline: 2px solid var(--border-focus);
-            outline-offset: 2px;
+        .instructions {
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.6;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="signin-card">
-            <div class="signin-header">
-                <div class="logo" aria-hidden="true">🔐</div>
-                <h1>Admin Sign In</h1>
-                <p>Access the Darklock admin panel</p>
+            <div class="logo" aria-hidden="true">🔐</div>
+            <h1>Admin Access</h1>
+            <p class="subtitle">RFID card authentication required</p>
+
+            <div id="status" class="status" role="alert"></div>
+
+            <button type="button" class="btn-rfid" id="rfidBtn">
+                🔐 Scan RFID Card
+            </button>
+
+            <div class="instructions">
+                Place your authorized card on the RFID reader<br>
+                connected to the Darklock gateway
             </div>
 
-            <!-- Error message container -->
-            <div id="errorMessage" class="error-message" role="alert" aria-live="polite"></div>
-
-            <form id="signinForm" class="signin-form" novalidate>
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input 
-                        type="email" 
-                        id="email" 
-                        name="email" 
-                        placeholder="admin@example.com"
-                        autocomplete="email"
-                        required
-                        aria-required="true"
-                    >
-                </div>
-
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input 
-                        type="password" 
-                        id="password" 
-                        name="password" 
-                        placeholder="••••••••••••"
-                        autocomplete="current-password"
-                        required
-                        aria-required="true"
-                    >
-                </div>
-
-                <button type="submit" class="btn-submit" id="submitBtn">
-                    Sign In
-                </button>
-            </form>
-
-            <div class="signin-footer">
-                <p>Darklock Security Platform</p>
+            <div class="hw-status">
+                <span class="dot checking" id="gwDot"></span>
+                <span id="gwStatus">Checking gateway...</span>
             </div>
         </div>
     </div>
 
     <script>
-        // IIFE to prevent global scope pollution
-        (function() {
-            'use strict';
+    (function() {
+        'use strict';
 
-            const form = document.getElementById('signinForm');
-            const emailInput = document.getElementById('email');
-            const passwordInput = document.getElementById('password');
-            const submitBtn = document.getElementById('submitBtn');
-            const errorMessage = document.getElementById('errorMessage');
+        const rfidBtn = document.getElementById('rfidBtn');
+        const statusEl = document.getElementById('status');
+        const gwDot = document.getElementById('gwDot');
+        const gwStatus = document.getElementById('gwStatus');
 
-            /**
-             * Show error message to user
-             * Uses generic messages to prevent information disclosure
-             */
-            function showError(message) {
-                errorMessage.textContent = message;
-                errorMessage.classList.add('visible');
-                // Focus error for screen readers
-                errorMessage.focus();
-            }
+        function showStatus(msg, type) {
+            statusEl.textContent = msg;
+            statusEl.className = 'status visible ' + type;
+        }
+        function hideStatus() {
+            statusEl.className = 'status';
+            statusEl.textContent = '';
+        }
 
-            /**
-             * Hide error message
-             */
-            function hideError() {
-                errorMessage.textContent = '';
-                errorMessage.classList.remove('visible');
-            }
-
-            /**
-             * Set loading state on submit button
-             */
-            function setLoading(isLoading) {
-                submitBtn.disabled = isLoading;
-                submitBtn.classList.toggle('loading', isLoading);
-            }
-
-            /**
-             * Basic client-side validation
-             * Real validation happens server-side
-             */
-            function validateForm() {
-                const email = emailInput.value.trim();
-                const password = passwordInput.value;
-
-                if (!email || !password) {
-                    return false;
-                }
-
-                // Basic email format check (server does thorough validation)
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(email)) {
-                    return false;
-                }
-
-                return true;
-            }
-
-            /**
-             * Handle form submission
-             */
-            async function handleSubmit(e) {
-                e.preventDefault();
-                hideError();
-
-                // Client-side validation
-                if (!validateForm()) {
-                    showError('Invalid credentials');
-                    return;
-                }
-
-                setLoading(true);
-
-                try {
-                    const response = await fetch('/signin', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            email: emailInput.value.trim().toLowerCase(),
-                            password: passwordInput.value
-                        }),
-                        credentials: 'same-origin' // Include cookies
-                    });
-
-                    const data = await response.json();
-
-                    if (data.success && data.redirect) {
-                        // Successful login - redirect to admin dashboard
-                        window.location.href = data.redirect;
-                    } else {
-                        // Generic error message - never reveal specific failure reason
-                        showError(data.error || 'Invalid credentials');
-                        // Clear password field on failure
-                        passwordInput.value = '';
-                        passwordInput.focus();
+        // Check gateway status on page load
+        async function checkGateway() {
+            try {
+                const res = await fetch('/api/rfid/status', { credentials: 'same-origin' });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.online) {
+                        gwDot.className = 'dot online';
+                        gwStatus.textContent = 'Gateway online · ' + data.cards + ' card(s)';
+                        rfidBtn.disabled = false;
+                        return;
                     }
-                } catch (err) {
-                    // Network or parsing error
-                    console.error('Signin error:', err);
-                    showError('An error occurred. Please try again.');
-                } finally {
-                    setLoading(false);
                 }
+                gwDot.className = 'dot offline';
+                gwStatus.textContent = 'Gateway offline';
+                rfidBtn.disabled = true;
+            } catch {
+                gwDot.className = 'dot offline';
+                gwStatus.textContent = 'Gateway unreachable';
+                rfidBtn.disabled = true;
             }
+        }
 
-            // Clear error on input
-            emailInput.addEventListener('input', hideError);
-            passwordInput.addEventListener('input', hideError);
+        // RFID scan
+        async function handleRfidLogin() {
+            hideStatus();
+            rfidBtn.disabled = true;
+            rfidBtn.classList.add('loading');
 
-            // Form submission
-            form.addEventListener('submit', handleSubmit);
+            try {
+                showStatus('Scan your RFID card now... (15s timeout)', 'info');
 
-            // Focus email field on page load
-            emailInput.focus();
-        })();
+                const response = await fetch('/signin/rfid', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin'
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.redirect) {
+                    showStatus('Access granted! Redirecting...', 'success');
+                    setTimeout(() => { window.location.href = data.redirect; }, 500);
+                } else {
+                    showStatus(data.error || 'RFID authentication failed', 'error');
+                }
+            } catch (err) {
+                showStatus('Connection error. Check gateway.', 'error');
+            } finally {
+                rfidBtn.disabled = false;
+                rfidBtn.classList.remove('loading');
+            }
+        }
+
+        rfidBtn.addEventListener('click', handleRfidLogin);
+        checkGateway();
+        // Re-check gateway every 30s
+        setInterval(checkGateway, 30000);
+    })();
     </script>
 </body>
 </html>

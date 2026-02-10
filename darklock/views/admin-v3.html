@@ -323,6 +323,42 @@
             border-radius: 50%;
         }
 
+        /* Logout Button */
+        .logout-btn {
+            height: 38px;
+            padding: 0 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 8px;
+        }
+
+        .logout-btn:hover {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #f87171;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
+        }
+
+        .logout-btn:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        .logout-btn i {
+            font-size: 14px;
+        }
+
         /* Profile Menu */
         .profile-menu {
             display: flex;
@@ -1213,6 +1249,10 @@
                             <span class="profile-role badge" id="profileRole">-</span>
                         </div>
                     </div>
+                    <button class="logout-btn" id="logoutBtn" title="Logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Logout
+                    </button>
                 </div>
             </header>
 
@@ -1309,6 +1349,29 @@
                     showToast('Network error', 'error');
                 }
                 return { success: false, error: err.message };
+            }
+        }
+
+        // Logout handler
+        async function handleLogout() {
+            try {
+                const response = await fetch('/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok || response.redirected) {
+                    // Server redirects to /signin, follow it
+                    window.location.href = '/signin';
+                } else {
+                    showToast('Logout failed', 'error');
+                }
+            } catch (err) {
+                console.error('[Logout] Error:', err);
+                showToast('Logout error', 'error');
             }
         }
 
@@ -4847,6 +4910,9 @@ ${report.description}</div>
             document.getElementById('profileMenu').addEventListener('click', () => {
                 // Would show profile dropdown
             });
+
+            // Logout button
+            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
         }
 
         async function performSearch(query) {

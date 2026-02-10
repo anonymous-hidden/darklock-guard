@@ -125,6 +125,13 @@ module.exports = {
         const subcommand = interaction.options.getSubcommand();
 
         try {
+            // Ensure guild config row exists before any setup operation
+            const guildId = interaction.guild.id;
+            const existing = await bot.database.get('SELECT guild_id FROM guild_configs WHERE guild_id = ?', [guildId]);
+            if (!existing) {
+                await bot.database.run('INSERT OR IGNORE INTO guild_configs (guild_id) VALUES (?)', [guildId]);
+            }
+
             switch (subcommand) {
                 case 'start':
                     return await this.handleStart(interaction, bot);
@@ -185,8 +192,8 @@ module.exports = {
         const guildId = interaction.guild.id;
 
         await bot.database.run(
-            `INSERT OR REPLACE INTO guild_config (guild_id, language) VALUES (?, ?)
-             ON CONFLICT(guild_id) DO UPDATE SET language = ?`,
+            `INSERT INTO guild_configs (guild_id, language) VALUES (?, ?)
+             ON CONFLICT(guild_id) DO UPDATE SET language = ?, updated_at = CURRENT_TIMESTAMP`,
             [guildId, lang, lang]
         );
 
@@ -217,31 +224,33 @@ module.exports = {
         const values = [enabled ? 1 : 0];
 
         if (channel) {
-            updates.push('verify_channel = ?');
+            updates.push('verification_channel_id = ?');
             values.push(channel.id);
         }
         if (role) {
-            updates.push('verified_role = ?');
+            updates.push('verified_role_id = ?');
             values.push(role.id);
         }
 
         values.push(guildId);
 
         await bot.database.run(
-            `UPDATE guild_config SET ${updates.join(', ')} WHERE guild_id = ?`,
+            `UPDATE guild_configs SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`,
             values
         );
 
-        return interaction.reply({
-            embeds: [new EmbedBuilder()
-                .setColor(enabled ? '#00ff00' : '#ff0000')
-                .setTitle(enabled ? '✅ Verification Enabled' : '❌ Verification Disabled')
-                .addFields(
-                    channel ? { name: 'Channel', value: `<#${channel.id}>`, inline: true } : null,
-                    role ? { name: 'Verified Role', value: `<@&${role.id}>`, inline: true } : null
-                ).filter(Boolean)
-                .setTimestamp()]
-        });
+        const fields = [
+            channel ? { name: 'Channel', value: `<#${channel.id}>`, inline: true } : null,
+            role ? { name: 'Verified Role', value: `<@&${role.id}>`, inline: true } : null
+        ].filter(Boolean);
+
+        const embed = new EmbedBuilder()
+            .setColor(enabled ? '#00ff00' : '#ff0000')
+            .setTitle(enabled ? '✅ Verification Enabled' : '❌ Verification Disabled')
+            .setTimestamp();
+        if (fields.length > 0) embed.addFields(fields);
+
+        return interaction.reply({ embeds: [embed] });
     },
 
     async handleRoles(interaction, bot) {
@@ -287,20 +296,22 @@ module.exports = {
         values.push(guildId);
 
         await bot.database.run(
-            `UPDATE guild_config SET ${updates.join(', ')} WHERE guild_id = ?`,
+            `UPDATE guild_configs SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`,
             values
         );
 
-        return interaction.reply({
-            embeds: [new EmbedBuilder()
-                .setColor(enabled ? '#00ff00' : '#ff0000')
-                .setTitle(enabled ? '✅ Welcome Messages Enabled' : '❌ Welcome Messages Disabled')
-                .addFields(
-                    channel ? { name: 'Channel', value: `<#${channel.id}>` } : null,
-                    message ? { name: 'Message Preview', value: message } : null
-                ).filter(Boolean)
-                .setTimestamp()]
-        });
+        const fields = [
+            channel ? { name: 'Channel', value: `<#${channel.id}>` } : null,
+            message ? { name: 'Message Preview', value: message } : null
+        ].filter(Boolean);
+
+        const embed = new EmbedBuilder()
+            .setColor(enabled ? '#00ff00' : '#ff0000')
+            .setTitle(enabled ? '✅ Welcome Messages Enabled' : '❌ Welcome Messages Disabled')
+            .setTimestamp();
+        if (fields.length > 0) embed.addFields(fields);
+
+        return interaction.reply({ embeds: [embed] });
     },
 
     async handleGoodbye(interaction, bot) {
@@ -324,7 +335,7 @@ module.exports = {
         values.push(guildId);
 
         await bot.database.run(
-            `UPDATE guild_config SET ${updates.join(', ')} WHERE guild_id = ?`,
+            `UPDATE guild_configs SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`,
             values
         );
 
@@ -357,7 +368,7 @@ module.exports = {
         values.push(guildId);
 
         await bot.database.run(
-            `UPDATE guild_config SET ${updates.join(', ')} WHERE guild_id = ?`,
+            `UPDATE guild_configs SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`,
             values
         );
 
@@ -376,7 +387,7 @@ module.exports = {
         const guildId = interaction.guild.id;
 
         await bot.database.run(
-            `UPDATE guild_config SET log_channel = ?, log_moderation = ?, log_joins = ? WHERE guild_id = ?`,
+            `UPDATE guild_configs SET log_channel_id = ?, log_moderation = ?, log_joins = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`,
             [channel.id, logModeration ? 1 : 0, logJoins ? 1 : 0, guildId]
         );
 
@@ -399,7 +410,7 @@ module.exports = {
         const guildId = interaction.guild.id;
         
         const config = await bot.database.get(
-            `SELECT * FROM guild_config WHERE guild_id = ?`,
+            `SELECT * FROM guild_configs WHERE guild_id = ?`,
             [guildId]
         );
 
@@ -423,7 +434,7 @@ module.exports = {
                     { name: 'Verification', value: config.verification_enabled ? '✅ Enabled' : '❌ Disabled', inline: true },
                     { name: 'Welcome', value: config.welcome_enabled ? '✅ Enabled' : '❌ Disabled', inline: true },
                     { name: 'Tickets', value: config.tickets_enabled ? '✅ Enabled' : '❌ Disabled', inline: true },
-                    { name: 'Logging', value: config.log_channel ? `<#${config.log_channel}>` : 'Not set', inline: true }
+                    { name: 'Logging', value: config.log_channel_id ? `<#${config.log_channel_id}>` : 'Not set', inline: true }
                 )
                 .setTimestamp()]
         });

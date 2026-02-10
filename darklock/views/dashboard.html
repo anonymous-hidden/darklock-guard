@@ -11,6 +11,53 @@
     <link rel="stylesheet" href="/platform/static/css/dashboard.css">
     <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
     <script src="/platform/static/js/debug-controller.js"></script>
+    <style>
+        /* Recent Activity */
+        .activity-timeline { display: flex; flex-direction: column; gap: 0.75rem; }
+        .activity-item { display: flex; align-items: flex-start; gap: 1rem; padding: 0.875rem; background: var(--bg-primary, #0f172a); border: 1px solid var(--border-color, #1e293b); border-radius: 8px; transition: border-color 0.2s; }
+        .activity-item:hover { border-color: var(--border-color-hover, #334155); }
+        .activity-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+        .activity-dot.login { background: #60a5fa; }
+        .activity-dot.security { background: #34d399; }
+        .activity-dot.settings { background: #a78bfa; }
+        .activity-dot.info { background: #94a3b8; }
+        .activity-content { flex: 1; min-width: 0; }
+        .activity-text { font-size: 0.875rem; color: var(--text-primary, #f1f5f9); }
+        .activity-time { font-size: 0.75rem; color: var(--text-muted, #64748b); margin-top: 0.25rem; }
+
+        /* Platform Services */
+        .services-status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        .service-status-item { display: flex; align-items: center; gap: 0.75rem; padding: 1rem; background: var(--bg-primary, #0f172a); border: 1px solid var(--border-color, #1e293b); border-radius: 8px; }
+        .service-indicator { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .service-indicator.online { background: #34d399; box-shadow: 0 0 8px rgba(52, 211, 153, 0.4); }
+        .service-indicator.offline { background: #f87171; box-shadow: 0 0 8px rgba(248, 113, 113, 0.4); }
+        .service-indicator.checking { background: #fbbf24; animation: pulse 2s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .service-info { display: flex; flex-direction: column; }
+        .service-name { font-size: 0.875rem; font-weight: 600; color: var(--text-primary, #f1f5f9); }
+        .service-desc { font-size: 0.75rem; color: var(--text-muted, #64748b); }
+
+        /* Improved Apps Grid */
+        .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
+        .app-card-unified { background: var(--bg-secondary, #1e293b); border: 1px solid var(--border-color, #334155); border-radius: 12px; padding: 1.5rem; transition: all 0.2s; display: flex; flex-direction: column; }
+        .app-card-unified:hover { border-color: var(--accent-primary, #60a5fa); box-shadow: 0 4px 20px rgba(96, 165, 250, 0.1); transform: translateY(-2px); }
+        .app-card-unified .app-card-top { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+        .app-card-unified .app-icon-wrap { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .app-icon-wrap.active { background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(99, 102, 241, 0.15)); color: #60a5fa; }
+        .app-icon-wrap.coming-soon { background: rgba(100, 116, 139, 0.15); color: #94a3b8; }
+        .app-icon-wrap.beta { background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(139, 92, 246, 0.15)); color: #a78bfa; }
+        .app-icon-wrap svg { width: 24px; height: 24px; }
+        .app-card-unified .app-title-area h3 { font-size: 1.125rem; font-weight: 600; color: var(--text-primary, #f1f5f9); margin-bottom: 0.25rem; }
+        .app-card-unified .app-status-badge { font-size: 0.6875rem; font-weight: 600; padding: 0.125rem 0.5rem; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .app-status-badge.active { background: rgba(52, 211, 153, 0.1); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
+        .app-status-badge.coming-soon { background: rgba(100, 116, 139, 0.1); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.3); }
+        .app-status-badge.beta { background: rgba(168, 85, 247, 0.1); color: #a78bfa; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .app-card-unified .app-description { font-size: 0.875rem; color: var(--text-secondary, #94a3b8); line-height: 1.6; margin-bottom: 1rem; flex: 1; }
+        .app-card-unified .app-features-list { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem; }
+        .app-feature-tag { font-size: 0.6875rem; padding: 0.25rem 0.625rem; background: var(--bg-primary, #0f172a); border: 1px solid var(--border-color, #1e293b); border-radius: 6px; color: var(--text-secondary, #94a3b8); }
+        .app-card-unified .app-card-actions { display: flex; gap: 0.75rem; }
+        .app-card-unified .app-card-actions .btn { flex: 1; text-align: center; }
+    </style>
 </head>
 <body class="dashboard-page">
     <div class="dashboard-layout">
@@ -104,8 +151,8 @@
                         </svg>
                     </div>
                     <div class="user-details">
-                        <span class="user-name" id="userName" data-i18n="common.loading">Loading...</span>
-                        <span class="user-role" id="userRole" data-i18n="common.user">User</span>
+                        <span class="user-name" id="userName">Loading...</span>
+                        <span class="user-role" id="userRole">User</span>
                     </div>
                 </div>
             </div>
@@ -139,7 +186,7 @@
                 <div class="page active" id="page-dashboard">
                     <div class="page-header">
                         <h1><span data-i18n="dashboard.title">Welcome back</span>, <span id="welcomeName">User</span></h1>
-                        <p data-i18n="dashboard.subtitle">Here's an overview of your Darklock platform</p>
+                        <p class="welcome-subtitle" data-i18n="dashboard.subtitle">Here's an overview of your Darklock platform</p>
                     </div>
 
                     <div class="stats-grid">
@@ -275,6 +322,57 @@
                                             <span class="security-title" data-i18n="dashboard.securityStatus.email.title">Email Verified</span>
                                             <span class="security-desc" data-i18n="dashboard.securityStatus.email.description">Account email is set</span>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="card" style="margin-top: 1.5rem;">
+                        <div class="card-header">
+                            <h3>Recent Activity</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="dashboardRecentActivity">
+                                <div class="loading-state"><div class="spinner"></div><span>Loading activity...</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Platform Services Status -->
+                    <div class="card" style="margin-top: 1.5rem;">
+                        <div class="card-header">
+                            <h3>Platform Services</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="services-status-grid" id="servicesStatus">
+                                <div class="service-status-item">
+                                    <div class="service-indicator online"></div>
+                                    <div class="service-info">
+                                        <span class="service-name">Web Platform</span>
+                                        <span class="service-desc">Operational</span>
+                                    </div>
+                                </div>
+                                <div class="service-status-item">
+                                    <div class="service-indicator" id="botServiceIndicator"></div>
+                                    <div class="service-info">
+                                        <span class="service-name">Discord Bot</span>
+                                        <span class="service-desc" id="botServiceStatus">Checking...</span>
+                                    </div>
+                                </div>
+                                <div class="service-status-item">
+                                    <div class="service-indicator online"></div>
+                                    <div class="service-info">
+                                        <span class="service-name">Authentication</span>
+                                        <span class="service-desc">Operational</span>
+                                    </div>
+                                </div>
+                                <div class="service-status-item">
+                                    <div class="service-indicator online"></div>
+                                    <div class="service-info">
+                                        <span class="service-name">API</span>
+                                        <span class="service-desc">Operational</span>
                                     </div>
                                 </div>
                             </div>
@@ -473,31 +571,9 @@
                         <p data-i18n="apps.subtitle">Access and manage your Darklock applications</p>
                     </div>
 
-                    <div class="apps-grid">
-                        <!-- Darklock Guard App -->
-                        <div class="app-card">
-                            <div class="app-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                                    <path d="M9 12l2 2 4-4"/>
-                                </svg>
-                            </div>
-                            <div class="app-info">
-                                <h3 class="app-name" data-i18n="apps.darklock.name">Darklock Guard</h3>
-                                <p class="app-desc" data-i18n="apps.darklock.description">File integrity monitoring and protection</p>
-                                <div class="app-meta">
-                                    <span class="app-status active" data-i18n="common.active">Active</span>
-                                    <span class="app-version">v1.0.0</span>
-                                </div>
-                            </div>
-                            <div class="app-actions">
-                                <a href="/platform/launch/darklock-guard" class="btn btn-primary btn-sm" data-i18n="apps.darklock.launch">Launch</a>
-                                <a href="/platform/download/darklock-guard" class="btn btn-ghost btn-sm" data-i18n="apps.darklock.download">Download</a>
-                            </div>
-                        </div>
-
-                        <!-- More apps loaded dynamically -->
-                        <div id="appsList"></div>
+                    <div class="apps-grid" id="appsGrid">
+                        <!-- All apps loaded dynamically for consistent layout -->
+                        <div class="loading-state"><div class="spinner"></div><span>Loading applications...</span></div>
                     </div>
                 </div>
 

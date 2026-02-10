@@ -1,0 +1,11 @@
+# Python Requirements for Darklock Hardware Presence Service
+
+# Serial communication
+pyserial>=3.5
+
+# Flask web API
+flask>=2.3.0
+flask-cors>=4.0.0
+
+# Utilities (usually pre-installed)
+# python3-standard-library

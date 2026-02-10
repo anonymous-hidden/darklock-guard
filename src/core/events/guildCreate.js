@@ -448,7 +448,7 @@ Check the scan report I'm generating now!
 💬 **In-Server Help:** Use \`/help [command]\` for specific commands
 🔍 **Status Check:** Use \`/status\` to verify bot functionality
 🔗 **Website:** https://DarkLock.xyz
-💬 **Community Server:** https://discord.gg/r8dvnad9c9
+💬 **Community Server:** https://discord.gg/Vsq9PUTrgb
 
 **Common Issues:**
 • Missing permissions: Grant Administrator permission

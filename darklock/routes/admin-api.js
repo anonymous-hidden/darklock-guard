@@ -1400,5 +1400,70 @@ router.get('/bot/settings', async (req, res) => {
     }
 });
 
+// ============================================================================
+// BUG REPORTS
+// ============================================================================
+
+router.get('/bug-reports', async (req, res) => {
+    try {
+        // Ensure the bug_reports table exists
+        await db.run(`CREATE TABLE IF NOT EXISTS bug_reports (
+            id INTEGER PRIMARY KEY,
+            type TEXT NOT NULL,
+            severity TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            environment TEXT,
+            email TEXT,
+            timestamp TEXT NOT NULL,
+            userAgent TEXT,
+            status TEXT DEFAULT 'open'
+        )`);
+
+        // Get all bug reports
+        const reports = await db.all(`SELECT * FROM bug_reports ORDER BY timestamp DESC`);
+
+        res.json({ success: true, reports: reports || [] });
+    } catch (err) {
+        console.error('[Admin API] Get bug reports error:', err);
+        res.status(500).json({ success: false, error: 'Failed to load bug reports' });
+    }
+});
+
+router.put('/bug-reports/:id', requireRole('owner', 'admin'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!['open', 'in-progress', 'resolved', 'closed'].includes(status)) {
+            return res.status(400).json({ success: false, error: 'Invalid status' });
+        }
+
+        await db.run(`UPDATE bug_reports SET status = ? WHERE id = ?`, [status, id]);
+
+        await auditLog(req, 'UPDATE', 'bug_report', id, null, { status });
+
+        res.json({ success: true, message: 'Bug report updated' });
+    } catch (err) {
+        console.error('[Admin API] Update bug report error:', err);
+        res.status(500).json({ success: false, error: 'Failed to update bug report' });
+    }
+});
+
+router.delete('/bug-reports/:id', requireRole('owner', 'admin'), async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        await db.run(`DELETE FROM bug_reports WHERE id = ?`, [id]);
+
+        await auditLog(req, 'DELETE', 'bug_report', id, null, null);
+
+        res.json({ success: true, message: 'Bug report deleted' });
+    } catch (err) {
+        console.error('[Admin API] Delete bug report error:', err);
+        res.status(500).json({ success: false, error: 'Failed to delete bug report' });
+    }
+});
+
 module.exports = router;
 module.exports.setDiscordBot = setDiscordBot;

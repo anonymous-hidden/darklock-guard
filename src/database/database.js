@@ -1,6 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const MigrationRunner = require('./MigrationRunner');
 
 class Database {
     constructor() {
@@ -33,6 +34,9 @@ class Database {
                 } else {
                     console.log('📊 Connected to SQLite database at:', this.dbPath);
                     await this.createTables();
+                    // Run versioned migrations (tracked in schema_migrations table)
+                    await this.runVersionedMigrations();
+                    // Run legacy ad-hoc migrations for backwards compatibility
                     await this.runMigrations();
                     // Verify data integrity
                     await this.verifyDataIntegrity();
@@ -40,6 +44,22 @@ class Database {
                 }
             });
         });
+    }
+
+    /**
+     * Run the versioned MigrationRunner (tracked, idempotent, safe)
+     * This is the preferred migration system going forward.
+     */
+    async runVersionedMigrations() {
+        try {
+            const runner = new MigrationRunner(this.db);
+            const result = await runner.run();
+            if (result.applied > 0) {
+                console.log(`✅ Versioned migrations: ${result.applied} applied, ${result.skipped} skipped`);
+            }
+        } catch (err) {
+            console.error('⚠️  Versioned migration error (non-fatal):', err.message);
+        }
     }
 
     async verifyDataIntegrity() {

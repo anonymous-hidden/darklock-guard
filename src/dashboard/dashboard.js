@@ -1074,9 +1074,10 @@ The GuardianBot Team`
                     status: 'open'
                 };
 
-                // Store in database
-                const db = require('better-sqlite3')(path.join(__dirname, '../../darklock.db'));
-                db.prepare(`CREATE TABLE IF NOT EXISTS bug_reports (
+                // Store in database using Darklock database module
+                const darklockDb = require('../../darklock/utils/database');
+                
+                await darklockDb.run(`CREATE TABLE IF NOT EXISTS bug_reports (
                     id INTEGER PRIMARY KEY,
                     type TEXT NOT NULL,
                     severity TEXT NOT NULL,
@@ -1087,22 +1088,24 @@ The GuardianBot Team`
                     timestamp TEXT NOT NULL,
                     userAgent TEXT,
                     status TEXT DEFAULT 'open'
-                )`).run();
+                )`);
 
-                db.prepare(`INSERT INTO bug_reports (id, type, severity, title, description, environment, email, timestamp, userAgent, status)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-                    bugReport.id,
-                    bugReport.type,
-                    bugReport.severity,
-                    bugReport.title,
-                    bugReport.description,
-                    bugReport.environment,
-                    bugReport.email,
-                    bugReport.timestamp,
-                    bugReport.userAgent,
-                    bugReport.status
+                await darklockDb.run(
+                    `INSERT INTO bug_reports (id, type, severity, title, description, environment, email, timestamp, userAgent, status)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        bugReport.id,
+                        bugReport.type,
+                        bugReport.severity,
+                        bugReport.title,
+                        bugReport.description,
+                        bugReport.environment,
+                        bugReport.email,
+                        bugReport.timestamp,
+                        bugReport.userAgent,
+                        bugReport.status
+                    ]
                 );
-                db.close();
 
                 res.json({ success: true, id: bugReport.id });
             } catch (error) {
@@ -1112,46 +1115,66 @@ The GuardianBot Team`
         });
 
         // Admin: Get bug reports
-        this.app.get('/api/admin/bug-reports', this.authenticateToken.bind(this), (req, res) => {
+        this.app.get('/api/admin/bug-reports', this.authenticateToken.bind(this), async (req, res) => {
             try {
-                // Check if user is admin
-                const db = require('better-sqlite3')(path.join(__dirname, '../../darklock.db'));
-                const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.userId);
-                
-                if (!user || user.role !== 'admin') {
-                    db.close();
+                // Check if user is admin (from JWT token)
+                if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'owner')) {
                     return res.status(403).json({ error: 'Admin access required' });
                 }
 
-                // Get all bug reports
-                const reports = db.prepare(`SELECT * FROM bug_reports ORDER BY timestamp DESC`).all();
-                db.close();
+                // Use Darklock database module
+                const darklockDb = require('../../darklock/utils/database');
+                
+                // Check if database is ready
+                if (!darklockDb.ready) {
+                    return res.status(503).json({ error: 'Database not ready' });
+                }
 
-                res.json({ reports });
+                // Ensure table exists
+                await darklockDb.run(`CREATE TABLE IF NOT EXISTS bug_reports (
+                    id INTEGER PRIMARY KEY,
+                    type TEXT NOT NULL,
+                    severity TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    environment TEXT,
+                    email TEXT,
+                    timestamp TEXT NOT NULL,
+                    userAgent TEXT,
+                    status TEXT DEFAULT 'open'
+                )`);
+
+                // Get all bug reports
+                const reports = await darklockDb.all(`SELECT * FROM bug_reports ORDER BY timestamp DESC`);
+
+                res.json({ reports: reports || [] });
             } catch (error) {
                 console.error('Error fetching bug reports:', error);
-                res.status(500).json({ error: 'Failed to fetch bug reports' });
+                res.status(500).json({ error: 'Failed to fetch bug reports', details: error.message });
             }
         });
 
         // Admin: Update bug report status
-        this.app.put('/api/admin/bug-reports/:id', this.authenticateToken.bind(this), express.json(), (req, res) => {
+        this.app.put('/api/admin/bug-reports/:id', this.authenticateToken.bind(this), express.json(), async (req, res) => {
             try {
-                const { status } = req.body;
-                const reportId = req.params.id;
-
-                // Check if user is admin
-                const db = require('better-sqlite3')(path.join(__dirname, '../../darklock.db'));
-                const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.userId);
-                
-                if (!user || user.role !== 'admin') {
-                    db.close();
+                // Check if user is admin (from JWT token)
+                if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'owner')) {
                     return res.status(403).json({ error: 'Admin access required' });
                 }
 
+                const { status } = req.body;
+                const reportId = req.params.id;
+
+                // Use Darklock database module
+                const darklockDb = require('../../darklock/utils/database');
+                
+                // Check if database is ready
+                if (!darklockDb.ready) {
+                    return res.status(503).json({ error: 'Database not ready' });
+                }
+
                 // Update status
-                db.prepare('UPDATE bug_reports SET status = ? WHERE id = ?').run(status, reportId);
-                db.close();
+                await darklockDb.run('UPDATE bug_reports SET status = ? WHERE id = ?', [status, reportId]);
 
                 res.json({ success: true });
             } catch (error) {
@@ -1207,6 +1230,11 @@ The GuardianBot Team`
         // Login page
         this.app.get('/login', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/login.html'));
+        });
+        
+        // Redirect /login.html to /signin for consistency with Darklock Platform
+        this.app.get('/login.html', (req, res) => {
+            res.redirect('/signin');
         });
 
         // Admin dashboard - Now handled by Darklock Platform (darklock/server.js)
@@ -1590,59 +1618,60 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             }
         });
 
+        // ============================
+        // Pro-gated endpoints (registered at startup, not inside PayPal handler)
+        // ============================
+        // Snapshots & rollback
+        this.app.post('/api/snapshots/create', this.requirePremium, async (req, res) => {
+            const { guildId, userId } = req.body || {};
+            const lim = await enforceLimits(guildId, 'snapshots', userId);
+            if (!lim.ok) return res.status(429).json({ error: lim.error });
+            // TODO: implement snapshot creation
+            return res.json({ success: true });
+        });
+        this.app.post('/api/rollback/execute', this.requirePremium, async (req, res) => {
+            const { guildId } = req.body || {};
+            // TODO: implement rollback
+            return res.json({ success: true });
+        });
+
+        // Verification staff actions
+        this.app.post('/api/verification/approve', this.requirePremium, async (req, res) => { return res.json({ success: true }); });
+        this.app.post('/api/verification/deny', this.requirePremium, async (req, res) => { return res.json({ success: true }); });
+
+        // Analytics
+        this.app.get('/api/analytics/drilldown', this.requirePremium, async (req, res) => { return res.json({ success: true, data: [] }); });
+        this.app.get('/api/analytics/export', this.requirePremium, async (req, res) => { return res.json({ success: true, url: null }); });
+
+        // Tickets
+        this.app.get('/api/tickets/transcripts', this.requirePremium, async (req, res) => { return res.json({ success: true, transcripts: [] }); });
+        this.app.post('/api/tickets/ratings', this.requirePremium, async (req, res) => { return res.json({ success: true }); });
+
+        // Alerts
+        this.app.post('/api/alerts/notify', this.requirePremium, async (req, res) => {
+            try {
+                const alerts = require('../utils/alerts');
+                const { guildId, type, details, userId } = req.body || {};
+                const lim = await enforceLimits(guildId, 'alerts', userId);
+                if (!lim.ok) return res.status(429).json({ error: lim.error });
+                await alerts.notifyIncident(this.bot, guildId, type, details || {});
+                return res.json({ success: true });
+            } catch (e) { return res.status(500).json({ error: 'Failed to send alert' }); }
+        });
+
+        // AI (example route)
+        this.app.post('/api/ai/scan', async (req, res) => {
+            const { guildId, userId } = req.body || {};
+            const user = await this.bot.database.get(`SELECT is_pro FROM users WHERE id = ?`, [userId]);
+            if (!(user && user.is_pro)) {
+                const lim = await enforceLimits(guildId, 'ai_scan', userId);
+                if (!lim.ok) return res.status(429).json({ error: lim.error });
+            }
+            // TODO: perform AI scan
+            return res.json({ success: true, result: { score: 0.2 } });
+        });
+
         this.app.post('/api/paypal/capture/:orderID', async (req, res) => {
-                    // ============================
-                    // Apply Pro gating to endpoints
-                    // ============================
-                    // Snapshots & rollback
-                    this.app.post('/api/snapshots/create', this.requirePremium, async (req, res) => {
-                        const { guildId, userId } = req.body || {};
-                        const lim = await enforceLimits(guildId, 'snapshots', userId);
-                        if (!lim.ok) return res.status(429).json({ error: lim.error });
-                        // TODO: implement snapshot creation
-                        return res.json({ success: true });
-                    });
-                    this.app.post('/api/rollback/execute', this.requirePremium, async (req, res) => {
-                        const { guildId } = req.body || {};
-                        // TODO: implement rollback
-                        return res.json({ success: true });
-                    });
-
-                    // Verification staff actions
-                    this.app.post('/api/verification/approve', this.requirePremium, async (req, res) => { return res.json({ success: true }); });
-                    this.app.post('/api/verification/deny', this.requirePremium, async (req, res) => { return res.json({ success: true }); });
-
-                    // Analytics
-                    this.app.get('/api/analytics/drilldown', this.requirePremium, async (req, res) => { return res.json({ success: true, data: [] }); });
-                    this.app.get('/api/analytics/export', this.requirePremium, async (req, res) => { return res.json({ success: true, url: null }); });
-
-                    // Tickets
-                    this.app.get('/api/tickets/transcripts', this.requirePremium, async (req, res) => { return res.json({ success: true, transcripts: [] }); });
-                    this.app.post('/api/tickets/ratings', this.requirePremium, async (req, res) => { return res.json({ success: true }); });
-
-                    // Alerts
-                    this.app.post('/api/alerts/notify', this.requirePremium, async (req, res) => {
-                        try {
-                            const alerts = require('../utils/alerts');
-                            const { guildId, type, details, userId } = req.body || {};
-                            const lim = await enforceLimits(guildId, 'alerts', userId);
-                            if (!lim.ok) return res.status(429).json({ error: lim.error });
-                            await alerts.notifyIncident(this.bot, guildId, type, details || {});
-                            return res.json({ success: true });
-                        } catch (e) { return res.status(500).json({ error: 'Failed to send alert' }); }
-                    });
-
-                    // AI (example route)
-                    this.app.post('/api/ai/scan', async (req, res) => {
-                        const { guildId, userId } = req.body || {};
-                        const user = await this.bot.database.get(`SELECT is_pro FROM users WHERE id = ?`, [userId]);
-                        if (!(user && user.is_pro)) {
-                            const lim = await enforceLimits(guildId, 'ai_scan', userId);
-                            if (!lim.ok) return res.status(429).json({ error: lim.error });
-                        }
-                        // TODO: perform AI scan
-                        return res.json({ success: true, result: { score: 0.2 } });
-                    });
             try {
                 const { orderID } = req.params;
                 const clientId = process.env.client_id;
@@ -1854,62 +1883,19 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         this.app.get('/api/server/info', this.getServerInfo.bind(this));
         this.app.get('/api/server-info', this.getServerInfo.bind(this)); // Alias for dashboard
 
-        // Debug endpoints for troubleshooting (public for debugging)
-        this.app.get('/api/debug/database', this.debugDatabase.bind(this));
-        this.app.get('/api/debug/guild/:guildId', this.debugGuild.bind(this));
-        this.app.get('/api/debug/tables', this.debugTables.bind(this));
-        
-        // Additional debug endpoints for settings troubleshooting
-        this.app.get('/debug-config/:guildId', async (req, res) => {
-            try {
-                const guildId = req.params.guildId;
-                const config = await this.bot.database.get('SELECT * FROM guild_configs WHERE guild_id = ?', [guildId]);
-                const settings = await this.bot.database.get('SELECT * FROM guild_settings WHERE guild_id = ?', [guildId]);
-                res.json({ guild_id: guildId, config, settings });
-            } catch (e) {
-                res.status(500).json({ error: e.message });
+        // Debug endpoints for troubleshooting (admin-only, behind /api/ auth middleware)
+        const requireAdmin = (req, res, next) => {
+            if (!req.user || req.user.role !== 'admin') {
+                return res.status(403).json({ error: 'Admin access required' });
             }
-        });
+            next();
+        };
+        this.app.get('/api/debug/database', requireAdmin, this.debugDatabase.bind(this));
+        this.app.get('/api/debug/guild/:guildId', requireAdmin, this.debugGuild.bind(this));
+        this.app.get('/api/debug/tables', requireAdmin, this.debugTables.bind(this));
         
-        this.app.post('/debug-create-config/:guildId', async (req, res) => {
-            try {
-                const guildId = req.params.guildId;
-                
-                // Create default config (use INSERT OR IGNORE to avoid overwriting existing settings)
-                await this.bot.database.run(`
-                    INSERT OR IGNORE INTO guild_configs (guild_id) VALUES (?)
-                `, [guildId]);
-                // Ensure known default columns exist without replacing user's values
-                await this.bot.database.run(`
-                    UPDATE guild_configs SET
-                        anti_raid_enabled = COALESCE(anti_raid_enabled, 1),
-                        anti_spam_enabled = COALESCE(anti_spam_enabled, 1),
-                        anti_links_enabled = COALESCE(anti_links_enabled, 1),
-                        anti_phishing_enabled = COALESCE(anti_phishing_enabled, 1),
-                        verification_enabled = COALESCE(verification_enabled, 1),
-                        welcome_enabled = COALESCE(welcome_enabled, 1),
-                        tickets_enabled = COALESCE(tickets_enabled, 1),
-                        auto_mod_enabled = COALESCE(auto_mod_enabled, 1),
-                        autorole_enabled = COALESCE(autorole_enabled, 1)
-                    WHERE guild_id = ?
-                `, [guildId]);
-                
-                // Create default bot settings (don't replace existing values)
-                await this.bot.database.run(`
-                    INSERT OR IGNORE INTO guild_settings (guild_id) VALUES (?)
-                `, [guildId]);
-                await this.bot.database.run(`
-                    UPDATE guild_settings SET
-                        welcome_enabled = COALESCE(welcome_enabled, 1),
-                        automod_enabled = COALESCE(automod_enabled, 1)
-                    WHERE guild_id = ?
-                `, [guildId]);
-                
-                res.json({ success: true, message: `Created default config for guild ${guildId}` });
-            } catch (e) {
-                res.status(500).json({ error: e.message });
-            }
-        });
+        // NOTE: Unauthenticated /debug-config and /debug-create-config endpoints have been
+        // removed for security. Use the /api/debug/* endpoints (admin-only) instead.
 
         // Internal test endpoint to trigger a setting-change event for diagnostics
         // Protected by INTERNAL_API_KEY header; INTERNAL_API_KEY must be set
@@ -2005,8 +1991,10 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         this.app.get('/api/guild/:guildId/channels', this.getGuildChannels.bind(this));
         this.app.get('/api/guild/:guildId/roles', this.getGuildRoles.bind(this));
         this.app.get('/api/guild/:guildId/settings', this.getGuildSpecificSettings.bind(this));
-        // NOTE: saveGuildSpecificSettings REMOVED — unsafe, no column allowlist.
-        // All settings writes must go through /api/guilds/:guildId/settings which uses updateGuildSettings.
+        // POST/PATCH aliases for /api/guild/:guildId/settings (singular)
+        // Setup pages POST to this path — forward to updateGuildSettings (same handler as /api/guilds/)
+        this.app.post('/api/guild/:guildId/settings', this.updateGuildSettings.bind(this));
+        this.app.patch('/api/guild/:guildId/settings', this.updateGuildSettings.bind(this));
         
         this.app.get('/api/dashboard-data', this.getDashboardData.bind(this));
         
@@ -2705,8 +2693,9 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
     async authenticateToken(req, res, next) {
         // Skip authentication for admin v3 API routes (they have their own auth)
-        if (req.url.startsWith('/v3/') || req.url.startsWith('/admin/')) {
-            console.log('[authenticateToken] Skipping for admin v3 route:', req.url);
+        // Also skip RFID status endpoint (used by signin page, no auth needed)
+        if (req.url.startsWith('/v3/') || req.url.startsWith('/admin/') || req.url.startsWith('/rfid/')) {
+            console.log('[authenticateToken] Skipping for admin/rfid route:', req.url);
             return next();
         }
 
@@ -3000,15 +2989,11 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
         // Generate CSRF token for OAuth state (JWT-signed, stateless)
         const nonce = require('crypto').randomBytes(16).toString('hex');
-        const stateSecret = process.env.OAUTH_STATE_SECRET;
+        const stateSecret = process.env.OAUTH_STATE_SECRET || process.env.JWT_SECRET;
         if (!stateSecret) {
-            this.bot?.logger?.warn && this.bot.logger.warn('[OAuth] OAUTH_STATE_SECRET not found at runtime, using fallback');
-            console.warn('[OAuth] OAUTH_STATE_SECRET not found, OAuth state will be weaker');
-            // Use a fallback derived from other secrets to avoid completely breaking OAuth
-            const fallbackSecret = process.env.JWT_SECRET || process.env.INTERNAL_API_KEY || 'oauth-fallback-2024';
-            const state = jwt.sign({ n: nonce, ts: Date.now(), ip: req.ip, ua: req.headers['user-agent'] || '', fallback: true }, fallbackSecret, { expiresIn: '10m' });
-            const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${this.discordConfig.clientId}&redirect_uri=${encodeURIComponent(this.discordConfig.redirectUri)}&response_type=code&scope=${encodeURIComponent(this.discordConfig.scope)}&state=${state}`;
-            return res.redirect(authUrl);
+            this.bot?.logger?.error && this.bot.logger.error('[OAuth] No OAUTH_STATE_SECRET or JWT_SECRET configured - OAuth is disabled');
+            console.error('[SECURITY] OAuth state secret not configured. Set OAUTH_STATE_SECRET or JWT_SECRET environment variable.');
+            return res.status(500).send('OAuth is not properly configured. Please contact the administrator.');
         }
         const state = jwt.sign({ n: nonce, ts: Date.now(), ip: req.ip, ua: req.headers['user-agent'] || '' }, stateSecret, { expiresIn: '10m' });
         
@@ -3026,15 +3011,11 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             }
             let decodedState;
             try {
-                const stateSecret = process.env.OAUTH_STATE_SECRET;
-                if (stateSecret) {
-                    decodedState = jwt.verify(state, stateSecret);
-                } else {
-                    // Fallback: try verifying with the same fallback secret used in auth initiation
-                    const fallbackSecret = process.env.JWT_SECRET || process.env.INTERNAL_API_KEY || 'oauth-fallback-2024';
-                    decodedState = jwt.verify(state, fallbackSecret);
-                    this.bot?.logger?.warn && this.bot.logger.warn('[OAuth Callback] Using fallback secret for state verification');
+                const stateSecret = process.env.OAUTH_STATE_SECRET || process.env.JWT_SECRET;
+                if (!stateSecret) {
+                    return res.status(500).send('OAuth is not properly configured. Please contact the administrator.');
                 }
+                decodedState = jwt.verify(state, stateSecret);
             } catch (e) {
                 return res.status(403).send('Invalid OAuth state - verification failed');
             }
@@ -3237,8 +3218,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         res.clearCookie('authToken', { path: '/' });
         res.clearCookie('userId', { path: '/' });
         
-        // Redirect to login page instead of JSON response
-        res.redirect('/login.html');
+        // Redirect to signin page instead of JSON response
+        res.redirect('/signin');
     }
 
     async debugDatabase(req, res) {
@@ -3378,7 +3359,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 sampleSettings: allSettings
             });
         } catch (error) {
-            res.status(500).json({ error: error.message, stack: error.stack });
+            console.error('[Debug] debugGuild error:', error);
+            res.status(500).json({ error: error.message });
         }
     }
 
@@ -3404,7 +3386,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             
             res.json(result);
         } catch (error) {
-            res.status(500).json({ error: error.message, stack: error.stack });
+            console.error('[Debug] debugTables error:', error);
+            res.status(500).json({ error: error.message });
         }
     }
 
@@ -4092,9 +4075,9 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             
             const analytics = await this.bot.database.all(`
                 SELECT * FROM analytics 
-                WHERE guild_id = ? AND date >= date('now', '-${days} days')
+                WHERE guild_id = ? AND date >= date('now', '-' || ? || ' days')
                 ORDER BY date DESC, hour DESC
-            `, [guildId]);
+            `, [guildId, days]);
             
             res.json(analytics);
         } catch (error) {
@@ -5256,30 +5239,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         }
     }
 
-    async getAnalytics(req, res) {
-        try {
-            const timeframe = req.query.timeframe || '24h';
-            const guildId = req.query.guildId || this.getDefaultGuildId();
-            
-            // Return sample analytics data
-            res.json({
-                threatsBlocked: 45,
-                messagesScanned: 12847,
-                usersVerified: 234,
-                timeframe: timeframe,
-                topThreats: [
-                    { type: 'Spam', description: 'Message flooding attempts', count: 23 },
-                    { type: 'Suspicious Links', description: 'Malicious URL detection', count: 12 },
-                    { type: 'Raid Attempts', description: 'Mass join events', count: 8 },
-                    { type: 'Phishing', description: 'Fake login attempts', count: 2 }
-                ],
-                trendData: [12, 8, 15, 9, 23, 17, 11]
-            });
-        } catch (error) {
-            this.bot.logger.error('Analytics error:', error);
-            res.status(500).json({ error: 'Failed to load analytics' });
-        }
-    }
+    // NOTE: Duplicate getAnalytics with hardcoded sample data was removed.
+    // The real getAnalytics method (querying the analytics table) is defined above.
 
     async getLogs(req, res) {
         try {
@@ -9947,7 +9908,11 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         try {
             // Verify internal API key
             const apiKey = req.headers['x-api-key'];
-            const expectedKey = process.env.INTERNAL_API_KEY || 'change-this-key';
+            const expectedKey = process.env.INTERNAL_API_KEY;
+            if (!expectedKey) {
+                console.error('[SECURITY] INTERNAL_API_KEY not configured - bot event endpoint disabled');
+                return res.status(500).json({ error: 'Server not properly configured' });
+            }
             
             if (apiKey !== expectedKey) {
                 return res.status(401).json({ error: 'Unauthorized' });
@@ -10035,139 +10000,13 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         }
     }
 
-    /**
-     * Update guild settings from bot commands
-     * Requires internal API key for security
-     */
-    async updateGuildSettings(req, res) {
-        try {
-            // Verify authentication: Accept INTERNAL_API_KEY (bot-to-dashboard) or JWT (user dashboard)
-            const apiKey = req.headers['x-api-key'];
-            const authHeader = req.headers['authorization'];
-            const expectedKey = process.env.INTERNAL_API_KEY || 'change-this-key';
-            
-            let authenticated = false;
-            let isInternalCall = false;
-            let userId = null;
-            let userTag = null;
-
-            // Check if API key matches (bot-to-dashboard communication)
-            if (apiKey && apiKey === expectedKey) {
-                authenticated = true;
-                isInternalCall = true;
-            }
-            // Otherwise check JWT token (dashboard user)
-            else if (authHeader && authHeader.startsWith('Bearer ')) {
-                const token = authHeader.replace('Bearer ', '');
-                try {
-                    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
-                    authenticated = true;
-                    isInternalCall = false;
-                    userId = decoded.userId;
-                    userTag = decoded.username;
-                    // User must have permissions for this guild
-                    const userGuilds = decoded.guilds || [];
-                    const guildId = req.params.guildId;
-                    if (guildId && !userGuilds.some(g => g.id === guildId && (g.permissions & 0x8) === 0x8)) {
-                        return res.status(403).json({ error: 'No permission to manage this server' });
-                    }
-                } catch (jwtError) {
-                    console.error('[AUTH] JWT verification failed:', jwtError.message);
-                    return res.status(401).json({ error: 'Invalid or expired token' });
-                }
-            }
-            
-            if (!authenticated) {
-                return res.status(401).json({ error: 'Unauthorized' });
-            }
-
-            const guildId = req.params.guildId;
-            const settings = req.body;
-
-            if (!guildId) {
-                return res.status(400).json({ error: 'Guild ID required' });
-            }
-
-            // Get current settings for before/after comparison
-            const beforeData = await this.bot.database.get(
-                'SELECT * FROM guild_configs WHERE guild_id = ?',
-                [guildId]
-            );
-
-            // Build UPDATE query dynamically
-            const updates = [];
-            const values = [];
-            
-            for (const [key, value] of Object.entries(settings)) {
-                updates.push(`${key} = ?`);
-                values.push(value);
-            }
-            
-            if (updates.length === 0) {
-                return res.status(400).json({ error: 'No settings provided' });
-            }
-
-            values.push(guildId);
-
-            // Update database
-            await this.bot.database.run(`
-                UPDATE guild_configs 
-                SET ${updates.join(', ')}
-                WHERE guild_id = ?
-            `, values);
-
-            console.log(`Ã¢Å“â€¦ Guild settings updated${isInternalCall ? ' from bot command' : ' from dashboard'} for ${guildId}:`, Object.keys(settings));
-
-            // Log dashboard action
-            if (this.bot.logger && !isInternalCall) {
-                await this.bot.logger.logDashboardAction({
-                    adminId: userId || 'internal',
-                    adminTag: userTag || 'system',
-                    guildId,
-                    eventType: 'update_guild_settings',
-                    beforeData: beforeData,
-                    afterData: settings,
-                    ip: req.ip,
-                    userAgent: req.headers['user-agent']
-                });
-            }
-
-            // Broadcast setting changes to dashboard
-            for (const [key, value] of Object.entries(settings)) {
-                this.broadcastToGuild(guildId, {
-                    type: 'setting_change',
-                    guildId: guildId,
-                    data: {
-                        key: key,
-                        value: value,
-                        source: 'bot_command',
-                        timestamp: Date.now()
-                    }
-                });
-                // Emit universal setting change notification (internal API source)
-                try {
-                    if (typeof this.bot.emitSettingChange === 'function') {
-                        // Use 'internal' as userId to indicate non-dashboard origin
-                        await this.bot.emitSettingChange(guildId, 'internal', key, value, null, 'configuration');
-                    }
-                } catch (e) {
-                    if (this.bot.logger?.warn) this.bot.logger.warn('emitSettingChange failed in updateGuildSettings:', e?.message || e);
-                }
-            }
-
-            res.json({ success: true, message: 'Settings updated and broadcast' });
-        } catch (error) {
-            if (this.bot.logger) {
-                await this.bot.logger.logError({
-                    error,
-                    context: 'dashboard_update_guild_settings',
-                    guildId: req.params.guildId
-                });
-            }
-            console.error('Error updating guild settings:', error);
-            res.status(500).json({ error: 'Failed to update settings' });
-        }
+    // NOTE: First updateGuildSettings definition was removed (duplicate).
+    // The canonical updateGuildSettings with comprehensive allowlist is defined below (~line 10735+).
+    // This placeholder ensures no dead code remains.
+    async _updateGuildSettingsLegacy_removed() {
+        // Intentionally empty — merged into the main updateGuildSettings method below.
     }
+
 
     async getGuildTickets(req, res) {
         try {
@@ -10760,32 +10599,154 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 return res.status(403).json({ error: access.error });
             }
 
-            // Whitelist of allowed settings to update
+            // Comprehensive whitelist of allowed settings to update
+            // Covers all setup pages: moderation, anti-raid, anti-spam, verification,
+            // welcome/goodbye, autorole, anti-nuke, anti-phishing, and general config
             const allowedSettings = [
-                'ai_enabled',
-                'anti_raid_enabled',
-                'anti_spam_enabled',
-                'anti_phishing_enabled',
-                'antinuke_enabled',
-                'welcome_enabled',
-                'tickets_enabled',
-                'auto_mod_enabled',
-                'autorole_enabled'
+                // === Core Feature Toggles ===
+                'ai_enabled', 'anti_raid_enabled', 'anti_spam_enabled', 'anti_links_enabled',
+                'anti_phishing_enabled', 'antinuke_enabled', 'welcome_enabled', 'tickets_enabled',
+                'auto_mod_enabled', 'autorole_enabled', 'verification_enabled', 'xp_enabled',
+                'antiraid_enabled', 'antispam_enabled', 'antiphishing_enabled', 'reactionroles_enabled',
+
+                // === Channel & Role IDs ===
+                'log_channel_id', 'mod_role_id', 'admin_role_id', 'mute_role_id',
+                'verified_role_id', 'unverified_role_id', 'verification_channel_id',
+                'welcome_channel_id', 'welcome_channel', 'goodbye_channel_id', 'goodbye_channel',
+                'ticket_category_id', 'ticket_log_channel_id', 'ticket_log_channel',
+                'ticket_channel_id', 'ticket_category', 'ticket_panel_channel', 'ticket_transcript_channel',
+                'ticket_manage_role', 'ticket_staff_role', 'ticket_support_roles',
+                'autorole_role_id', 'alert_channel', 'mod_log_channel',
+                'level_up_channel', 'appeal_review_channel', 'phishing_log_channel',
+
+                // === Messages & Text ===
+                'welcome_message', 'goodbye_message', 'verify_message',
+                'ticket_welcome_message', 'ticket_categories',
+                'level_up_message', 'appeal_message_template', 'appeal_url',
+                'word_filter_custom_message',
+
+                // === Anti-Raid Settings ===
+                'raid_threshold', 'raid_interval', 'raid_join_threshold', 'raid_time_window',
+                'raid_lockdown_duration_ms', 'raid_action', 'account_age_hours',
+                'account_age_enabled', 'min_account_age',
+
+                // === Anti-Spam Settings ===
+                'spam_threshold', 'spam_interval', 'spam_action',
+                'max_mentions', 'max_lines', 'max_emojis', 'link_whitelist',
+                'antispam_bypass_channels', 'antispam_flood_mid', 'antispam_flood_high',
+                'antispam_duplicate_mid', 'antispam_duplicate_high', 'antispam_mention_threshold',
+                'antispam_emoji_mid', 'antispam_emoji_high', 'antispam_link_threshold',
+                'antispam_caps_ratio', 'antispam_caps_min_letters',
+
+                // === Anti-Nuke Settings ===
+                'antinuke_limit', 'antinuke_window', 'antinuke_punishment',
+                'antinuke_protections', 'antinuke_whitelist',
+                'antinuke_role_limit', 'antinuke_channel_limit', 'antinuke_ban_limit',
+
+                // === Anti-Phishing Settings ===
+                'antiphishing_enabled', 'phishing_action', 'phishing_sensitivity',
+                'phishing_delete_message', 'phishing_log_all', 'phishing_dm_user',
+                'phishing_notify_staff', 'phishing_escalate', 'phishing_ban_threshold',
+                'phishing_reset_hours', 'phishing_whitelist_roles', 'phishing_ignored_channels',
+
+                // === Verification Settings ===
+                'verification_type', 'verification_method', 'verification_level',
+                'verify_timeout', 'dm_verification',
+                'manual_approval_enabled', 'auto_kick_unverified', 'verification_role',
+
+                // === Welcome/Goodbye Settings ===
+                'welcome_embed_enabled', 'welcome_ping_user', 'welcome_delete_after',
+                'goodbye_enabled', 'goodbye_embed_enabled', 'goodbye_delete_after',
+
+                // === Autorole Settings ===
+                'bot_autorole', 'autorole_delay', 'autoroles',
+                'reaction_roles_enabled', 'reaction_channel', 'reaction_title',
+                'reaction_desc', 'reaction_roles',
+
+                // === Moderation Settings ===
+                'dm_on_warn', 'dm_on_kick', 'dm_on_ban', 'max_warnings',
+                'warning_action', 'warning_expiry_days', 'exempt_staff_automod',
+                'auto_timeout_enabled', 'default_timeout_duration', 'max_timeout_duration',
+                'spam_timeout_duration', 'toxicity_timeout_duration', 'dm_timeout_notification',
+                'warning_system_enabled', 'warnings_before_timeout', 'warnings_before_kick',
+                'dm_warning_notification',
+
+                // === XP & Levels ===
+                'xp_per_message', 'xp_cooldown', 'xp_multiplier',
+                'voice_xp_enabled', 'voice_xp_per_minute', 'min_voice_time',
+                'level_announcement',
+
+                // === Appeal System ===
+                'appeal_system_enabled', 'appeal_cooldown_hours', 'appeal_auto_dm',
+                'appeal_require_reason', 'appeal_min_length',
+
+                // === Content Filters ===
+                'caps_percentage', 'emoji_limit', 'mention_limit', 'toxicity_threshold',
+                'detect_duplicates', 'filter_zalgo',
+                'word_filter_enabled', 'banned_words', 'banned_phrases',
+                'word_filter_action', 'word_filter_mode', 'filter_display_names',
+                'log_filtered_messages', 'word_filter_whitelist_channels', 'word_filter_whitelist_roles',
+
+                // === Ticket System ===
+                'ticket_autoclose', 'ticket_autoclose_hours',
+
+                // === Mod Permissions ===
+                'mod_perm_tickets', 'mod_perm_analytics', 'mod_perm_security',
+                'mod_perm_overview', 'mod_perm_customize',
+                'admin_perm_tickets', 'admin_perm_analytics', 'admin_perm_security',
+                'admin_perm_overview', 'admin_perm_customize',
+
+                // === General Config ===
+                'prefix', 'language', 'timezone', 'premium_tier'
             ];
 
             const validUpdates = {};
+            
+            // Dynamically check which columns actually exist in the table
+            // This prevents SQL errors when a column hasn't been added yet
+            let existingColumns;
+            try {
+                const tableInfo = await this.bot.database.all('PRAGMA table_info(guild_configs)');
+                existingColumns = new Set(tableInfo.map(col => col.name));
+            } catch (e) {
+                this.bot.logger?.warn('Could not get table info for guild_configs:', e.message);
+                existingColumns = null; // Fall back to allowing all allowlisted keys
+            }
+            
+            const rejectedKeys = [];
+            const missingColumns = [];
             for (const key of Object.keys(updates)) {
                 if (allowedSettings.includes(key)) {
-                    validUpdates[key] = updates[key];
+                    if (existingColumns && !existingColumns.has(key)) {
+                        missingColumns.push(key);
+                    } else {
+                        validUpdates[key] = updates[key];
+                    }
+                } else {
+                    rejectedKeys.push(key);
                 }
+            }
+            if (rejectedKeys.length > 0) {
+                this.bot.logger?.warn(`[SECURITY] Rejected non-allowlisted setting keys: ${rejectedKeys.join(', ')}`);
+            }
+            if (missingColumns.length > 0) {
+                this.bot.logger?.warn(`[DB] Skipped settings with no matching column: ${missingColumns.join(', ')}. Run migrations to add them.`);
             }
 
             if (Object.keys(validUpdates).length === 0) {
-                return res.status(400).json({ error: 'No valid fields to update' });
+                const msg = missingColumns.length > 0
+                    ? `No valid fields to update. ${missingColumns.length} field(s) skipped (columns not in database): ${missingColumns.join(', ')}`
+                    : 'No valid fields to update';
+                return res.status(400).json({ error: msg });
             }
 
             // Read previous settings for confirmation messages
             const previous = await this.bot.database.get('SELECT * FROM guild_configs WHERE guild_id = ?', [guildId]);
+
+            // Ensure guild config row exists before trying to UPDATE
+            if (!previous) {
+                await this.bot.database.run('INSERT OR IGNORE INTO guild_configs (guild_id) VALUES (?)', [guildId]);
+            }
 
             // Update database
             const setClauses = Object.keys(validUpdates).map(key => `${key} = ?`).join(', ');
@@ -10851,7 +10812,12 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 this.bot.logger?.warn('Broadcast to guild failed:', e.message || e);
             }
 
-            res.json({ ok: true, updated: validUpdates });
+            const response = { ok: true, success: true, updated: validUpdates };
+            if (missingColumns.length > 0) {
+                response.skipped = missingColumns;
+                response.message = `Saved ${Object.keys(validUpdates).length} setting(s). ${missingColumns.length} field(s) not yet in database.`;
+            }
+            res.json(response);
         } catch (error) {
             this.bot.logger.error('Error updating guild settings:', error);
             res.status(500).json({ error: 'Failed to update settings' });

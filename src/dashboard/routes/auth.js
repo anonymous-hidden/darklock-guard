@@ -84,11 +84,11 @@ class AuthRoutes {
         const redirectUrl = process.env.DASHBOARD_ORIGIN || 'http://localhost:3001';
 
         if (error) {
-            return res.redirect(`${redirectUrl}/login.html?error=${encodeURIComponent(error)}`);
+            return res.redirect(`/login?error=${encodeURIComponent(error)}`);
         }
 
         if (!code) {
-            return res.redirect(`${redirectUrl}/login.html?error=no_code`);
+            return res.redirect(`/login?error=no_code`);
         }
 
         // CSRF Protection: Validate OAuth state parameter
@@ -98,7 +98,7 @@ class AuthRoutes {
             console.error(`[OAuth] Expected: ${expectedState}, Received: ${state}`);
             // Clear the state to prevent replay
             if (req.session) delete req.session.oauthState;
-            return res.redirect(`${redirectUrl}/login.html?error=invalid_state`);
+            return res.redirect(`/login?error=invalid_state`);
         }
         
         // Clear the state - one-time use only
@@ -254,11 +254,11 @@ class AuthRoutes {
             // Discord OAuth ALWAYS redirects to user dashboard
             // Admin dashboard is ONLY accessible via username/password login
             this.bot.logger?.info(`Discord OAuth: Redirecting user ${discordUser.username} to user dashboard (role: ${role})`);
-            res.redirect(`${redirectUrl}/dashboard.html`);
+            res.redirect(`/dashboard`);
 
         } catch (error) {
             this.bot.logger?.error('Discord OAuth error:', error);
-            res.redirect(`${redirectUrl}/login.html?error=oauth_failed`);
+            res.redirect(`/login?error=oauth_failed`);
         }
     }
 
