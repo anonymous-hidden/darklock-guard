@@ -344,6 +344,97 @@ router.get('/signin', (req, res) => {
 });
 
 /**
+ * POST /signin/rfid - Handle RFID card authentication
+ * Rate limited: 5 attempts per 15 minutes per IP
+ */
+router.post('/signin/rfid', signinLimiter, async (req, res) => {
+    try {
+        // Try to load RFID client
+        let rfidClient;
+        try {
+            rfidClient = require('../../hardware/rfid_client');
+        } catch (err) {
+            console.error('[Admin Auth] RFID client not available:', err.message);
+            return res.status(503).json({
+                success: false,
+                error: 'RFID authentication not available'
+            });
+        }
+
+        // Request card scan
+        const scanResult = await rfidClient.scanAdmin();
+
+        if (!scanResult.allowed) {
+            await logAdminAudit('LOGIN_FAILED', null, { 
+                method: 'rfid',
+                reason: 'card_not_authorized'
+            }, req);
+
+            return res.status(401).json({
+                success: false,
+                error: scanResult.reason || 'Card not authorized'
+            });
+        }
+
+        // Card authorized - map to admin account
+        // For now, we'll look up by checking if an admin exists
+        // In production, you might want to store rfid_card_name in admins table
+        const admins = await db.all('SELECT * FROM admins WHERE active = 1');
+        
+        if (admins.length === 0) {
+            return res.status(500).json({
+                success: false,
+                error: 'No active admin accounts'
+            });
+        }
+
+        // Use the first active admin (owner)
+        // TODO: Add rfid_card_name column to admins table for proper mapping
+        const admin = admins.find(a => a.role === 'owner') || admins[0];
+
+        // Authentication successful
+        const ip = getClientIP(req);
+        
+        // Update last login
+        await updateLastLogin(admin.id, ip);
+
+        // Generate JWT token
+        const token = generateAdminToken(admin);
+
+        // Set httpOnly secure cookie
+        res.cookie('admin_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 1000, // 1 hour
+            path: '/'
+        });
+
+        // Log successful login
+        await logAdminAudit('LOGIN_SUCCESS', admin.id, { 
+            method: 'rfid',
+            card_name: scanResult.user,
+            ip 
+        }, req);
+
+        console.log(`[Admin Auth] Admin logged in via RFID: ${admin.email} (card: ${scanResult.user}) from ${ip}`);
+
+        res.json({
+            success: true,
+            redirect: '/admin'
+        });
+
+    } catch (err) {
+        console.error('[Admin Auth] RFID signin error:', err);
+        
+        res.status(500).json({
+            success: false,
+            error: 'An error occurred. Please try again.'
+        });
+    }
+});
+
+/**
  * POST /signin - Handle admin authentication
  * Rate limited: 5 attempts per 15 minutes per IP+email
  */
