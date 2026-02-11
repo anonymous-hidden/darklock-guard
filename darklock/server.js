@@ -47,6 +47,8 @@ const { setDiscordBot: setDiscordBotV2 } = require('./routes/admin-api-v2');
 // v3 Admin API - Full RBAC dashboard with 12 tabs
 const adminApiV3Routes = require('./routes/admin-api-v3');
 const { setDiscordBot: setDiscordBotV3 } = require('./routes/admin-api-v3');
+// Team Management routes
+const { router: teamManagementRoutes, initializeTeamSchema } = require('./routes/team-management');
 // Public API routes (maintenance status, health checks)
 const publicApiRoutes = require('./routes/public-api');
 // RBAC schema initialization
@@ -92,6 +94,9 @@ class DarklockPlatform {
         // Trust proxy for secure cookies behind reverse proxy
         this.app.set('trust proxy', 1);
         
+        // Determine if we're on a secure connection
+        const isSecure = process.env.NODE_ENV === 'production' || process.env.FORCE_HTTPS === 'true';
+        
         // Comprehensive security headers
         this.app.use(helmet({
             // Content Security Policy
@@ -108,15 +113,15 @@ class DarklockPlatform {
                     objectSrc: ["'none'"],
                     baseUri: ["'self'"],
                     formAction: ["'self'"],
-                    upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
+                    upgradeInsecureRequests: isSecure ? [] : null
                 }
             },
-            // HTTP Strict Transport Security
-            hsts: {
-                maxAge: 31536000, // 1 year
+            // HTTP Strict Transport Security (HTTPS only)
+            hsts: isSecure ? {
+                maxAge: 31536000,
                 includeSubDomains: true,
                 preload: true
-            },
+            } : false,
             // Prevent clickjacking
             frameguard: {
                 action: 'deny'
@@ -130,7 +135,12 @@ class DarklockPlatform {
                 policy: 'strict-origin-when-cross-origin'
             },
             // Don't expose X-Powered-By
-            hidePoweredBy: true
+            hidePoweredBy: true,
+            // Disable COOP/COEP headers on HTTP to avoid browser warnings
+            crossOriginOpenerPolicy: isSecure ? { policy: 'same-origin' } : false,
+            crossOriginEmbedderPolicy: false,
+            crossOriginResourcePolicy: false,
+            originAgentCluster: false
         }));
         
         // Additional security headers not covered by helmet
@@ -800,6 +810,10 @@ class DarklockPlatform {
         // Admin auth routes (/signin, /signout)
         this.app.use('/', adminAuthRoutes);
         
+        // Public API routes (maintenance status, health, RFID - no auth required)  
+        // MUST be mounted BEFORE protected admin routes
+        this.app.use('/api', publicApiRoutes);
+        
         // Admin API routes (protected) - Note: Frontend uses /api/admin/*
         this.app.use('/api/admin', adminApiRoutes);
         
@@ -809,17 +823,17 @@ class DarklockPlatform {
         // Admin API v3 routes (Full RBAC dashboard with 12 tabs)
         this.app.use('/api', adminApiV3Routes.router);
         
-        // Public API routes (maintenance status, health - no auth required)
-        this.app.use('/api', publicApiRoutes);
+        // Team Management API routes (under /api/admin for consistency with other admin APIs)
+        this.app.use('/api/admin/team', teamManagementRoutes);
         
-        // Admin dashboard - New modern dashboard v3 (default)
+        // Admin dashboard (v2 - stable version)
         this.app.get('/admin', requireAdminAuth, (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/admin-v3.html'));
+            res.sendFile(path.join(__dirname, 'views/admin-v2.html'));
         });
         
-        // Admin dashboard v2 (legacy)
-        this.app.get('/admin/v2', requireAdminAuth, (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/admin-v2.html'));
+        // Admin dashboard v3 (newer version)
+        this.app.get('/admin/v3', requireAdminAuth, (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/admin-panel.html'));
         });
         
         // Admin SPA catch-all - handles /admin/users etc
@@ -927,6 +941,42 @@ class DarklockPlatform {
             res.sendFile(path.join(siteViewsDir, 'bug-reports.html'));
         });
         
+        // Public bug report submission endpoint (no auth required)
+        this.app.post('/api/bug-report', express.json(), async (req, res) => {
+            try {
+                const { type, severity, title, description, environment, email } = req.body;
+                
+                if (!type || !severity || !title || !description) {
+                    return res.status(400).json({ success: false, error: 'Missing required fields' });
+                }
+                
+                // Ensure table exists
+                await db.run(`CREATE TABLE IF NOT EXISTS bug_reports (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    type TEXT NOT NULL,
+                    severity TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    environment TEXT,
+                    email TEXT,
+                    timestamp TEXT NOT NULL,
+                    userAgent TEXT,
+                    status TEXT DEFAULT 'open'
+                )`);
+                
+                await db.run(
+                    `INSERT INTO bug_reports (type, severity, title, description, environment, email, timestamp, userAgent, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open')`,
+                    [type, severity, title.substring(0, 200), description.substring(0, 5000), (environment || '').substring(0, 500), (email || '').substring(0, 100), new Date().toISOString(), req.headers['user-agent'] || '']
+                );
+                
+                console.log(`[Bug Report] New ${severity} ${type} report: "${title}"`);
+                res.json({ success: true, message: 'Bug report submitted successfully' });
+            } catch (err) {
+                console.error('[Bug Report] Submit error:', err);
+                res.status(500).json({ success: false, error: 'Failed to submit report' });
+            }
+        });
+        
         // Redirect root to platform
         this.app.get('/', (req, res) => {
             res.redirect('/platform');
@@ -962,6 +1012,8 @@ class DarklockPlatform {
             await db.initialize();
             await initializeAdminTables();
             await initializeAdminSchema();
+            // Team schema initialized manually via setup-team-db.js
+            // await initializeTeamSchema();
             
             // Initialize RBAC schema (roles, permissions, maintenance state, etc.)
             console.log('[Darklock Platform] Initializing RBAC schema...');
@@ -1269,27 +1321,32 @@ class DarklockPlatform {
         console.log('[Darklock Platform] Registering admin auth routes at /');
         existingApp.use('/', adminAuthRoutes);
         
+        // Public API routes (maintenance status, health, RFID - no auth required)
+        // MUST be mounted BEFORE protected admin routes
+        console.log('[Darklock Platform] Registering public API routes at /api');
+        existingApp.use('/api', publicApiRoutes);
+        
         // Admin API routes (protected) - Frontend uses /api/admin/*
         console.log('[Darklock Platform] Registering admin API routes at /api/admin');
         existingApp.use('/api/admin', adminApiRoutes);
         existingApp.use('/api/admin', adminApiV2Routes.router);
         
+        // Team Management API routes
+        console.log('[Darklock Platform] Registering team management routes at /api/admin/team');
+        existingApp.use('/api/admin/team', teamManagementRoutes);
+        
         // Admin API v3 routes (Full RBAC dashboard with 12 tabs)
         console.log('[Darklock Platform] Registering admin API v3 routes at /api');
         existingApp.use('/api', adminApiV3Routes.router);
         
-        // Public API routes (maintenance status, health - no auth required)
-        console.log('[Darklock Platform] Registering public API routes at /api');
-        existingApp.use('/api', publicApiRoutes);
-        
-        // Admin dashboard - New modern dashboard v3 (default)
+        // Admin dashboard (v2 - stable version)
         existingApp.get('/admin', requireAdminAuth, (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/admin-v3.html'));
+            res.sendFile(path.join(__dirname, 'views/admin-v2.html'));
         });
         
-        // Admin dashboard v2 (legacy)
-        existingApp.get('/admin/v2', requireAdminAuth, (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/admin-v2.html'));
+        // Admin dashboard v3 (newer version)
+        existingApp.get('/admin/v3', requireAdminAuth, (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/admin-panel.html'));
         });
         
         // Admin dashboard legacy route redirect
@@ -1349,6 +1406,10 @@ class DarklockPlatform {
                 // Initialize admin dashboard schema
                 console.log('[Darklock Platform] Initializing admin dashboard schema...');
                 await initializeAdminSchema();
+                
+                // Initialize team management schema
+                console.log('[Darklock Platform] Initializing team management schema...');
+                await initializeTeamSchema();
                 
                 // Initialize RBAC schema (roles, permissions, etc.)
                 console.log('[Darklock Platform] Initializing RBAC schema...');

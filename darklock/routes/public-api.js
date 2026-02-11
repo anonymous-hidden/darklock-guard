@@ -174,4 +174,37 @@ router.get('/status', async (req, res) => {
     }
 });
 
+// ============================================================================
+// RFID GATEWAY STATUS (PUBLIC)
+// ============================================================================
+
+/**
+ * GET /api/rfid/status
+ * Check RFID gateway status for signin page
+ */
+router.get('/rfid/status', async (req, res) => {
+    try {
+        // Try to load RFID client
+        const rfidClient = require('../../hardware/rfid_client');
+        
+        // Query gateway status
+        const status = await rfidClient.getStatus();
+        
+        res.json({
+            success: true,
+            online: status.online || false,
+            cards: status.cards || 0,
+            stats: status.stats || {}
+        });
+    } catch (err) {
+        // Gateway offline or not available
+        res.json({
+            success: true,
+            online: false,
+            cards: 0,
+            error: err.message
+        });
+    }
+});
+
 module.exports = router;
