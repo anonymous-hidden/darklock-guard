@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "crates/guard-core",
+    "crates/guard-service",
+    "crates/updater-helper",
+    "desktop/src-tauri",
+]
+resolver = "2"

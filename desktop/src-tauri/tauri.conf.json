@@ -1,0 +1,37 @@
+{
+  "productName": "Darklock Guard",
+  "version": "0.1.0",
+  "identifier": "com.darklock.guard",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Darklock Guard",
+        "width": 1280,
+        "height": 800,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "trayIcon": {
+      "iconPath": "icons/32x32.png"
+    }
+  },
+  "bundle": {
+    "icon": [
+      "icons/icon.ico",
+      "icons/icon.icns",
+      "icons/icon.png",
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png"
+    ]
+  }
+}

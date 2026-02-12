@@ -1,0 +1,35 @@
+[package]
+name = "updater-helper"
+version = "0.1.0"
+edition = "2021"
+authors = ["Darklock Security Engineering"]
+license = "MIT"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+ed25519-dalek = { version = "2", features = ["rand_core", "serde"] }
+base64 = "0.21"
+tempfile = "3"
+walkdir = "2"
+fs_extra = "1"
+chrono = { version = "0.4", features = ["serde"] }
+reqwest = { version = "0.11", features = ["blocking", "rustls-tls"] }
+tar = "0.4"
+flate2 = "1"
+rayon = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+uuid = { version = "1", features = ["v4"] }
+hex = "0.4"
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tempfile = "3"
+rand = "0.8"
+sha2 = "0.10"
+hex = "0.4"

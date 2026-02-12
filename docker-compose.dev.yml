@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: darklock-guard-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: darklock
+      POSTGRES_PASSWORD: darklock
+      POSTGRES_DB: darklock_guard
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: ../platform/api
+      dockerfile: Dockerfile
+    container_name: darklock-guard-api
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    env_file:
+      - ../platform/api/.env.development
+    environment:
+      DATABASE_URL: postgresql://darklock:darklock@postgres:5432/darklock_guard
+    ports:
+      - "4200:4200"
+
+volumes:
+  pgdata:
