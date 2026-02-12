@@ -20,9 +20,9 @@
 
 ## 📖 Overview
 
-**Darklock Guard** is a showcase project demonstrating enterprise-grade security architecture in a cross-platform desktop application. This project highlights advanced implementation of file integrity monitoring, cryptographic security, and modern UI/UX patterns.
+**Darklock Guard** is a private project being open-sourced as a technical showcase. This repository demonstrates enterprise-grade security architecture in a cross-platform desktop application, highlighting advanced implementation of file integrity monitoring, cryptographic security, and modern UI/UX patterns.
 
-> **Note:** This is a portfolio/demonstration project showcasing security architecture and full-stack development capabilities. It demonstrates real-world implementation of security concepts, system monitoring, and cross-platform desktop application development.
+> **⚠️ Important:** This is a **private project made open source for portfolio/demonstration purposes only**. It is not intended for public installation or use. The code is provided to showcase security architecture, full-stack development capabilities, and technical implementation patterns.
 
 ### 🎯 What This Project Demonstrates
 
@@ -305,15 +305,17 @@ const result = await invoke('get_status');
 
 ---
 
-## �️ Development Insights
+## 🛠️ Development Reference
 
-### Building & Running
+> **Note:** These commands are provided for reference to understand the development workflow. This is not a guide for public installation.
+
+### Build Commands (Reference)
 
 ```bash
-# Development mode with hot reload
+# Development mode with hot reload (if running locally)
 cd desktop && npm run tauri
 
-# Build optimized release
+# Production build command
 npm run tauri:build
 # Output: desktop/src-tauri/target/release/bundle/
 ```
@@ -461,7 +463,7 @@ This project demonstrates integration with:
 
 MIT License - See [LICENSE](LICENSE) for details.
 
-This is a demonstration/portfolio project showcasing security architecture and full-stack development capabilities.
+**⚠️ Disclaimer:** This is a **private project open-sourced for demonstration purposes only**. The code is provided as-is to showcase technical capabilities and implementation patterns. It is not intended for public deployment, modification, or use in production environments.
 
 ---
 
