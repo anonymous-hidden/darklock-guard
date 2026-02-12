@@ -1,2 +1,54 @@
+# Rust
 /target/
 **/*.rs.bk
+Cargo.lock
+
+# Node
+node_modules/
+dist/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Tauri
+desktop/src-tauri/target/
+desktop/src-tauri/WixTools/
+
+# Build outputs
+*.exe
+*.dmg
+*.deb
+*.rpm
+*.AppImage
+
+# Sensitive files
+*.key
+*.pem
+*.p12
+config.json
+secrets.json
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Test files
+*.test.js
+*.spec.js
+coverage/
