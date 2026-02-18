@@ -47,72 +47,69 @@ module.exports = {
 
 async function sendSetupDM(owner, guild, client) {
     try {
+        const dashboardURL = process.env.DASHBOARD_URL || 'https://darklock.xyz/dashboard';
+        
         const setupEmbed = new EmbedBuilder()
-            .setAuthor({ name: `Thanks for adding ${CONFIG.BOT_NAME}!`, iconURL: client.user.displayAvatarURL() })
-            .setTitle('??? Welcome to Guardian Security Bot!')
-            .setDescription(`Hey ${owner.user.username}! Thanks for adding me to **${guild.name}**.\n\nI'm here to keep your server safe with powerful security and moderation tools.`)
+            .setTitle('🛡️ Welcome to DarkLock!')
+            .setDescription(`
+Thank you for adding **DarkLock** to **${guild.name}**!
+
+I'm an advanced security and moderation bot designed to protect your server. I'm currently performing an **initial security scan** and **automatic backup** - you'll receive a detailed report shortly.
+
+**🚀 Quick Start Guide:**
+
+**1️⃣ Run Setup Wizard** → \`/wizard\`
+Interactive guided setup for all features
+
+**2️⃣ Configure Security** → \`/security enable\`
+Enable protection features (anti-raid, anti-spam, phishing detection)
+
+**3️⃣ Optional: Server Setup** → \`/serversetup [template]\`
+Create complete server structure with channels & roles
+Templates: Gaming, Business, Education, Creative, General
+
+**4️⃣ Access Web Dashboard** → [${dashboardURL}](${dashboardURL})
+Configure advanced settings, view analytics, manage quarantine
+            `)
             .setColor(CONFIG.BOT_COLOR)
+            .setThumbnail(client.user.displayAvatarURL())
             .addFields(
-                {
-                    name: '? Quick Start Guide',
-                    value: '**1.** Run `/wizard` for interactive setup\n**2.** Configure security with `/security`\n**3.** Set up welcome & verification\n**4.** Enable moderation logging',
-                    inline: false
+                { 
+                    name: '🔒 Security Features', 
+                    value: '• **Anti-Raid** - Stops coordinated attacks\n• **Anti-Spam** - Filters spam & flooding\n• **Link Protection** - Blocks phishing & malicious URLs\n• **Toxicity Filter** - Removes harmful content\n• **Proactive Scanning** - Regular security audits', 
+                    inline: false 
                 },
-                {
-                    name: '??? Security & Protection',
-                    value: '� **Anti-Nuke** - Protects against mass deletions\n� **Anti-Raid** - Detects coordinated attacks\n� **Anti-Spam** - Stops message floods\n� **Anti-Phishing** - Blocks malicious links\n� **Verification System** - Screen new members',
-                    inline: false
+                { 
+                    name: '⚖️ Moderation Tools', 
+                    value: '`/ban` `/kick` `/timeout` `/warn` `/purge` `/lockdown`\nComplete moderation suite with auto-logging', 
+                    inline: true 
                 },
-                {
-                    name: '?? Moderation Arsenal',
-                    value: '� Ban, Kick, Timeout, Warn\n� Mass purge & channel lock\n� Case management system\n� Mod notes & user tracking\n� Automated actions & logging',
-                    inline: true
+                { 
+                    name: '🎫 Utility Commands', 
+                    value: '`/ticket` `/serverinfo` `/userinfo` `/analytics` `/status` `/help`', 
+                    inline: true 
                 },
-                {
-                    name: '??? Advanced Tickets',
-                    value: '� Multi-category support\n� Auto transcripts\n� Staff assignment\n� Priority system\n� Full logging & analytics',
-                    inline: true
+                { 
+                    name: '🌐 Web Dashboard Features', 
+                    value: '• Real-time server statistics & analytics\n• Configure all settings visually\n• View security alerts & quarantine\n• Manage tickets & users\n• Auto-delete threat configuration', 
+                    inline: false 
                 },
-                {
-                    name: '?? Analytics & Insights',
-                    value: '� Server activity tracking\n� Member join/leave patterns\n� Command usage stats\n� Security incident reports\n� Customizable dashboards',
-                    inline: false
+                { 
+                    name: '💡 Pro Tips', 
+                    value: '• Grant **Administrator** permission for full functionality\n• Use `/help [command]` for detailed command info\n• Check the dashboard for advanced configuration\n• Security scans run automatically every 24 hours', 
+                    inline: false 
                 },
-                {
-                    name: '?? Web Dashboard',
-                    value: `Manage everything from your browser!\n� ${process.env.DASHBOARD_URL || 'Configure DASHBOARD_URL in .env'}\n� Real-time settings\n� Visual customization\n� Role & permission management`,
-                    inline: false
-                },
-                {
-                    name: '? Pro Features Available',
-                    value: '� Advanced AI moderation\n� Custom branding & themes\n� Priority support\n� Extended analytics\n� Automation workflows',
-                    inline: false
-                },
-                {
-                    name: '? Need Help?',
-                    value: `� **Support Server:** ${CONFIG.SUPPORT_SERVER_INVITE}\n� **Commands:** Use \`/help\` anytime\n� **Setup Wizard:** \`/wizard\` for step-by-step guide`,
-                    inline: false
-                },
-                {
-                    name: '?? Required Permissions',
-                    value: '**Administrator** (recommended) or at minimum:\n� Manage Server, Roles & Channels\n� Kick & Ban Members\n� Manage Messages & Threads\n� View Audit Log\n\n**Important:** My role must be above the roles I manage!',
-                    inline: false
+                { 
+                    name: '❓ Need Help?', 
+                    value: `**Commands:** \`/help\`\n**Status:** \`/status\`\n**Support:** ${CONFIG.SUPPORT_SERVER_INVITE}\n**Website:** https://darklock.xyz`, 
+                    inline: false 
                 }
             )
-            .setFooter({ text: `${guild.name} � Server ID: ${guild.id}` })
+            .setFooter({ text: 'DarkLock - Advanced Security & Moderation | Protecting your server 24/7' })
             .setTimestamp();
 
         await owner.send({ embeds: [setupEmbed] });
         console.log(`[GUILD_CREATE] Sent setup DM to ${owner.user.tag} (${guild.name})`);
-
-        // Quick follow-up with essential links
-        await owner.send({
-            content: '**?? Ready to get started?**\n\n' +
-                `?? **Dashboard:** ${process.env.DASHBOARD_URL || 'Configure in your .env file'}\n` +
-                `?? **Support Server:** ${CONFIG.SUPPORT_SERVER_INVITE}\n` +
-                `?? **Quick Command:** Type \`/wizard\` in your server to begin interactive setup!\n\n` +
-                '_All features are unlocked and ready to use. Have questions? Join our support server!_'
-        });
 
     } catch (error) {
         console.log(`[GUILD_CREATE] Could not DM owner ${owner.user.tag}: ${error.message}`);
@@ -134,20 +131,21 @@ async function sendSystemChannelFallback(guild, client) {
             return;
         }
 
+        const dashboardURL = process.env.DASHBOARD_URL || 'https://darklock.xyz/dashboard';
         const fallbackEmbed = new EmbedBuilder()
-            .setTitle('??? Guardian Security Bot - Welcome!')
+            .setTitle('🛡️ DarkLock Security Bot - Welcome!')
             .setDescription(
                 `Hey <@${guild.ownerId}>! I tried to DM you setup instructions, but your DMs are closed.\n\n` +
-                '**?? Quick Start:**\n' +
-                '� Type `/wizard` for interactive setup guide\n' +
-                '� Use `/security` to enable protection features\n' +
-                '� Visit the dashboard for full control\n' +
-                `� Get help: ${CONFIG.SUPPORT_SERVER_INVITE}\n\n` +
-                `**?? Dashboard:** ${process.env.DASHBOARD_URL || 'Configure DASHBOARD_URL in .env'}\n` +
-                '**?? Commands:** Type `/help` to see all available commands'
+                '**🚀 Quick Start:**\n' +
+                '• Type `/wizard` for interactive setup guide\n' +
+                '• Use `/security enable` to enable protection features\n' +
+                '• Visit the dashboard for full control\n' +
+                `• Get help: ${CONFIG.SUPPORT_SERVER_INVITE}\n\n` +
+                `**🌐 Dashboard:** ${dashboardURL}\n` +
+                '**📚 Commands:** Type `/help` to see all available commands'
             )
             .setColor(CONFIG.BOT_COLOR)
-            .setFooter({ text: 'All features unlocked and ready to use!' })
+            .setFooter({ text: 'DarkLock - Protecting your server 24/7' })
             .setTimestamp();
 
         await targetChannel.send({ content: `<@${guild.ownerId}>`, embeds: [fallbackEmbed] });

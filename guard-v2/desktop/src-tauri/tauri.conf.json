@@ -1,6 +1,6 @@
 {
   "productName": "Darklock Guard",
-  "version": "0.1.0",
+  "version": "2.0.0-beta.3",
   "identifier": "com.darklock.guard",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -18,7 +18,18 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": [
+        {
+          "identifier": "main-capability",
+          "windows": ["main"],
+          "permissions": [
+            "core:default",
+            "dialog:default",
+            "dialog:allow-open"
+          ]
+        }
+      ]
     },
     "trayIcon": {
       "iconPath": "icons/32x32.png"

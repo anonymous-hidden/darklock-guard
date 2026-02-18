@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/css/design-system.css">
     <link rel="stylesheet" href="/css/premium-gating.css">
-    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v4/admin/theme/css">
     <script src="/js/global-theme.js"></script>
     <script src="/js/theme-effects.js"></script>
     <script src="/js/premium-gating.js"></script>
@@ -680,6 +680,14 @@ If you believe this was a mistake, you can submit an appeal.</textarea>
                             <div class="multi-select-loading">Loading roles...</div>
                         </div>
                     </div>
+                    
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Quick Add Presets</label>
+                        <p class="setup-form-desc">Apply pre-configured word filter lists</p>
+                        <div id="wordFilterPresets" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
+                            <div class="multi-select-loading">Loading presets...</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1173,10 +1181,63 @@ If you believe this was a mistake, you can submit an appeal.</textarea>
             msg.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
             if (type === 'success') setTimeout(() => msg.className = 'setup-status-msg', 4000);
         }
+        
+        async function loadWordFilterPresets() {
+            const container = document.getElementById('wordFilterPresets');
+            try {
+                const res = await SecureAuth.fetch('/api/word-filter/presets', {
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                
+                if (data.success && data.presets && data.presets.length > 0) {
+                    container.innerHTML = data.presets.map(preset => `
+                        <button class="ds-btn ds-btn-secondary" style="padding: 8px 12px; font-size: 13px;" 
+                                onclick="applyPreset('${preset.name}', '${preset.category}')">
+                            <i class="fas fa-plus-circle"></i> ${preset.description}
+                        </button>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<p style="color: #888; font-size: 13px;">No presets available</p>';
+                }
+            } catch (error) {
+                console.error('Error loading presets:', error);
+                container.innerHTML = '<p style="color: #ff6b6b; font-size: 13px;">Failed to load presets</p>';
+            }
+        }
+        
+        async function applyPreset(presetName, category) {
+            if (!confirm(`Apply the "${presetName}" preset? This will add words to your filter list.`)) {
+                return;
+            }
+            
+            try {
+                const action = document.getElementById('wordFilterAction').value || 'delete';
+                const res = await SecureAuth.fetch(`/api/guild/${guildId}/word-filter/preset`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ presetName, action })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    showStatus('success', `Preset applied! ${data.wordsAdded || 0} words added.`);
+                    // Reload settings to show new words
+                    await loadSettings();
+                } else {
+                    showStatus('error', data.error || 'Failed to apply preset');
+                }
+            } catch (error) {
+                console.error('Error applying preset:', error);
+                showStatus('error', 'Failed to apply preset');
+            }
+        }
 
         document.addEventListener('DOMContentLoaded', async () => {
             await loadChannelsAndRoles();
             await loadSettings();
+            await loadWordFilterPresets();
         });
     </script>
 </body>

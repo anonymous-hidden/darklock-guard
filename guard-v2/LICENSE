@@ -2,12 +2,23 @@ MIT License
 
 Copyright (c) 2026 Darklock
 
+IMPORTANT NOTICE:
+This software is a PRIVATE PROJECT made open source for demonstration and 
+portfolio purposes only. It is NOT intended for public deployment, production 
+use, or modification. The code is provided solely to showcase technical 
+capabilities, security architecture, and development practices.
+
+By accessing this repository, you acknowledge that:
+- This is a showcase/portfolio project, not a production-ready product
+- The software is provided for viewing and educational purposes only
+- It is not designed or intended for installation or use by third parties
+- No support, updates, or maintenance will be provided
+- Use of this code in any production environment is strongly discouraged
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+of this software and associated documentation files (the "Software"), to view
+and study the Software for educational and demonstration purposes only, 
+subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.

@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Darklock Admin</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔒</text></svg>">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════════
+   DARKLOCK ADMIN v4 — STYLESHEET
+   Enterprise-grade dark-theme admin dashboard
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg-body:#08090d;--bg-sidebar:#0e1015;--bg-card:#12141b;--bg-input:#181b24;
+  --bg-hover:#1a1d28;--bg-active:#1e2130;--bg-overlay:rgba(0,0,0,.65);
+  --border:#1f2233;--border-hover:#2a2e44;
+  --accent:#6366f1;--accent-dim:rgba(99,102,241,.12);--accent-hover:#7c3aed;
+  --text:#e8eaed;--text-secondary:#9ca0b0;--text-muted:#636880;
+  --green:#22c55e;--green-dim:rgba(34,197,94,.12);
+  --red:#ef4444;--red-dim:rgba(239,68,68,.12);
+  --yellow:#f59e0b;--yellow-dim:rgba(245,158,11,.12);
+  --blue:#3b82f6;--blue-dim:rgba(59,130,246,.12);
+  --radius:10px;--radius-sm:6px;--radius-lg:14px;
+  --transition:all .2s ease;
+  --sidebar-width:260px;--sidebar-collapsed:68px;
+  --font:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;
+}
+html{font-size:14px}
+body{font-family:var(--font);background:var(--bg-body);color:var(--text);min-height:100vh;overflow:hidden}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+button{cursor:pointer;font-family:inherit;border:none;background:none}
+input,textarea,select{font-family:inherit;font-size:.875rem}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--border-hover)}
+
+/* ── Layout ── */
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:var(--sidebar-width);background:var(--bg-sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:width .25s ease;flex-shrink:0;overflow:hidden;z-index:50}
+.sidebar.collapsed{width:var(--sidebar-collapsed)}
+.sidebar.collapsed .sidebar-text{display:none}
+.sidebar.collapsed .sidebar-header h1{display:none}
+.sidebar.collapsed .sidebar-header p{display:none}
+.sidebar.collapsed .sidebar-footer .admin-info span{display:none}
+.sidebar.collapsed .nav-item{justify-content:center;padding-left:0;padding-right:0}
+.sidebar.collapsed .nav-section-title{display:none}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:56px;background:var(--bg-sidebar);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 1.5rem;gap:.75rem;flex-shrink:0}
+.content{flex:1;overflow-y:auto;padding:1.75rem}
+
+/* ── Sidebar internals ── */
+.sidebar-header{padding:1.25rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.75rem;min-height:64px}
+.sidebar-header .logo{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent-hover));display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sidebar-header .logo svg{width:18px;height:18px;color:#fff}
+.sidebar-header h1{font-size:.95rem;font-weight:700;color:var(--text);white-space:nowrap}
+.sidebar-header p{font-size:.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-top:1px}
+
+.nav-section{padding:.75rem 0}
+.nav-section-title{font-size:.6rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-muted);padding:0 1rem;margin-bottom:.4rem;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:.65rem;padding:.55rem 1rem;cursor:pointer;transition:var(--transition);font-size:.825rem;color:var(--text-secondary);border-left:3px solid transparent;white-space:nowrap}
+.nav-item:hover{background:var(--bg-hover);color:var(--text)}
+.nav-item.active{background:var(--accent-dim);color:var(--accent);border-left-color:var(--accent);font-weight:600}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+
+.sidebar-footer{margin-top:auto;padding:1rem;border-top:1px solid var(--border)}
+.admin-info{display:flex;align-items:center;gap:.6rem}
+.admin-avatar{width:32px;height:32px;border-radius:8px;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700;font-size:.75rem;color:var(--accent)}
+.admin-info span{font-size:.8rem;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── Topbar ── */
+.topbar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);transition:var(--transition);color:var(--text-muted)}
+.topbar-toggle:hover{background:var(--bg-hover);color:var(--text)}
+.topbar-toggle svg{width:18px;height:18px}
+.topbar-title{font-size:1.05rem;font-weight:700;color:var(--text)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:.75rem}
+.topbar-badge{font-size:.7rem;padding:.2rem .6rem;border-radius:12px;background:var(--accent-dim);color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+
+/* ── Cards ── */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;transition:border-color .2s}
+.card:hover{border-color:var(--border-hover)}
+.card-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-header h3{font-size:.9rem;font-weight:600;display:flex;align-items:center;gap:.5rem}
+.card-body{padding:1.25rem}
+
+/* ── Stat cards ── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
+.stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;transition:var(--transition)}
+.stat-card:hover{border-color:var(--border-hover);transform:translateY(-1px)}
+.stat-card .stat-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:.5rem}
+.stat-card .stat-value{font-size:1.75rem;font-weight:700;line-height:1}
+.stat-card .stat-value.text-accent{color:var(--accent)}
+.stat-card .stat-value.text-green{color:var(--green)}
+.stat-card .stat-value.text-yellow{color:var(--yellow)}
+.stat-card .stat-value.text-red{color:var(--red)}
+.stat-card .stat-value.text-blue{color:var(--blue)}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;border-radius:var(--radius-sm);font-size:.8rem;font-weight:600;transition:var(--transition);border:1px solid transparent}
+.btn svg{width:15px;height:15px}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn-secondary{background:var(--bg-input);color:var(--text-secondary);border-color:var(--border)}
+.btn-secondary:hover{background:var(--bg-hover);color:var(--text);border-color:var(--border-hover)}
+.btn-danger{background:var(--red-dim);color:var(--red);border-color:rgba(239,68,68,.25)}
+.btn-danger:hover{background:var(--red);color:#fff}
+.btn-success{background:var(--green-dim);color:var(--green);border-color:rgba(34,197,94,.25)}
+.btn-success:hover{background:var(--green);color:#fff}
+.btn-sm{padding:.35rem .7rem;font-size:.75rem}
+.btn-group{display:flex;gap:.5rem;flex-wrap:wrap}
+
+/* ── Forms ── */
+.form-group{margin-bottom:1rem}
+.form-label{display:block;font-size:.75rem;font-weight:600;color:var(--text-secondary);margin-bottom:.35rem;text-transform:uppercase;letter-spacing:.5px}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.55rem .75rem;color:var(--text);font-size:.85rem;transition:var(--transition);outline:none}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+.form-textarea{resize:vertical;min-height:100px}
+.form-select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239ca0b0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.form-toggle{display:flex;align-items:center;gap:.75rem}
+.toggle-switch{position:relative;width:42px;height:24px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--bg-input);border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:var(--transition)}
+.toggle-slider::before{content:'';position:absolute;left:3px;top:3px;width:16px;height:16px;background:var(--text-muted);border-radius:50%;transition:var(--transition)}
+.toggle-switch input:checked+.toggle-slider{background:var(--accent);border-color:var(--accent)}
+.toggle-switch input:checked+.toggle-slider::before{transform:translateX(18px);background:#fff}
+
+/* ── Tables ── */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.825rem}
+thead th{text-align:left;padding:.65rem .75rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);border-bottom:1px solid var(--border);font-weight:600;white-space:nowrap}
+tbody td{padding:.65rem .75rem;border-bottom:1px solid var(--border);color:var(--text-secondary);vertical-align:middle}
+tbody tr:hover{background:var(--bg-hover)}
+tbody tr:last-child td{border-bottom:none}
+
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;padding:.15rem .55rem;border-radius:10px;font-size:.7rem;font-weight:600;letter-spacing:.3px;white-space:nowrap}
+.badge-accent{background:var(--accent-dim);color:var(--accent)}
+.badge-green{background:var(--green-dim);color:var(--green)}
+.badge-red{background:var(--red-dim);color:var(--red)}
+.badge-yellow{background:var(--yellow-dim);color:var(--yellow)}
+.badge-blue{background:var(--blue-dim);color:var(--blue)}
+.badge-muted{background:rgba(99,108,128,.15);color:var(--text-muted)}
+
+/* ── Modals ── */
+.modal-overlay{position:fixed;inset:0;background:var(--bg-overlay);backdrop-filter:blur(4px);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);width:90%;max-width:560px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.5);transform:scale(.95);transition:transform .2s}
+.modal-overlay.open .modal{transform:scale(1)}
+.modal-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-header h3{font-size:1rem;font-weight:700}
+.modal-close{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);transition:var(--transition);color:var(--text-muted)}
+.modal-close:hover{background:var(--bg-hover);color:var(--text)}
+.modal-body{padding:1.5rem}
+.modal-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem}
+
+/* ── Search bar ── */
+.search-bar{display:flex;align-items:center;gap:.5rem;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 .75rem;transition:var(--transition)}
+.search-bar:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+.search-bar svg{width:16px;height:16px;color:var(--text-muted);flex-shrink:0}
+.search-bar input{background:none;border:none;outline:none;color:var(--text);padding:.5rem 0;font-size:.85rem;width:200px}
+
+/* ── Filter bar ── */
+.filter-bar{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem}
+.filter-chip{padding:.35rem .75rem;border-radius:16px;font-size:.75rem;font-weight:600;color:var(--text-muted);background:var(--bg-input);border:1px solid var(--border);cursor:pointer;transition:var(--transition)}
+.filter-chip:hover{color:var(--text);border-color:var(--border-hover)}
+.filter-chip.active{background:var(--accent-dim);color:var(--accent);border-color:var(--accent)}
+
+/* ── Pagination ── */
+.pagination{display:flex;align-items:center;justify-content:space-between;padding-top:1rem;margin-top:1rem;border-top:1px solid var(--border)}
+.pagination-info{font-size:.75rem;color:var(--text-muted)}
+.pagination-buttons{display:flex;gap:.35rem}
+.pagination-buttons button{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);background:var(--bg-input);border:1px solid var(--border);color:var(--text-secondary);font-size:.8rem;transition:var(--transition)}
+.pagination-buttons button:hover:not(:disabled){background:var(--bg-hover);color:var(--text)}
+.pagination-buttons button:disabled{opacity:.3;cursor:not-allowed}
+.pagination-buttons button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* ── Toast notifications ── */
+.toast-container{position:fixed;top:1rem;right:1rem;z-index:2000;display:flex;flex-direction:column;gap:.5rem}
+.toast{padding:.75rem 1.25rem;border-radius:var(--radius-sm);font-size:.825rem;font-weight:500;display:flex;align-items:center;gap:.5rem;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:toastIn .3s ease;max-width:380px}
+.toast-success{background:#166534;color:#bbf7d0;border:1px solid rgba(34,197,94,.3)}
+.toast-error{background:#7f1d1d;color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+.toast-info{background:#1e3a5f;color:#93c5fd;border:1px solid rgba(59,130,246,.3)}
+@keyframes toastIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ── Misc ── */
+.empty-state{text-align:center;padding:3rem;color:var(--text-muted)}
+.empty-state svg{width:48px;height:48px;margin-bottom:1rem;opacity:.3}
+.empty-state h4{font-size:1rem;color:var(--text-secondary);margin-bottom:.5rem}
+.empty-state p{font-size:.85rem;max-width:340px;margin:0 auto}
+.loading{display:flex;align-items:center;justify-content:center;padding:3rem;color:var(--text-muted);gap:.5rem;font-size:.85rem}
+.loading::before{content:'';width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.divider{height:1px;background:var(--border);margin:1.5rem 0}
+.text-accent{color:var(--accent)!important}
+.text-green{color:var(--green)!important}
+.text-red{color:var(--red)!important}
+.text-yellow{color:var(--yellow)!important}
+.text-muted{color:var(--text-muted)!important}
+.mt-1{margin-top:.5rem}.mt-2{margin-top:1rem}.mt-3{margin-top:1.5rem}
+.mb-1{margin-bottom:.5rem}.mb-2{margin-bottom:1rem}.mb-3{margin-bottom:1.5rem}
+.flex{display:flex}.flex-between{display:flex;justify-content:space-between;align-items:center}
+.gap-1{gap:.5rem}.gap-2{gap:1rem}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:100;transform:translateX(-100%)}
+  .sidebar.mobile-open{transform:translateX(0)}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .form-row{grid-template-columns:1fr}
+  .content{padding:1rem}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+      <div><h1 class="sidebar-text">Darklock</h1><p class="sidebar-text">Admin Panel</p></div>
+    </div>
+    <nav class="nav-section" id="navItems"></nav>
+    <div class="sidebar-footer">
+      <div class="admin-info">
+        <div class="admin-avatar" id="adminAvatar">?</div>
+        <span id="adminName" class="sidebar-text">Loading...</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main area ── -->
+  <div class="main">
+    <header class="topbar">
+      <button class="topbar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <span class="topbar-title" id="pageTitle">Overview</span>
+      <div class="topbar-right">
+        <span class="topbar-badge" id="roleBadge">—</span>
+        <button class="btn btn-secondary btn-sm" onclick="location.href='/signin'" title="Sign Out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="content" id="content">
+      <div class="loading">Loading dashboard...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal container ── -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal">
+    <div class="modal-header"><h3 id="modalTitle">Modal</h3><button class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<!-- ── Toast container ── -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════════
+   DARKLOCK ADMIN v4 — SPA CLIENT
+   All API calls go to /api/v4/admin/*
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+const API = '/api/v4/admin';
+let currentTab = 'overview';
+let shellData = null;
+
+// ── SVG Icons (inline, no CDN) ─────────────────────────────────────────────────
+const ICONS = {
+  'layout-dashboard': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+  'megaphone': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/></svg>',
+  'users': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
+  'shield-check': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>',
+  'download-cloud': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.29"/></svg>',
+  'bug': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="6" width="8" height="14" rx="4"/><path d="M6 10H2"/><path d="M22 10h-4"/><path d="M6 14H2"/><path d="M22 14h-4"/><path d="M6 18H2"/><path d="M22 18h-4"/><path d="M8 6V4a2 2 0 014 0v2"/></svg>',
+  'file-text': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+  'lock': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>',
+  'settings': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
+  'palette': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-1 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-5.5-4.5-9-10-9z"/><circle cx="7.5" cy="11.5" r="1.5"/><circle cx="10.5" cy="7.5" r="1.5"/><circle cx="14.5" cy="7.5" r="1.5"/><circle cx="17.5" cy="11.5" r="1.5"/></svg>',
+  'tool': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>',
+};
+
+// ── API helper ──────────────────────────────────────────────────────────────────
+async function api(path, opts = {}) {
+  try {
+    const res = await fetch(`${API}${path}`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...opts.headers },
+      ...opts,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  } catch (err) {
+    if (err.message?.includes('Authentication') || err.message?.includes('401')) {
+      location.href = '/signin';
+      return;
+    }
+    throw err;
+  }
+}
+
+// ── Utility ─────────────────────────────────────────────────────────────────────
+function esc(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+function fmtDateTime(d) { if (!d) return '—'; return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+function truncate(s, n = 80) { return s && s.length > n ? s.slice(0, n) + '…' : s || ''; }
+
+// ── Toast ───────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.innerHTML = `<span>${esc(msg)}</span>`;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 4000);
+}
+
+// ── Modal ───────────────────────────────────────────────────────────────────────
+function openModal(title, bodyHtml, footerHtml = '') {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+  document.getElementById('modalFooter').innerHTML = footerHtml;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+
+// ── Sidebar toggle ──────────────────────────────────────────────────────────────
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  if (window.innerWidth <= 768) sb.classList.toggle('mobile-open');
+  else sb.classList.toggle('collapsed');
+}
+
+// ── Boot ────────────────────────────────────────────────────────────────────────
+async function boot() {
+  try {
+    shellData = await api('/shell');
+    renderSidebar(shellData.tabs);
+    document.getElementById('adminAvatar').textContent = (shellData.admin.name || '?')[0].toUpperCase();
+    document.getElementById('adminName').textContent = shellData.admin.name;
+    document.getElementById('roleBadge').textContent = shellData.admin.role;
+    navigate('overview');
+  } catch (err) {
+    document.getElementById('content').innerHTML = `<div class="empty-state"><h4>Authentication Failed</h4><p>${esc(err.message)}</p><a href="/signin" class="btn btn-primary mt-2">Sign In</a></div>`;
+  }
+}
+
+function renderSidebar(tabs) {
+  const nav = document.getElementById('navItems');
+  nav.innerHTML = `<div class="nav-section-title sidebar-text">Navigation</div>` + 
+    tabs.map(t => `<div class="nav-item${t.id === currentTab ? ' active' : ''}" data-tab="${t.id}" onclick="navigate('${t.id}')">
+      ${ICONS[t.icon] || ''}<span class="sidebar-text">${esc(t.label)}</span>
+    </div>`).join('');
+}
+
+function navigate(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
+  const titleMap = { overview:'Overview', announcements:'Announcements', accounts:'Accounts', roles:'Role & Access', 'app-updates':'App Updates', 'bug-reports':'Bug Reports', 'system-logs':'System Logs', security:'Security Settings', themes:'Themes', maintenance:'Maintenance', settings:'Platform Settings' };
+  document.getElementById('pageTitle').textContent = titleMap[tab] || tab;
+  document.getElementById('content').innerHTML = '<div class="loading">Loading...</div>';
+  const loaders = { overview: loadOverview, announcements: loadAnnouncements, accounts: loadAccounts, roles: loadRoles, 'app-updates': loadAppUpdates, 'bug-reports': loadBugReports, 'system-logs': loadSystemLogs, security: loadSecurity, themes: loadThemes, maintenance: loadMaintenance, settings: loadSettings };
+  (loaders[tab] || (() => {}))();
+  if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('mobile-open');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 1: OVERVIEW
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadOverview() {
+  try {
+    const d = await api('/overview');
+    document.getElementById('content').innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value text-accent">${d.totalUsers}</div></div>
+        <div class="stat-card"><div class="stat-label">Premium Users</div><div class="stat-value text-yellow">${d.premiumUsers}</div></div>
+        <div class="stat-card"><div class="stat-label">Active (7d)</div><div class="stat-value text-green">${d.activeUsers}</div></div>
+        <div class="stat-card"><div class="stat-label">Bug Reports</div><div class="stat-value text-red">${d.totalBugReports}</div></div>
+        <div class="stat-card"><div class="stat-label">Open Bugs</div><div class="stat-value text-yellow">${d.openBugReports}</div></div>
+        <div class="stat-card"><div class="stat-label">Active Sessions</div><div class="stat-value text-blue">${d.activeSessions}</div></div>
+        <div class="stat-card"><div class="stat-label">App Version</div><div class="stat-value" style="font-size:1.1rem">v${esc(d.currentAppVersion)}</div></div>
+        <div class="stat-card"><div class="stat-label">System Status</div><div class="stat-value ${d.maintenanceMode ? 'text-yellow' : 'text-green'}" style="font-size:1rem">${d.maintenanceMode ? 'Maintenance' : 'Online'}</div></div>
+      </div>
+      <div class="card mb-2">
+        <div class="card-header"><h3>Quick Actions</h3></div>
+        <div class="card-body">
+          <div class="btn-group">
+            <button class="btn btn-primary" onclick="navigate('announcements');setTimeout(()=>showCreateAnnouncement(),200)">Post Announcement</button>
+            <button class="btn btn-secondary" onclick="navigate('app-updates');setTimeout(()=>showPushUpdate(),200)">Push Update</button>
+            <button class="btn btn-secondary" onclick="navigate('roles')">Manage Admins</button>
+            <button class="btn btn-secondary" onclick="navigate('bug-reports')">View Bug Reports</button>
+          </div>
+        </div>
+      </div>
+      ${d.latestAnnouncement ? `
+      <div class="card">
+        <div class="card-header"><h3>Latest Announcement</h3><span class="badge badge-accent">v${esc(d.latestAnnouncement.version)}</span></div>
+        <div class="card-body">
+          <h4 style="margin-bottom:.5rem">${esc(d.latestAnnouncement.title)}</h4>
+          <p style="color:var(--text-secondary);font-size:.85rem;white-space:pre-wrap">${esc(truncate(d.latestAnnouncement.content, 300))}</p>
+          <div style="margin-top:.75rem;font-size:.75rem;color:var(--text-muted)">${fmtDateTime(d.latestAnnouncement.created_at)} by ${esc(d.latestAnnouncement.author_email || 'System')}</div>
+        </div>
+      </div>` : ''}`;
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 2: ANNOUNCEMENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadAnnouncements() {
+  try {
+    const d = await api('/announcements');
+    const list = d.announcements || [];
+    document.getElementById('content').innerHTML = `
+      <div class="flex-between mb-2">
+        <span style="font-size:.85rem;color:var(--text-muted)">${list.length} announcement${list.length !== 1 ? 's' : ''}</span>
+        <button class="btn btn-primary" onclick="showCreateAnnouncement()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New Announcement</button>
+      </div>
+      ${list.length === 0 ? '<div class="empty-state"><h4>No announcements yet</h4><p>Create your first announcement to appear on the public updates page.</p></div>' :
+        list.map(a => `
+        <div class="card mb-1">
+          <div class="card-body" style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;flex-wrap:wrap">
+                <span style="font-weight:700">${esc(a.title)}</span>
+                ${a.version ? `<span class="badge badge-accent">v${esc(a.version)}</span>` : ''}
+                ${a.pinned ? '<span class="badge badge-yellow">Pinned</span>' : ''}
+                <span class="badge badge-${a.visibility === 'public' ? 'green' : 'blue'}">${esc(a.visibility)}</span>
+              </div>
+              <p style="color:var(--text-secondary);font-size:.825rem;white-space:pre-wrap;margin-bottom:.4rem">${esc(truncate(a.content, 200))}</p>
+              <span style="font-size:.7rem;color:var(--text-muted)">${fmtDateTime(a.created_at)} — ${esc(a.author_email || 'Unknown')}</span>
+            </div>
+            <div class="btn-group" style="flex-shrink:0">
+              <button class="btn btn-secondary btn-sm" onclick="showEditAnnouncement('${a.id}')">Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement('${a.id}')">Delete</button>
+            </div>
+          </div>
+        </div>`).join('')}`;
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function showCreateAnnouncement() {
+  openModal('New Announcement', `
+    <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="mTitle" placeholder="What's new?"></div>
+    <div class="form-group"><label class="form-label">Content</label><textarea class="form-textarea" id="mContent" rows="5" placeholder="Describe the update or announcement..."></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Version (auto if blank)</label><input class="form-input" id="mVersion" placeholder="e.g. 2.1.0"></div>
+      <div class="form-group"><label class="form-label">Visibility</label><select class="form-select" id="mVisibility"><option value="public">Public</option><option value="premium">Premium Only</option></select></div>
+    </div>
+    <div class="form-toggle"><label class="toggle-switch"><input type="checkbox" id="mPinned"><span class="toggle-slider"></span></label><span style="font-size:.85rem">Pin this announcement</span></div>`,
+    `<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="submitAnnouncement()">Publish</button>`);
+}
+
+async function submitAnnouncement() {
+  try {
+    const title = document.getElementById('mTitle').value.trim();
+    const content = document.getElementById('mContent').value.trim();
+    const version = document.getElementById('mVersion').value.trim() || undefined;
+    const visibility = document.getElementById('mVisibility').value;
+    const pinned = document.getElementById('mPinned').checked;
+    if (!title || !content) return toast('Title and content required', 'error');
+    await api('/announcements', { method: 'POST', body: JSON.stringify({ title, content, version, visibility, pinned }) });
+    closeModal(); toast('Announcement published!', 'success'); loadAnnouncements();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function showEditAnnouncement(id) {
+  const d = await api('/announcements');
+  const a = (d.announcements || []).find(x => x.id === id);
+  if (!a) return toast('Not found', 'error');
+  openModal('Edit Announcement', `
+    <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="mTitle" value="${esc(a.title)}"></div>
+    <div class="form-group"><label class="form-label">Content</label><textarea class="form-textarea" id="mContent" rows="5">${esc(a.content)}</textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Version</label><input class="form-input" id="mVersion" value="${esc(a.version || '')}"></div>
+      <div class="form-group"><label class="form-label">Visibility</label><select class="form-select" id="mVisibility"><option value="public" ${a.visibility==='public'?'selected':''}>Public</option><option value="premium" ${a.visibility==='premium'?'selected':''}>Premium Only</option></select></div>
+    </div>
+    <div class="form-toggle"><label class="toggle-switch"><input type="checkbox" id="mPinned" ${a.pinned?'checked':''}><span class="toggle-slider"></span></label><span style="font-size:.85rem">Pin this announcement</span></div>`,
+    `<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="updateAnnouncement('${id}')">Save Changes</button>`);
+}
+
+async function updateAnnouncement(id) {
+  try {
+    await api(`/announcements/${id}`, { method: 'PUT', body: JSON.stringify({
+      title: document.getElementById('mTitle').value.trim(),
+      content: document.getElementById('mContent').value.trim(),
+      version: document.getElementById('mVersion').value.trim() || undefined,
+      visibility: document.getElementById('mVisibility').value,
+      pinned: document.getElementById('mPinned').checked,
+    })});
+    closeModal(); toast('Announcement updated', 'success'); loadAnnouncements();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteAnnouncement(id) {
+  if (!confirm('Delete this announcement?')) return;
+  try { await api(`/announcements/${id}`, { method: 'DELETE' }); toast('Deleted', 'success'); loadAnnouncements(); }
+  catch (err) { toast(err.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 3: ACCOUNTS
+// ═══════════════════════════════════════════════════════════════════════════════
+let accountsPage = 0, accountsFilter = '', accountsSearch = '';
+async function loadAccounts() {
+  try {
+    const d = await api(`/accounts?limit=20&offset=${accountsPage * 20}${accountsFilter ? `&filter=${accountsFilter}` : ''}${accountsSearch ? `&search=${encodeURIComponent(accountsSearch)}` : ''}`);
+    const total = d.total || 0;
+    const pages = Math.ceil(total / 20) || 1;
+    document.getElementById('content').innerHTML = `
+      <div class="filter-bar">
+        <div class="search-bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input placeholder="Search users..." value="${esc(accountsSearch)}" onkeydown="if(event.key==='Enter'){accountsSearch=this.value;accountsPage=0;loadAccounts()}" id="accountSearch">
+        </div>
+        ${['','premium','free','admin','banned'].map(f => `<button class="filter-chip${accountsFilter===f?' active':''}" onclick="accountsFilter='${f}';accountsPage=0;loadAccounts()">${f||'All'}</button>`).join('')}
+      </div>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Joined</th><th>Last Login</th><th></th></tr></thead>
+          <tbody>${(d.accounts || []).length === 0 ? '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted)">No accounts found</td></tr>' :
+            (d.accounts || []).map(a => `<tr>
+              <td style="font-weight:600">${esc(a.username || a.display_name || '—')}</td>
+              <td>${esc(a.email || '—')}</td>
+              <td><span class="badge badge-${a.role === 'premium' || a.role === 'vip' ? 'yellow' : a.role === 'admin' || a.role === 'owner' ? 'accent' : 'muted'}">${esc(a.role || 'user')}</span></td>
+              <td><span class="badge badge-${a.active !== 0 ? 'green' : 'red'}">${a.active !== 0 ? 'Active' : 'Banned'}</span></td>
+              <td>${fmtDate(a.created_at)}</td>
+              <td>${fmtDate(a.last_login)}</td>
+              <td><button class="btn btn-secondary btn-sm" onclick="showAccountActions('${a.id}')">Actions</button></td>
+            </tr>`).join('')}</tbody>
+        </table></div>
+        <div class="pagination">
+          <div class="pagination-info">${total} total • Page ${accountsPage + 1} of ${pages}</div>
+          <div class="pagination-buttons">
+            <button ${accountsPage===0?'disabled':''} onclick="accountsPage--;loadAccounts()">‹</button>
+            <button ${accountsPage>=pages-1?'disabled':''} onclick="accountsPage++;loadAccounts()">›</button>
+          </div>
+        </div>
+      </div>`;
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function showAccountActions(userId) {
+  openModal('Account Actions', `<div class="loading">Loading account...</div>`, '');
+  api(`/accounts/${userId}`).then(d => {
+    const a = d.account;
+    document.getElementById('modalBody').innerHTML = `
+      <div style="margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
+        <div style="font-weight:700;font-size:1rem;margin-bottom:.25rem">${esc(a.username || a.display_name || 'Unknown')}</div>
+        <div style="color:var(--text-secondary);font-size:.85rem">${esc(a.email || '—')}</div>
+        <div style="margin-top:.5rem;display:flex;gap:.5rem">
+          <span class="badge badge-${a.role === 'premium' ? 'yellow' : 'muted'}">${esc(a.role)}</span>
+          <span class="badge badge-${a.active !== 0 ? 'green' : 'red'}">${a.active !== 0 ? 'Active' : 'Banned'}</span>
+        </div>
+      </div>
+      <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:1rem">Joined ${fmtDateTime(a.created_at)} • Last login ${fmtDateTime(a.last_login)}</p>
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        ${a.role !== 'premium' ? `<button class="btn btn-success" onclick="accountAction('${userId}','grant-premium')">Grant Premium</button>` :
+          `<button class="btn btn-secondary" onclick="accountAction('${userId}','remove-premium')">Remove Premium</button>`}
+        ${a.active !== 0 ? `<button class="btn btn-danger" onclick="accountAction('${userId}','ban')">Ban Account</button>` :
+          `<button class="btn btn-success" onclick="accountAction('${userId}','unban')">Unban Account</button>`}
+        <button class="btn btn-secondary" onclick="accountAction('${userId}','reset-password')">Reset Password</button>
+        <button class="btn btn-danger" onclick="accountAction('${userId}','delete')">Delete Account</button>
+      </div>
+      ${d.devices?.length ? `<div style="margin-top:1.25rem"><div style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;font-weight:600;margin-bottom:.5rem">Linked Devices (${d.devices.length})</div>
+        ${d.devices.map(dev => `<div style="padding:.5rem;background:var(--bg-input);border-radius:var(--radius-sm);margin-bottom:.35rem;font-size:.8rem">${esc(dev.name || dev.deviceId)} <span class="badge badge-${dev.status==='active'?'green':'muted'}">${esc(dev.status)}</span></div>`).join('')}</div>` : ''}`;
+  }).catch(err => toast(err.message, 'error'));
+}
+
+async function accountAction(userId, action) {
+  const destructive = ['ban', 'delete', 'reset-password'];
+  if (destructive.includes(action)) {
+    if (!confirm(`Are you sure you want to ${action.replace('-', ' ')} this account?`)) return;
+  }
+  try {
+    const body = destructive.includes(action) ? JSON.stringify({ confirm: true }) : '{}';
+    const d = await api(`/accounts/${userId}/${action}`, { method: action === 'delete' ? 'DELETE' : 'POST', body });
+    closeModal();
+    toast(d.message || 'Action completed', 'success');
+    if (d.temporaryPassword) {
+      openModal('Temporary Password', `<p style="margin-bottom:1rem;color:var(--text-secondary)">Share this securely with the user:</p><div style="padding:.75rem;background:var(--bg-input);border-radius:var(--radius-sm);font-family:monospace;font-size:1rem;word-break:break-all;user-select:all">${esc(d.temporaryPassword)}</div>`,
+        `<button class="btn btn-primary" onclick="closeModal()">Done</button>`);
+    }
+    loadAccounts();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 4: ROLES & ACCESS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadRoles() {
+  try {
+    const [adminsData, rolesData] = await Promise.all([api('/roles/admins'), api('/roles/definitions')]);
+    const admins = adminsData.admins || [];
+    const roles = rolesData.roles || [];
+    document.getElementById('content').innerHTML = `
+      <div class="flex-between mb-2">
+        <span style="font-size:.85rem;color:var(--text-muted)">${admins.length} admin account${admins.length !== 1 ? 's' : ''}</span>
+        <button class="btn btn-primary" onclick="showCreateAdmin()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Create Admin</button>
+      </div>
+      <div class="card mb-2">
+        <div class="card-header"><h3>Admin Accounts</h3></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Status</th><th>Last Login</th><th></th></tr></thead>
+          <tbody>${admins.map(a => `<tr>
+            <td style="font-weight:600">${esc(a.email)}</td>
+            <td>${esc(a.display_name || a.username || '—')}</td>
+            <td><span class="badge badge-${a.role === 'owner' ? 'accent' : a.role === 'coowner' ? 'blue' : a.role === 'admin' ? 'green' : 'muted'}">${esc(a.role)}</span></td>
+            <td><span class="badge badge-${a.active ? 'green' : 'red'}">${a.active ? 'Active' : 'Disabled'}</span></td>
+            <td>${fmtDate(a.last_login)}</td>
+            <td>${a.role !== 'owner' ? `<div class="btn-group"><button class="btn btn-secondary btn-sm" onclick="showEditAdmin('${a.id}','${esc(a.email)}','${esc(a.role)}')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteAdmin('${a.id}','${esc(a.email)}')">Remove</button></div>` : '<span class="text-muted" style="font-size:.75rem">Protected</span>'}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Role Hierarchy</h3></div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:.5rem">
+            ${roles.map(r => `<div style="display:flex;align-items:center;gap:1rem;padding:.6rem;background:var(--bg-input);border-radius:var(--radius-sm)">
+              <span class="badge badge-accent" style="min-width:60px;justify-content:center">${r.level}</span>
+              <span style="font-weight:600;text-transform:capitalize">${esc(r.name)}</span>
+              <span style="color:var(--text-muted);font-size:.8rem;margin-left:auto">${esc(r.description || '')}</span>
+            </div>`).join('')}
+          </div>
+        </div>
+      </div>`;
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function showCreateAdmin() {
+  openModal('Create Admin Account', `
+    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="mEmail" type="email" placeholder="admin@darklock.net"></div>
+    <div class="form-group"><label class="form-label">Display Name</label><input class="form-input" id="mDisplayName" placeholder="John Doe"></div>
+    <div class="form-group"><label class="form-label">Password (min 12 chars)</label><input class="form-input" id="mPassword" type="password" placeholder="Secure password"></div>
+    <div class="form-group"><label class="form-label">Role</label><select class="form-select" id="mRole">
+      <option value="helper">Helper</option><option value="mod">Mod</option><option value="admin" selected>Admin</option>
+      ${shellData?.admin?.role === 'owner' ? '<option value="coowner">Co-Owner</option>' : ''}
+    </select></div>`,
+    `<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="createAdmin()">Create</button>`);
+}
+
+async function createAdmin() {
+  try {
+    const email = document.getElementById('mEmail').value.trim();
+    const display_name = document.getElementById('mDisplayName').value.trim();
+    const password = document.getElementById('mPassword').value;
+    const role = document.getElementById('mRole').value;
+    if (!email || !password) return toast('Email and password required', 'error');
+    if (password.length < 12) return toast('Password must be 12+ characters', 'error');
+    await api('/roles/admins', { method: 'POST', body: JSON.stringify({ email, password, role, display_name }) });
+    closeModal(); toast('Admin created!', 'success'); loadRoles();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function showEditAdmin(id, email, currentRole) {
+  openModal('Edit Admin Role', `
+    <p style="margin-bottom:1rem;color:var(--text-secondary)">Changing role for: <strong>${esc(email)}</strong></p>
+    <div class="form-group"><label class="form-label">New Role</label><select class="form-select" id="mRole">
+      <option value="helper" ${currentRole==='helper'?'selected':''}>Helper</option>
+      <option value="mod" ${currentRole==='mod'?'selected':''}>Mod</option>
+      <option value="admin" ${currentRole==='admin'?'selected':''}>Admin</option>
+      ${shellData?.admin?.role === 'owner' ? `<option value="coowner" ${currentRole==='coowner'?'selected':''}>Co-Owner</option><option value="owner" ${currentRole==='owner'?'selected':''}>Owner</option>` : ''}
+    </select></div>`,
+    `<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="updateAdminRole('${id}')">Update Role</button>`);
+}
+
+async function updateAdminRole(id) {
+  try {
+    const role = document.getElementById('mRole').value;
+    await api(`/roles/admins/${id}`, { method: 'PUT', body: JSON.stringify({ role }) });
+    closeModal(); toast('Role updated', 'success'); loadRoles();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteAdmin(id, email) {
+  if (!confirm(`Delete admin account: ${email}?`)) return;
+  try { await api(`/roles/admins/${id}`, { method: 'DELETE', body: JSON.stringify({ confirm: true }) }); toast('Admin removed', 'success'); loadRoles(); }
+  catch (err) { toast(err.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 5: APP UPDATES
+// ═══════════════════════════════════════════════════════════════════════════════
+function fmtSize(bytes) {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+}
+
+async function loadAppUpdates() {
+  try {
+    const d = await api('/app-updates');
+    const list = d.updates || [];
+    document.getElementById('content').innerHTML = `
+      <div class="flex-between mb-2">
+        <span style="font-size:.85rem;color:var(--text-muted)">${list.length} update${list.length !== 1 ? 's' : ''} pushed</span>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-secondary" onclick="showUploadFiles()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload Files</button>
+          <button class="btn btn-primary" onclick="showPushUpdate()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Push Update</button>
+        </div>
+      </div>
+      ${list.length === 0 ? '<div class="empty-state"><h4>No updates pushed</h4><p>Push your first app update to make it available for Darklock Guard users.</p></div>' :
+        list.map(u => `
+        <div class="card mb-1">
+          <div class="card-body" style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;flex-wrap:wrap">
+                <span class="badge badge-accent" style="font-family:monospace">v${esc(u.version)}</span>
+                <span style="font-weight:700">${esc(u.title)}</span>
+                ${u.force_update ? '<span class="badge badge-red">Force</span>' : ''}
+                ${u.min_version ? `<span class="badge badge-muted">Min: v${esc(u.min_version)}</span>` : ''}
+                <span class="badge" style="background:${u.channel === 'beta' ? 'rgba(139,92,246,.2)' : 'rgba(34,197,94,.15)'};color:${u.channel === 'beta' ? '#a78bfa' : '#4ade80'}">${u.channel || 'stable'}</span>
+              </div>
+              <p style="color:var(--text-secondary);font-size:.825rem;white-space:pre-wrap;margin-bottom:.4rem">${esc(truncate(u.changelog, 200))}</p>
+              <span style="font-size:.7rem;color:var(--text-muted)">${fmtDateTime(u.published_at)} by ${esc(u.published_by || 'Unknown')}</span>
+              ${u.download_url ? `<div style="margin-top:.35rem"><a href="${esc(u.download_url)}" style="font-size:.75rem" target="_blank">Download URL ↗</a></div>` : ''}
+              ${u.files && u.files.length > 0 ? `
+                <div style="margin-top:.5rem;padding:.5rem;background:var(--bg-secondary);border-radius:6px">
+                  <div style="font-size:.7rem;color:var(--text-muted);margin-bottom:.3rem;font-weight:600">📦 Uploaded Files (${u.files.length})</div>
+                  ${u.files.map(f => `
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:.2rem 0;font-size:.75rem">
+                      <span style="color:var(--text-secondary)">${esc(f.name)}</span>
+                      <div style="display:flex;align-items:center;gap:.5rem">
+                        <span style="color:var(--text-muted)">${fmtSize(f.size)}</span>
+                        <button class="btn btn-danger" style="padding:.1rem .4rem;font-size:.65rem" onclick="deleteUpdateFile('${esc(u.version)}','${esc(f.name)}')">✕</button>
+                      </div>
+                    </div>`).join('')}
+                </div>` : `
+                <div style="margin-top:.35rem"><button class="btn btn-secondary" style="padding:.2rem .6rem;font-size:.7rem" onclick="showUploadFiles('${esc(u.version)}')">Upload files for v${esc(u.version)}</button></div>`}
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="deleteAppUpdate('${u.id}')">Delete</button>
+          </div>
+        </div>`).join('')}
+      <div class="card mt-2">
+        <div class="card-body" style="font-size:.8rem;color:var(--text-muted)">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.6rem">
+            <strong style="font-size:.85rem">Public Updates Page</strong>
+            <a href="/platform/updates" target="_blank" style="display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .75rem;background:var(--accent-muted);color:var(--accent);border:1px solid var(--accent);border-radius:6px;font-size:.75rem;font-weight:600;text-decoration:none" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              /platform/updates
+            </a>
+          </div>
+          <strong>Update Check Endpoint:</strong> <code style="background:var(--bg-input);padding:.2rem .5rem;border-radius:4px;font-size:.75rem">GET /platform/api/updates/{target}/{currentVersion}</code>
+          <br><strong>Polling Endpoint:</strong> <code style="background:var(--bg-input);padding:.2rem .5rem;border-radius:4px;font-size:.75rem">GET /api/v4/admin/app/latest-update</code>
+          <br>The desktop app calls these endpoints to check for and download updates. Upload installer files (.exe, .msi, .deb, .AppImage, .dmg, .tar.gz) per version.
+        </div>
+      </div>`;
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function showUploadFiles(presetVersion) {
+  openModal('Upload Update Files', `
+    <div class="form-group">
+      <label class="form-label">Version</label>
+      <input class="form-input" id="mUploadVersion" placeholder="2.1.0" value="${presetVersion || ''}">
+      <div style="font-size:.7rem;color:var(--text-muted);margin-top:.2rem">Files will be stored in the server's update directory for this version.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Select Files</label>
+      <div id="dropZone" style="border:2px dashed var(--border);border-radius:8px;padding:2rem;text-align:center;cursor:pointer;transition:all .2s" onclick="document.getElementById('mFiles').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='var(--accent-muted)'" ondragleave="this.style.borderColor='var(--border)';this.style.background=''" ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='';handleDroppedFiles(event.dataTransfer.files)">
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom:.5rem"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p style="color:var(--text-muted);font-size:.85rem;margin:0">Drop files here or click to browse</p>
+        <p style="color:var(--text-muted);font-size:.7rem;margin:.3rem 0 0">Supported: .exe, .msi, .deb, .AppImage, .dmg, .tar.gz, .zip (max 500MB each)</p>
+      </div>
+      <input type="file" id="mFiles" multiple accept=".exe,.msi,.deb,.AppImage,.dmg,.tar.gz,.zip,.sig" style="display:none" onchange="handleSelectedFiles(this.files)">
+    </div>
+    <div id="fileList" style="margin-top:.5rem"></div>
+    <div id="uploadProgress" style="display:none;margin-top:.5rem">
+      <div style="background:var(--bg-secondary);border-radius:4px;overflow:hidden;height:6px">
+        <div id="progressBar" style="height:100%;background:var(--accent);width:0%;transition:width .3s"></div>
+      </div>
+      <p id="progressText" style="font-size:.75rem;color:var(--text-muted);margin-top:.3rem">Uploading...</p>
+    </div>`,
+    `<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" id="btnUpload" onclick="submitUploadFiles()">Upload</button>`);
+  window._uploadFiles = [];
+}
+
+function handleDroppedFiles(fileList) { handleSelectedFiles(fileList); }
+
+function handleSelectedFiles(fileList) {
+  window._uploadFiles = Array.from(fileList);
+  const el = document.getElementById('fileList');
+  if (!el) return;
+  el.innerHTML = window._uploadFiles.map((f,i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.3rem .5rem;background:var(--bg-secondary);border-radius:4px;margin-bottom:.25rem;font-size:.8rem">
+      <span>${esc(f.name)}</span>
+      <span style="color:var(--text-muted)">${fmtSize(f.size)}</span>
+    </div>`).join('');
+}
+
+async function submitUploadFiles() {
+  const version = document.getElementById('mUploadVersion').value.trim();
+  if (!version) return toast('Version is required', 'error');
+  if (!/^\d+\.\d+\.\d+$/.test(version)) return toast('Version must be semantic (e.g. 2.1.0)', 'error');
+  if (!window._uploadFiles || window._uploadFiles.length === 0) return toast('Select files to upload', 'error');
+
+  const formData = new FormData();
+  formData.append('version', version);
+  window._uploadFiles.forEach(f => formData.append('files', f));
+
+  document.getElementById('uploadProgress').style.display = 'block';
+  document.getElementById('btnUpload').disabled = true;
+
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/v4/admin/app-updates/upload');
+    xhr.setRequestHeader('Authorization', `Bearer ${getCookie('admin_token')}`);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        document.getElementById('progressBar').style.width = pct + '%';
+        document.getElementById('progressText').textContent = `Uploading... ${pct}% (${fmtSize(e.loaded)} / ${fmtSize(e.total)})`;
+      }
+    };
+
+    await new Promise((resolve, reject) => {
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const resp = JSON.parse(xhr.responseText);
+          if (resp.success) resolve(resp);
+          else reject(new Error(resp.error || 'Upload failed'));
+        } else {
+          try { reject(new Error(JSON.parse(xhr.responseText).error)); }
+          catch { reject(new Error(`Upload failed (${xhr.status})`)); }
+        }
+      };
+      xhr.onerror = () => reject(new Error('Network error'));
+      xhr.send(formData);
+    });
+
+    closeModal();
+    toast(`${window._uploadFiles.length} file(s) uploaded for v${version}!`, 'success');
+    loadAppUpdates();
+  } catch (err) {
+    toast(err.message, 'error');
+    document.getElementById('btnUpload').disabled = false;
+    document.getElementById('uploadProgress').style.display = 'none';
+  }
+}
+
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? match[2] : '';
+}
+
+async function deleteUpdateFile(version, filename) {
+  if (!confirm(`Delete ${filename} from v${version}?`)) return;
+  try {
+    await api(`/app-updates/files/${version}/${filename}`, { method: 'DELETE' });
+    toast('File deleted', 'success');
+    loadAppUpdates();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function showPushUpdate() {
+  openModal('Push App Update', `
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Version (semver)</label><input class="form-input" id="mVersion" placeholder="2.1.0"></div>
+      <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="mTitle" placeholder="Performance improvements"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Changelog</label><textarea class="form-textarea" id="mChangelog" rows="4" placeholder="- Fixed bug X\n- Added feature Y"></textarea></div>
+    <div class="form-group"><label class="form-label">Download URL (optional — auto-generated if files uploaded)</label><input class="form-input" id="mDownloadUrl" placeholder="https://... (leave empty to use uploaded files)"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Min Version (optional)</label><input class="form-input" id="mMinVersion" placeholder="1.5.0"></div>
+      <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:.15rem">
+        <div class="form-toggle"><label class="toggle-switch"><input type="checkbox" id="mForce"><span class="toggle-slider"></span></label><span style="font-size:.85rem">Force update</span></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Channel</label>
+      <div style="display:flex;gap:.75rem;margin-top:.25rem">
+        <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer">
+          <input type="radio" name="mChannel" id="mChannelStable" value="stable" checked>
+          <span style="font-size:.85rem">Stable</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer">
+          <input type="radio" name="mChannel" id="mChannelBeta" value="beta">
+          <span style="font-size:.85rem">Beta</span>
+        </label>
+      </div>
+    </div>
+    <div style="padding:.6rem;background:var(--bg-secondary);border-radius:6px;font-size:.75rem;color:var(--text-muted)">
+      💡 <strong>Tip:</strong> Upload installer files first using the "Upload Files" button, then push the update. The download URL will be auto-generated.
+    </div>`,
+    `<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="submitAppUpdate()">Publish</button>`);
+}
+
+async function submitAppUpdate() {
+  try {
+    const version = document.getElementById('mVersion').value.trim();
+    const title = document.getElementById('mTitle').value.trim();
+    const changelog = document.getElementById('mChangelog').value.trim();
+    const download_url = document.getElementById('mDownloadUrl').value.trim() || undefined;
+    const min_version = document.getElementById('mMinVersion').value.trim() || undefined;
+    const force_update = document.getElementById('mForce').checked;
+    const channel = document.querySelector('input[name="mChannel"]:checked')?.value || 'stable';
+    if (!version || !title) return toast('Version and title required', 'error');
+    if (!/^\d+\.\d+\.\d+$/.test(version)) return toast('Version must be semantic (e.g. 2.1.0)', 'error');
+    await api('/app-updates', { method: 'POST', body: JSON.stringify({ version, title, changelog, download_url, min_version, force_update, channel }) });
+    closeModal(); toast('Update pushed!', 'success'); loadAppUpdates();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteAppUpdate(id) {
+  if (!confirm('Delete this update and all its files?')) return;
+  try { await api(`/app-updates/${id}`, { method: 'DELETE', body: JSON.stringify({ confirm: true }) }); toast('Deleted', 'success'); loadAppUpdates(); }
+  catch (err) { toast(err.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 6: BUG REPORTS
+// ═══════════════════════════════════════════════════════════════════════════════
+let bugsPage = 0, bugsSource = '', bugsStatus = '', bugsSeverity = '';
+async function loadBugReports() {
+  try {
+    const params = new URLSearchParams({ limit: '20', offset: String(bugsPage * 20) });
+    if (bugsSource) params.set('source', bugsSource);
+    if (bugsStatus) params.set('status', bugsStatus);
+    if (bugsSeverity) params.set('severity', bugsSeverity);
+    const d = await api(`/bug-reports?${params}`);
+    const total = d.total || 0;
+    const pages = Math.ceil(total / 20) || 1;
+
+    document.getElementById('content').innerHTML = `
+      <div class="filter-bar">
+        <span style="font-size:.75rem;color:var(--text-muted);font-weight:600">SOURCE:</span>
+        ${['','site','app'].map(f => `<button class="filter-chip${bugsSource===f?' active':''}" onclick="bugsSource='${f}';bugsPage=0;loadBugReports()">${f||'All'}</button>`).join('')}
+        <span style="font-size:.75rem;color:var(--text-muted);font-weight:600;margin-left:.5rem">STATUS:</span>
+        ${['','open','reviewing','resolved'].map(s => `<button class="filter-chip${bugsStatus===s?' active':''}" onclick="bugsStatus='${s}';bugsPage=0;loadBugReports()">${s||'All'}</button>`).join('')}
+        <span style="font-size:.75rem;color:var(--text-muted);font-weight:600;margin-left:.5rem">SEVERITY:</span>
+        ${['','low','medium','high','critical'].map(s => `<button class="filter-chip${bugsSeverity===s?' active':''}" onclick="bugsSeverity='${s}';bugsPage=0;loadBugReports()">${s||'All'}</button>`).join('')}
+        <button class="btn btn-secondary btn-sm" onclick="loadBugReports()" style="margin-left:auto" title="Refresh bug reports">🔄 Refresh</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <thead><tr><th>#</th><th>Title</th><th>Source</th><th>Severity</th><th>Status</th><th>Reporter</th><th>Date</th><th></th></tr></thead>
+          <tbody>${(d.reports || []).length === 0 ? '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted)">No bug reports found</td></tr>' :
+            (d.reports || []).map(r => `<tr>
+              <td style="color:var(--text-muted)">#${r.id}</td>
+              <td style="font-weight:600;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.title)}</td>
+              <td><span class="badge badge-${r.source === 'app' ? 'accent' : 'blue'}">${esc(r.source)}</span></td>
+              <td><span class="badge badge-${r.severity === 'critical' ? 'red' : r.severity === 'high' ? 'yellow' : r.severity === 'low' ? 'muted' : 'blue'}">${esc(r.severity)}</span></td>
+              <td><span class="badge badge-${r.status === 'resolved' ? 'green' : r.status === 'reviewing' ? 'yellow' : 'red'}">${esc(r.status)}</span></td>
+              <td>${esc(r.reporter || r.email || '—')}</td>
+              <td>${fmtDate(r.created_at)}</td>
+              <td><button class="btn btn-secondary btn-sm" onclick="viewBugReport(${r.id})">View</button></td>
+            </tr>`).join('')}</tbody>
+        </table></div>
+        <div class="pagination">
+          <div class="pagination-info">${total} total • Page ${bugsPage + 1} of ${pages}</div>
+          <div class="pagination-buttons">
+            <button ${bugsPage===0?'disabled':''} onclick="bugsPage--;loadBugReports()">‹</button>
+            <button ${bugsPage>=pages-1?'disabled':''} onclick="bugsPage++;loadBugReports()">›</button>
+          </div>
+        </div>
+      </div>`;
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function viewBugReport(id) {
+  try {
+    const d = await api(`/bug-reports/${id}`);
+    const r = d.report;
+    openModal(`Bug Report #${r.id}`, `
+      <div style="margin-bottom:1rem">
+        <h4 style="margin-bottom:.5rem">${esc(r.title)}</h4>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem">
+          <span class="badge badge-${r.source === 'app' ? 'accent' : 'blue'}">${esc(r.source)}</span>
+          <span class="badge badge-${r.severity === 'critical' ? 'red' : r.severity === 'high' ? 'yellow' : 'blue'}">${esc(r.severity)}</span>
+          <span class="badge badge-${r.status === 'resolved' ? 'green' : r.status === 'reviewing' ? 'yellow' : 'red'}">${esc(r.status)}</span>
+          ${r.app_version ? `<span class="badge badge-muted">v${esc(r.app_version)}</span>` : ''}
+        </div>
+      </div>
+      <div style="margin-bottom:1rem">
+        <div class="form-label">Description</div>
+        <div style="background:var(--bg-input);padding:.75rem;border-radius:var(--radius-sm);color:var(--text-secondary);font-size:.85rem;white-space:pre-wrap;max-height:200px;overflow-y:auto">${esc(r.description)}</div>
+      </div>
+      ${r.logs ? `<div style="margin-bottom:1rem"><div class="form-label">Logs</div><pre style="background:var(--bg-input);padding:.75rem;border-radius:var(--radius-sm);color:var(--text-muted);font-size:.75rem;max-height:150px;overflow-y:auto">${esc(r.logs)}</pre></div>` : ''}
+      <div style="display:flex;gap:.5rem;font-size:.75rem;color:var(--text-muted);flex-wrap:wrap;margin-bottom:1rem">
+        <span>Reporter: ${esc(r.reporter || '—')}</span> • <span>Email: ${esc(r.email || '—')}</span> • <span>${fmtDateTime(r.created_at)}</span>
+        ${r.environment ? ` • <span>Env: ${esc(r.environment)}</span>` : ''}
+      </div>
+      <div class="divider"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Status</label><select class="form-select" id="mBugStatus">
+          <option value="open" ${r.status==='open'?'selected':''}>Open</option>
+          <option value="reviewing" ${r.status==='reviewing'?'selected':''}>Reviewing</option>
+          <option value="resolved" ${r.status==='resolved'?'selected':''}>Resolved</option>
+        </select></div>
+        <div class="form-group"><label class="form-label">Severity</label><select class="form-select" id="mBugSeverity">
+          <option value="low" ${r.severity==='low'?'selected':''}>Low</option>
+          <option value="medium" ${r.severity==='medium'?'selected':''}>Medium</option>
+          <option value="high" ${r.severity==='high'?'selected':''}>High</option>
+          <option value="critical" ${r.severity==='critical'?'selected':''}>Critical</option>
+        </select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Internal Notes</label><textarea class="form-textarea" id="mBugNotes" rows="3" placeholder="Add internal notes...">${esc(r.internal_notes || '')}</textarea></div>`,
+      `<button class="btn btn-danger btn-sm" onclick="deleteBugReport(${r.id})" style="margin-right:auto">Delete</button>
+       <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+       <button class="btn btn-primary" onclick="updateBugReport(${r.id})">Save Changes</button>`);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function updateBugReport(id) {
+  try {
+    await api(`/bug-reports/${id}`, { method: 'PUT', body: JSON.stringify({
+      status: document.getElementById('mBugStatus').value,
+      severity: document.getElementById('mBugSeverity').value,
+      internal_notes: document.getElementById('mBugNotes').value.trim(),
+    })});
+    closeModal(); toast('Report updated', 'success'); loadBugReports();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteBugReport(id) {
+  if (!confirm('Delete this bug report?')) return;
+  try { await api(`/bug-reports/${id}`, { method: 'DELETE' }); closeModal(); toast('Deleted', 'success'); loadBugReports(); }
+  catch (err) { toast(err.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 7: SYSTEM LOGS
+// ═══════════════════════════════════════════════════════════════════════════════
+let logsCategory = '', logsSearch = '';
+async function loadSystemLogs() {
+  try {
+    const params = new URLSearchParams({ limit: '100' });
+    if (logsCategory) params.set('category', logsCategory);
+    if (logsSearch) params.set('search', logsSearch);
+    const d = await api(`/audit-logs?${params}`);
+    const logs = d.logs || [];
+
+    document.getElementById('content').innerHTML = `
+      <div class="filter-bar">
+        <div class="search-bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input placeholder="Search logs..." value="${esc(logsSearch)}" onkeydown="if(event.key==='Enter'){logsSearch=this.value;loadSystemLogs()}">
+        </div>
+        ${['','accounts','roles','announcements','app_updates','bug_reports','security','settings'].map(c => `<button class="filter-chip${logsCategory===c?' active':''}" onclick="logsCategory='${c}';loadSystemLogs()">${c||'All'}</button>`).join('')}
+      </div>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <thead><tr><th>Time</th><th>Admin</th><th>Action</th><th>Category</th><th>Target</th><th>IP</th></tr></thead>
+          <tbody>${logs.length === 0 ? '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted)">No logs found</td></tr>' :
+            logs.map(l => `<tr>
+              <td style="white-space:nowrap;font-size:.75rem">${fmtDateTime(l.created_at)}</td>
+              <td>${esc(l.admin_email || '—')}</td>
+              <td style="font-family:monospace;font-size:.8rem">${esc(l.action)}</td>
+              <td><span class="badge badge-muted">${esc(l.category)}</span></td>
+              <td style="color:var(--text-muted);font-size:.8rem">${l.target_type ? `${esc(l.target_type)}:${esc(truncate(l.target_id,16))}` : '—'}</td>
+              <td style="font-size:.75rem;color:var(--text-muted)">${esc(l.ip_address || '—')}</td>
+            </tr>`).join('')}</tbody>
+        </table></div>
+      </div>`;
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 8: SECURITY SETTINGS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadSecurity() {
+  try {
+    const d = await api('/security');
+    document.getElementById('content').innerHTML = `
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat-card"><div class="stat-label">Active Sessions</div><div class="stat-value text-blue">${d.activeSessions}</div></div>
+        <div class="stat-card"><div class="stat-label">Registration</div><div class="stat-value ${d.registrationEnabled?'text-green':'text-red'}" style="font-size:1rem">${d.registrationEnabled?'Enabled':'Disabled'}</div></div>
+        <div class="stat-card"><div class="stat-label">Email Verification</div><div class="stat-value ${d.emailVerification?'text-green':'text-muted'}" style="font-size:1rem">${d.emailVerification?'Required':'Off'}</div></div>
+      </div>
+
+      <div class="card mb-2">
+        <div class="card-header"><h3>Maintenance Mode</h3></div>
+        <div class="card-body">
+          <div class="form-toggle mb-2">
+            <label class="toggle-switch"><input type="checkbox" id="secMaintenance" ${d.maintenanceMode?'checked':''} onchange="toggleMaintenance(this.checked)"><span class="toggle-slider"></span></label>
+            <div><span style="font-weight:600">Maintenance Mode</span><br><span style="font-size:.8rem;color:var(--text-muted)">When enabled, the platform shows a maintenance page to all non-admin users.</span></div>
+          </div>
+          <div class="form-group"><label class="form-label">Maintenance Message</label><input class="form-input" id="secMaintenanceMsg" value="${esc(d.maintenanceMessage)}" placeholder="We'll be back shortly."></div>
+          <button class="btn btn-secondary btn-sm" onclick="updateMaintenanceMsg()">Save Message</button>
+        </div>
+      </div>
+
+      <div class="card mb-2">
+        <div class="card-header"><h3>Access Controls</h3></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:1rem">
+          <div class="form-toggle">
+            <label class="toggle-switch"><input type="checkbox" id="secRegistration" ${d.registrationEnabled?'checked':''} onchange="toggleRegistration(this.checked)"><span class="toggle-slider"></span></label>
+            <div><span style="font-weight:600">New User Registration</span><br><span style="font-size:.8rem;color:var(--text-muted)">Allow new users to create accounts.</span></div>
+          </div>
+          <div class="form-toggle">
+            <label class="toggle-switch"><input type="checkbox" id="secEmailVerify" ${d.emailVerification?'checked':''} onchange="toggleEmailVerification(this.checked)"><span class="toggle-slider"></span></label>
+            <div><span style="font-weight:600">Email Verification</span><br><span style="font-size:.8rem;color:var(--text-muted)">Require email verification for new accounts.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Danger Zone</h3></div>
+        <div class="card-body">
+          <button class="btn btn-danger" onclick="forceLogoutAll()">Force Logout All Users</button>
+          <p style="font-size:.8rem;color:var(--text-muted);margin-top:.5rem">Terminates all active user sessions. Users will need to log in again.</p>
+        </div>
+      </div>`;
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function toggleMaintenance(enabled) {
+  try { await api('/security/maintenance', { method: 'POST', body: JSON.stringify({ enabled }) }); toast(enabled ? 'Maintenance enabled' : 'Maintenance disabled', 'success'); }
+  catch (err) { toast(err.message, 'error'); loadSecurity(); }
+}
+
+async function updateMaintenanceMsg() {
+  try {
+    const message = document.getElementById('secMaintenanceMsg').value.trim();
+    await api('/security/maintenance', { method: 'POST', body: JSON.stringify({ enabled: document.getElementById('secMaintenance').checked, message }) });
+    toast('Message updated', 'success');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function toggleRegistration(enabled) {
+  try { await api('/security/toggle-registration', { method: 'POST', body: JSON.stringify({ enabled }) }); toast(enabled ? 'Registration enabled' : 'Registration disabled', 'success'); }
+  catch (err) { toast(err.message, 'error'); loadSecurity(); }
+}
+
+async function toggleEmailVerification(enabled) {
+  try { await api('/security/toggle-email-verification', { method: 'POST', body: JSON.stringify({ enabled }) }); toast(enabled ? 'Verification enabled' : 'Verification disabled', 'success'); }
+  catch (err) { toast(err.message, 'error'); loadSecurity(); }
+}
+
+async function forceLogoutAll() {
+  if (!confirm('This will terminate ALL user sessions. Continue?')) return;
+  try { await api('/security/force-logout', { method: 'POST', body: JSON.stringify({ confirm: true }) }); toast('All sessions terminated', 'success'); loadSecurity(); }
+  catch (err) { toast(err.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 10: THEMES
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadThemes() {
+  try {
+    const d = await api('/themes');
+    const themes = d.themes || [];
+    const standard = themes.filter(t => t.category === 'standard');
+    const holiday = themes.filter(t => t.category === 'holiday');
+    const activeTheme = d.activeTheme || 'darklock';
+    const autoHoliday = d.autoHoliday;
+    const currentHoliday = d.currentHoliday;
+
+    document.getElementById('content').innerHTML = `
+      ${currentHoliday ? `<div class="card" style="border:1px solid var(--accent);margin-bottom:1.5rem">
+        <div class="card-body" style="display:flex;align-items:center;gap:1rem">
+          <span style="font-size:2rem">${themes.find(t=>t.id===currentHoliday)?.emoji||'🎉'}</span>
+          <div><strong style="color:var(--accent)">Holiday Theme Active!</strong><br><span style="color:var(--text-muted);font-size:.85rem">${themes.find(t=>t.id===currentHoliday)?.name||currentHoliday} theme is active because auto-holiday themes are on</span></div>
+        </div>
+      </div>` : ''}
+
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header"><h3>Standard Themes</h3></div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem">
+            ${standard.map(t => `
+              <div class="theme-card" onclick="setTheme('${t.id}')" style="cursor:pointer;padding:1rem;border:2px solid ${t.id===activeTheme?'var(--accent)':'var(--border)'};border-radius:var(--radius-md);background:var(--bg-secondary);transition:all .2s;position:relative">
+                ${t.id===activeTheme?'<div style="position:absolute;top:.5rem;right:.5rem;background:var(--accent);color:#000;font-size:.65rem;padding:2px 8px;border-radius:10px;font-weight:700">ACTIVE</div>':''}
+                <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem">
+                  <div style="width:32px;height:32px;border-radius:50%;background:${t.preview};flex-shrink:0;border:2px solid ${t.previewSecondary}"></div>
+                  <div>
+                    <div style="font-weight:600;font-size:.9rem">${esc(t.name)}</div>
+                    <div style="font-size:.7rem;color:var(--text-muted)">${esc(t.description)}</div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:4px;margin-top:.5rem">
+                  <div style="flex:1;height:6px;border-radius:3px;background:${t.preview}"></div>
+                  <div style="flex:1;height:6px;border-radius:3px;background:${t.previewSecondary}"></div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header"><h3>🎄 Holiday Themes</h3></div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem">
+            ${holiday.map(t => `
+              <div class="theme-card" onclick="setTheme('${t.id}')" style="cursor:pointer;padding:1rem;border:2px solid ${t.id===activeTheme?'var(--accent)':'var(--border)'};border-radius:var(--radius-md);background:var(--bg-secondary);transition:all .2s;position:relative">
+                ${t.id===activeTheme?'<div style="position:absolute;top:.5rem;right:.5rem;background:var(--accent);color:#000;font-size:.65rem;padding:2px 8px;border-radius:10px;font-weight:700">ACTIVE</div>':''}
+                <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem">
+                  <span style="font-size:1.5rem">${t.emoji||'🎉'}</span>
+                  <div>
+                    <div style="font-weight:600;font-size:.9rem">${esc(t.name)}</div>
+                    <div style="font-size:.7rem;color:var(--text-muted)">${esc(t.description)}</div>
+                  </div>
+                </div>
+                <div style="font-size:.7rem;color:var(--text-muted);margin-top:.25rem">${esc(t.holidayDateRange||'')}</div>
+                <div style="display:flex;gap:4px;margin-top:.5rem">
+                  <div style="flex:1;height:6px;border-radius:3px;background:${t.preview}"></div>
+                  <div style="flex:1;height:6px;border-radius:3px;background:${t.previewSecondary}"></div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>🔄 Auto Theme</h3></div>
+        <div class="card-body">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 0">
+            <div>
+              <div style="font-weight:600">Auto Holiday Themes</div>
+              <div style="font-size:.8rem;color:var(--text-muted)">Automatically switch to holiday themes during their date range. When enabled, the website will use the matching holiday theme during its active period, then revert to your selected theme.</div>
+            </div>
+            <label class="toggle-switch"><input type="checkbox" ${autoHoliday?'checked':''} onchange="toggleAutoHoliday(this.checked)"><span class="toggle-slider"></span></label>
+          </div>
+          <div style="margin-top:1rem;padding:1rem;background:var(--bg-tertiary);border-radius:var(--radius-md)">
+            <div style="font-weight:600;margin-bottom:.75rem;font-size:.85rem">Holiday Schedule</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.5rem;font-size:.8rem">
+              ${holiday.map(t => `
+                <div style="display:flex;align-items:center;gap:.5rem;color:var(--text-secondary)">
+                  <span>${t.emoji||'📅'}</span>
+                  <span>${esc(t.name)}</span>
+                  <span style="color:var(--text-muted);margin-left:auto;font-size:.7rem">${esc(t.holidayDateRange||'')}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function setTheme(theme) {
+  try {
+    await api('/themes/set', { method: 'POST', body: JSON.stringify({ theme }) });
+    toast(`Theme changed to ${theme}`, 'success');
+    loadThemes();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function toggleAutoHoliday(enabled) {
+  try {
+    await api('/themes/auto-holiday', { method: 'POST', body: JSON.stringify({ enabled }) });
+    toast(enabled ? 'Auto holiday themes enabled' : 'Auto holiday themes disabled', 'success');
+    loadThemes();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 11: MAINTENANCE
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadMaintenance() {
+  try {
+    const d = await api('/maintenance');
+    const scopes = d.scopes || {};
+    const platform = scopes.darklock_site || {};
+    const site = scopes.bot_dashboard || {};
+
+    const renderScope = (scope, data, label, icon, desc) => `
+      <div class="card" style="margin-bottom:1.5rem;border:1px solid ${data.enabled?'var(--danger)':'var(--border)'}">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+          <h3>${icon} ${label}</h3>
+          <div style="display:flex;align-items:center;gap:1rem">
+            <span style="font-size:.8rem;color:${data.enabled?'var(--danger)':'var(--success)'};font-weight:600">${data.enabled?'🔴 MAINTENANCE ON':'🟢 LIVE'}</span>
+            <label class="toggle-switch"><input type="checkbox" ${data.enabled?'checked':''} onchange="toggleMaintenance('${scope}', this.checked)"><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+        <div class="card-body">
+          <p style="color:var(--text-muted);font-size:.8rem;margin-bottom:1rem">${desc}</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div class="form-group">
+              <label style="font-weight:600;font-size:.8rem;display:block;margin-bottom:.25rem">Title</label>
+              <input class="form-input" id="mt_title_${scope}" value="${esc(data.title||'Scheduled Maintenance')}" placeholder="Maintenance title" style="font-size:.85rem">
+            </div>
+            <div class="form-group">
+              <label style="font-weight:600;font-size:.8rem;display:block;margin-bottom:.25rem">Subtitle</label>
+              <input class="form-input" id="mt_subtitle_${scope}" value="${esc(data.subtitle||"We'll be back shortly")}" placeholder="Subtitle" style="font-size:.85rem">
+            </div>
+          </div>
+          <div class="form-group">
+            <label style="font-weight:600;font-size:.8rem;display:block;margin-bottom:.25rem">Message</label>
+            <textarea class="form-input" id="mt_msg_${scope}" rows="3" placeholder="Maintenance message shown to users" style="font-size:.85rem">${esc(data.message||'')}</textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div class="form-group">
+              <label style="font-weight:600;font-size:.8rem;display:block;margin-bottom:.25rem">Estimated End Time</label>
+              <input class="form-input" type="datetime-local" id="mt_end_${scope}" value="${data.scheduled_end?data.scheduled_end.slice(0,16):''}" style="font-size:.85rem">
+            </div>
+            <div class="form-group">
+              <label style="font-weight:600;font-size:.8rem;display:block;margin-bottom:.25rem">Bypass IPs (comma separated)</label>
+              <input class="form-input" id="mt_ips_${scope}" value="${(() => { try { return JSON.parse(data.bypass_ips||'[]').join(', '); } catch(e) { return ''; }})()}" placeholder="e.g. 192.168.1.1" style="font-size:.85rem">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:2rem;margin-top:.5rem">
+            <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;cursor:pointer">
+              <input type="checkbox" id="mt_admin_${scope}" ${data.admin_bypass?'checked':''}> Admin Bypass
+            </label>
+            <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;cursor:pointer">
+              <input type="checkbox" id="mt_localhost_${scope}" ${data.apply_localhost?'checked':''}> Apply to Localhost
+            </label>
+          </div>
+          <div style="margin-top:1rem;display:flex;gap:.5rem">
+            <button class="btn btn-primary btn-sm" onclick="saveMaintenance('${scope}')">Save Settings</button>
+            <button class="btn ${data.enabled?'btn-success':'btn-danger'} btn-sm" onclick="toggleMaintenance('${scope}', ${!data.enabled})">
+              ${data.enabled?'🟢 Disable Maintenance':'🔴 Enable Maintenance'}
+            </button>
+          </div>
+        </div>
+      </div>`;
+
+    document.getElementById('content').innerHTML = `
+      <div class="card" style="margin-bottom:1.5rem;background:linear-gradient(135deg,rgba(239,68,68,.08),rgba(249,115,22,.05))">
+        <div class="card-body" style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <h3 style="margin:0">⚡ Quick Actions</h3>
+            <p style="margin:.25rem 0 0;color:var(--text-muted);font-size:.8rem">Enable or disable maintenance for all services at once</p>
+          </div>
+          <div style="display:flex;gap:.75rem">
+            <button class="btn btn-danger btn-sm" onclick="toggleAllMaintenance(true)">🔴 Enable All Maintenance</button>
+            <button class="btn btn-success btn-sm" onclick="toggleAllMaintenance(false)">🟢 Disable All Maintenance</button>
+          </div>
+        </div>
+      </div>
+      ${renderScope('darklock_site', platform, 'Platform (/platform)', '🌐', 'Controls maintenance mode for the Darklock Platform — login, downloads, profiles, and all /platform/* routes.')}
+      ${renderScope('bot_dashboard', site, 'Website (/site)', '📄', 'Controls maintenance mode for the public website — /site/ pages including docs, privacy, terms, status, and bug reports.')}
+    `;
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function toggleMaintenance(scope, enabled) {
+  try {
+    await api('/maintenance/update', { method: 'POST', body: JSON.stringify({ scope, enabled }) });
+    toast(enabled ? `${scope} maintenance enabled` : `${scope} maintenance disabled`, enabled ? 'warning' : 'success');
+    loadMaintenance();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function saveMaintenance(scope) {
+  try {
+    const title = document.getElementById(`mt_title_${scope}`)?.value;
+    const subtitle = document.getElementById(`mt_subtitle_${scope}`)?.value;
+    const message = document.getElementById(`mt_msg_${scope}`)?.value;
+    const scheduledEnd = document.getElementById(`mt_end_${scope}`)?.value || null;
+    const adminBypass = document.getElementById(`mt_admin_${scope}`)?.checked;
+    const applyLocalhost = document.getElementById(`mt_localhost_${scope}`)?.checked;
+    const ipsRaw = document.getElementById(`mt_ips_${scope}`)?.value || '';
+    const bypassIps = ipsRaw.split(',').map(s => s.trim()).filter(Boolean);
+
+    await api('/maintenance/update', { method: 'POST', body: JSON.stringify({ scope, title, subtitle, message, scheduledEnd, adminBypass, applyLocalhost, bypassIps }) });
+    toast(`${scope} settings saved`, 'success');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function toggleAllMaintenance(enabled) {
+  if (!confirm(enabled ? 'Enable maintenance for ALL services? Users will see maintenance pages.' : 'Disable ALL maintenance? Services will go live.')) return;
+  try {
+    await api('/maintenance/toggle-all', { method: 'POST', body: JSON.stringify({ enabled }) });
+    toast(enabled ? 'All maintenance enabled' : 'All maintenance disabled', enabled ? 'warning' : 'success');
+    loadMaintenance();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 9: PLATFORM SETTINGS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadSettings() {
+  try {
+    const d = await api('/settings');
+    const cfg = d.config || {};
+    const entries = Object.entries(cfg);
+    document.getElementById('content').innerHTML = `
+      <div class="card">
+        <div class="card-header"><h3>Platform Configuration</h3></div>
+        <div class="card-body">
+          ${entries.map(([key, item]) => `
+            <div style="display:flex;align-items:center;gap:1rem;padding:.75rem 0;border-bottom:1px solid var(--border)">
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:600;font-size:.85rem">${esc(key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))}</div>
+                <div style="font-size:.75rem;color:var(--text-muted)">${esc(item.description || '')} ${item.updated_by ? `• Last updated by ${esc(item.updated_by)}` : ''}</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
+                ${item.type === 'boolean' ? `
+                  <label class="toggle-switch"><input type="checkbox" ${item.value === 'true' ? 'checked' : ''} onchange="saveSetting('${esc(key)}', this.checked ? 'true' : 'false')"><span class="toggle-slider"></span></label>
+                ` : `
+                  <input class="form-input" id="cfg_${esc(key)}" value="${esc(item.value || '')}" style="width:200px;font-size:.8rem">
+                  <button class="btn btn-secondary btn-sm" onclick="saveSetting('${esc(key)}', document.getElementById('cfg_${esc(key)}').value)">Save</button>
+                `}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function saveSetting(key, value) {
+  try { await api(`/settings/${key}`, { method: 'PUT', body: JSON.stringify({ value }) }); toast(`${key} updated`, 'success'); }
+  catch (err) { toast(err.message, 'error'); }
+}
+
+// ── Init ────────────────────────────────────────────────────────────────────────
+boot();
+</script>
+</body>
+</html>

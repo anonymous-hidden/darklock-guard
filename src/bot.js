@@ -56,11 +56,13 @@ const AntiNuke = require('./security/antinuke');
 const AntiNukeManager = require('./security/AntiNukeManager');
 const AntiMaliciousLinks = require('./security/antilinks');
 const AntiPhishing = require('./security/antiphishing');
+const LinkAnalyzer = require('./security/LinkAnalyzer');
 const RoleAuditing = require('./security/roleaudit');
 const ChannelProtection = require('./security/channelprotection');
 const UserVerification = require('./security/userverification');
 const ToxicityFilter = require('./security/toxicity');
 const BehaviorDetection = require('./security/behavior');
+const WordFilterEngine = require('./security/WordFilterEngine');
 const setupAuditWatcher = require('./security/auditWatcher');
 
 // Import utility modules
@@ -89,6 +91,12 @@ const LockdownManager = require('./utils/LockdownManager');
 const RankSystem = require('./utils/RankSystem');
 const RankCardGenerator = require('./utils/RankCardGenerator');
 const OpenAIClient = require('./utils/OpenAIClient');
+let wireGuildCounterDisplay;
+try {
+    wireGuildCounterDisplay = require('./hardware/guildCounterDisplay');
+} catch (err) {
+    console.warn('[7seg] guild counter display disabled:', err.message);
+}
 
 // Import new XP system modules
 const XPDatabase = require('./db/xpDatabase');
@@ -135,6 +143,9 @@ class SecurityBot {
                 Partials.GuildMember
             ]
         });
+        if (wireGuildCounterDisplay) {
+            wireGuildCounterDisplay(this.client);
+        }
 
         this.commands = new Collection();
         this.cooldowns = new Collection();
@@ -252,6 +263,19 @@ class SecurityBot {
             this.toxicityFilter = new ToxicityFilter(this);
             this.behaviorDetection = new BehaviorDetection(this);
             this.antiNukeManager = new AntiNukeManager(this);
+            
+            // Initialize Word Filter Engine
+            this.wordFilter = new WordFilterEngine(this);
+            await this.wordFilter.initialize();
+            this.client.wordFilter = this.wordFilter; // Attach to client for command access
+            console.log('[DEBUG] Word Filter attached to client:', !!this.client.wordFilter);
+            console.log('[DEBUG] Client has wordFilter method:', typeof this.client.wordFilter?.checkMessage);
+            this.logger.info('   ✅ Word Filter Engine initialized');
+            
+            // Initialize Link Analyzer for phishing/malicious link detection
+            this.linkAnalyzer = new LinkAnalyzer(this);
+            await this.linkAnalyzer.initialize();
+            this.logger.info('   ✅ Link Analyzer initialized');
 
             // Start audit watcher for fast anti-nuke detection
             try {

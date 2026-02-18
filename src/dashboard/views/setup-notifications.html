@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications & Logs - DarkLock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/css/design-system.css">
+    <link rel="stylesheet" href="/css/premium-gating.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v4/admin/theme/css">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <script src="/js/premium-gating.js"></script>
+    <style>
+        .setup-page { min-height: 100vh; background: var(--ds-surface-0); }
+        .setup-nav {
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: var(--ds-space-md) var(--ds-space-xl);
+            background: var(--ds-surface-1); border-bottom: 1px solid var(--ds-border);
+            backdrop-filter: blur(12px);
+        }
+        .setup-breadcrumb { display: flex; align-items: center; gap: var(--ds-space-sm); font-size: 14px; color: var(--ds-text-muted); }
+        .setup-breadcrumb a { color: var(--ds-text-muted); text-decoration: none; transition: color 0.15s; }
+        .setup-breadcrumb a:hover { color: var(--ds-primary); }
+        .setup-breadcrumb-current { color: var(--ds-text-primary); font-weight: 500; }
+        .back-button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: var(--ds-surface-2); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); color: var(--ds-text-secondary); font-size: 13px; cursor: pointer; transition: all 0.15s; text-decoration: none; }
+        .back-button:hover { background: var(--ds-surface-3); color: var(--ds-text-primary); border-color: var(--ds-primary); }
+        .back-button i { font-size: 11px; }
+        .setup-container { max-width: 960px; margin: 0 auto; padding: var(--ds-space-xl) var(--ds-space-lg); }
+        .setup-header { margin-bottom: var(--ds-space-xl); }
+        .setup-header-icon { width: 56px; height: 56px; border-radius: var(--ds-radius-lg); background: var(--ds-primary-bg); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--ds-primary); margin-bottom: var(--ds-space-md); }
+        .setup-header h1 { font-size: 24px; font-weight: 700; color: var(--ds-text-primary); margin: 0 0 8px 0; }
+        .setup-header p { font-size: 14px; color: var(--ds-text-muted); line-height: 1.6; margin: 0; }
+
+        /* Tier Badges */
+        .tier-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: var(--ds-radius-full); font-size: 11px; font-weight: 600; letter-spacing: 0.3px; margin-left: 10px; }
+        .tier-free { background: var(--ds-success-bg); color: var(--ds-success); border: 1px solid var(--ds-success-border); }
+        .tier-premium { background: linear-gradient(135deg, rgba(255,193,7,0.15), rgba(255,152,0,0.15)); color: #ffc107; border: 1px solid rgba(255,193,7,0.3); }
+
+        /* Cards */
+        .setup-card { background: var(--ds-surface-1); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg); margin-bottom: var(--ds-space-lg); overflow: hidden; transition: border-color 0.2s; }
+        .setup-card:hover { border-color: var(--ds-border-focus); }
+        .setup-card.premium-card { border-color: rgba(255,193,7,0.2); }
+        .setup-card.premium-card .setup-card-header { background: linear-gradient(135deg, rgba(255,193,7,0.04), rgba(255,152,0,0.02)); }
+        .setup-card-header { padding: var(--ds-space-lg); border-bottom: 1px solid var(--ds-border); display: flex; align-items: center; justify-content: space-between; }
+        .setup-card-title { display: flex; align-items: center; gap: var(--ds-space-sm); font-size: 16px; font-weight: 600; color: var(--ds-text-primary); }
+        .setup-card-title i { color: var(--ds-primary); font-size: 18px; }
+        .setup-card-body { padding: var(--ds-space-lg); }
+        .setup-card-desc { font-size: 13px; color: var(--ds-text-muted); margin-bottom: var(--ds-space-lg); line-height: 1.6; }
+
+        /* Form Elements */
+        .setup-form-group { margin-bottom: var(--ds-space-lg); }
+        .setup-form-group:last-child { margin-bottom: 0; }
+        .setup-form-label { display: block; font-size: 13px; font-weight: 600; color: var(--ds-text-primary); margin-bottom: 6px; }
+        .setup-form-desc { font-size: 12px; color: var(--ds-text-muted); margin-bottom: 8px; line-height: 1.5; }
+        .setup-form-select, .setup-form-input {
+            width: 100%; padding: 10px 14px;
+            background: var(--ds-surface-0); border: 1px solid var(--ds-border);
+            border-radius: var(--ds-radius-md); color: var(--ds-text-primary);
+            font-size: 14px; font-family: var(--ds-font-family);
+            transition: border-color 0.15s, box-shadow 0.15s;
+            appearance: none; -webkit-appearance: none;
+        }
+        .setup-form-select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+        .setup-form-select:focus, .setup-form-input:focus { outline: none; border-color: var(--ds-primary); box-shadow: 0 0 0 3px var(--ds-primary-bg); }
+        .setup-form-select option { background: var(--ds-surface-1); color: var(--ds-text-primary); }
+
+        /* Toggle Rows */
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--ds-border-light); }
+        .toggle-row:last-child { border-bottom: none; }
+        .toggle-info { flex: 1; margin-right: 16px; }
+        .toggle-info h4 { font-size: 14px; font-weight: 500; color: var(--ds-text-primary); margin: 0 0 3px 0; display: flex; align-items: center; gap: 6px; }
+        .toggle-info p { font-size: 12px; color: var(--ds-text-muted); margin: 0; line-height: 1.5; }
+        .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--ds-surface-3); border-radius: 24px; transition: 0.25s; }
+        .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.25s; }
+        .toggle-switch input:checked + .toggle-slider { background: var(--ds-primary); }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+        /* Event Filter Grid (premium) */
+        .event-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+        .event-item { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--ds-surface-0); border: 1px solid var(--ds-border-light); border-radius: var(--ds-radius-md); transition: all 0.15s; cursor: pointer; }
+        .event-item:hover { border-color: var(--ds-primary); background: var(--ds-primary-bg); }
+        .event-item input { accent-color: var(--ds-primary); width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
+        .event-item label { font-size: 13px; color: var(--ds-text-secondary); cursor: pointer; flex: 1; }
+        .event-item i { font-size: 14px; color: var(--ds-text-muted); width: 18px; text-align: center; flex-shrink: 0; }
+
+        /* Channel Tag */
+        .channel-tag { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: var(--ds-surface-2); border-radius: var(--ds-radius-sm); font-size: 12px; color: var(--ds-text-secondary); }
+        .channel-tag i { color: var(--ds-text-muted); font-size: 11px; }
+
+        /* Premium Overlay */
+        .premium-locked { position: relative; pointer-events: none; opacity: 0.45; filter: grayscale(30%); }
+        .premium-locked::after { content: ''; position: absolute; inset: 0; background: transparent; z-index: 5; }
+        .premium-unlock-cta { display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: linear-gradient(135deg, rgba(255,193,7,0.08), rgba(255,152,0,0.04)); border: 1px solid rgba(255,193,7,0.2); border-radius: var(--ds-radius-md); margin-bottom: var(--ds-space-lg); }
+        .premium-unlock-cta i { font-size: 20px; color: #ffc107; flex-shrink: 0; }
+        .premium-unlock-cta .cta-text { flex: 1; }
+        .premium-unlock-cta .cta-text h4 { font-size: 14px; font-weight: 600; color: var(--ds-text-primary); margin: 0 0 2px 0; }
+        .premium-unlock-cta .cta-text p { font-size: 12px; color: var(--ds-text-muted); margin: 0; }
+        .premium-unlock-btn { padding: 8px 20px; background: linear-gradient(135deg, #ffc107, #ff9800); color: #1a1a2e; border: none; border-radius: var(--ds-radius-md); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+        .premium-unlock-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(255,193,7,0.3); }
+
+        /* Webhook section */
+        .webhook-input-row { display: flex; gap: 10px; align-items: center; }
+        .webhook-input-row .setup-form-input { flex: 1; }
+        .webhook-test-btn { padding: 10px 18px; background: var(--ds-surface-2); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); color: var(--ds-text-secondary); font-size: 13px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+        .webhook-test-btn:hover { background: var(--ds-primary-bg); color: var(--ds-primary); border-color: var(--ds-primary); }
+
+        /* Save Section */
+        .save-section { display: flex; align-items: center; justify-content: space-between; padding: var(--ds-space-lg); background: var(--ds-surface-1); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg); margin-top: var(--ds-space-xl); position: sticky; bottom: 20px; z-index: 50; box-shadow: var(--ds-shadow-lg); }
+        .save-section .save-hint { font-size: 13px; color: var(--ds-text-muted); }
+        .save-buttons { display: flex; gap: 10px; }
+        .ds-btn { padding: 10px 24px; border-radius: var(--ds-radius-md); font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; font-family: var(--ds-font-family); }
+        .ds-btn-primary { background: var(--ds-accent-gradient); color: white; }
+        .ds-btn-primary:hover { background: var(--ds-accent-gradient-hover); transform: translateY(-1px); box-shadow: var(--ds-shadow-glow); }
+        .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        .ds-btn-secondary { background: var(--ds-surface-2); color: var(--ds-text-secondary); border: 1px solid var(--ds-border); }
+        .ds-btn-secondary:hover { background: var(--ds-surface-3); color: var(--ds-text-primary); }
+
+        /* Status Message */
+        .status-toast { position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 14px 24px; border-radius: var(--ds-radius-md); font-size: 14px; font-weight: 500; color: white; transform: translateX(120%); transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1); box-shadow: var(--ds-shadow-lg); }
+        .status-toast.show { transform: translateX(0); }
+        .status-toast.success { background: var(--ds-success); }
+        .status-toast.error { background: var(--ds-danger); }
+
+        /* Divider */
+        .section-divider { height: 1px; background: var(--ds-border); margin: var(--ds-space-lg) 0; }
+
+        /* Info box */
+        .info-box { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; background: var(--ds-info-bg); border: 1px solid var(--ds-info-border); border-radius: var(--ds-radius-md); margin-bottom: var(--ds-space-lg); }
+        .info-box i { color: var(--ds-info); font-size: 16px; margin-top: 2px; flex-shrink: 0; }
+        .info-box p { font-size: 13px; color: var(--ds-text-secondary); line-height: 1.6; margin: 0; }
+
+        @media (max-width: 640px) {
+            .setup-container { padding: var(--ds-space-md); }
+            .event-grid { grid-template-columns: 1fr; }
+            .save-section { flex-direction: column; gap: 12px; text-align: center; }
+            .webhook-input-row { flex-direction: column; }
+        }
+    </style>
+</head>
+<body class="setup-page">
+    <nav class="setup-nav">
+        <div class="setup-breadcrumb">
+            <a href="/dashboard" class="back-button"><i class="fas fa-arrow-left"></i> Dashboard</a>
+            <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+            <span class="setup-breadcrumb-current">Notifications & Logs</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="statusDot" style="width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: var(--ds-text-muted);"></span>
+            <span id="statusText" style="font-size: 13px; color: var(--ds-text-muted);">Loading...</span>
+        </div>
+    </nav>
+
+    <div class="setup-container">
+        <!-- Header -->
+        <div class="setup-header">
+            <div class="setup-header-icon"><i class="fas fa-bell"></i></div>
+            <h1>Notifications & Logs</h1>
+            <p>Control what gets logged, where alerts are sent, and how your team gets notified about important events in your server.</p>
+        </div>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!--  SECTION 1: LOG CHANNELS (FREE)            -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="setup-card" id="card-channels">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-hashtag"></i> Log Channels
+                    <span class="tier-badge tier-free">FREE</span>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <p class="setup-card-desc">Choose where the bot sends log messages. You can use one channel for everything, or separate them by category.</p>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">General Log Channel</label>
+                    <p class="setup-form-desc">Main channel for all log events (moderation, member joins/leaves, edits, deletes). Other channels below override this.</p>
+                    <select class="setup-form-select" id="logChannel">
+                        <option value="">-- No logging --</option>
+                    </select>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Moderation Log Channel</label>
+                    <p class="setup-form-desc">Bans, kicks, timeouts, warnings, and moderation actions.</p>
+                    <select class="setup-form-select" id="modLogChannel">
+                        <option value="">-- Use general log channel --</option>
+                    </select>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Security Alert Channel</label>
+                    <p class="setup-form-desc">Anti-raid, anti-nuke, phishing detections, and other security alerts.</p>
+                    <select class="setup-form-select" id="alertChannel">
+                        <option value="">-- Use general log channel --</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!--  SECTION 2: EVENT TOGGLES (FREE)          -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="setup-card" id="card-events-free">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-list-check"></i> Logged Events
+                    <span class="tier-badge tier-free">FREE</span>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <p class="setup-card-desc">Toggle which events the bot logs. All events are sent to their respective log channels configured above.</p>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-gavel" style="color: var(--ds-primary); font-size: 14px;"></i> Moderation Actions</h4>
+                        <p>Log all moderation actions (bans, kicks, mutes, warnings)</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="modLogging" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-pen" style="color: #3b82f6; font-size: 14px;"></i> Message Edits</h4>
+                        <p>Log when messages are edited (shows before → after)</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="logEdits" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-trash-alt" style="color: #ef4444; font-size: 14px;"></i> Message Deletes</h4>
+                        <p>Log when messages are deleted</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="logDeletes" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-user-plus" style="color: #22c55e; font-size: 14px;"></i> Member Joins & Leaves</h4>
+                        <p>Log when members join or leave the server</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="logMembers" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-user-shield" style="color: #8b5cf6; font-size: 14px;"></i> Role Changes</h4>
+                        <p>Log when roles are added to or removed from members</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="logRoles"><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-hashtag" style="color: #f59e0b; font-size: 14px;"></i> Channel Changes</h4>
+                        <p>Log channel creates, deletes, and permission updates</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="logChannels"><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="section-divider"></div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-compress-alt" style="color: var(--ds-text-muted); font-size: 14px;"></i> Compact Mode</h4>
+                        <p>Use compact one-line log entries instead of rich embeds (reduces channel clutter)</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="logCompact"><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!--  SECTION 3: NOTIFICATION SETTINGS (FREE)  -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="setup-card" id="card-notifications-basic">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-bell"></i> Basic Notification Settings
+                    <span class="tier-badge tier-free">FREE</span>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <p class="setup-card-desc">Control how the bot notifies your team about important events.</p>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-shield-alt" style="color: #ef4444; font-size: 14px;"></i> Security Alerts</h4>
+                        <p>Send alerts for raid detection, mass actions, and suspicious activity</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="notifySecurityAlerts" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-ticket-alt" style="color: #3b82f6; font-size: 14px;"></i> New Ticket Notifications</h4>
+                        <p>Alert staff when new support tickets are opened</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="notifyNewTickets" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-cog" style="color: #f59e0b; font-size: 14px;"></i> Settings Change Alerts</h4>
+                        <p>Log when bot settings are changed via the dashboard</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="notifySettingsChanges" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-robot" style="color: #8b5cf6; font-size: 14px;"></i> Auto-Mod Actions</h4>
+                        <p>Log word filter triggers, spam blocks, and link scanning results</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="notifyAutoMod" checked><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!--  PREMIUM CTA                              -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="premium-unlock-cta" id="premiumCTA" style="display: none;">
+            <i class="fas fa-crown"></i>
+            <div class="cta-text">
+                <h4>Unlock Advanced Notifications</h4>
+                <p>Get granular event filtering, webhook integrations, DM routing, custom notification formatting, and more.</p>
+            </div>
+            <button class="premium-unlock-btn" onclick="window.location.href='/premium'">Upgrade Now</button>
+        </div>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!--  SECTION 4: ADVANCED LOG CHANNELS (PREMIUM) -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="setup-card premium-card" id="card-advanced-channels" data-premium-feature="advanced-notifications">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-layer-group"></i> Specialized Log Channels
+                    <span class="tier-badge tier-premium"><i class="fas fa-crown" style="font-size: 9px;"></i> PREMIUM</span>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <p class="setup-card-desc">Route different event types to separate channels for better organization. Leave empty to use the general log channel.</p>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Join/Leave Log Channel</label>
+                    <p class="setup-form-desc">Dedicated channel for member join and leave events</p>
+                    <select class="setup-form-select" id="joinLeaveChannel">
+                        <option value="">-- Use general log channel --</option>
+                    </select>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Message Log Channel</label>
+                    <p class="setup-form-desc">Dedicated channel for message edits and deletions</p>
+                    <select class="setup-form-select" id="messageLogChannel">
+                        <option value="">-- Use general log channel --</option>
+                    </select>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Server Changes Channel</label>
+                    <p class="setup-form-desc">Dedicated channel for role and channel changes</p>
+                    <select class="setup-form-select" id="serverChangesChannel">
+                        <option value="">-- Use general log channel --</option>
+                    </select>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">AutoMod Log Channel</label>
+                    <p class="setup-form-desc">Dedicated channel for word filter, spam, and auto-moderation events</p>
+                    <select class="setup-form-select" id="automodLogChannel">
+                        <option value="">-- Use general log channel --</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!--  SECTION 5: GRANULAR EVENT FILTER (PREMIUM) -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="setup-card premium-card" id="card-event-filter" data-premium-feature="advanced-notifications">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-filter"></i> Granular Event Filter
+                    <span class="tier-badge tier-premium"><i class="fas fa-crown" style="font-size: 9px;"></i> PREMIUM</span>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <p class="setup-card-desc">Fine-tune exactly which events are logged. Uncheck events you don't want to see.</p>
+
+                <label class="setup-form-label" style="margin-bottom: 12px;">Moderation Events</label>
+                <div class="event-grid" style="margin-bottom: 20px;">
+                    <div class="event-item"><input type="checkbox" id="evt_ban" checked><i class="fas fa-hammer"></i><label for="evt_ban">Bans & Unbans</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_kick" checked><i class="fas fa-boot"></i><label for="evt_kick">Kicks</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_timeout" checked><i class="fas fa-clock"></i><label for="evt_timeout">Timeouts</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_warn" checked><i class="fas fa-exclamation-triangle"></i><label for="evt_warn">Warnings</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_purge" checked><i class="fas fa-broom"></i><label for="evt_purge">Message Purges</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_lockdown" checked><i class="fas fa-lock"></i><label for="evt_lockdown">Channel Lockdowns</label></div>
+                </div>
+
+                <label class="setup-form-label" style="margin-bottom: 12px;">Security Events</label>
+                <div class="event-grid" style="margin-bottom: 20px;">
+                    <div class="event-item"><input type="checkbox" id="evt_raid" checked><i class="fas fa-users-slash"></i><label for="evt_raid">Raid Detection</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_nuke" checked><i class="fas fa-radiation"></i><label for="evt_nuke">Anti-Nuke Triggers</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_phishing" checked><i class="fas fa-fish"></i><label for="evt_phishing">Phishing Links</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_spam" checked><i class="fas fa-comment-slash"></i><label for="evt_spam">Spam Detection</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_wordfilter" checked><i class="fas fa-filter"></i><label for="evt_wordfilter">Word Filter Matches</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_suspicious" checked><i class="fas fa-user-secret"></i><label for="evt_suspicious">Suspicious Accounts</label></div>
+                </div>
+
+                <label class="setup-form-label" style="margin-bottom: 12px;">Member Events</label>
+                <div class="event-grid">
+                    <div class="event-item"><input type="checkbox" id="evt_join" checked><i class="fas fa-sign-in-alt"></i><label for="evt_join">Member Joins</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_leave" checked><i class="fas fa-sign-out-alt"></i><label for="evt_leave">Member Leaves</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_nickname" checked><i class="fas fa-id-card"></i><label for="evt_nickname">Nickname Changes</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_avatar" checked><i class="fas fa-image"></i><label for="evt_avatar">Avatar Changes</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_role_update" checked><i class="fas fa-user-tag"></i><label for="evt_role_update">Role Assigned/Removed</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_voice" checked><i class="fas fa-headset"></i><label for="evt_voice">Voice Activity</label></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!--  SECTION 6: WEBHOOK INTEGRATION (PREMIUM)  -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="setup-card premium-card" id="card-webhooks" data-premium-feature="advanced-notifications">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-plug"></i> Webhook Integration
+                    <span class="tier-badge tier-premium"><i class="fas fa-crown" style="font-size: 9px;"></i> PREMIUM</span>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <p class="setup-card-desc">Send notifications to external Discord webhooks for backup logging or cross-server alerts.</p>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Primary Webhook URL</label>
+                    <p class="setup-form-desc">All critical alerts (raids, nukes, security events) will be mirrored here</p>
+                    <div class="webhook-input-row">
+                        <input type="url" class="setup-form-input" id="webhookPrimary" placeholder="https://discord.com/api/webhooks/...">
+                        <button class="webhook-test-btn" onclick="testWebhook('webhookPrimary')"><i class="fas fa-paper-plane"></i> Test</button>
+                    </div>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Secondary Webhook URL</label>
+                    <p class="setup-form-desc">Optional — send moderation logs to a separate webhook</p>
+                    <div class="webhook-input-row">
+                        <input type="url" class="setup-form-input" id="webhookSecondary" placeholder="https://discord.com/api/webhooks/...">
+                        <button class="webhook-test-btn" onclick="testWebhook('webhookSecondary')"><i class="fas fa-paper-plane"></i> Test</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!--  SECTION 7: DM NOTIFICATIONS (PREMIUM)    -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="setup-card premium-card" id="card-dm-notify" data-premium-feature="advanced-notifications">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-envelope"></i> Staff DM Notifications
+                    <span class="tier-badge tier-premium"><i class="fas fa-crown" style="font-size: 9px;"></i> PREMIUM</span>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <p class="setup-card-desc">Send DM notifications to specific staff members for critical events, even when they're not watching the log channels.</p>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4>DM on Raid Detection</h4>
+                        <p>Immediately DM server admins when a raid is detected</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="dmOnRaid" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4>DM on Anti-Nuke Trigger</h4>
+                        <p>DM server owner when anti-nuke protection activates</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="dmOnNuke" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4>DM on Ticket Escalation</h4>
+                        <p>DM admins when a ticket is escalated to higher priority</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="dmOnEscalation" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4>DM on Settings Change</h4>
+                        <p>DM the server owner when any bot setting is modified</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="dmOnSettings"><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!--  SECTION 8: LOG FORMATTING (PREMIUM)      -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="setup-card premium-card" id="card-formatting" data-premium-feature="advanced-notifications">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-palette"></i> Log Formatting & Retention
+                    <span class="tier-badge tier-premium"><i class="fas fa-crown" style="font-size: 9px;"></i> PREMIUM</span>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <p class="setup-card-desc">Customize how logs appear and how long audit data is retained.</p>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Log Embed Color</label>
+                    <p class="setup-form-desc">Custom color for log embed messages</p>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <input type="color" id="logEmbedColor" value="#5865F2" style="width: 44px; height: 36px; border: 1px solid var(--ds-border); border-radius: var(--ds-radius-sm); background: var(--ds-surface-0); cursor: pointer; padding: 2px;">
+                        <input type="text" class="setup-form-input" id="logEmbedColorText" value="#5865F2" style="width: 120px;" oninput="document.getElementById('logEmbedColor').value = this.value">
+                    </div>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Timestamp Format</label>
+                    <select class="setup-form-select" id="timestampFormat">
+                        <option value="relative">Relative (2 minutes ago)</option>
+                        <option value="short">Short (12:34 PM)</option>
+                        <option value="long" selected>Long (Feb 11, 2026 12:34:56 PM)</option>
+                        <option value="iso">ISO 8601 (2026-02-11T12:34:56Z)</option>
+                    </select>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Audit Log Retention</label>
+                    <p class="setup-form-desc">How long to keep detailed audit log data in the database.</p>
+                    <select class="setup-form-select" id="auditRetention">
+                        <option value="7">7 days</option>
+                        <option value="30" selected>30 days</option>
+                        <option value="90">90 days</option>
+                        <option value="180">180 days</option>
+                        <option value="365">1 year</option>
+                    </select>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4>Include User Avatars</h4>
+                        <p>Show user avatar thumbnails in log embeds</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="logShowAvatars" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4>Include Message Content</h4>
+                        <p>Show the full message content in edit/delete logs (disable for privacy)</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="logShowContent" checked><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Bar -->
+        <div class="save-section" id="saveBar">
+            <span class="save-hint" id="saveHint">Configure your notification preferences above</span>
+            <div class="save-buttons">
+                <button class="ds-btn ds-btn-secondary" onclick="loadSettings()">Reset</button>
+                <button class="ds-btn ds-btn-primary" id="saveBtn" onclick="saveSettings()">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Toast -->
+    <div class="status-toast" id="statusToast"></div>
+
+    <script src="/js/page-transitions.js"></script>
+    <script src="/js/secure-auth.js"></script>
+    <script>
+    (function() {
+        'use strict';
+
+        const guildId = localStorage.getItem('selectedGuildId');
+        let channels = [];
+        let isPremium = false;
+        let hasChanges = false;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await SecureAuth.init();
+            await checkPremium();
+            await loadChannels();
+            await loadSettings();
+        });
+
+        // ── Premium Check ─────────────────────────────
+        async function checkPremium() {
+            try {
+                const res = await SecureAuth.fetch('/api/premium/status', { method: 'GET' });
+                if (res.ok) {
+                    const data = await res.json();
+                    isPremium = !!(data.isPremium || data.premium || data.active);
+                }
+            } catch (e) { /* assume free */ }
+
+            if (!isPremium) {
+                document.getElementById('premiumCTA').style.display = 'flex';
+                // Add visual lock to premium sections
+                document.querySelectorAll('[data-premium-feature="advanced-notifications"]').forEach(el => {
+                    el.classList.add('premium-locked');
+                });
+            } else {
+                document.getElementById('premiumCTA').style.display = 'none';
+            }
+        }
+
+        // ── Load Channels ─────────────────────────────
+        async function loadChannels() {
+            try {
+                const res = await SecureAuth.fetch(`/api/guild/${guildId}/channels`, { method: 'GET' });
+                if (!res.ok) return;
+                const data = await res.json();
+                channels = (Array.isArray(data) ? data : (data.channels || [])).filter(c => c.type === 'GUILD_TEXT' || c.type === 0);
+
+                // Populate all channel selects
+                const selects = [
+                    'logChannel', 'modLogChannel', 'alertChannel',
+                    'joinLeaveChannel', 'messageLogChannel', 'serverChangesChannel', 'automodLogChannel'
+                ];
+
+                selects.forEach(id => {
+                    const select = document.getElementById(id);
+                    if (!select) return;
+                    const defaultOpt = select.options[0]; // preserve the first "-- ..." option
+                    select.innerHTML = '';
+                    select.appendChild(defaultOpt);
+
+                    channels.forEach(ch => {
+                        const opt = document.createElement('option');
+                        opt.value = ch.id;
+                        opt.textContent = `#${ch.name}`;
+                        select.appendChild(opt);
+                    });
+                });
+            } catch (e) {
+                console.error('Failed to load channels:', e);
+            }
+        }
+
+        // ── Load Settings ─────────────────────────────
+        async function loadSettings() {
+            try {
+                const res = await SecureAuth.fetch(`/api/settings/notifications?guildId=${guildId}`, { method: 'GET' });
+                if (!res.ok) {
+                    showToast('error', 'Failed to load notification settings');
+                    return;
+                }
+                const s = await res.json();
+
+                // Log Channels (free)
+                setValue('logChannel', s.log_channel_id || '');
+                setValue('modLogChannel', s.mod_log_channel || '');
+                setValue('alertChannel', s.alert_channel || '');
+
+                // Event Toggles (free)
+                setChecked('modLogging', s.mod_logging !== false);
+                setChecked('logEdits', s.log_edits !== false);
+                setChecked('logDeletes', s.log_deletes !== false);
+                setChecked('logMembers', s.log_members !== false);
+                setChecked('logRoles', !!s.log_roles);
+                setChecked('logChannels', !!s.log_channels);
+                setChecked('logCompact', !!s.log_compact);
+
+                // Basic Notifications (free)
+                setChecked('notifySecurityAlerts', s.notify_security_alerts !== false);
+                setChecked('notifyNewTickets', s.notify_new_tickets !== false);
+                setChecked('notifySettingsChanges', s.notify_settings_changes !== false);
+                setChecked('notifyAutoMod', s.notify_automod !== false);
+
+                // Premium: Advanced Channels
+                setValue('joinLeaveChannel', s.join_leave_channel || '');
+                setValue('messageLogChannel', s.message_log_channel || '');
+                setValue('serverChangesChannel', s.server_changes_channel || '');
+                setValue('automodLogChannel', s.automod_log_channel || '');
+
+                // Premium: Granular Events
+                const events = s.granular_events || {};
+                setChecked('evt_ban', events.ban !== false);
+                setChecked('evt_kick', events.kick !== false);
+                setChecked('evt_timeout', events.timeout !== false);
+                setChecked('evt_warn', events.warn !== false);
+                setChecked('evt_purge', events.purge !== false);
+                setChecked('evt_lockdown', events.lockdown !== false);
+                setChecked('evt_raid', events.raid !== false);
+                setChecked('evt_nuke', events.nuke !== false);
+                setChecked('evt_phishing', events.phishing !== false);
+                setChecked('evt_spam', events.spam !== false);
+                setChecked('evt_wordfilter', events.wordfilter !== false);
+                setChecked('evt_suspicious', events.suspicious !== false);
+                setChecked('evt_join', events.join !== false);
+                setChecked('evt_leave', events.leave !== false);
+                setChecked('evt_nickname', events.nickname !== false);
+                setChecked('evt_avatar', events.avatar !== false);
+                setChecked('evt_role_update', events.role_update !== false);
+                setChecked('evt_voice', events.voice !== false);
+
+                // Premium: Webhooks
+                setValue('webhookPrimary', s.webhook_primary || '');
+                setValue('webhookSecondary', s.webhook_secondary || '');
+
+                // Premium: DM Notifications
+                setChecked('dmOnRaid', s.dm_on_raid !== false);
+                setChecked('dmOnNuke', s.dm_on_nuke !== false);
+                setChecked('dmOnEscalation', s.dm_on_escalation !== false);
+                setChecked('dmOnSettings', !!s.dm_on_settings);
+
+                // Premium: Formatting
+                const color = s.log_embed_color || '#5865F2';
+                setValue('logEmbedColor', color);
+                setValue('logEmbedColorText', color);
+                setValue('timestampFormat', s.timestamp_format || 'long');
+                setValue('auditRetention', String(s.audit_retention || 30));
+                setChecked('logShowAvatars', s.log_show_avatars !== false);
+                setChecked('logShowContent', s.log_show_content !== false);
+
+                // Update status indicator
+                const loggingActive = !!(s.log_channel_id || s.mod_log_channel || s.alert_channel);
+                updateStatus(loggingActive);
+
+                hasChanges = false;
+                updateSaveHint();
+            } catch (e) {
+                console.error('Failed to load settings:', e);
+                showToast('error', 'Failed to load settings');
+            }
+        }
+
+        // ── Save Settings ─────────────────────────────
+        window.saveSettings = async function() {
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            try {
+                const settings = {
+                    // Free: Channels
+                    log_channel_id: getVal('logChannel'),
+                    mod_log_channel: getVal('modLogChannel'),
+                    alert_channel: getVal('alertChannel'),
+
+                    // Free: Event toggles
+                    mod_logging: isChecked('modLogging'),
+                    log_edits: isChecked('logEdits'),
+                    log_deletes: isChecked('logDeletes'),
+                    log_members: isChecked('logMembers'),
+                    log_roles: isChecked('logRoles'),
+                    log_channels: isChecked('logChannels'),
+                    log_compact: isChecked('logCompact'),
+
+                    // Free: Basic notifications
+                    notify_security_alerts: isChecked('notifySecurityAlerts'),
+                    notify_new_tickets: isChecked('notifyNewTickets'),
+                    notify_settings_changes: isChecked('notifySettingsChanges'),
+                    notify_automod: isChecked('notifyAutoMod'),
+
+                    // Premium: Advanced channels
+                    join_leave_channel: getVal('joinLeaveChannel'),
+                    message_log_channel: getVal('messageLogChannel'),
+                    server_changes_channel: getVal('serverChangesChannel'),
+                    automod_log_channel: getVal('automodLogChannel'),
+
+                    // Premium: Granular events
+                    granular_events: {
+                        ban: isChecked('evt_ban'), kick: isChecked('evt_kick'),
+                        timeout: isChecked('evt_timeout'), warn: isChecked('evt_warn'),
+                        purge: isChecked('evt_purge'), lockdown: isChecked('evt_lockdown'),
+                        raid: isChecked('evt_raid'), nuke: isChecked('evt_nuke'),
+                        phishing: isChecked('evt_phishing'), spam: isChecked('evt_spam'),
+                        wordfilter: isChecked('evt_wordfilter'), suspicious: isChecked('evt_suspicious'),
+                        join: isChecked('evt_join'), leave: isChecked('evt_leave'),
+                        nickname: isChecked('evt_nickname'), avatar: isChecked('evt_avatar'),
+                        role_update: isChecked('evt_role_update'), voice: isChecked('evt_voice')
+                    },
+
+                    // Premium: Webhooks
+                    webhook_primary: getVal('webhookPrimary'),
+                    webhook_secondary: getVal('webhookSecondary'),
+
+                    // Premium: DM Notifications
+                    dm_on_raid: isChecked('dmOnRaid'),
+                    dm_on_nuke: isChecked('dmOnNuke'),
+                    dm_on_escalation: isChecked('dmOnEscalation'),
+                    dm_on_settings: isChecked('dmOnSettings'),
+
+                    // Premium: Formatting
+                    log_embed_color: getVal('logEmbedColor'),
+                    timestamp_format: getVal('timestampFormat'),
+                    audit_retention: parseInt(getVal('auditRetention')) || 30,
+                    log_show_avatars: isChecked('logShowAvatars'),
+                    log_show_content: isChecked('logShowContent')
+                };
+
+                const res = await SecureAuth.fetch(`/api/settings/notifications?guildId=${guildId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+
+                if (res.ok) {
+                    showToast('success', 'Notification settings saved successfully!');
+                    hasChanges = false;
+                    updateSaveHint();
+                    const loggingActive = !!(settings.log_channel_id || settings.mod_log_channel || settings.alert_channel);
+                    updateStatus(loggingActive);
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showToast('error', err.message || err.error || 'Failed to save settings');
+                }
+            } catch (e) {
+                console.error('Save error:', e);
+                showToast('error', 'Failed to save settings');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+            }
+        };
+
+        // ── Test Webhook ──────────────────────────────
+        window.testWebhook = async function(inputId) {
+            const url = getVal(inputId);
+            if (!url || !url.startsWith('https://discord.com/api/webhooks/')) {
+                showToast('error', 'Enter a valid Discord webhook URL');
+                return;
+            }
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        embeds: [{
+                            title: '🔔 DarkLock Webhook Test',
+                            description: 'This webhook is configured correctly and ready to receive notifications.',
+                            color: 0x5865F2,
+                            timestamp: new Date().toISOString(),
+                            footer: { text: 'DarkLock Security Dashboard' }
+                        }]
+                    })
+                });
+                if (res.ok || res.status === 204) {
+                    showToast('success', 'Test message sent! Check the webhook channel.');
+                } else {
+                    showToast('error', `Webhook returned ${res.status}. Check the URL.`);
+                }
+            } catch (e) {
+                showToast('error', 'Failed to send test. The URL may be invalid.');
+            }
+        };
+
+        // ── Helpers ───────────────────────────────────
+        function setValue(id, val) { const el = document.getElementById(id); if (el) el.value = val; }
+        function getVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+        function setChecked(id, val) { const el = document.getElementById(id); if (el) el.checked = !!val; }
+        function isChecked(id) { const el = document.getElementById(id); return el ? el.checked : false; }
+
+        function updateStatus(active) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            if (dot) dot.style.background = active ? '#22c55e' : 'var(--ds-text-muted)';
+            if (text) { text.textContent = active ? 'Logging Active' : 'No Log Channel Set'; text.style.color = active ? '#22c55e' : 'var(--ds-text-muted)'; }
+        }
+
+        function updateSaveHint() {
+            const hint = document.getElementById('saveHint');
+            if (hint) hint.textContent = hasChanges ? 'You have unsaved changes' : 'All changes saved';
+        }
+
+        function showToast(type, message) {
+            const toast = document.getElementById('statusToast');
+            toast.textContent = message;
+            toast.className = `status-toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 4000);
+        }
+
+        // Track changes
+        document.addEventListener('change', (e) => {
+            if (e.target.closest('.setup-card')) {
+                hasChanges = true;
+                updateSaveHint();
+            }
+        });
+        document.addEventListener('input', (e) => {
+            if (e.target.closest('.setup-card')) {
+                hasChanges = true;
+                updateSaveHint();
+            }
+        });
+
+        // Sync color picker with text input
+        document.getElementById('logEmbedColor')?.addEventListener('input', function() {
+            document.getElementById('logEmbedColorText').value = this.value;
+        });
+    })();
+    </script>
+</body>
+</html>

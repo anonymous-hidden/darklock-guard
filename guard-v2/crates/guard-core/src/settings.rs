@@ -16,6 +16,10 @@ pub struct PerformanceLimits {
 pub struct ProtectionSettings {
     pub realtime_enabled: bool,
     pub baseline_locked: bool,
+    #[serde(default)]
+    pub protected_paths: Vec<String>,
+    #[serde(default)]
+    pub quarantine_enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,6 +31,8 @@ pub struct UpdateSettings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrivacySettings {
     pub telemetry_enabled: bool,
+    #[serde(default)]
+    pub crash_reports: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,6 +51,8 @@ impl Default for GuardSettings {
             protection: ProtectionSettings {
                 realtime_enabled: true,
                 baseline_locked: true,
+                protected_paths: vec![],
+                quarantine_enabled: true,
             },
             performance: PerformanceLimits {
                 max_cpu_percent: 30,
@@ -56,6 +64,7 @@ impl Default for GuardSettings {
             },
             privacy: PrivacySettings {
                 telemetry_enabled: false,
+                crash_reports: true,
             },
         }
     }

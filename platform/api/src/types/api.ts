@@ -1,12 +1,26 @@
 export type SecurityProfile = 'NORMAL' | 'ZERO_TRUST';
 
-export type Role = 'device' | 'server';
+export type Role = 'device' | 'server' | 'user';
 
 export interface AuthContext {
   deviceId?: string;
+  userId?: string;
   role: Role;
   securityProfile?: SecurityProfile;
   issuedAt?: number;
+}
+
+export interface UserRecord {
+  id: string;
+  username: string;
+  email: string;
+  password_hash: string;
+  totp_secret: string | null;
+  totp_enabled: boolean;
+  api_key: string | null;
+  email_verified: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface DeviceRecord {

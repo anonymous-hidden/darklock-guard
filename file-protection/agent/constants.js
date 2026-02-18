@@ -17,66 +17,113 @@ const RESCAN_INTERVAL_MS = 60 * 1000; // 60 seconds
 // Tier definitions map to the authoritative architecture requirements
 const TIER_SOURCES = {
     critical: [
+        // ========== BOT CORE ==========
         { path: path.join(ROOT_DIR, 'src', 'bot.js') },
-        { path: path.join(ROOT_DIR, 'src', 'database', 'database.js') },
-        { path: path.join(ROOT_DIR, 'src', 'dashboard', 'dashboard.js') },
-        { path: path.join(ROOT_DIR, 'config.json') },
-        // Protect the protector (all agent files)
-        { path: path.join(ROOT_DIR, 'file-protection', 'agent'), recurse: false, extensions: ['.js'] },
-        { path: path.join(ROOT_DIR, 'file-protection', 'index.js') },
-        // Darklock integration files
-        { path: path.join(ROOT_DIR, 'darklock', 'server.js') },
-        { path: path.join(ROOT_DIR, 'darklock', 'integration.js') },
-        { path: path.join(ROOT_DIR, 'darklock', 'start.js') },
-        // Darklock database (SQLite) - empty extensions array allows all files
-        { path: path.join(ROOT_DIR, 'darklock', 'data', 'darklock.db'), extensions: [] },
-        // Anti-tampering app core files
-        { path: path.join(ROOT_DIR, 'ainti-tampering-app', 'tauri-app', 'src', 'main.js') },
-        { path: path.join(ROOT_DIR, 'ainti-tampering-app', 'tauri-app', 'package.json') },
-        { path: path.join(ROOT_DIR, 'ainti-tampering-app', 'tauri-app', 'vite.config.js') },
-        // Security suite
-        { path: path.join(ROOT_DIR, 'security-suite', 'index.js') },
-        { path: path.join(ROOT_DIR, 'security-suite', 'modules'), recurse: false, extensions: ['.js'] },
-        // Setup scripts
+        { path: path.join(ROOT_DIR, 'start-bot.js') },
         { path: path.join(ROOT_DIR, 'setup.js') },
-        { path: path.join(ROOT_DIR, 'startup.sh') }
-    ],
-    high: [
-        { path: path.join(ROOT_DIR, 'src', 'utils', 'logger.js') },
-        { path: path.join(ROOT_DIR, 'src', 'security'), recurse: false, extensions: ['.js'] },
-        // src/core/*.js (direct children only)
-        { path: path.join(ROOT_DIR, 'src', 'core'), recurse: false, extensions: ['.js'] },
+        
+        // ========== DATABASE ==========
+        { path: path.join(ROOT_DIR, 'src', 'database'), recurse: true, extensions: ['.js'] },
+        { path: path.join(ROOT_DIR, 'src', 'db'), recurse: true, extensions: ['.js'] },
+        // Note: Do NOT protect .db files as they change during normal operation
+        
+        // ========== DASHBOARD ==========
+        { path: path.join(ROOT_DIR, 'src', 'dashboard'), recurse: true, extensions: ['.js'] },
+        
+        // ========== CONFIGURATION ==========
+        { path: path.join(ROOT_DIR, 'config.json') },
         { path: path.join(ROOT_DIR, 'package.json') },
         { path: path.join(ROOT_DIR, 'package-lock.json') },
-        // Deployment and environment files
-        { path: path.join(ROOT_DIR, 'Dockerfile') },
-        { path: path.join(ROOT_DIR, 'render.yaml') },
         { path: path.join(ROOT_DIR, '.env.example') },
-        // Important data files
+        
+        // ========== FILE PROTECTION SYSTEM ==========
+        { path: path.join(ROOT_DIR, 'file-protection', 'agent'), recurse: true, extensions: ['.js'] },
+        { path: path.join(ROOT_DIR, 'file-protection', 'index.js') },
+        // Note: baseline.json excluded - it changes during regeneration
+        
+        // ========== DARKLOCK PLATFORM CORE ==========
+        { path: path.join(ROOT_DIR, 'darklock', 'server.js') },
+        { path: path.join(ROOT_DIR, 'darklock', 'start.js') },
+        
+        // ========== DARKLOCK ADMIN V4 (CONSOLIDATED ADMIN) ==========
+        { path: path.join(ROOT_DIR, 'darklock', 'admin-v4'), recurse: true, extensions: ['.js', '.html'] },
+        
+        // ========== GUARD-V2 SERVICE CORE ==========
+        { path: path.join(ROOT_DIR, 'guard-v2', 'crates', 'guard-service', 'src'), recurse: true, extensions: ['.rs'] },
+        { path: path.join(ROOT_DIR, 'guard-v2', 'crates', 'guard-service', 'Cargo.toml') },
+        { path: path.join(ROOT_DIR, 'guard-v2', 'Cargo.toml') },
+        
+        // ========== SECURITY SUITE ==========
+        { path: path.join(ROOT_DIR, 'security-suite', 'index.js') },
+        { path: path.join(ROOT_DIR, 'security-suite', 'modules'), recurse: true, extensions: ['.js'] },
+        
+        // ========== START/STOP SCRIPTS ==========
+        { path: path.join(ROOT_DIR, 'startup.sh') },
+        { path: path.join(ROOT_DIR, 'start-all.sh') },
+        { path: path.join(ROOT_DIR, 'stop-all.sh') }
+    ],
+    
+    high: [
+        // ========== BOT CORE SYSTEMS ==========
+        { path: path.join(ROOT_DIR, 'src', 'bot'), recurse: true, extensions: ['.js'] },
+        { path: path.join(ROOT_DIR, 'src', 'core'), recurse: true, extensions: ['.js'] },
+        { path: path.join(ROOT_DIR, 'src', 'systems'), recurse: true, extensions: ['.js'] },
+        { path: path.join(ROOT_DIR, 'src', 'services'), recurse: true, extensions: ['.js'] },
+        
+        // ========== SECURITY ==========
+        { path: path.join(ROOT_DIR, 'src', 'security'), recurse: true, extensions: ['.js'] },
+        
+        // ========== UTILITIES ==========
+        { path: path.join(ROOT_DIR, 'src', 'utils'), recurse: true, extensions: ['.js'] },
+        
+        // ========== DARKLOCK ROUTES & MIDDLEWARE ==========
+        { path: path.join(ROOT_DIR, 'darklock', 'routes'), recurse: true, extensions: ['.js'] },
+        { path: path.join(ROOT_DIR, 'darklock', 'utils'), recurse: true, extensions: ['.js'] },
+        { path: path.join(ROOT_DIR, 'darklock', 'middleware'), recurse: true, extensions: ['.js'] },
+        
+        // ========== GUARD-V2 DESKTOP APP ==========
+        { path: path.join(ROOT_DIR, 'guard-v2', 'desktop', 'src'), recurse: true, extensions: ['.js', '.ts', '.tsx', '.jsx'] },
+        { path: path.join(ROOT_DIR, 'guard-v2', 'desktop', 'src-tauri', 'src'), recurse: true, extensions: ['.rs'] },
+        { path: path.join(ROOT_DIR, 'guard-v2', 'desktop', 'package.json') },
+        { path: path.join(ROOT_DIR, 'guard-v2', 'desktop', 'src-tauri', 'Cargo.toml') },
+        
+        // ========== CRITICAL SCRIPTS ==========
+        { path: path.join(ROOT_DIR, 'scripts', 'admin'), recurse: true, extensions: ['.js'] },
+        { path: path.join(ROOT_DIR, 'scripts', 'database'), recurse: true, extensions: ['.js'] },
+        { path: path.join(ROOT_DIR, 'scripts', 'security'), recurse: true, extensions: ['.js'] },
+        { path: path.join(ROOT_DIR, 'scripts', 'users'), recurse: true, extensions: ['.js'] },
+        { path: path.join(ROOT_DIR, 'scripts', 'deployment'), recurse: true, extensions: ['.js', '.sh'] },
+        
+        // ========== DATA FILES ==========
         { path: path.join(ROOT_DIR, 'data', 'ranks.json') },
         { path: path.join(ROOT_DIR, 'data', 'file-integrity.json') },
-        // Darklock routes and utilities
-        { path: path.join(ROOT_DIR, 'darklock', 'routes'), recurse: false, extensions: ['.js'] },
-        { path: path.join(ROOT_DIR, 'darklock', 'utils'), recurse: false, extensions: ['.js'] },
-        // Anti-tampering app library and components
-        { path: path.join(ROOT_DIR, 'ainti-tampering-app', 'tauri-app', 'src', 'lib'), recurse: false, extensions: ['.js'] },
-        { path: path.join(ROOT_DIR, 'ainti-tampering-app', 'tauri-app', 'src', 'components'), recurse: false, extensions: ['.js'] },
-        // Secure app components (Python core)
-        { path: path.join(ROOT_DIR, 'ainti-tampering-app', 'secure', 'app', 'main.py') },
-        { path: path.join(ROOT_DIR, 'ainti-tampering-app', 'secure', 'app', 'service.py') },
-        { path: path.join(ROOT_DIR, 'ainti-tampering-app', 'secure', 'app', 'core'), recurse: false, extensions: ['.py'] },
-        { path: path.join(ROOT_DIR, 'ainti-tampering-app', 'secure', 'app', 'config'), recurse: false, extensions: ['.json', '.yaml'] },
-        { path: path.join(ROOT_DIR, 'ainti-tampering-app', 'secure', 'app', 'requirements.txt') }
+        
+        // ========== DEPLOYMENT ==========
+        { path: path.join(ROOT_DIR, 'Dockerfile') },
+        { path: path.join(ROOT_DIR, 'docker-compose.yml') },
+        { path: path.join(ROOT_DIR, 'render.yaml') }
     ],
+    
     medium: [
+        // ========== COMMANDS & EVENTS ==========
         { path: path.join(ROOT_DIR, 'src', 'commands'), recurse: true, extensions: ['.js'] },
         { path: path.join(ROOT_DIR, 'src', 'events'), recurse: true, extensions: ['.js'] },
-        // Darklock views and public files
+        
+        // ========== WEB INTERFACE ==========
+        { path: path.join(ROOT_DIR, 'src', 'web'), recurse: true, extensions: ['.js', '.html', '.css'] },
+        
+        // ========== DARKLOCK VIEWS & PUBLIC ==========
         { path: path.join(ROOT_DIR, 'darklock', 'views'), recurse: true, extensions: ['.ejs', '.html'] },
-        // Anti-tampering app styles
-        { path: path.join(ROOT_DIR, 'ainti-tampering-app', 'tauri-app', 'src', 'styles'), recurse: false, extensions: ['.css'] },
-        { path: path.join(ROOT_DIR, 'ainti-tampering-app', 'tauri-app', 'index.html') },
-        { path: path.join(ROOT_DIR, 'ainti-tampering-app', 'tauri-app', 'login.html') }
+        { path: path.join(ROOT_DIR, 'darklock', 'public'), recurse: true, extensions: ['.js', '.css', '.html'] },
+        
+        // ========== GUARD-V2 WEBSITE ==========
+        { path: path.join(ROOT_DIR, 'guard-v2', 'website'), recurse: true, extensions: ['.html', '.css', '.js'] },
+        
+        // ========== TESTING SCRIPTS ==========
+        { path: path.join(ROOT_DIR, 'scripts', 'testing'), recurse: true, extensions: ['.js'] },
+        
+        // ========== HARDWARE SCRIPTS ==========
+        { path: path.join(ROOT_DIR, 'scripts', 'hardware'), recurse: true, extensions: ['.js', '.sh', '.py'] }
     ]
 };
 

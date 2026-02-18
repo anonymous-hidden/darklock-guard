@@ -7,7 +7,14 @@
  */
 
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
-const rfid = require('../../hardware/rfid_client');
+
+// Optional hardware module (only available on Pi5)
+let rfid = null;
+try {
+    rfid = require('../../hardware/rfid_client');
+} catch (error) {
+    console.log('[botctl] Hardware module not available (non-Pi5 environment)');
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -54,8 +61,8 @@ module.exports = {
         await interaction.deferReply({ ephemeral: true });
 
         try {
-            // Query RFID hardware status
-            const rfidHealth = await rfid.getHealth();
+            // Query RFID hardware status (if available)
+            const rfidHealth = rfid ? await rfid.getHealth() : { available: false };
             const rfidState = rfidHealth.state || {};
             
             const embed = new EmbedBuilder()
@@ -141,6 +148,11 @@ module.exports = {
         await interaction.deferReply({ ephemeral: true });
 
         try {
+            // Check if hardware is available
+            if (!rfid) {
+                return interaction.editReply('❌ Hardware verification not available on this system (development environment)');
+            }
+            
             // CRITICAL: Trigger RFID scan — LCD shows "BOT SHUTDOWN / Scan your card"
             bot.logger.info(`Shutdown requested by ${interaction.user.tag} - triggering RFID scan...`);
             await interaction.editReply('🔒 **Scan your RFID card on the hardware gateway now...** (15s timeout)');
@@ -220,6 +232,11 @@ module.exports = {
         await interaction.deferReply({ ephemeral: true });
 
         try {
+            // Check if hardware is available
+            if (!rfid) {
+                return interaction.editReply('❌ Hardware verification not available on this system (development environment)');
+            }
+            
             // CRITICAL: Trigger RFID scan — LCD shows "BOT SHUTDOWN / Scan your card"
             bot.logger.info(`Restart requested by ${interaction.user.tag} - triggering RFID scan...`);
             await interaction.editReply('🔒 **Scan your RFID card on the hardware gateway now...** (15s timeout)');

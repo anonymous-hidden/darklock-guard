@@ -130,22 +130,44 @@
         <div class="signin-card">
             <div class="logo" aria-hidden="true">🔐</div>
             <h1>Admin Access</h1>
-            <p class="subtitle">RFID card authentication required</p>
+            <p class="subtitle" id="authMethod">Choose authentication method</p>
 
             <div id="status" class="status" role="alert"></div>
 
-            <button type="button" class="btn-rfid" id="rfidBtn">
-                🔐 Scan RFID Card
-            </button>
+            <!-- RFID Authentication (default) -->
+            <div id="rfidSection">
+                <button type="button" class="btn-rfid" id="rfidBtn">
+                    🔐 Scan RFID Card
+                </button>
 
-            <div class="instructions">
-                Place your authorized card on the RFID reader<br>
-                connected to the Darklock gateway
+                <div class="instructions">
+                    Place your authorized card on the RFID reader<br>
+                    connected to the Darklock gateway
+                </div>
+
+                <div class="hw-status">
+                    <span class="dot checking" id="gwDot"></span>
+                    <span id="gwStatus">Checking gateway...</span>
+                </div>
+
+                <button type="button" class="btn-fallback" id="showPasswordBtn" style="margin-top: 1.5rem; width: 100%; padding: 0.75rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); border-radius: 8px; cursor: pointer; font-size: 0.875rem;">
+                    Use Password Instead
+                </button>
             </div>
 
-            <div class="hw-status">
-                <span class="dot checking" id="gwDot"></span>
-                <span id="gwStatus">Checking gateway...</span>
+            <!-- Password Authentication (fallback) -->
+            <div id="passwordSection" style="display: none;">
+                <form id="passwordForm">
+                    <input type="email" id="email" name="email" placeholder="Email" required style="width: 100%; padding: 0.875rem; margin-bottom: 1rem; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-size: 1rem;">
+                    <input type="password" id="password" name="password" placeholder="Password" required style="width: 100%; padding: 0.875rem; margin-bottom: 1.5rem; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-size: 1rem;">
+                    <button type="submit" class="btn-rfid" id="passwordBtn">
+                        Sign In
+                    </button>
+                </form>
+
+                <button type="button" class="btn-fallback" id="showRfidBtn" style="margin-top: 1.5rem; width: 100%; padding: 0.75rem; background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); border-radius: 8px; cursor: pointer; font-size: 0.875rem;">
+                    ← Back to RFID
+                </button>
             </div>
         </div>
     </div>
@@ -158,6 +180,13 @@
         const statusEl = document.getElementById('status');
         const gwDot = document.getElementById('gwDot');
         const gwStatus = document.getElementById('gwStatus');
+        const authMethod = document.getElementById('authMethod');
+        const rfidSection = document.getElementById('rfidSection');
+        const passwordSection = document.getElementById('passwordSection');
+        const showPasswordBtn = document.getElementById('showPasswordBtn');
+        const showRfidBtn = document.getElementById('showRfidBtn');
+        const passwordForm = document.getElementById('passwordForm');
+        const passwordBtn = document.getElementById('passwordBtn');
 
         function showStatus(msg, type) {
             statusEl.textContent = msg;
@@ -168,26 +197,80 @@
             statusEl.textContent = '';
         }
 
+        // Toggle between RFID and password modes
+        showPasswordBtn.addEventListener('click', () => {
+            rfidSection.style.display = 'none';
+            passwordSection.style.display = 'block';
+            authMethod.textContent = 'Password authentication';
+            hideStatus();
+        });
+
+        showRfidBtn.addEventListener('click', () => {
+            passwordSection.style.display = 'none';
+            rfidSection.style.display = 'block';
+            authMethod.textContent = 'Choose authentication method';
+            hideStatus();
+        });
+
+        // Password form submission
+        passwordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideStatus();
+            passwordBtn.disabled = true;
+            passwordBtn.classList.add('loading');
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/signin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.redirect) {
+                    showStatus('Authentication successful! Redirecting...', 'success');
+                    setTimeout(() => { window.location.href = data.redirect; }, 500);
+                } else {
+                    showStatus(data.error || 'Authentication failed', 'error');
+                }
+            } catch (err) {
+                showStatus('Connection error. Please try again.', 'error');
+            } finally {
+                passwordBtn.disabled = false;
+                passwordBtn.classList.remove('loading');
+            }
+        });
+
         // Check gateway status on page load
         async function checkGateway() {
             try {
                 const res = await fetch('/api/rfid/status', { credentials: 'same-origin' });
                 if (res.ok) {
                     const data = await res.json();
+                    console.log('[RFID] Gateway status:', data);
                     if (data.online) {
                         gwDot.className = 'dot online';
-                        gwStatus.textContent = 'Gateway online · ' + data.cards + ' card(s)';
+                        gwStatus.textContent = `Gateway online · ${data.cards} card(s) registered`;
                         rfidBtn.disabled = false;
+                        authMethod.textContent = 'RFID card or password';
                         return;
                     }
                 }
                 gwDot.className = 'dot offline';
-                gwStatus.textContent = 'Gateway offline';
+                gwStatus.textContent = 'Gateway offline - Use password authentication';
                 rfidBtn.disabled = true;
-            } catch {
+                authMethod.textContent = 'Password authentication required';
+            } catch (err) {
+                console.error('[RFID] Gateway check failed:', err);
                 gwDot.className = 'dot offline';
-                gwStatus.textContent = 'Gateway unreachable';
+                gwStatus.textContent = 'Gateway unreachable - Use password authentication';
                 rfidBtn.disabled = true;
+                authMethod.textContent = 'Password authentication required';
             }
         }
 
@@ -198,7 +281,7 @@
             rfidBtn.classList.add('loading');
 
             try {
-                showStatus('Scan your RFID card now... (15s timeout)', 'info');
+                showStatus('🔄 Scan your card now! (15 seconds)', 'info');
 
                 const response = await fetch('/signin/rfid', {
                     method: 'POST',
@@ -206,16 +289,33 @@
                     credentials: 'same-origin'
                 });
 
+                console.log('[RFID] Response status:', response.status);
+                console.log('[RFID] Response ok:', response.ok);
+
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    const errorMsg = data.error || 'RFID authentication failed';
+                    showStatus(`❌ ${errorMsg}`, 'error');
+                    return;
+                }
+
                 const data = await response.json();
+                console.log('[RFID] Response data:', data);
 
                 if (data.success && data.redirect) {
-                    showStatus('Access granted! Redirecting...', 'success');
-                    setTimeout(() => { window.location.href = data.redirect; }, 500);
+                    showStatus('✅ Access granted! Redirecting...', 'success');
+                    setTimeout(() => { 
+                        console.log('[RFID] Redirecting to:', data.redirect);
+                        window.location.href = data.redirect; 
+                    }, 800);
                 } else {
-                    showStatus(data.error || 'RFID authentication failed', 'error');
+                    // Show error with suggestion
+                    const errorMsg = data.error || 'RFID authentication failed';
+                    showStatus(`❌ ${errorMsg}`, 'error');
                 }
             } catch (err) {
-                showStatus('Connection error. Check gateway.', 'error');
+                console.error('[RFID] Scan error:', err);
+                showStatus('❌ Connection error. Please use password authentication.', 'error');
             } finally {
                 rfidBtn.disabled = false;
                 rfidBtn.classList.remove('loading');

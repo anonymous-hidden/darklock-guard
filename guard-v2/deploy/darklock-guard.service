@@ -1,0 +1,49 @@
+[Unit]
+Description=Darklock Guard — Self-Healing File Integrity Protection
+Documentation=https://darklock.net/docs/guard
+After=network.target local-fs.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/guard-service run
+Restart=always
+RestartSec=5
+WatchdogSec=60
+
+# ── Security Hardening ────────────────────────────────────────────────
+# Mount / as read-only except our data & protected paths
+ProtectSystem=strict
+ReadWritePaths=/var/lib/darklock
+# Add protected paths here or use a drop-in override:
+#   systemctl edit darklock-guard
+#   [Service]
+#   ReadWritePaths=/path/to/protected
+ReadWritePaths=/etc
+
+ProtectHome=read-only
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+MemoryDenyWriteExecute=true
+LockPersonality=true
+SystemCallFilter=@system-service
+
+# ── Resource limits ───────────────────────────────────────────────────
+MemoryMax=512M
+CPUQuota=30%
+
+# ── Logging ───────────────────────────────────────────────────────────
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=darklock-guard
+
+# ── Environment ───────────────────────────────────────────────────────
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=multi-user.target

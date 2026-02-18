@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DarkLock Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0f1117; --bg2: #1a1d26; --bg3: #242731;
+            --accent: #6c5ce7; --accent2: #a29bfe;
+            --green: #00b894; --red: #e17055; --yellow: #fdcb6e; --blue: #74b9ff;
+            --text: #dfe6e9; --text2: #b2bec3; --border: #2d3040;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        a { color: var(--accent2); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* Layout */
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar { width: 260px; background: var(--bg2); border-right: 1px solid var(--border); padding: 0; flex-shrink: 0; display: flex; flex-direction: column; }
+        .main { flex: 1; overflow-y: auto; }
+
+        /* Sidebar */
+        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid var(--border); }
+        .sidebar-header h1 { font-size: 1.1rem; font-weight: 700; color: var(--accent2); }
+        .sidebar-header p { font-size: 0.75rem; color: var(--text2); margin-top: 0.25rem; }
+        .nav-section { padding: 1rem 0; }
+        .nav-section-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text2); padding: 0 1.5rem; margin-bottom: 0.5rem; font-weight: 600; }
+        .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1.5rem; cursor: pointer; transition: all 0.15s; font-size: 0.9rem; color: var(--text2); border-left: 3px solid transparent; }
+        .nav-item:hover { background: rgba(108,92,231,0.1); color: var(--text); }
+        .nav-item.active { background: rgba(108,92,231,0.15); color: var(--accent2); border-left-color: var(--accent); }
+        .nav-item .icon { font-size: 1.1rem; width: 24px; text-align: center; }
+        .sidebar-footer { margin-top: auto; padding: 1rem 1.5rem; border-top: 1px solid var(--border); }
+        .sidebar-footer .status { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .dot.green { background: var(--green); }
+        .dot.red { background: var(--red); }
+
+        /* Main Content */
+        .page-header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); background: var(--bg2); display: flex; align-items: center; justify-content: space-between; }
+        .page-header h2 { font-size: 1.4rem; font-weight: 600; }
+        .page-content { padding: 2rem; }
+
+        /* Cards */
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+        .card-label { font-size: 0.75rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; }
+        .card-value { font-size: 2rem; font-weight: 700; }
+        .card-value.purple { color: var(--accent2); }
+        .card-value.green { color: var(--green); }
+        .card-value.yellow { color: var(--yellow); }
+        .card-value.red { color: var(--red); }
+        .card-value.blue { color: var(--blue); }
+        .card-sub { font-size: 0.8rem; color: var(--text2); margin-top: 0.25rem; }
+
+        /* Panels */
+        .panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 1.5rem; }
+        .panel-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .panel-header h3 { font-size: 1rem; font-weight: 600; }
+        .panel-body { padding: 1.25rem; }
+
+        /* Links Grid */
+        .links-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+        .link-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; transition: all 0.2s; cursor: pointer; }
+        .link-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(108,92,231,0.15); }
+        .link-card h4 { font-size: 0.95rem; margin-bottom: 0.25rem; }
+        .link-card p { font-size: 0.8rem; color: var(--text2); margin-bottom: 0.75rem; }
+        .link-card .url { font-size: 0.75rem; color: var(--accent2); font-family: monospace; }
+
+        /* Quick Actions */
+        .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+        .btn { padding: 0.6rem 1.2rem; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-purple { background: var(--accent); color: white; }
+        .btn-green { background: var(--green); color: white; }
+        .btn-yellow { background: var(--yellow); color: #2d3436; }
+        .btn-red { background: var(--red); color: white; }
+        .btn-blue { background: var(--blue); color: #2d3436; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+
+        /* Activity Log */
+        .log-entry { padding: 0.75rem 0; border-bottom: 1px solid var(--border); display: flex; gap: 0.75rem; font-size: 0.85rem; }
+        .log-entry:last-child { border-bottom: none; }
+        .log-badge { padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; flex-shrink: 0; height: fit-content; }
+        .log-badge.info { background: rgba(116,185,255,0.2); color: var(--blue); }
+        .log-badge.ok { background: rgba(0,184,148,0.2); color: var(--green); }
+        .log-badge.warn { background: rgba(253,203,110,0.2); color: var(--yellow); }
+        .log-badge.err { background: rgba(225,112,85,0.2); color: var(--red); }
+        .log-text { flex: 1; color: var(--text2); }
+        .log-time { color: var(--text2); font-size: 0.75rem; opacity: 0.7; flex-shrink: 0; }
+
+        /* Sections */
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .layout { flex-direction: column; }
+            .sidebar { width: 100%; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); }
+            .sidebar-header { display: none; }
+            .sidebar-footer { display: none; }
+            .nav-section { display: flex; padding: 0; }
+            .nav-section-title { display: none; }
+            .nav-item { border-left: none; border-bottom: 3px solid transparent; padding: 0.75rem 1rem; white-space: nowrap; }
+            .nav-item.active { border-bottom-color: var(--accent); border-left-color: transparent; }
+        }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>🛡️ DarkLock Admin</h1>
+            <p>Owner Control Panel</p>
+        </div>
+        <div class="nav-section">
+            <div class="nav-section-title">Main</div>
+            <div class="nav-item active" data-section="overview"><span class="icon">📊</span> Overview</div>
+            <div class="nav-item" data-section="services"><span class="icon">🔗</span> All Services</div>
+            <div class="nav-item" data-section="quickactions"><span class="icon">⚡</span> Quick Actions</div>
+        </div>
+        <div class="nav-section">
+            <div class="nav-section-title">Dashboards</div>
+            <div class="nav-item" data-section="bot"><span class="icon">🤖</span> Discord Bot</div>
+            <div class="nav-item" data-section="platform"><span class="icon">🌐</span> Platform</div>
+            <div class="nav-item" data-section="guard"><span class="icon">🛡️</span> Darklock Guard</div>
+        </div>
+        <div class="nav-section">
+            <div class="nav-section-title">Manage</div>
+            <div class="nav-item" data-section="logs"><span class="icon">📝</span> Activity Logs</div>
+            <div class="nav-item" data-section="system"><span class="icon">⚙️</span> System</div>
+        </div>
+        <div class="sidebar-footer">
+            <div class="status"><div class="dot green" id="statusDot"></div><span id="statusText">System Online</span></div>
+        </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="main">
+        <!-- OVERVIEW -->
+        <div id="overview" class="section active">
+            <div class="page-header">
+                <h2>📊 Overview</h2>
+                <span style="font-size: 0.85rem; color: var(--text2);" id="lastRefresh">Loading...</span>
+            </div>
+            <div class="page-content">
+                <div class="cards" id="statsCards">
+                    <div class="card"><div class="card-label">Servers</div><div class="card-value purple" id="s-guilds">--</div><div class="card-sub">Discord guilds</div></div>
+                    <div class="card"><div class="card-label">Users</div><div class="card-value green" id="s-users">--</div><div class="card-sub">Total members</div></div>
+                    <div class="card"><div class="card-label">Uptime</div><div class="card-value blue" id="s-uptime">--</div><div class="card-sub">Hours running</div></div>
+                    <div class="card"><div class="card-label">Memory</div><div class="card-value yellow" id="s-memory">--</div><div class="card-sub">MB used (RSS)</div></div>
+                    <div class="card"><div class="card-label">Tickets</div><div class="card-value purple" id="s-tickets">--</div><div class="card-sub">Open tickets</div></div>
+                    <div class="card"><div class="card-label">Warnings</div><div class="card-value red" id="s-warnings">--</div><div class="card-sub">Total issued</div></div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header"><h3>🔗 Quick Access</h3></div>
+                    <div class="panel-body">
+                        <div class="links-grid">
+                            <a href="/dashboard" class="link-card" style="text-decoration:none;color:inherit">
+                                <h4>🤖 Bot Dashboard</h4>
+                                <p>Manage Discord bot settings, commands, and guilds</p>
+                                <div class="url">/dashboard</div>
+                            </a>
+                            <a href="/platform" class="link-card" style="text-decoration:none;color:inherit">
+                                <h4>🌐 Darklock Platform</h4>
+                                <p>Platform homepage, downloads, and user portal</p>
+                                <div class="url">/platform</div>
+                            </a>
+                            <a href="/platform/dashboard" class="link-card" style="text-decoration:none;color:inherit">
+                                <h4>📈 Platform Dashboard</h4>
+                                <p>Platform analytics, user management, subscriptions</p>
+                                <div class="url">/platform/dashboard</div>
+                            </a>
+                            <a href="/platform/monitor/darklock-guard" class="link-card" style="text-decoration:none;color:inherit">
+                                <h4>🛡️ Guard Monitor</h4>
+                                <p>Monitor Darklock Guard devices and security alerts</p>
+                                <div class="url">/platform/monitor/darklock-guard</div>
+                            </a>
+                            <a href="/tickets" class="link-card" style="text-decoration:none;color:inherit">
+                                <h4>🎫 Support Tickets</h4>
+                                <p>View and manage support tickets from users</p>
+                                <div class="url">/tickets</div>
+                            </a>
+                            <a href="/dashboard/console" class="link-card" style="text-decoration:none;color:inherit">
+                                <h4>🖥️ Bot Console</h4>
+                                <p>Live bot console output and logs (Premium)</p>
+                                <div class="url">/dashboard/console</div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header"><h3>📝 Recent Activity</h3><button class="btn btn-outline" onclick="loadStats()">↻ Refresh</button></div>
+                    <div class="panel-body" id="activityLog">
+                        <div style="color:var(--text2);font-size:0.85rem">Loading activity...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ALL SERVICES -->
+        <div id="services" class="section">
+            <div class="page-header"><h2>🔗 All Services & URLs</h2></div>
+            <div class="page-content">
+                <div class="panel">
+                    <div class="panel-header"><h3>Bot & Dashboard (Port 3001)</h3></div>
+                    <div class="panel-body">
+                        <div class="links-grid">
+                            <a href="/" class="link-card" style="text-decoration:none;color:inherit"><h4>Home</h4><div class="url">http://localhost:3001/</div></a>
+                            <a href="/dashboard" class="link-card" style="text-decoration:none;color:inherit"><h4>Bot Dashboard</h4><div class="url">http://localhost:3001/dashboard</div></a>
+                            <a href="/admin" class="link-card" style="text-decoration:none;color:inherit"><h4>Unified Admin</h4><div class="url">http://localhost:3001/admin</div></a>
+                            <a href="/login" class="link-card" style="text-decoration:none;color:inherit"><h4>Login Page</h4><div class="url">http://localhost:3001/login</div></a>
+                            <a href="/tickets" class="link-card" style="text-decoration:none;color:inherit"><h4>Tickets</h4><div class="url">http://localhost:3001/tickets</div></a>
+                            <a href="/dashboard/console" class="link-card" style="text-decoration:none;color:inherit"><h4>Bot Console</h4><div class="url">http://localhost:3001/dashboard/console</div></a>
+                            <a href="/api/status" class="link-card" style="text-decoration:none;color:inherit"><h4>API Status</h4><div class="url">http://localhost:3001/api/status</div></a>
+                            <a href="/health" class="link-card" style="text-decoration:none;color:inherit"><h4>Health Check</h4><div class="url">http://localhost:3001/health</div></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-header"><h3>Darklock Platform (Port 3001)</h3></div>
+                    <div class="panel-body">
+                        <div class="links-grid">
+                            <a href="/platform" class="link-card" style="text-decoration:none;color:inherit"><h4>Platform Home</h4><div class="url">http://localhost:3001/platform</div></a>
+                            <a href="/platform/dashboard" class="link-card" style="text-decoration:none;color:inherit"><h4>Platform Dashboard</h4><div class="url">http://localhost:3001/platform/dashboard</div></a>
+                            <a href="/platform/auth/login" class="link-card" style="text-decoration:none;color:inherit"><h4>Platform Login</h4><div class="url">http://localhost:3001/platform/auth/login</div></a>
+                            <a href="/platform/auth/signup" class="link-card" style="text-decoration:none;color:inherit"><h4>Platform Signup</h4><div class="url">http://localhost:3001/platform/auth/signup</div></a>
+                            <a href="/platform/profile" class="link-card" style="text-decoration:none;color:inherit"><h4>User Profile</h4><div class="url">http://localhost:3001/platform/profile</div></a>
+                            <a href="/platform/download/darklock-guard" class="link-card" style="text-decoration:none;color:inherit"><h4>Guard Download</h4><div class="url">http://localhost:3001/platform/download/darklock-guard</div></a>
+                            <a href="/platform/launch/darklock-guard" class="link-card" style="text-decoration:none;color:inherit"><h4>Guard Launch</h4><div class="url">http://localhost:3001/platform/launch/darklock-guard</div></a>
+                            <a href="/platform/monitor/darklock-guard" class="link-card" style="text-decoration:none;color:inherit"><h4>Guard Monitor</h4><div class="url">http://localhost:3001/platform/monitor/darklock-guard</div></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-header"><h3>Darklock API (Port 3002 - Standalone)</h3></div>
+                    <div class="panel-body">
+                        <div class="links-grid">
+                            <a href="http://localhost:3002" class="link-card" target="_blank" style="text-decoration:none;color:inherit"><h4>API Server</h4><div class="url">http://localhost:3002</div></a>
+                            <a href="http://localhost:3002/signin" class="link-card" target="_blank" style="text-decoration:none;color:inherit"><h4>Admin Login</h4><div class="url">http://localhost:3002/signin</div></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-header"><h3>Desktop Apps</h3></div>
+                    <div class="panel-body">
+                        <div class="links-grid">
+                            <div class="link-card"><h4>🛡️ Darklock Guard</h4><p>Desktop security app</p><div class="url">cd guard-v2/desktop && npx tauri dev</div></div>
+                            <div class="link-card"><h4>🔒 Anti-Tampering App</h4><p>File integrity monitor</p><div class="url">cd ainti-tampering-app/tauri-app && npm run tauri:dev</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- QUICK ACTIONS -->
+        <div id="quickactions" class="section">
+            <div class="page-header"><h2>⚡ Quick Actions</h2></div>
+            <div class="page-content">
+                <div class="panel">
+                    <div class="panel-header"><h3>Common Tasks</h3></div>
+                    <div class="panel-body">
+                        <div class="actions" style="flex-direction: column; gap: 1rem;">
+                            <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+                                <a href="/dashboard" class="btn btn-purple">🤖 Open Bot Dashboard</a>
+                                <a href="/platform/dashboard" class="btn btn-blue">🌐 Open Platform Dashboard</a>
+                                <a href="/platform/monitor/darklock-guard" class="btn btn-green">🛡️ Open Guard Monitor</a>
+                                <a href="/tickets" class="btn btn-yellow">🎫 View Tickets</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-header"><h3>Management Links</h3></div>
+                    <div class="panel-body">
+                        <div class="links-grid">
+                            <a href="/platform/auth/signup" class="link-card" style="text-decoration:none;color:inherit"><h4>➕ Create New User</h4><p>Register a new platform account</p></a>
+                            <a href="https://discord.com/developers/applications" target="_blank" class="link-card" style="text-decoration:none;color:inherit"><h4>🔧 Discord Developer Portal</h4><p>Manage bot tokens and settings</p></a>
+                            <a href="/api/admin/stats" class="link-card" style="text-decoration:none;color:inherit"><h4>📊 Raw API Stats</h4><p>View raw admin statistics JSON</p></a>
+                            <a href="/api/status" class="link-card" style="text-decoration:none;color:inherit"><h4>🔍 API Health</h4><p>Check API endpoint status</p></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DISCORD BOT -->
+        <div id="bot" class="section">
+            <div class="page-header"><h2>🤖 Discord Bot</h2><a href="/dashboard" class="btn btn-purple" target="_blank">Open in New Tab ↗</a></div>
+            <div class="page-content">
+                <iframe src="/dashboard" style="width:100%;height:calc(100vh - 120px);border:none;border-radius:12px;background:#fff;"></iframe>
+            </div>
+        </div>
+
+        <!-- PLATFORM -->
+        <div id="platform" class="section">
+            <div class="page-header"><h2>🌐 Darklock Platform</h2><a href="/platform/dashboard" class="btn btn-blue" target="_blank">Open in New Tab ↗</a></div>
+            <div class="page-content">
+                <iframe src="/platform/dashboard" style="width:100%;height:calc(100vh - 120px);border:none;border-radius:12px;background:#fff;"></iframe>
+            </div>
+        </div>
+
+        <!-- GUARD -->
+        <div id="guard" class="section">
+            <div class="page-header"><h2>🛡️ Darklock Guard</h2><a href="/platform/monitor/darklock-guard" class="btn btn-green" target="_blank">Open Monitor ↗</a></div>
+            <div class="page-content">
+                <div class="panel">
+                    <div class="panel-header"><h3>Guard Status</h3></div>
+                    <div class="panel-body">
+                        <div class="cards">
+                            <div class="card"><div class="card-label">Desktop App</div><div class="card-value green" style="font-size:1.2rem">Tauri Desktop</div><div class="card-sub">cd guard-v2/desktop && npx tauri dev</div></div>
+                            <div class="card"><div class="card-label">Guard Service</div><div class="card-value blue" style="font-size:1.2rem" id="guardStatus">Unknown</div><div class="card-sub">Background service status</div></div>
+                            <div class="card"><div class="card-label">Vault</div><div class="card-value purple" style="font-size:1.2rem">Encrypted</div><div class="card-sub">AES-256-GCM + Argon2id</div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="panel-header"><h3>Monitor</h3></div>
+                    <div class="panel-body">
+                        <iframe src="/platform/monitor/darklock-guard" style="width:100%;height:600px;border:none;border-radius:8px;background:#fff;"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOGS -->
+        <div id="logs" class="section">
+            <div class="page-header"><h2>📝 Activity Logs</h2><button class="btn btn-outline" onclick="loadStats()">↻ Refresh</button></div>
+            <div class="page-content">
+                <div class="panel">
+                    <div class="panel-body" id="fullLogs">
+                        <div style="color:var(--text2);font-size:0.85rem">Loading logs...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SYSTEM -->
+        <div id="system" class="section">
+            <div class="page-header"><h2>⚙️ System Info</h2></div>
+            <div class="page-content">
+                <div class="cards" id="sysCards">
+                    <div class="card"><div class="card-label">Process Uptime</div><div class="card-value blue" id="sys-uptime">--</div></div>
+                    <div class="card"><div class="card-label">Memory RSS</div><div class="card-value yellow" id="sys-rss">--</div></div>
+                    <div class="card"><div class="card-label">Heap Used</div><div class="card-value purple" id="sys-heap">--</div></div>
+                    <div class="card"><div class="card-label">Heap Total</div><div class="card-value green" id="sys-total">--</div></div>
+                </div>
+                <div class="panel">
+                    <div class="panel-header"><h3>Environment</h3></div>
+                    <div class="panel-body" id="envInfo" style="font-family:monospace;font-size:0.85rem;color:var(--text2);">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Navigation
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        item.classList.add('active');
+        document.getElementById(item.dataset.section).classList.add('active');
+    });
+});
+
+// Load stats
+async function loadStats() {
+    try {
+        const r = await fetch('/api/admin/dashboard');
+        if (!r.ok) throw new Error('API returned ' + r.status);
+        const d = await r.json();
+        if (d.success) {
+            document.getElementById('s-guilds').textContent = d.stats.bot.guilds || 0;
+            document.getElementById('s-users').textContent = (d.stats.bot.users || 0).toLocaleString();
+            document.getElementById('s-uptime').textContent = Math.floor((d.stats.system.uptime || 0) / 3600) + 'h';
+            document.getElementById('s-memory').textContent = d.stats.system.memory?.rss || '--';
+            document.getElementById('s-tickets').textContent = d.stats.database.tickets || 0;
+            document.getElementById('s-warnings').textContent = d.stats.database.warnings || 0;
+
+            // System tab
+            document.getElementById('sys-uptime').textContent = Math.floor((d.stats.system.uptime || 0) / 3600) + 'h ' + Math.floor(((d.stats.system.uptime || 0) % 3600) / 60) + 'm';
+            document.getElementById('sys-rss').textContent = (d.stats.system.memory?.rss || 0) + ' MB';
+            document.getElementById('sys-heap').textContent = (d.stats.system.memory?.heapUsed || 0) + ' MB';
+            document.getElementById('sys-total').textContent = (d.stats.system.memory?.heapTotal || 0) + ' MB';
+
+            // Activity
+            renderActivity(d.activity || []);
+        }
+        document.getElementById('lastRefresh').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+        document.getElementById('statusDot').className = 'dot green';
+        document.getElementById('statusText').textContent = 'System Online';
+    } catch (e) {
+        console.log('Stats fetch failed:', e.message);
+        document.getElementById('lastRefresh').textContent = 'API unavailable - showing static links';
+        document.getElementById('statusDot').className = 'dot red';
+        document.getElementById('statusText').textContent = 'API Unavailable';
+        // Dashboard still works - links are static
+        document.getElementById('activityLog').innerHTML = '<div style="color:var(--text2);font-size:0.85rem">Could not load activity data. The dashboard links above still work.</div>';
+    }
+}
+
+function renderActivity(items) {
+    const html = items.length === 0
+        ? '<div style="color:var(--text2);font-size:0.85rem">No recent activity</div>'
+        : items.slice(0, 20).map(a => {
+            const type = (a.event_type || '').includes('FAIL') ? 'err' : (a.event_type || '').includes('SUCCESS') ? 'ok' : (a.event_type || '').includes('WARN') ? 'warn' : 'info';
+            const time = a.created_at ? new Date(a.created_at).toLocaleString() : '';
+            return `<div class="log-entry"><span class="log-badge ${type}">${a.event_type || 'EVENT'}</span><span class="log-text">${a.description || a.event_type || 'Activity'} ${a.username ? '— ' + a.username : ''}</span><span class="log-time">${time}</span></div>`;
+        }).join('');
+    document.getElementById('activityLog').innerHTML = html;
+    document.getElementById('fullLogs').innerHTML = items.length === 0
+        ? '<div style="color:var(--text2);font-size:0.85rem">No activity logs</div>'
+        : items.map(a => {
+            const type = (a.event_type || '').includes('FAIL') ? 'err' : (a.event_type || '').includes('SUCCESS') ? 'ok' : (a.event_type || '').includes('WARN') ? 'warn' : 'info';
+            const time = a.created_at ? new Date(a.created_at).toLocaleString() : '';
+            return `<div class="log-entry"><span class="log-badge ${type}">${a.event_type || 'EVENT'}</span><span class="log-text">${a.description || a.event_type || 'Activity'} ${a.username ? '— ' + a.username : ''}</span><span class="log-time">${time}</span></div>`;
+        }).join('');
+}
+
+// Environment info
+document.getElementById('envInfo').innerHTML = `
+NODE_ENV: ${location.hostname === 'localhost' ? 'development' : 'production'}<br>
+Dashboard: http://localhost:3001<br>
+Platform: http://localhost:3001/platform<br>
+API: http://localhost:3001/api<br>
+Admin: http://localhost:3001/admin<br>
+Guard: Desktop app (Tauri)
+`;
+
+// Initial load + refresh
+loadStats();
+setInterval(loadStats, 30000);
+</script>
+</body>
+</html>

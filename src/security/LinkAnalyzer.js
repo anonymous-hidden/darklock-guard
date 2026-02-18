@@ -53,6 +53,81 @@ class LinkAnalyzer {
             'twitch.tv', 'spotify.com', 'open.spotify.com', 'tenor.com', 'giphy.com',
             'steamcommunity.com', 'steampowered.com', 'microsoft.com', 'apple.com'
         ]);
+
+        // Database-loaded domains cache
+        this.dbPhishingDomainsLoaded = false;
+        this.lastDbLoad = null;
+        this.dbLoadInterval = 60 * 60 * 1000; // Reload every hour
+    }
+
+    /**
+     * Initialize LinkAnalyzer - loads phishing domains from database
+     */
+    async initialize() {
+        try {
+            await this.loadPhishingDomainsFromDB();
+            
+            // Set up periodic refresh
+            setInterval(async () => {
+                try {
+                    await this.loadPhishingDomainsFromDB();
+                } catch (error) {
+                    this.bot.logger.error('[LinkAnalyzer] Periodic domain refresh failed:', error);
+                }
+            }, this.dbLoadInterval);
+            
+            this.bot.logger.info(`[LinkAnalyzer] Initialized with ${this.phishingDomains.size} phishing domains`);
+        } catch (error) {
+            this.bot.logger.error('[LinkAnalyzer] Initialization failed:', error);
+        }
+    }
+
+    /**
+     * Load phishing domains from the malicious_links database table
+     */
+    async loadPhishingDomainsFromDB() {
+        console.log('[LinkAnalyzer] 🔍 loadPhishingDomainsFromDB() START');
+        console.log('[LinkAnalyzer] bot exists:', !!this.bot);
+        console.log('[LinkAnalyzer] bot.database exists:', !!this.bot?.database);
+        console.log('[LinkAnalyzer] bot.database.all type:', typeof this.bot?.database?.all);
+        
+        try {
+            console.log('[LinkAnalyzer] Executing SQL query...');
+            
+            const domains = await this.bot.database.all(`
+                SELECT url 
+                FROM malicious_links 
+                WHERE threat_type = 'PHISHING' 
+                  AND whitelisted = 0
+            `);
+
+            console.log(`[LinkAnalyzer] Query returned ${domains ? domains.length : '??'} rows`);
+
+            if (domains && domains.length > 0) {
+                // Add database domains to existing hardcoded ones
+                let addedCount = 0;
+                domains.forEach(row => {
+                    if (row.url) {
+                        if (!this.phishingDomains.has(row.url.toLowerCase())) {
+                            this.phishingDomains.add(row.url.toLowerCase());
+                            addedCount++;
+                        }
+                    }
+                });
+
+                this.dbPhishingDomainsLoaded = true;
+                this.lastDbLoad = new Date();
+                
+                console.log(`[LinkAnalyzer] ✅ Added ${addedCount} new domains, total now: ${this.phishingDomains.size}`);
+                this.bot.logger.info(`[LinkAnalyzer] Loaded ${addedCount} NEW phishing domains from database (total: ${this.phishingDomains.size})`);
+            } else {
+                console.log('[LinkAnalyzer] ⚠️  No domains returned from database!');
+            }
+        } catch (error) {
+            console.error('[LinkAnalyzer] ❌ ERROR loading domains:', error);
+            this.bot.logger.error('[LinkAnalyzer] Failed to load phishing domains from database:', error);
+            // Continue with hardcoded domains if database fails
+        }
     }
 
     extractUrls(text = '') {
@@ -98,6 +173,9 @@ class LinkAnalyzer {
 
         const urls = this.extractUrls(message.content || '');
         if (urls.length === 0) return { dominated: false, score: 0, urls: [] };
+
+        this.bot.logger?.info && this.bot.logger.info(`[LinkAnalyzer] Analyzing ${urls.length} URL(s): ${urls.join(', ')}`);
+        this.bot.logger?.info && this.bot.logger.info(`[LinkAnalyzer] Database has ${this.phishingDomains.size} phishing domains loaded`);
 
         const analyses = [];
         let maxScore = 0;
@@ -188,6 +266,7 @@ class LinkAnalyzer {
         if (this.phishingDomains.has(domain)) {
             score += 85;
             reasons.push('phishing_domain');
+            this.bot.logger?.info && this.bot.logger.info(`[LinkAnalyzer] ⚠️  PHISHING DOMAIN DETECTED: ${domain} (score: 85)`);
         }
 
         // Unicode spoofing
@@ -418,22 +497,27 @@ class LinkAnalyzer {
     }
 
     async applyResponse(message, analyses, maxScore, config) {
+        this.bot.logger?.info && this.bot.logger.info(`[LinkAnalyzer] Max score: ${maxScore} - Determining action...`);
+        
         const guildId = message.guildId;
         const userId = message.author.id;
         let dominated = false;
 
         if (maxScore < 30) {
+            this.bot.logger?.info && this.bot.logger.info(`[LinkAnalyzer] Score below 30, no action`);
             return { dominated: false };
         }
 
         // 30-50: log only
         if (maxScore < 50) {
+            this.bot.logger?.info && this.bot.logger.info(`[LinkAnalyzer] Score 30-50: Logging only`);
             await this.logIncident(message, analyses, maxScore, 'LOG');
             return { dominated: false };
         }
 
         // 50-70: delete + warn + notify
         if (maxScore < 70) {
+            this.bot.logger?.info && this.bot.logger.info(`[LinkAnalyzer] Score 50-70: Delete + Warn`);
             await this.deleteMessageSafe(message);
             await this.warnUser(message);
             await this.logIncident(message, analyses, maxScore, 'WARN');
@@ -443,6 +527,7 @@ class LinkAnalyzer {
         }
 
         // 70+: delete + timeout + notify
+        this.bot.logger?.info && this.bot.logger.info(`[LinkAnalyzer] Score 70+: Delete + Timeout`);
         await this.deleteMessageSafe(message);
         await this.warnUser(message);
         if (config.auto_action_enabled && message.member?.moderatable) {

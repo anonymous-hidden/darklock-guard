@@ -17,6 +17,7 @@ impl NonceBook {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct ConnectedState {
     pub security_profile: SecurityProfile,
     nonce_book: NonceBook,

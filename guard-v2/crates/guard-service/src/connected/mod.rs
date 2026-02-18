@@ -15,7 +15,6 @@ mod telemetry;
 pub mod verifier;
 
 use api_client::ApiClient;
-pub use commands::{CommandValidationError, ServerCommand};
 use state::ConnectedState;
 use verifier::Verifier;
 
@@ -28,6 +27,7 @@ pub struct ConnectedConfig {
     pub server_public_key: Option<String>,
 }
 
+#[allow(private_interfaces)]
 pub fn maybe_start_connected(state: Arc<Mutex<ServiceState>>) -> Result<Option<JoinHandle<()>>> {
     {
         let guard = state.lock();

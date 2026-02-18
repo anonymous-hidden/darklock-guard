@@ -89,6 +89,28 @@ pub enum IpcRequest {
     RollbackUpdate {
         backup_manifest: String,
     },
+    GetEvents {
+        since: Option<String>,  // ISO 8601 timestamp
+        limit: Option<usize>,
+    },
+    TriggerScan,
+    // ── New commands per architecture spec ───────────────────────────────
+    MaintenanceEnter {
+        reason: String,
+        timeout_secs: u64,
+    },
+    MaintenanceExit {
+        rebaseline: bool,
+    },
+    SetProtectedPaths {
+        paths: Vec<String>,
+    },
+    BaselineCreate,
+    BaselineVerify,
+    RestoreNow {
+        path: String,
+    },
+    GetEngineMode,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -115,6 +137,32 @@ pub enum IpcResponse {
         backup_manifest: String,
     },
     UpdateRolledBack,
+    Events {
+        events: Vec<serde_json::Value>,
+    },
+    ScanComplete {
+        result: serde_json::Value,
+    },
+    // ── New responses per architecture spec ──────────────────────────────
+    MaintenanceEntered,
+    MaintenanceExited {
+        rebaselined: bool,
+    },
+    ProtectedPathsUpdated,
+    BaselineCreated {
+        entries: usize,
+    },
+    BaselineVerified {
+        valid: bool,
+        detail: serde_json::Value,
+    },
+    RestoreResult {
+        path: String,
+        outcome: String,
+    },
+    EngineModeInfo {
+        mode: serde_json::Value,
+    },
 }
 
 #[derive(Debug, Clone)]

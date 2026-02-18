@@ -1,7 +1,7 @@
 use crate::util::hash_file;
 use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose, Engine as _};
-use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
+use ed25519_dalek::{Signature, VerifyingKey};
 use std::path::Path;
 
 // Embedded release public key (public, not secret). Replace with production key during release.
@@ -44,7 +44,7 @@ pub fn verify_release_signature(path: &Path, signature_b64: &str) -> Result<()> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ed25519_dalek::SigningKey;
+    use ed25519_dalek::{Signer, SigningKey};
     use rand::rngs::OsRng;
     use std::io::Write;
     use tempfile::NamedTempFile;

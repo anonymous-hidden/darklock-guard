@@ -183,6 +183,39 @@ impl EventLog {
         Ok(anchor)
     }
 
+    /// Read recent events, optionally filtering by `since` timestamp and limiting count.
+    pub fn read_recent(
+        &self,
+        since: Option<DateTime<Utc>>,
+        limit: Option<usize>,
+    ) -> Result<Vec<EventEntry>> {
+        if !self.path.exists() {
+            return Ok(vec![]);
+        }
+        let file = File::open(&self.path)?;
+        let reader = BufReader::new(file);
+        let mut entries = Vec::new();
+        for line in reader.lines() {
+            let line = line?;
+            if line.trim().is_empty() {
+                continue;
+            }
+            let entry: EventEntry = serde_json::from_str(&line)?;
+            if let Some(since_ts) = &since {
+                if entry.timestamp < *since_ts {
+                    continue;
+                }
+            }
+            entries.push(entry);
+        }
+        // Return most recent first
+        entries.reverse();
+        if let Some(lim) = limit {
+            entries.truncate(lim);
+        }
+        Ok(entries)
+    }
+
     fn path_with_suffix(&self, index: usize) -> PathBuf {
         let mut p = self.path.clone();
         let filename = p.file_name().unwrap().to_string_lossy().to_string();

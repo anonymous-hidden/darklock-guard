@@ -9,7 +9,7 @@
     
     const DEFAULT_THEME = 'darklock';
     const THEME_STORAGE_KEY = 'DarkLock-theme';
-    const THEME_CSS_ENDPOINT = '/api/v3/theme/css';
+    const THEME_CSS_ENDPOINT = '/api/v4/admin/theme/css';
     
     /**
      * Create and inject the theme stylesheet link

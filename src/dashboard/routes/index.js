@@ -11,6 +11,7 @@ const AnalyticsRoutes = require('./analytics');
 const SettingsRoutes = require('./settings');
 const BillingRoutes = require('./billing');
 const createBackupRoutes = require('./backups');
+const UnifiedAdminRoutes = require('./unified-admin');
 
 /**
  * Helper function to get router from class or function
@@ -106,6 +107,9 @@ function registerRoutes(app, dashboard) {
     // Server backups management (factory function)
     app.use('/api', createBackupRoutes(dashboard));
 
+    // Unified Admin Dashboard (consolidates all admin functionality)
+    app.use('/', getRouter(UnifiedAdminRoutes, dashboard));
+
     dashboard.bot.logger?.info('✅ All API routes registered');
 }
 
@@ -118,5 +122,6 @@ module.exports = {
     AnalyticsRoutes,
     SettingsRoutes,
     BillingRoutes,
-    createBackupRoutes
+    createBackupRoutes,
+    UnifiedAdminRoutes
 };

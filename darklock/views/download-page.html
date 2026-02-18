@@ -233,12 +233,12 @@
         </div>
 
         <h1>Darklock Guard</h1>
-        <div class="version">Version 0.1.0 · Desktop (Tauri)</div>
+        <div class="version">Version 2.0.0 Beta 3 · Desktop + Service</div>
 
         <p class="description">
-            Advanced file integrity monitoring and tamper detection. 
-            Protect your critical files with real-time monitoring, automatic restoration, 
-            and encrypted backups.
+            Tamper-proof file integrity protection with cryptographic verification.
+            Guard Service (Rust) + Desktop App (Tauri) working together to protect your critical files
+            with Ed25519-signed baselines and real-time BLAKE3 integrity scanning.
         </p>
 
         <div class="features">
@@ -246,25 +246,31 @@
                 <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="20 6 9 17 4 12"/>
                 </svg>
-                <span>Real-time file integrity monitoring</span>
+                <span>BLAKE3 integrity scanner with Ed25519 signatures</span>
             </div>
             <div class="feature-item">
                 <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="20 6 9 17 4 12"/>
                 </svg>
-                <span>Tamper detection & automatic alerts</span>
+                <span>Encrypted vault (DLOCK02 format, Argon2id KDF)</span>
             </div>
             <div class="feature-item">
                 <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="20 6 9 17 4 12"/>
                 </svg>
-                <span>Encrypted backups & restoration</span>
+                <span>Hash-chained audit log with tamper detection</span>
             </div>
             <div class="feature-item">
                 <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="20 6 9 17 4 12"/>
                 </svg>
-                <span>Event chain verification</span>
+                <span>Real-time file monitoring & integrity scanning</span>
+            </div>
+            <div class="feature-item">
+                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <span>Connected mode with web dashboard integration</span>
             </div>
         </div>
 
@@ -290,16 +296,36 @@
                     <path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.84-.41 1.738-.41 2.655 0 .87.527 2.23 1.065 2.877.521.623 1.303.952 2.145.952.84 0 1.608-.329 2.131-.952.539-.647 1.064-2.006 1.064-2.877 0-.917-.132-1.815-.41-2.655-.589-1.771-1.831-3.47-2.715-4.521-.75-1.067-.975-1.928-1.05-3.02-.066-1.491 1.055-5.965-3.17-6.298-.165-.013-.325-.021-.48-.021zm-2.658 16.156c-1.108 0-1.95.701-1.95 1.699 0 .998.842 1.7 1.95 1.7 1.109 0 1.952-.702 1.952-1.7 0-.998-.843-1.699-1.952-1.699zm5.171 0c-1.108 0-1.95.701-1.95 1.699 0 .998.842 1.7 1.95 1.7 1.109 0 1.952-.702 1.952-1.7 0-.998-.843-1.699-1.952-1.699z"/>
                 </svg>
                 <div class="platform-name">Linux</div>
-                <div class="platform-desc">Ubuntu / Debian (64-bit)</div>
+                <div class="platform-desc">Ubuntu 20.04+ / Debian 11+ (64-bit)</div>
                 <div class="installer-options">
                     <a href="/platform/api/download/darklock-guard-installer?format=deb" class="installer-btn">
-                        Download .deb
-                        <div class="installer-format">Recommended (apt install ./darklock-guard_0.1.0_amd64.deb)</div>
+                        Download .deb Package
+                        <div class="installer-format">Recommended • Desktop App + Guard Service</div>
                     </a>
                     <a href="/platform/api/download/darklock-guard-installer?format=tar" class="installer-btn secondary">
                         Download .tar.gz
                         <div class="installer-format">Portable binary (no root required)</div>
                     </a>
+                </div>
+                <div style="margin-top: 16px; padding: 12px; background: rgba(124, 77, 255, 0.08); border-radius: 8px; text-align: left;">
+                    <div style="font-size: 12px; font-weight: 600; color: #7c4dff; margin-bottom: 8px;">Installation:</div>
+                    <code style="display: block; font-size: 11px; color: #a8b2d1; line-height: 1.6;">
+                        # Install package<br/>
+                        sudo apt install ./darklock-guard_0.1.0_amd64.deb<br/><br/>
+            Linux: Ubuntu 20.04+ / Fedora 36+, x86_64 or aarch64, WebKitGTK 4.1, 100 MB disk<br>
+            Windows: Windows 10 (1809)+, 64-bit x86_64, WebView2 Runtime, 100 MB disk<br>
+            macOS: macOS 11 Big Sur+, Apple Silicon or Intel, 100 MB disk<br>
+            <br>
+            <strong>What's Included:</strong><br>
+            • Guard Service - Background daemon (Rust) handling all security operations<br>
+            • Desktop App - Management UI (Tauri + React) for configuration and monitoring<br>
+            • Setup Wizard - First-run initialization with vault creation and baseline scanning<br>
+            • Connected Mode - Optional link to web dashboard for multi-device management
+                        cd /opt/darklock-guard<br/>
+                        ./guard-service init<br/><br/>
+                        # Start service & desktop app<br/>
+                        ./start.sh
+                    </code>
                 </div>
             </div>
         </div>

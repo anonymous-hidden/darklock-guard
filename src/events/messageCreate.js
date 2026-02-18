@@ -59,6 +59,29 @@ module.exports = {
                     if (spamDetected) return; // Message was handled by anti-spam
                 }
 
+                // Word filter check (banned words/phrases)
+                if (bot.wordFilter) {
+                    try {
+                        console.log('[DEBUG] Checking word filter for message:', message.content.substring(0, 50));
+                        const filterResult = await bot.wordFilter.checkMessage(message);
+                        console.log('[DEBUG] Word filter result:', filterResult);
+                        if (filterResult?.blocked) return; // Message was handled by word filter
+                    } catch (e) {
+                        bot.logger?.warn('Word filter check failed:', e.message);
+                        console.error('[DEBUG] Word filter error:', e);
+                    }
+                }
+
+                // Anti-phishing check (only if enabled)
+                if ((config.antiphishing_enabled || config.anti_phishing_enabled) && bot.antiPhishing) {
+                    try {
+                        const phishResult = await bot.antiPhishing.checkMessage(message);
+                        if (phishResult?.blocked) return;
+                    } catch (e) {
+                        bot.logger?.warn('Anti-phishing check failed:', e.message);
+                    }
+                }
+
                 // AutoMod filters (reads from automod_settings JSON)
                 if (config.automod_enabled && bot.autoMod) {
                     const automodHandled = await bot.autoMod.handleMessage(message, config);

@@ -23,8 +23,8 @@
      */
     async function fetchDebugMode() {
         try {
-            // Use admin API v3 endpoint
-            const response = await fetch('/api/v3/settings', {
+            // Use admin API v4 endpoint
+            const response = await fetch('/api/v4/admin/settings', {
                 credentials: 'include'
             }).catch(() => null);
             

@@ -90,6 +90,7 @@ fn record_remote_activity(
     });
 }
 
+#[allow(private_interfaces)]
 pub fn spawn_command_loop(
     client: ApiClient,
     verifier: Verifier,

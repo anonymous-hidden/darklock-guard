@@ -12,13 +12,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/css/dashboard-modern.css">
     <link rel="stylesheet" href="/css/premium-gating.css">
-    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v4/admin/theme/css">
     <script>
         // Auto-reload theme every 5 minutes
         setInterval(() => {
             const link = document.getElementById('dynamic-theme-stylesheet');
             if (link) {
-                link.href = '/api/v3/theme/css?' + new Date().getTime();
+                link.href = '/api/v4/admin/theme/css?' + new Date().getTime();
             }
         }, 300000);
     </script>
@@ -90,10 +90,7 @@
                         <i class="fas fa-chart-bar"></i>
                         <span>Analytics</span>
                     </a>
-                    <a href="/dashboard/logs" class="nav-item">
-                        <i class="fas fa-scroll"></i>
-                        <span>Logs & Audit</span>
-                    </a>
+
                 </div>
 
                 <div class="nav-section" data-requires-admin>
@@ -137,6 +134,11 @@
                     <a href="/setup/autorole" class="nav-item">
                         <i class="fas fa-user-tag"></i>
                         <span>Auto Role & Reaction Roles</span>
+                    </a>
+                    <a href="/setup/notifications" class="nav-item">
+                        <i class="fas fa-bell"></i>
+                        <span>Notifications & Logs</span>
+                        <i class="fas fa-crown premium-badge" style="color: #ffc107; font-size: 10px; margin-left: auto;" title="Premium features available"></i>
                     </a>
                 </div>
 
@@ -256,6 +258,7 @@
         </main>
     </div>
 
+    <script src="/js/page-transitions.js"></script>
     <script src="/js/secure-auth.js"></script>
     <script>
         // State
@@ -270,7 +273,7 @@
         // Fetch debug mode setting from admin panel
         async function fetchDebugMode() {
             try {
-                const response = await fetch('/api/v3/settings', { credentials: 'include' });
+                const response = await fetch('/api/v4/admin/settings', { credentials: 'include' });
                 if (response.ok) {
                     const data = await response.json();
                     debugMode = data.debug?.enabled === true;
@@ -1425,7 +1428,7 @@
             { id: 'analytics', name: 'Analytics', icon: 'chart-line', url: '/analytics', gradient: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', iconBg: 'rgba(17, 153, 142, 0.2)', premium: false },
             { id: 'security', name: 'Security', icon: 'shield-alt', url: '/setup/security', gradient: 'linear-gradient(135deg, #00d4ff 0%, #0099ff 100%)', iconBg: 'rgba(0, 212, 255, 0.2)', premium: false },
             { id: 'users', name: 'Users', icon: 'users-cog', url: '/dashboard/users', gradient: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)', iconBg: 'rgba(168, 85, 247, 0.2)', premium: false },
-            { id: 'logs', name: 'Audit Logs', icon: 'file-alt', url: '/dashboard/logs', gradient: 'linear-gradient(135deg, #64748b 0%, #475569 100%)', iconBg: 'rgba(100, 116, 139, 0.2)', premium: false },
+
             { id: 'antinuke', name: 'Anti-Nuke', icon: 'radiation', url: '/setup/antinuke', gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', iconBg: 'rgba(239, 68, 68, 0.2)', premium: false },
             { id: 'antiraid', name: 'Anti-Raid', icon: 'user-shield', url: '/setup/anti-raid', gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', iconBg: 'rgba(245, 158, 11, 0.2)', premium: false },
             { id: 'antispam', name: 'Anti-Spam', icon: 'comment-slash', url: '/setup/anti-spam', gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', iconBg: 'rgba(6, 182, 212, 0.2)', premium: false },

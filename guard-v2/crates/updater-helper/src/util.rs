@@ -44,6 +44,7 @@ pub fn hash_file(path: &Path) -> Result<String> {
     Ok(hex::encode(hasher.finalize()))
 }
 
+#[allow(dead_code)]
 pub fn write_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<()> {
     let mut f = File::create(path)?;
     let data = serde_json::to_vec_pretty(value)?;
@@ -51,6 +52,7 @@ pub fn write_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T> {
     let f = File::open(path)?;
     Ok(serde_json::from_reader(f)?)

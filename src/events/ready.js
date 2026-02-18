@@ -46,6 +46,16 @@ module.exports = {
         bot.logger.info('🔄 Starting periodic maintenance tasks...');
         startPeriodicTasks(bot);
         
+        // Start hardware status writer for displays
+        try {
+            const HardwareStatusWriter = require('../hardware/statusWriter');
+            bot.hardwareStatus = new HardwareStatusWriter(bot);
+            bot.hardwareStatus.start();
+            bot.logger.info('🖥️  Hardware status writer started');
+        } catch (error) {
+            bot.logger.warn('⚠️  Hardware status writer not available:', error.message);
+        }
+        
         bot.logger.info('✅ Bot is fully operational!');
     }
 };

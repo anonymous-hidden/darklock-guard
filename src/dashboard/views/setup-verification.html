@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/css/design-system.css">
     <link rel="stylesheet" href="/css/premium-gating.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v4/admin/theme/css">
     <script src="/js/secure-auth.js"></script>
     <script src="/js/global-theme.js"></script>
     <script src="/js/premium-gating.js"></script>
@@ -121,6 +121,10 @@
             <a href="/dashboard"><i class="fas fa-home"></i> Dashboard</a>
             <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
             <span class="setup-breadcrumb-current">Verification</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="statusDot" class="status-dot status-disabled" style="width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: var(--ds-text-muted);"></span>
+            <span id="statusText" style="font-size: 13px; color: var(--ds-text-muted);">Disabled</span>
         </div>
     </nav>
 
@@ -303,13 +307,15 @@
         // Load roles and channels
         async function loadRolesAndChannels() {
             try {
-                const [rolesData, channelsData] = await Promise.all([
+                const [rolesRes, channelsRes] = await Promise.all([
                     SecureAuth.fetch(`/api/guild/${guildId}/roles`, { method: 'GET' }),
                     SecureAuth.fetch(`/api/guild/${guildId}/channels`, { method: 'GET' })
                 ]);
 
-                if (rolesData.success) {
-                    roles = rolesData.roles;
+                if (rolesRes.ok) {
+                    const rolesData = await rolesRes.json();
+                    // API returns flat array or { roles: [...] }
+                    roles = Array.isArray(rolesData) ? rolesData : (rolesData.roles || []);
                     const verifiedSelect = document.getElementById('verifiedRole');
                     const unverifiedSelect = document.getElementById('unverifiedRole');
                     
@@ -321,8 +327,10 @@
                     });
                 }
 
-                if (channelsData.success) {
-                    channels = channelsData.channels.filter(c => c.type === 'GUILD_TEXT' || c.type === 0);
+                if (channelsRes.ok) {
+                    const channelsData = await channelsRes.json();
+                    const channelList = Array.isArray(channelsData) ? channelsData : (channelsData.channels || []);
+                    channels = channelList.filter(c => c.type === 'GUILD_TEXT' || c.type === 0);
                     const channelSelect = document.getElementById('verificationChannel');
                     
                     channels.forEach(channel => {
@@ -341,8 +349,9 @@
                     method: 'GET'
                 });
 
-                if (response.success) {
-                    const data = response.settings;
+                if (response.ok) {
+                    const raw = await response.json();
+                    const data = raw.settings || raw.data || raw;
                     const enabled = data.verification_enabled || false;
 
                     document.getElementById('verificationEnabled').checked = enabled;
@@ -371,12 +380,12 @@
             const dot = document.getElementById('statusDot');
             const text = document.getElementById('statusText');
             
-            if (enabled) {
-                dot.className = 'status-dot status-enabled';
-                text.textContent = 'Enabled';
-            } else {
-                dot.className = 'status-dot status-disabled';
-                text.textContent = 'Disabled';
+            if (dot) {
+                dot.style.background = enabled ? '#22c55e' : 'var(--ds-text-muted)';
+            }
+            if (text) {
+                text.textContent = enabled ? 'Enabled' : 'Disabled';
+                text.style.color = enabled ? '#22c55e' : 'var(--ds-text-muted)';
             }
         }
 
@@ -416,10 +425,11 @@
                     body: JSON.stringify(settings)
                 });
 
-                if (response.success) {
+                if (response.ok) {
                     showStatus('Settings saved successfully!', 'success');
                 } else {
-                    showStatus(response.message || 'Failed to save settings', 'error');
+                    const err = await response.json().catch(() => ({}));
+                    showStatus(err.message || err.error || 'Failed to save settings', 'error');
                 }
             } catch (error) {
                 console.error('Save error:', error);

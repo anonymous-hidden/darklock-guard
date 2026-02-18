@@ -1,0 +1,24 @@
+[Unit]
+Description=DarkLock Platform Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cayden
+Group=cayden
+WorkingDirectory=/home/cayden/discord bot/discord bot
+ExecStart=/usr/bin/node darklock/start.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/home/cayden/discord bot/discord bot/logs/darklock-startup.log
+StandardError=append:/home/cayden/discord bot/discord bot/logs/darklock-startup.log
+Environment=NODE_ENV=production
+EnvironmentFile=/home/cayden/discord bot/discord bot/.env
+
+# Resource limits (Pi 5 friendly)
+MemoryMax=512M
+CPUQuota=150%
+
+[Install]
+WantedBy=multi-user.target

@@ -11,7 +11,7 @@
     async function displayBranding() {
         // Check if debug mode is enabled
         try {
-            const response = await fetch('/api/v3/settings', {
+            const response = await fetch('/api/v4/admin/settings', {
                 credentials: 'include'
             }).catch(() => null);
             

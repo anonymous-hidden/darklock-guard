@@ -1,0 +1,117 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║           DARKLOCK HARDWARE WIRING REFERENCE                              ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════════
+ ELEGOO MEGA 2560 — Connected to Pi 5 via USB
+ D = Digital pin    P = PWM pin
+═══════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│  RGB-LED 1 (Bot Status)                                                 │
+│    Red   → D29     Green → D31     Blue  → D33                         │
+│  Meanings: Red=Offline  Green=Online  Blue=Starting                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│  RGB-LED 2 (Secondary Status)                                           │
+│    Red   → D23     Green → D25     Blue  → D27                         │
+│  Meanings: Red=Error  Green=Healthy  Blue=Processing  Purple=Alert      │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Tamper Detection Shutdown LED                                          │
+│    Red   → D32                                                          │
+│  ON = Tamper violation detected                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│  RFID Scanner LED                                                       │
+│    Green → D28     Red   → D30                                          │
+│  Green = Access granted    Red = Access denied                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│  LCD 16×2 (4-bit mode) — Pin header left to right                      │
+├──────┬────────────┬─────────────────────────────────────────────────────┤
+│ Pin  │ Function   │ Connection                                         │
+├──────┼────────────┼─────────────────────────────────────────────────────┤
+│  1   │ GND        │ Ground                                              │
+│  2   │ VCC        │ +5V Power                                           │
+│  3   │ V0         │ Contrast potentiometer (10K pot to GND)             │
+│  4   │ RS         │ P7  (PWM pin 7)                                     │
+│  5   │ R/W        │ GND (write-only mode)                               │
+│  6   │ EN         │ P8  (PWM pin 8)                                     │
+│  7   │ D0         │ Not connected (4-bit mode)                          │
+│  8   │ D1         │ Not connected                                       │
+│  9   │ D2         │ Not connected                                       │
+│ 10   │ D3         │ Not connected                                       │
+│ 11   │ D4         │ P9  (PWM pin 9)                                     │
+│ 12   │ D5         │ P10 (PWM pin 10)                                    │
+│ 13   │ D6         │ P11 (PWM pin 11)                                    │
+│ 14   │ D7         │ P12 (PWM pin 12)                                    │
+│ 15   │ LED+       │ +5V (backlight anode)                               │
+│ 16   │ LED-       │ GND (backlight cathode)                             │
+└──────┴────────────┴─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│  MAX7219 8×8 Dot Matrix Display                                         │
+├──────────────┬──────────────────────────────────────────────────────────┤
+│ Matrix Pin   │ Connection                                               │
+├──────────────┼──────────────────────────────────────────────────────────┤
+│ VCC (pin 1)  │ +5V Power                                                │
+│ GND (pin 2)  │ Ground                                                   │
+│ DIN          │ D22                                                      │
+│ CS           │ D24                                                      │
+│ CLK          │ D26                                                      │
+└──────────────┴──────────────────────────────────────────────────────────┘
+  Animations: Idle=Radar sweep  Scan=Horizontal sweep
+              OK=Checkmark  Denied=X  Alert=Flash  Lock=Padlock icon
+
+
+═══════════════════════════════════════════════════════════════════════════
+ RASPBERRY PI PICO — Connected to Pi 5 via USB
+ Controls 4-digit 7-segment guild count display
+═══════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│  5461AS 4-Digit 7-Segment Display (Common Cathode)                      │
+├──────────┬─────────────┬────────────┬───────────────────────────────────┤
+│ Segment  │ 5461AS Pin  │ Resistor   │ Pico GPIO                        │
+├──────────┼─────────────┼────────────┼───────────────────────────────────┤
+│    A     │     11      │  220Ω      │ GP2  (Pin 4)                     │
+│    B     │      7      │  220Ω      │ GP3  (Pin 5)                     │
+│    C     │      4      │  220Ω      │ GP4  (Pin 6)                     │
+│    D     │      2      │  220Ω      │ GP5  (Pin 7)                     │
+│    E     │      1      │  220Ω      │ GP6  (Pin 9)                     │
+│    F     │     10      │  220Ω      │ GP7  (Pin 10)                    │
+│    G     │      5      │  220Ω      │ GP8  (Pin 11)                    │
+│    DP    │      3      │  220Ω      │ GP9  (Pin 12)                    │
+├──────────┼─────────────┼────────────┼───────────────────────────────────┤
+│  DIG1    │     12      │  Direct    │ GP10 (Pin 14)                    │
+│  DIG2    │      9      │  Direct    │ GP11 (Pin 15)                    │
+│  DIG3    │      8      │  Direct    │ GP12 (Pin 16)                    │
+│  DIG4    │      6      │  Direct    │ GP13 (Pin 17)                    │
+└──────────┴─────────────┴────────────┴───────────────────────────────────┘
+  Shows: Number of Discord servers the bot is in (0-9999)
+  Updates: Live when bot joins or leaves a server
+  Protocol: "COUNT:1234\n" over USB serial @ 115200 baud
+
+
+═══════════════════════════════════════════════════════════════════════════
+ SERIAL PROTOCOL REFERENCE (115200 baud, newline-delimited)
+═══════════════════════════════════════════════════════════════════════════
+
+  Pi → Elegoo:
+    LCD:line1|line2       Update LCD (16 chars per line)
+    LED1:r,g,b            RGB LED 1 (0-255, threshold 128 → HIGH/LOW)
+    LED2:r,g,b            RGB LED 2
+    TAMPER:0/1             Tamper LED
+    RFID:GREEN/RED/OFF     RFID indicator LEDs
+    MATRIX_SCAN/OK/DENIED/ALERT/IDLE/LOCK/BOOT  Dot matrix animations
+    PING                   Heartbeat
+    CLEAR                  Clear LCD
+
+  Elegoo → Pi:
+    READY                  Boot complete
+    PONG                   Heartbeat reply
+    ACK:cmd                Command acknowledged
+
+  Pi → Pico:
+    COUNT:1234             Update guild count
+    PING                   Heartbeat
+    RESET                  Reset to 0

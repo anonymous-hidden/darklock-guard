@@ -29,15 +29,24 @@ pub fn spawn_status_server(state: Arc<Mutex<ServiceState>>) -> Result<JoinHandle
         loop {
             match listener.accept().await {
                 Ok((mut stream, _)) => {
-                    let payload = match snapshot_state(&state) {
-                        Ok(device_state) => serde_json::to_vec(&device_state),
-                        Err(err) => serde_json::to_vec(&DeviceState::error(&format!(
-                            "invalid state: {err}"
-                        ))),
+                    let bytes = match snapshot_state(&state) {
+                        Ok(device_state) => {
+                            serde_json::to_vec(&device_state).unwrap_or_else(|e| {
+                                eprintln!("status serialize error: {e}");
+                                format!(r#"{{"error":"serialization failed: {e}"}}"#, e = e).into_bytes()
+                            })
+                        }
+                        Err(err) => {
+                            let error_json = DeviceState::error(&format!("invalid state: {err}"));
+                            serde_json::to_vec(&error_json).unwrap_or_else(|e| {
+                                eprintln!("status error serialize failed: {e}");
+                                format!(r#"{{"error":"state error: {}"}}"#, err).into_bytes()
+                            })
+                        }
                     };
 
-                    if let Ok(bytes) = payload {
-                        let _ = stream.write_all(&bytes).await;
+                    if let Err(e) = stream.write_all(&bytes).await {
+                        eprintln!("status write error: {e}");
                     }
                     let _ = stream.shutdown().await;
                 }

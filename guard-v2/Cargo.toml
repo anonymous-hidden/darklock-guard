@@ -2,6 +2,7 @@
 members = [
     "crates/guard-core",
     "crates/guard-service",
+    "crates/guard-cli",
     "crates/updater-helper",
     "desktop/src-tauri",
 ]

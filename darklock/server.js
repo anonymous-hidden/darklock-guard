@@ -16,6 +16,9 @@ const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const https = require('https');
+const http = require('http');
+const fs = require('fs');
 
 // Database initialization
 const db = require('./utils/database');
@@ -39,14 +42,6 @@ const {
 
 // Admin dashboard
 const { initializeAdminSchema } = require('./utils/admin-schema');
-const adminApiRoutes = require('./routes/admin-api');
-const { setDiscordBot } = require('./routes/admin-api');
-// v2 Admin API with enhanced features
-const adminApiV2Routes = require('./routes/admin-api-v2');
-const { setDiscordBot: setDiscordBotV2 } = require('./routes/admin-api-v2');
-// v3 Admin API - Full RBAC dashboard with 12 tabs
-const adminApiV3Routes = require('./routes/admin-api-v3');
-const { setDiscordBot: setDiscordBotV3 } = require('./routes/admin-api-v3');
 // Team Management routes
 const { router: teamManagementRoutes, initializeTeamSchema } = require('./routes/team-management');
 // Public API routes (maintenance status, health checks)
@@ -54,6 +49,9 @@ const publicApiRoutes = require('./routes/public-api');
 // RBAC schema initialization
 const rbacSchema = require('./utils/rbac-schema');
 const { initializeDefaultAdmins } = require('./default-admin');
+// Admin v4 - Enterprise RBAC Dashboard
+const adminV4Routes = require('./admin-v4/routes');
+const { initializeV4Schema } = require('./admin-v4/db/schema');
 
 class DarklockPlatform {
     constructor(options = {}) {
@@ -62,11 +60,8 @@ class DarklockPlatform {
         this.existingApp = options.existingApp || null;
         this.discordBot = options.bot || null;
         
-        // If bot is provided, set it for admin API routes
+        // If bot is provided, set it for platform routes
         if (this.discordBot) {
-            setDiscordBot(this.discordBot);
-            setDiscordBotV2(this.discordBot);
-            setDiscordBotV3(this.discordBot);
             setPlatformDiscordBot?.(this.discordBot);
         }
         
@@ -80,9 +75,6 @@ class DarklockPlatform {
      */
     setBot(bot) {
         this.discordBot = bot;
-        setDiscordBot(bot);
-        setDiscordBotV2(bot);
-        setDiscordBotV3(bot);
         setPlatformDiscordBot?.(bot);
         debugLogger.log('[Darklock Platform] Discord bot reference set');
     }
@@ -95,7 +87,11 @@ class DarklockPlatform {
         this.app.set('trust proxy', 1);
         
         // Determine if we're on a secure connection
-        const isSecure = process.env.NODE_ENV === 'production' || process.env.FORCE_HTTPS === 'true';
+        // Check for SSL certificates in addition to environment variables
+        const sslKeyPath = path.join(__dirname, 'ssl', 'key.pem');
+        const sslCertPath = path.join(__dirname, 'ssl', 'cert.pem');
+        const hasSslCerts = fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath);
+        const isSecure = process.env.NODE_ENV === 'production' || process.env.FORCE_HTTPS === 'true' || hasSslCerts;
         
         // Comprehensive security headers
         this.app.use(helmet({
@@ -105,8 +101,8 @@ class DarklockPlatform {
                     defaultSrc: ["'self'"],
                     scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-hashes'"], // Needed for inline handlers
                     scriptSrcAttr: ["'unsafe-inline'", "'unsafe-hashes'"], // Allow inline event handlers (onclick, etc.)
-                    styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-                    fontSrc: ["'self'", "https://fonts.gstatic.com"],
+                    styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
+                    fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
                     imgSrc: ["'self'", "data:", "https:"],
                     connectSrc: ["'self'"],
                     frameSrc: ["'none'"],
@@ -166,12 +162,23 @@ class DarklockPlatform {
             ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
             : (process.env.NODE_ENV === 'production' 
                 ? ['https://darklock.net', 'https://www.darklock.net'] 
-                : ['http://localhost:3000', 'http://127.0.0.1:3000']);
+                : [
+                    'http://localhost:3000', 
+                    'http://127.0.0.1:3000',
+                    'http://localhost:3002',  // Darklock server itself
+                    'http://127.0.0.1:3002',
+                    'http://localhost:5173',  // Vite dev server
+                    'tauri://localhost',      // Tauri app
+                    'http://tauri.localhost'  // Tauri alternative
+                  ]);
         
         this.app.use(cors({
             origin: function(origin, callback) {
-                // Allow requests with no origin (same-origin, Postman, mobile apps)
+                // Allow requests with no origin (same-origin, Postman, mobile apps, Tauri)
                 if (!origin) return callback(null, true);
+                
+                // Allow Tauri origins
+                if (origin.startsWith('tauri://')) return callback(null, true);
                 
                 // Check against explicit allowlist
                 if (allowedOrigins.includes(origin)) {
@@ -241,7 +248,12 @@ class DarklockPlatform {
         
         // UTF-8 charset for HTML responses
         this.app.use((req, res, next) => {
-            if (!req.path.includes('/static/')) {
+            // Don't override Content-Type for static assets
+            if (!req.path.includes('/static/') && 
+                !req.path.startsWith('/site/css/') && 
+                !req.path.startsWith('/site/js/') && 
+                !req.path.startsWith('/site/images/') && 
+                !req.path.startsWith('/js/')) {
                 res.setHeader('Content-Type', 'text/html; charset=utf-8');
             }
             next();
@@ -275,11 +287,219 @@ class DarklockPlatform {
     }
     
     /**
+     * Setup API routes for Darklock Guard Desktop onboarding
+     */
+    setupGuardApiRoutes() {
+        const crypto = require('crypto');
+        const bcrypt = require('bcrypt');
+        const jwt = require('jsonwebtoken');
+        const { getJwtSecret } = require('./utils/env-validator');
+        const { rateLimitMiddleware, generateJti } = require('./utils/security');
+        
+        // Login endpoint for Guard desktop app
+        this.app.post('/api/auth/login', rateLimitMiddleware('login'), async (req, res) => {
+            try {
+                const { email, password } = req.body;
+                
+                if (!email || !password) {
+                    return res.status(400).json({ error: 'Email and password required' });
+                }
+                
+                // Get user from database
+                const user = await db.getUserByEmail(email);
+                if (!user) {
+                    return res.status(401).json({ error: 'Invalid credentials' });
+                }
+                
+                // Verify password
+                const validPassword = await bcrypt.compare(password, user.password);
+                if (!validPassword) {
+                    return res.status(401).json({ error: 'Invalid credentials' });
+                }
+                
+                // Generate JWT token
+                const jwtSecret = getJwtSecret();
+                const jti = generateJti();
+                const token = jwt.sign(
+                    { 
+                        userId: user.id, 
+                        username: user.username,
+                        email: user.email,
+                        jti 
+                    },
+                    jwtSecret,
+                    { expiresIn: '30d' }
+                );
+                
+                // Store session
+                await db.createSession({
+                    id: crypto.randomUUID(),
+                    userId: user.id,
+                    jti,
+                    ip: req.ip,
+                    userAgent: req.headers['user-agent'] || 'Unknown'
+                });
+                
+                res.json({
+                    token,
+                    user: {
+                        id: user.id,
+                        username: user.username,
+                        email: user.email,
+                        display_name: user.display_name
+                    }
+                });
+            } catch (err) {
+                console.error('[API Auth] Login error:', err);
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        });
+        
+        // Register endpoint for Guard desktop app
+        this.app.post('/api/auth/register', rateLimitMiddleware('signup'), async (req, res) => {
+            try {
+                const { username, email, password } = req.body;
+                
+                // Validation
+                if (!username || !email || !password) {
+                    return res.status(400).json({ error: 'Username, email, and password required' });
+                }
+                
+                if (password.length < 12) {
+                    return res.status(400).json({ error: 'Password must be at least 12 characters' });
+                }
+                
+                // Check if user already exists
+                const existingUser = await db.getUserByEmail(email);
+                if (existingUser) {
+                    return res.status(409).json({ error: 'Email already registered' });
+                }
+                
+                const existingUsername = await db.getUserByUsername(username);
+                if (existingUsername) {
+                    return res.status(409).json({ error: 'Username already taken' });
+                }
+                
+                // Hash password
+                const hashedPassword = await bcrypt.hash(password, 10);
+                
+                // Create user
+                const userId = crypto.randomUUID();
+                const user = await db.createUser({
+                    id: userId,
+                    username,
+                    email,
+                    password: hashedPassword,
+                    displayName: username,
+                    role: 'user'
+                });
+                
+                if (!user || !user.id) {
+                    console.error('[API Auth] createUser returned:', user);
+                    throw new Error('Failed to create user');
+                }
+                
+                // Generate JWT token
+                const jwtSecret = getJwtSecret();
+                const jti = generateJti();
+                const token = jwt.sign(
+                    { 
+                        userId: user.id, 
+                        username: user.username,
+                        email: user.email,
+                        jti 
+                    },
+                    jwtSecret,
+                    { expiresIn: '30d' }
+                );
+                
+                // Store session
+                await db.createSession({
+                    id: crypto.randomUUID(),
+                    userId: user.id,
+                    jti,
+                    ip: req.ip,
+                    userAgent: req.headers['user-agent'] || 'Unknown'
+                });
+                
+                res.status(201).json({
+                    token,
+                    user: {
+                        id: user.id,
+                        username: user.username,
+                        email: user.email,
+                        display_name: user.display_name
+                    }
+                });
+            } catch (err) {
+                console.error('[API Auth] Register error:', err);
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        });
+        
+        // Device registration endpoint (placeholder - can be enhanced later)
+        this.app.post('/api/devices/register', async (req, res) => {
+            try {
+                const authHeader = req.headers.authorization;
+                if (!authHeader || !authHeader.startsWith('Bearer ')) {
+                    return res.status(401).json({ error: 'Unauthorized' });
+                }
+                
+                const token = authHeader.split(' ')[1];
+                const jwtSecret = getJwtSecret();
+                const decoded = jwt.verify(token, jwtSecret);
+                
+                const { device_id, public_key, name, platform } = req.body;
+                
+                if (!device_id || !public_key || !name) {
+                    return res.status(400).json({ error: 'device_id, public_key, and name required' });
+                }
+                
+                // Store device registration (simple logging for now)
+                console.log('[Guard API] Device registered:', {
+                    user_id: decoded.userId,
+                    device_id,
+                    name,
+                    platform: platform || 'unknown'
+                });
+                
+                res.json({
+                    success: true,
+                    device: {
+                        id: device_id,
+                        name,
+                        registered_at: new Date().toISOString()
+                    }
+                });
+            } catch (err) {
+                console.error('[API Devices] Register error:', err);
+                if (err.name === 'JsonWebTokenError') {
+                    return res.status(401).json({ error: 'Invalid token' });
+                }
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        });
+    }
+    
+    /**
      * Configure routes
      */
     setupRoutes() {
+        // Darklock Guard Desktop API routes (for onboarding)
+        // Favicon (prevent 404)
+        this.app.get("/favicon.ico", (req, res) => res.status(204).send());
+        
+        this.setupGuardApiRoutes();
+        
         // Static files
         this.app.use('/platform/static', express.static(path.join(__dirname, 'public')));
+        
+        // Site static assets
+        const siteAssetsDir = '/home/ubuntu/src/dashboard/views/site';
+        this.app.use('/site/css', express.static(path.join(siteAssetsDir, 'css')));
+        this.app.use('/site/js', express.static(path.join(siteAssetsDir, 'js')));
+        this.app.use('/site/images', express.static(path.join(siteAssetsDir, 'images')));
+        this.app.use('/js', express.static(path.join(siteAssetsDir, 'js'))); // Backwards compatibility
         
         // Downloads folder for installers
         this.app.use('/platform/downloads', express.static(path.join(__dirname, 'downloads')));
@@ -339,14 +559,16 @@ class DarklockPlatform {
         this.app.get('/platform/api/download/darklock-guard-installer', (req, res) => {
             const format = (req.query.format || 'deb').toLowerCase();
             const fs = require('fs');
-            const latestVersion = '0.1.0';
+            const latestVersion = '2.0.0-beta.3';
 
             console.log(`[Darklock] Download request for format: ${format} from IP: ${req.ip}`);
 
             // Try multiple file locations in order of preference
             const fileLocations = {
                 deb: [
+                    path.join(__dirname, 'downloads/darklock-guard_2.0.0-beta.3_amd64.deb'),
                     path.join(__dirname, 'downloads/darklock-guard_0.1.0_amd64.deb'),
+                    path.join(__dirname, '../guard-v2/target/release/bundle/deb/Darklock Guard_2.0.0-beta.3_amd64.deb'),
                     path.join(__dirname, '../guard-v2/target/release/bundle/deb/Darklock Guard_0.1.0_amd64.deb'),
                     path.join(__dirname, 'downloads/darklock-guard-installer.deb')
                 ],
@@ -425,32 +647,381 @@ class DarklockPlatform {
                 </html>
             `);
         });
-        
-        // Darklock Guard - Update endpoint for Tauri updater
-        this.app.get('/platform/api/updates/:target/:version', (req, res) => {
-            const { target, version } = req.params;
-            const currentVersion = version;
-            const latestVersion = '0.1.0'; // TODO: Read from package.json or config
-            
-            // If already on latest version
-            if (currentVersion === latestVersion) {
-                return res.status(204).send();
+
+        // Darklock Guard - Public updates page (NO auth required)
+        this.app.get('/platform/updates', async (req, res) => {
+            const Q = require('./admin-v4/db/queries');
+            const os = require('os');
+
+            // Channel filter from query param (default: show all)
+            const channelFilter = req.query.channel || 'all';
+
+            let updates = [];
+            try {
+                updates = await Q.getAppUpdates({ limit: 50 });
+            } catch {}
+
+            // Enrich with file listings
+            const enriched = updates.map(u => {
+                const vDir = path.join(__dirname, 'downloads/updates', u.version);
+                let files = [];
+                if (fs.existsSync(vDir)) {
+                    files = fs.readdirSync(vDir).map(f => {
+                        const stat = fs.statSync(path.join(vDir, f));
+                        return { name: f, size: stat.size };
+                    });
+                }
+                return { ...u, files, channel: u.channel || 'stable' };
+            });
+
+            // Apply channel filter
+            const filtered = channelFilter === 'all' ? enriched : enriched.filter(u => u.channel === channelFilter);
+            const latest = filtered[0];
+            const history = filtered.slice(1);
+
+            // Get LAN IP for sharing
+            const lanIp = (() => {
+                try {
+                    const ifaces = os.networkInterfaces();
+                    for (const name of Object.keys(ifaces)) {
+                        for (const iface of ifaces[name]) {
+                            if (iface.family === 'IPv4' && !iface.internal) return iface.address;
+                        }
+                    }
+                } catch {}
+                return null;
+            })();
+            const port = this.port || 3002;
+            const shareUrl = lanIp ? `http://${lanIp}:${port}/platform/updates` : null;
+
+            const stableCount = enriched.filter(u => u.channel === 'stable').length;
+            const betaCount = enriched.filter(u => u.channel === 'beta').length;
+
+            const fmtSize = bytes => {
+                if (!bytes) return '0 B';
+                const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+            };
+
+            const platformIcon = name => {
+                if (name.endsWith('.exe') || name.endsWith('.msi')) return '🪟';
+                if (name.endsWith('.deb') || name.endsWith('.AppImage') || name.endsWith('.tar.gz')) return '🐧';
+                if (name.endsWith('.dmg')) return '🍎';
+                return '📦';
+            };
+
+            const osInstallNote = name => {
+                if (name.endsWith('.exe')) return 'Run the .exe installer and follow the prompts.';
+                if (name.endsWith('.msi')) return 'Double-click the .msi file to install.';
+                if (name.endsWith('.deb')) return 'Run: <code>sudo dpkg -i ' + name + '</code>';
+                if (name.endsWith('.AppImage')) return 'Run: <code>chmod +x ' + name + ' &amp;&amp; ./' + name + '</code>';
+                if (name.endsWith('.tar.gz')) return 'Extract and run: <code>tar -xzf ' + name + '</code>';
+                if (name.endsWith('.dmg')) return 'Open the .dmg and drag Darklock Guard to Applications.';
+                return 'Run the installer file.';
+            };
+
+            const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Darklock Guard — Downloads</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#070711;color:#e2e8f0;min-height:100vh}
+  header{background:linear-gradient(135deg,#0d0d1a,#12121f);border-bottom:1px solid rgba(124,77,255,.2);padding:18px 32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .logo{width:38px;height:38px;background:linear-gradient(135deg,#7c4dff,#00d4ff);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .header-left{display:flex;align-items:center;gap:14px}
+  header h1{font-size:1.15rem;font-weight:700}
+  header p{color:#64748b;font-size:.8rem;margin-top:2px}
+  .share-box{background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.25);border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:10px;font-size:.78rem}
+  .share-box span{color:#94a3b8}
+  .share-url{font-family:monospace;color:#a78bfa;font-size:.82rem;cursor:pointer;user-select:all}
+  .copy-btn{background:rgba(124,77,255,.2);border:none;color:#a78bfa;border-radius:6px;padding:4px 10px;font-size:.72rem;cursor:pointer;font-weight:600;transition:background .15s}
+  .copy-btn:hover{background:rgba(124,77,255,.4)}
+  .container{max-width:880px;margin:0 auto;padding:36px 24px}
+  .tabs{display:flex;gap:4px;margin-bottom:28px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:4px}
+  .tab{flex:1;padding:8px 0;border:none;border-radius:8px;background:transparent;color:#64748b;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .15s;text-decoration:none;text-align:center;display:block}
+  .tab.active{background:rgba(124,77,255,.2);color:#a78bfa}
+  .tab:hover:not(.active){background:rgba(255,255,255,.05);color:#94a3b8}
+  .tab .count{background:rgba(255,255,255,.08);border-radius:20px;padding:1px 8px;font-size:.7rem;margin-left:6px}
+  .tab.active .count{background:rgba(124,77,255,.3)}
+  .latest-card{background:linear-gradient(135deg,rgba(124,77,255,.08),rgba(0,212,255,.04));border:1px solid rgba(124,77,255,.3);border-radius:16px;padding:28px;margin-bottom:32px}
+  .latest-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px}
+  .latest-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(124,77,255,.2);color:#a78bfa;border-radius:20px;padding:3px 10px;font-size:.72rem;font-weight:600;margin-bottom:8px}
+  .beta-badge{background:rgba(168,85,247,.2);color:#c084fc}
+  .ver{font-size:1.9rem;font-weight:800;font-family:monospace;line-height:1}
+  .ver span{color:#a78bfa}
+  .sub{color:#64748b;font-size:.83rem;margin-top:5px}
+  .force-badge{background:rgba(239,68,68,.15);color:#f87171;border-radius:6px;padding:2px 8px;font-size:.68rem;font-weight:700;margin-left:8px;vertical-align:middle}
+  .channel-tag{border-radius:6px;padding:2px 8px;font-size:.68rem;font-weight:700;margin-left:4px;vertical-align:middle}
+  .channel-stable{background:rgba(34,197,94,.12);color:#4ade80}
+  .channel-beta{background:rgba(168,85,247,.15);color:#c084fc}
+  .changelog{margin:16px 0;background:rgba(255,255,255,.03);border-radius:10px;padding:16px;border:1px solid rgba(255,255,255,.05);white-space:pre-wrap;color:#94a3b8;font-size:.85rem;line-height:1.65}
+  .files-section{margin-top:20px}
+  .files-label{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#475569;margin-bottom:10px}
+  .files-grid{display:flex;flex-wrap:wrap;gap:10px}
+  .dl-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;background:linear-gradient(135deg,#7c4dff,#5b21b6);color:#fff;text-decoration:none;font-size:.875rem;font-weight:600;transition:opacity .15s;border:none;cursor:pointer}
+  .dl-btn:hover{opacity:.85}
+  .dl-btn .size{font-size:.72rem;font-weight:400;opacity:.65}
+  .no-files{color:#475569;font-size:.875rem;font-style:italic}
+  .install-note{margin-top:8px;font-size:.75rem;color:#64748b;display:flex;align-items:center;gap:6px}
+  .install-note code{background:rgba(255,255,255,.07);border-radius:4px;padding:1px 6px;font-family:monospace;color:#94a3b8;font-size:.72rem}
+  h3{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#475569;margin-bottom:16px;margin-top:36px}
+  .history{display:flex;flex-direction:column;gap:10px}
+  .history-item{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05);border-radius:12px;padding:16px 20px;transition:border-color .15s}
+  .history-item:hover{border-color:rgba(124,77,255,.2)}
+  .history-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .h-ver{font-family:monospace;font-weight:700;font-size:.95rem}
+  .h-title{color:#94a3b8;font-size:.85rem}
+  .h-date{color:#475569;font-size:.72rem;margin-left:auto}
+  .hfiles{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .hfile{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);color:#94a3b8;text-decoration:none;font-size:.78rem;transition:background .15s}
+  .hfile:hover{background:rgba(124,77,255,.12);color:#c4b5fd}
+  .empty{text-align:center;padding:60px 20px;color:#475569}
+  .empty .icon{font-size:3rem;margin-bottom:12px}
+  .howto{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:20px 24px;margin-top:40px}
+  .howto h4{font-size:.8rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#475569;margin-bottom:14px}
+  .steps{display:flex;flex-direction:column;gap:10px}
+  .step{display:flex;align-items:flex-start;gap:12px;font-size:.83rem;color:#94a3b8}
+  .step-num{min-width:22px;height:22px;background:rgba(124,77,255,.2);color:#a78bfa;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;margin-top:1px}
+  .step code{background:rgba(255,255,255,.07);border-radius:4px;padding:1px 7px;font-family:monospace;color:#a78bfa;font-size:.78rem}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="logo">🛡️</div>
+    <div>
+      <h1>Darklock Guard</h1>
+      <p>Software Downloads &amp; Releases</p>
+    </div>
+  </div>
+  ${shareUrl ? `
+  <div class="share-box">
+    <span>Share this page:</span>
+    <span class="share-url" id="shareUrl">${shareUrl}</span>
+    <button class="copy-btn" onclick="copyUrl()">Copy</button>
+  </div>` : ''}
+</header>
+
+<div class="container">
+  <!-- Channel tabs -->
+  <div class="tabs">
+    <a class="tab ${channelFilter === 'all' ? 'active' : ''}" href="/platform/updates">All Releases<span class="count">${enriched.length}</span></a>
+    <a class="tab ${channelFilter === 'stable' ? 'active' : ''}" href="/platform/updates?channel=stable">Stable<span class="count">${stableCount}</span></a>
+    <a class="tab ${channelFilter === 'beta' ? 'active' : ''}" href="/platform/updates?channel=beta">Beta<span class="count">${betaCount}</span></a>
+  </div>
+
+  ${latest ? `
+  <!-- Latest release -->
+  <div class="latest-card">
+    <div>
+      <div class="latest-badge ${latest.channel === 'beta' ? 'beta-badge' : ''}">⬆ Latest ${latest.channel === 'beta' ? 'Beta' : 'Stable'} Release</div>
+      <div class="latest-header">
+        <div>
+          <div class="ver"><span>v</span>${latest.version}${latest.force_update ? '<span class="force-badge">REQUIRED UPDATE</span>' : ''}<span class="channel-tag ${latest.channel === 'beta' ? 'channel-beta' : 'channel-stable'}">${latest.channel || 'stable'}</span></div>
+          <div class="sub">${latest.title || ''}${latest.published_at ? ' &nbsp;·&nbsp; Released ' + new Date(latest.published_at).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}) : ''}</div>
+        </div>
+      </div>
+      ${latest.changelog ? `<div class="changelog">${latest.changelog.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>` : ''}
+      <div class="files-section">
+        <div class="files-label">Download Installers</div>
+        ${latest.files.length > 0 ? `
+        <div class="files-grid">
+          ${latest.files.map(f => `
+          <div>
+            <a class="dl-btn" href="/platform/api/updates/download/${latest.version}?file=${encodeURIComponent(f.name)}">
+              ${platformIcon(f.name)} ${f.name} <span class="size">${fmtSize(f.size)}</span>
+            </a>
+            <div class="install-note">ℹ️ ${osInstallNote(f.name)}</div>
+          </div>`).join('')}
+        </div>` : latest.download_url ? `
+        <div class="files-grid">
+          <a class="dl-btn" href="${latest.download_url}">⬇ Download v${latest.version}</a>
+        </div>` : `<span class="no-files">No installer files uploaded yet.</span>`}
+      </div>
+    </div>
+  </div>
+
+  <!-- How to install -->
+  <div class="howto">
+    <h4>How to Install</h4>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div>Download the installer for your operating system above.</div></div>
+      <div class="step"><div class="step-num">2</div><div><strong>Linux:</strong> Run <code>sudo dpkg -i darklock-guard-*.deb</code> or <code>chmod +x *.AppImage &amp;&amp; ./darklock-guard.AppImage</code></div></div>
+      <div class="step"><div class="step-num">2</div><div><strong>Windows:</strong> Double-click the <code>.exe</code> or <code>.msi</code> installer and follow the prompts.</div></div>
+      <div class="step"><div class="step-num">2</div><div><strong>macOS:</strong> Open the <code>.dmg</code> and drag Darklock Guard to your Applications folder.</div></div>
+      <div class="step"><div class="step-num">3</div><div>Launch Darklock Guard. It will automatically connect to the guard service on first run.</div></div>
+    </div>
+  </div>` : `
+  <div class="empty">
+    <div class="icon">📭</div>
+    <p>No releases published yet${channelFilter !== 'all' ? ' for the <strong>' + channelFilter + '</strong> channel' : ''}.</p>
+    ${channelFilter !== 'all' ? '<p style="margin-top:8px"><a href="/platform/updates" style="color:#a78bfa;font-size:.85rem">View all channels →</a></p>' : ''}
+  </div>`}
+
+  ${history.length > 0 ? `
+  <h3>Version History</h3>
+  <div class="history">
+    ${history.map(u => `
+    <div class="history-item">
+      <div class="history-meta">
+        <span class="h-ver">v${u.version}</span>
+        <span class="channel-tag ${u.channel === 'beta' ? 'channel-beta' : 'channel-stable'}">${u.channel || 'stable'}</span>
+        <span class="h-title">${u.title || ''}</span>
+        ${u.force_update ? '<span class="force-badge">REQUIRED</span>' : ''}
+        <span class="h-date">${u.published_at ? new Date(u.published_at).toLocaleDateString() : ''}</span>
+      </div>
+      ${u.files.length > 0 ? `<div class="hfiles">${u.files.map(f=>`<a class="hfile" href="/platform/api/updates/download/${u.version}?file=${encodeURIComponent(f.name)}">${platformIcon(f.name)} ${f.name} <span style="opacity:.5">${fmtSize(f.size)}</span></a>`).join('')}</div>` : ''}
+    </div>`).join('')}
+  </div>` : ''}
+</div>
+<script>
+  function copyUrl() {
+    const url = document.getElementById('shareUrl')?.textContent;
+    if (!url) return;
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = document.querySelector('.copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
+    });
+  }
+</script>
+</body>
+</html>`;
+            res.send(html);
+        });
+
+        // Darklock Guard - Download update files for a specific version
+        this.app.get('/platform/api/updates/download/:version', (req, res) => {
+            const { version } = req.params;
+            const platform = req.query.platform || (process.platform === 'win32' ? 'windows' : 'linux');
+            const requestedFile = req.query.file; // direct file name from public page links
+            const updatesDir = path.join(__dirname, 'downloads/updates', version);
+
+            if (!fs.existsSync(updatesDir)) {
+                return res.status(404).json({ error: 'No files for this version' });
             }
-            
-            // Prepare update manifest
-            const updateManifest = {
-                version: latestVersion,
-                notes: "New features and bug fixes",
-                pub_date: new Date().toISOString(),
-                platforms: {
-                    "windows-x86_64": {
-                        signature: "",
-                        url: `https://darklock.net/platform/api/download/darklock-guard-installer`
+
+            const files = fs.readdirSync(updatesDir);
+            if (files.length === 0) {
+                return res.status(404).json({ error: 'No files available' });
+            }
+
+            // If a specific file was requested (from public page), serve it directly
+            if (requestedFile) {
+                const safe = path.basename(requestedFile); // strip any path traversal
+                if (files.includes(safe)) {
+                    return res.download(path.join(updatesDir, safe), safe);
+                }
+                return res.status(404).json({ error: 'File not found' });
+            }
+
+            // Find platform-appropriate file
+            let targetFile;
+            if (platform === 'windows') {
+                targetFile = files.find(f => f.endsWith('.exe') || f.endsWith('.msi'));
+            } else if (platform === 'linux') {
+                targetFile = files.find(f => f.endsWith('.deb') || f.endsWith('.AppImage') || f.endsWith('.tar.gz'));
+            } else if (platform === 'macos') {
+                targetFile = files.find(f => f.endsWith('.dmg'));
+            }
+            // Fallback to first file
+            if (!targetFile) targetFile = files[0];
+
+            res.download(path.join(updatesDir, targetFile), targetFile);
+        });
+
+        // Darklock Guard - List available files for a version (public)
+        this.app.get('/platform/api/updates/files/:version', (req, res) => {
+            const { version } = req.params;
+            const updatesDir = path.join(__dirname, 'downloads/updates', version);
+
+            if (!fs.existsSync(updatesDir)) {
+                return res.json({ files: [] });
+            }
+
+            const files = fs.readdirSync(updatesDir).map(f => {
+                const stat = fs.statSync(path.join(updatesDir, f));
+                return {
+                    name: f,
+                    size: stat.size,
+                    url: `/platform/api/updates/download/${version}?file=${encodeURIComponent(f)}`,
+                };
+            });
+            res.json({ files });
+        });
+        
+        // Darklock Guard - Update check endpoint (used by desktop app)
+        this.app.get('/platform/api/updates/:target/:version', async (req, res) => {
+            const { target, version: currentVersion } = req.params;
+            const channel = req.query.channel === 'beta' ? 'beta' : 'stable';
+
+            try {
+                // Read latest from database (channel-aware)
+                const Q = require('./admin-v4/db/queries');
+                const latest = await Q.getLatestAppUpdate(channel);
+                
+                if (!latest) {
+                    return res.status(204).send(); // No updates at all
+                }
+
+                const latestVersion = latest.version;
+
+                // Compare versions (semver)
+                const cur = currentVersion.split('.').map(Number);
+                const lat = latestVersion.split('.').map(Number);
+                const isNewer = lat[0] > cur[0] || (lat[0] === cur[0] && lat[1] > cur[1]) || (lat[0] === cur[0] && lat[1] === cur[1] && lat[2] > cur[2]);
+
+                if (!isNewer) {
+                    return res.status(204).send(); // Already on latest
+                }
+
+                // Check if we have uploaded files for this version
+                const updatesDir = path.join(__dirname, 'downloads/updates', latestVersion);
+                const baseUrl = `${req.protocol}://${req.get('host')}`;
+                
+                // Build platform-specific URLs
+                const platforms = {};
+                if (fs.existsSync(updatesDir)) {
+                    const files = fs.readdirSync(updatesDir);
+                    const winFile = files.find(f => f.endsWith('.exe') || f.endsWith('.msi'));
+                    const linuxFile = files.find(f => f.endsWith('.deb') || f.endsWith('.AppImage') || f.endsWith('.tar.gz'));
+                    const macFile = files.find(f => f.endsWith('.dmg'));
+
+                    if (winFile) {
+                        platforms['windows-x86_64'] = { signature: '', url: `${baseUrl}/platform/api/updates/download/${latestVersion}?platform=windows` };
+                    }
+                    if (linuxFile) {
+                        platforms['linux-x86_64'] = { signature: '', url: `${baseUrl}/platform/api/updates/download/${latestVersion}?platform=linux` };
+                    }
+                    if (macFile) {
+                        platforms['darwin-x86_64'] = { signature: '', url: `${baseUrl}/platform/api/updates/download/${latestVersion}?platform=macos` };
                     }
                 }
-            };
-            
-            res.json(updateManifest);
+
+                // Fallback: use download_url from the update record
+                if (Object.keys(platforms).length === 0 && latest.download_url) {
+                    platforms[target || 'linux-x86_64'] = { signature: '', url: latest.download_url };
+                }
+
+                const updateManifest = {
+                    version: latestVersion,
+                    notes: latest.changelog || latest.title,
+                    pub_date: latest.published_at || new Date().toISOString(),
+                    force: !!latest.force_update,
+                    min_version: latest.min_version,
+                    channel: latest.channel || 'stable',
+                    platforms,
+                };
+
+                res.json(updateManifest);
+            } catch (err) {
+                console.error('[Darklock] Update check error:', err);
+                res.status(500).json({ error: 'Internal server error' });
+            }
         });
         
         // Tauri App - Download page for the new Darklock Guard Tauri application
@@ -755,6 +1326,56 @@ class DarklockPlatform {
             res.sendFile(path.join(__dirname, 'views/maintenance.html'));
         });
         
+        // Platform maintenance page (public)
+        this.app.get('/platform/maintenance', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/maintenance.html'));
+        });
+        
+        // Public maintenance status API (for maintenance page)
+        this.app.get('/platform/maintenance/status', async (req, res) => {
+            try {
+                const scope = req.query.scope || 'platform';
+                const config = await maintenance.getMaintenanceConfig();
+                
+                let maintenanceData;
+                if (scope === 'platform') {
+                    maintenanceData = {
+                        enabled: config.platform.enabled,
+                        type: 'platform',
+                        message: config.platform.message,
+                        endTime: config.platform.endTime
+                    };
+                } else if (scope === 'bot') {
+                    maintenanceData = {
+                        enabled: config.bot.enabled,
+                        type: 'bot',
+                        message: config.bot.reason,
+                        endTime: config.bot.endTime
+                    };
+                } else {
+                    maintenanceData = {
+                        enabled: config.platform.enabled || config.bot.enabled,
+                        type: config.platform.enabled ? 'platform' : 'bot',
+                        message: config.platform.message || config.bot.reason,
+                        endTime: config.platform.endTime || config.bot.endTime
+                    };
+                }
+                
+                res.json({
+                    success: true,
+                    maintenance: maintenanceData
+                });
+            } catch (err) {
+                console.error('[Maintenance Status API] Error:', err);
+                res.json({
+                    success: true,
+                    maintenance: {
+                        enabled: false
+                    }
+                });
+            }
+        });
+        
         // Changelog page
         this.app.get('/platform/changelog', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/changelog.html'));
@@ -814,33 +1435,52 @@ class DarklockPlatform {
         // MUST be mounted BEFORE protected admin routes
         this.app.use('/api', publicApiRoutes);
         
-        // Admin API routes (protected) - Note: Frontend uses /api/admin/*
-        this.app.use('/api/admin', adminApiRoutes);
-        
-        // Admin API v2 routes (enhanced with live data, maintenance scopes, etc.)
-        this.app.use('/api/admin', adminApiV2Routes.router);
-        
-        // Admin API v3 routes (Full RBAC dashboard with 12 tabs)
-        this.app.use('/api', adminApiV3Routes.router);
+        // Admin v4 public bug report submission (must be before requireAdminAuth middleware)
+        this.app.post('/api/v4/admin/bug-reports/submit', async (req, res) => {
+            try {
+                const queries = require('./admin-v4/db/queries');
+                const middleware = require('./admin-v4/middleware');
+                const { source, reporter, email, title, description, severity, app_version, environment, logs } = req.body;
+                if (!title || !description) {
+                    return res.status(400).json({ success: false, error: 'Title and description are required' });
+                }
+                const report = await queries.createBugReport({
+                    source: source || 'site',
+                    reporter, email, title, description,
+                    severity: severity || 'medium',
+                    app_version, environment, logs,
+                    user_agent: req.headers['user-agent'],
+                    ip_address: middleware.getClientIP(req),
+                });
+                res.json({ success: true, report });
+            } catch (err) {
+                console.error('[Admin v4] Bug report submit error:', err);
+                res.status(500).json({ success: false, error: 'Failed to submit report' });
+            }
+        });
         
         // Team Management API routes (under /api/admin for consistency with other admin APIs)
         this.app.use('/api/admin/team', teamManagementRoutes);
         
-        // Admin dashboard (v2 - stable version)
+        // Admin v4 API routes (Enterprise RBAC dashboard)
+        this.app.use('/api/v4/admin', adminV4Routes);
+
+        // Backward-compat redirect: old V3 theme CSS path → V4
+        this.app.get('/api/v3/theme/css', (req, res) => res.redirect(301, '/api/v4/admin/theme/css'));
+        
+        // Admin dashboard v4 - Serve the new SPA
         this.app.get('/admin', requireAdminAuth, (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/admin-v2.html'));
+            res.sendFile(path.join(__dirname, 'admin-v4', 'views', 'dashboard.html'));
         });
         
-        // Admin dashboard v3 (newer version)
+        // Admin dashboard v3 - same message
         this.app.get('/admin/v3', requireAdminAuth, (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/admin-panel.html'));
+            res.redirect('/admin');
         });
         
-        // Admin SPA catch-all - handles /admin/users etc
+        // Admin SPA catch-all - same message
         this.app.get('/admin/*', requireAdminAuth, (req, res) => {
-            // Skip if it's /admin/v2
-            if (req.path === '/admin/v2') return;
-            res.sendFile(path.join(__dirname, 'views/admin-v3.html'));
+            res.redirect('/admin');
         });
         
         // Admin dashboard legacy route redirect
@@ -922,6 +1562,9 @@ class DarklockPlatform {
         
         // Site routes (public pages)
         const siteViewsDir = path.join(__dirname, '../src/dashboard/views/site');
+        this.app.get('/site/', (req, res) => {
+            res.sendFile(path.join(siteViewsDir, 'index.html'));
+        });
         this.app.get('/site/privacy', (req, res) => {
             res.sendFile(path.join(siteViewsDir, 'privacy.html'));
         });
@@ -940,41 +1583,26 @@ class DarklockPlatform {
         this.app.get('/site/bug-report', (req, res) => {
             res.sendFile(path.join(siteViewsDir, 'bug-reports.html'));
         });
-        
-        // Public bug report submission endpoint (no auth required)
-        this.app.post('/api/bug-report', express.json(), async (req, res) => {
-            try {
-                const { type, severity, title, description, environment, email } = req.body;
-                
-                if (!type || !severity || !title || !description) {
-                    return res.status(400).json({ success: false, error: 'Missing required fields' });
-                }
-                
-                // Ensure table exists
-                await db.run(`CREATE TABLE IF NOT EXISTS bug_reports (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    type TEXT NOT NULL,
-                    severity TEXT NOT NULL,
-                    title TEXT NOT NULL,
-                    description TEXT NOT NULL,
-                    environment TEXT,
-                    email TEXT,
-                    timestamp TEXT NOT NULL,
-                    userAgent TEXT,
-                    status TEXT DEFAULT 'open'
-                )`);
-                
-                await db.run(
-                    `INSERT INTO bug_reports (type, severity, title, description, environment, email, timestamp, userAgent, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open')`,
-                    [type, severity, title.substring(0, 200), description.substring(0, 5000), (environment || '').substring(0, 500), (email || '').substring(0, 100), new Date().toISOString(), req.headers['user-agent'] || '']
-                );
-                
-                console.log(`[Bug Report] New ${severity} ${type} report: "${title}"`);
-                res.json({ success: true, message: 'Bug report submitted successfully' });
-            } catch (err) {
-                console.error('[Bug Report] Submit error:', err);
-                res.status(500).json({ success: false, error: 'Failed to submit report' });
-            }
+        this.app.get('/site/bug-reports', (req, res) => {
+            res.sendFile(path.join(siteViewsDir, 'bug-reports.html'));
+        });
+        this.app.get('/site/documentation', (req, res) => {
+            res.sendFile(path.join(siteViewsDir, 'documentation.html'));
+        });
+        this.app.get('/site/support', (req, res) => {
+            res.sendFile(path.join(siteViewsDir, 'support.html'));
+        });
+        this.app.get('/site/sitemap', (req, res) => {
+            res.sendFile(path.join(siteViewsDir, 'sitemap.html'));
+        });
+        this.app.get('/site/features', (req, res) => {
+            res.sendFile(path.join(siteViewsDir, 'features.html'));
+        });
+        this.app.get('/site/pricing', (req, res) => {
+            res.sendFile(path.join(siteViewsDir, 'pricing.html'));
+        });
+        this.app.get('/site/add-bot', (req, res) => {
+            res.sendFile(path.join(siteViewsDir, 'add-bot.html'));
         });
         
         // Redirect root to platform
@@ -1000,9 +1628,6 @@ class DarklockPlatform {
         // Store and set bot reference if provided
         if (bot) {
             this.discordBot = bot;
-            setDiscordBot(bot);
-            setDiscordBotV2(bot);
-            setDiscordBotV3(bot);
             setPlatformDiscordBot?.(bot);
             console.log('[Darklock Platform] Discord bot reference set for admin API');
         }
@@ -1017,9 +1642,20 @@ class DarklockPlatform {
             
             // Initialize RBAC schema (roles, permissions, maintenance state, etc.)
             console.log('[Darklock Platform] Initializing RBAC schema...');
+            // Fix legacy role_permissions table schema conflict
+            const rpCols1 = await db.all(`PRAGMA table_info(role_permissions)`);
+            if (rpCols1.length > 0 && !rpCols1.some(c => c.name === 'role_id')) {
+                console.log('[Darklock Platform] Migrating legacy role_permissions table...');
+                await db.run(`DROP TABLE IF EXISTS role_permissions`);
+            }
             await rbacSchema.initializeRBACSchema();
             
             await initializeDefaultAdmins();
+            
+            // Initialize Admin v4 schema (announcements, app_updates, bug_reports_v2, etc.)
+            console.log('[Darklock Platform] Initializing Admin v4 schema...');
+            await initializeV4Schema();
+            
             console.log('[Darklock Platform] ✅ Database and admin tables initialized');
         } catch (err) {
             console.error('[Darklock Platform] Database initialization failed:', err);
@@ -1114,12 +1750,15 @@ class DarklockPlatform {
         existingApp.get('/platform/api/download/darklock-guard-installer', (req, res) => {
             const format = (req.query.format || 'deb').toLowerCase();
             const fs = require('fs');
-            const latestVersion = '0.1.0';
+            const latestVersion = '2.0.0-beta.3';
 
             // New Tauri bundle locations
             const bundleBase = path.join(__dirname, '../guard-v2/target/release/bundle');
             const debPath = path.join(bundleBase, `deb/Darklock Guard_${latestVersion}_amd64.deb`);
+            const debPathDownloads = path.join(__dirname, `downloads/darklock-guard_${latestVersion}_amd64.deb`);
+            const debPathLegacy = path.join(__dirname, 'downloads/darklock-guard_0.1.0_amd64.deb');
             const portablePath = path.join(bundleBase, 'DarklockGuard-linux-portable.tar.gz');
+            const portablePathDownloads = path.join(__dirname, 'downloads/darklock-guard-linux-portable.tar.gz');
 
             // Legacy Windows installers (until new signed builds are produced on Windows)
             const legacyNsis = path.join(__dirname, 'downloads/darklock-guard-setup.exe');
@@ -1127,15 +1766,31 @@ class DarklockPlatform {
 
             console.log(`[Darklock] (existingApp) Download request for format: ${format} from IP: ${req.ip}`);
 
-            // Linux packages (new app)
-            if ((format === 'deb' || format === 'linux') && fs.existsSync(debPath)) {
-                console.log('[Darklock] Serving Debian package');
-                return res.download(debPath, `darklock-guard_${latestVersion}_amd64.deb`);
+            // Linux packages (new app) - try multiple locations
+            if (format === 'deb' || format === 'linux') {
+                if (fs.existsSync(debPathDownloads)) {
+                    console.log('[Darklock] Serving Debian package from downloads');
+                    return res.download(debPathDownloads, `darklock-guard_${latestVersion}_amd64.deb`);
+                }
+                if (fs.existsSync(debPath)) {
+                    console.log('[Darklock] Serving Debian package from bundle');
+                    return res.download(debPath, `darklock-guard_${latestVersion}_amd64.deb`);
+                }
+                if (fs.existsSync(debPathLegacy)) {
+                    console.log('[Darklock] Serving legacy Debian package');
+                    return res.download(debPathLegacy, 'darklock-guard_0.1.0_amd64.deb');
+                }
             }
 
-            if ((format === 'tar' || format === 'portable') && fs.existsSync(portablePath)) {
-                console.log('[Darklock] Serving portable tarball');
-                return res.download(portablePath, 'darklock-guard-linux-portable.tar.gz');
+            if (format === 'tar' || format === 'portable') {
+                if (fs.existsSync(portablePathDownloads)) {
+                    console.log('[Darklock] Serving portable tarball from downloads');
+                    return res.download(portablePathDownloads, 'darklock-guard-linux-portable.tar.gz');
+                }
+                if (fs.existsSync(portablePath)) {
+                    console.log('[Darklock] Serving portable tarball from bundle');
+                    return res.download(portablePath, 'darklock-guard-linux-portable.tar.gz');
+                }
             }
 
             // Windows (legacy)
@@ -1326,33 +1981,17 @@ class DarklockPlatform {
         console.log('[Darklock Platform] Registering public API routes at /api');
         existingApp.use('/api', publicApiRoutes);
         
-        // Admin API routes (protected) - Frontend uses /api/admin/*
-        console.log('[Darklock Platform] Registering admin API routes at /api/admin');
-        existingApp.use('/api/admin', adminApiRoutes);
-        existingApp.use('/api/admin', adminApiV2Routes.router);
-        
         // Team Management API routes
         console.log('[Darklock Platform] Registering team management routes at /api/admin/team');
         existingApp.use('/api/admin/team', teamManagementRoutes);
         
-        // Admin API v3 routes (Full RBAC dashboard with 12 tabs)
-        console.log('[Darklock Platform] Registering admin API v3 routes at /api');
-        existingApp.use('/api', adminApiV3Routes.router);
+        // Admin v4 API routes (Mounted via standalone server, not here in connected mode)
+
+        // Backward-compat redirect: old V3 theme CSS path → V4
+        existingApp.get('/api/v3/theme/css', (req, res) => res.redirect(301, '/api/v4/admin/theme/css'));
         
-        // Admin dashboard (v2 - stable version)
-        existingApp.get('/admin', requireAdminAuth, (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/admin-v2.html'));
-        });
-        
-        // Admin dashboard v3 (newer version)
-        existingApp.get('/admin/v3', requireAdminAuth, (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/admin-panel.html'));
-        });
-        
-        // Admin dashboard legacy route redirect
-        existingApp.get('/admin/dashboard', requireAdminAuth, (req, res) => {
-            res.redirect('/admin');
-        });
+        // Admin dashboard routes - handled by unified admin in dashboard.js
+        // Do NOT register /admin here to avoid overwriting the unified dashboard
         
         // Dashboard routes (Darklock dashboard, not the bot dashboard)
         existingApp.use('/platform/dashboard', dashboardRoutes);
@@ -1413,11 +2052,21 @@ class DarklockPlatform {
                 
                 // Initialize RBAC schema (roles, permissions, etc.)
                 console.log('[Darklock Platform] Initializing RBAC schema...');
+                // Fix legacy role_permissions table schema conflict
+                const rpCols = await db.all(`PRAGMA table_info(role_permissions)`);
+                if (rpCols.length > 0 && !rpCols.some(c => c.name === 'role_id')) {
+                    console.log('[Darklock Platform] Migrating legacy role_permissions table...');
+                    await db.run(`DROP TABLE IF EXISTS role_permissions`);
+                }
                 await rbacSchema.initializeRBACSchema();
                 
                 // Initialize default admin accounts (only if no admins exist)
                 console.log('[Darklock Platform] Checking for default admin accounts...');
                 await initializeDefaultAdmins();
+                
+                // Initialize Admin v4 schema
+                console.log('[Darklock Platform] Initializing Admin v4 schema...');
+                await initializeV4Schema();
                 
                 // Run session cleanup on startup
                 await db.cleanupExpiredSessions();
@@ -1431,11 +2080,32 @@ class DarklockPlatform {
                     }
                 }, 60 * 60 * 1000);
                 
-                this.server = this.app.listen(this.port, () => {
-                    console.log(`[Darklock Platform] ✅ Server running on port ${this.port}`);
-                    console.log(`[Darklock Platform] Homepage: http://localhost:${this.port}/platform`);
-                    resolve(this.server);
-                });
+                // Check for SSL certificates and use HTTPS if available
+                const sslKeyPath = path.join(__dirname, 'ssl', 'key.pem');
+                const sslCertPath = path.join(__dirname, 'ssl', 'cert.pem');
+                
+                if (fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {
+                    // HTTPS mode
+                    const httpsOptions = {
+                        key: fs.readFileSync(sslKeyPath),
+                        cert: fs.readFileSync(sslCertPath)
+                    };
+                    
+                    this.server = https.createServer(httpsOptions, this.app).listen(this.port, '0.0.0.0', () => {
+                        console.log(`[Darklock Platform] ✅ HTTPS server running on port ${this.port}`);
+                        console.log(`[Darklock Platform] Homepage: https://0.0.0.0:${this.port}/platform`);
+                        console.log(`[Darklock Platform] ⚠ Using self-signed certificate - accept security warning in browser`);
+                        resolve(this.server);
+                    });
+                } else {
+                    // HTTP mode
+                    this.server = http.createServer(this.app).listen(this.port, '0.0.0.0', () => {
+                        console.log(`[Darklock Platform] ✅ HTTP server running on port ${this.port}`);
+                        console.log(`[Darklock Platform] Homepage: http://0.0.0.0:${this.port}/platform`);
+                        console.log(`[Darklock Platform] ℹ To enable HTTPS, run: ./darklock/generate-ssl-cert.sh`);
+                        resolve(this.server);
+                    });
+                }
             } catch (err) {
                 console.error('[Darklock Platform] Failed to start server:', err);
                 reject(err);
@@ -1757,3 +2427,15 @@ class DarklockPlatform {
 }
 
 module.exports = DarklockPlatform;
+
+// Auto-start server when run directly
+if (require.main === module) {
+    (async () => {
+        console.log('[Darklock Platform] Starting standalone server...');
+        const platform = new DarklockPlatform({ port: 3002 });
+        await platform.start();
+    })().catch(err => {
+        console.error('[Darklock Platform] Failed to start:', err);
+        process.exit(1);
+    });
+}

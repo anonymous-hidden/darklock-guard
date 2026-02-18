@@ -68,6 +68,7 @@ pub fn canonical_result_message(
     hasher.finalize().to_vec()
 }
 
+#[allow(dead_code)]
 pub fn sign_payload(
     signing_key: &SigningKey,
     command_id: &str,

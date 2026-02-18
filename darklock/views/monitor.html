@@ -202,7 +202,7 @@
 
         async function loadDeviceStatus() {
             try {
-                const response = await fetch('/platform/api/devices/status', { credentials: 'include' });
+                const response = await fetch('/platform/dashboard/api/devices/status', { credentials: 'include' });
                 if (response.ok) {
                     const data = await response.json();
                     lastData = data;

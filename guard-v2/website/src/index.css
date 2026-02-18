@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-dark-700;
+  }
+  body {
+    @apply bg-dark-950 text-dark-100;
+  }
+  ::selection {
+    @apply bg-brand-600/40;
+  }
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-dark-900;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-dark-600 rounded-full hover:bg-dark-500;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-dark-900/60 backdrop-blur-xl border border-dark-700/50 rounded-2xl;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-brand-600/25 hover:shadow-brand-500/30 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 bg-dark-800 hover:bg-dark-700 text-dark-200 font-medium rounded-xl border border-dark-600/50 transition-all duration-200 hover:-translate-y-0.5;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-dark-300 hover:text-white hover:bg-dark-800/50 rounded-lg transition-all duration-200;
+  }
+  .input-field {
+    @apply w-full px-4 py-3 bg-dark-800/80 border border-dark-600/50 rounded-xl text-white placeholder-dark-400 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all duration-200;
+  }
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-green {
+    @apply badge bg-emerald-500/10 text-emerald-400 border border-emerald-500/20;
+  }
+  .badge-red {
+    @apply badge bg-red-500/10 text-red-400 border border-red-500/20;
+  }
+  .badge-yellow {
+    @apply badge bg-amber-500/10 text-amber-400 border border-amber-500/20;
+  }
+  .badge-blue {
+    @apply badge bg-brand-500/10 text-brand-400 border border-brand-500/20;
+  }
+  .section-title {
+    @apply text-3xl sm:text-4xl font-bold tracking-tight;
+  }
+  .section-subtitle {
+    @apply text-lg text-dark-400 max-w-2xl;
+  }
+}

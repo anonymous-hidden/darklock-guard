@@ -1,6 +1,7 @@
 pub mod crypto;
 pub mod device_state;
 pub mod event_log;
+pub mod backup_store;
 pub mod ipc;
 pub mod ipc_client;
 pub mod paths;
@@ -13,6 +14,7 @@ pub mod vault;
 pub use crypto::*;
 pub use device_state::*;
 pub use event_log::*;
+pub use backup_store::*;
 pub use ipc::*;
 pub use ipc_client::*;
 pub use paths::*;

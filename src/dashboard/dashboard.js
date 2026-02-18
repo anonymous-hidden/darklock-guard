@@ -63,6 +63,9 @@ class SecurityDashboard {
         });
 
         // Apply Helmet without CSP (we handle it above)
+        // Conditionally apply HTTPS-only headers based on environment
+        const isSecure = process.env.NODE_ENV === 'production' || process.env.FORCE_HTTPS === 'true';
+        
         this.app.use(helmet({
             contentSecurityPolicy: false,
             permissionsPolicy: {
@@ -72,11 +75,17 @@ class SecurityDashboard {
                     geolocation: ["'none'"]
                 }
             },
-            hsts: {
+            // HSTS only on HTTPS
+            hsts: isSecure ? {
                 maxAge: 31536000,
                 includeSubDomains: true,
                 preload: true
-            }
+            } : false,
+            // Disable COOP/COEP/Origin-Agent-Cluster on HTTP to avoid browser warnings
+            crossOriginOpenerPolicy: false,
+            crossOriginEmbedderPolicy: false,
+            crossOriginResourcePolicy: false,
+            originAgentCluster: false
         }));
 
         // CORS configuration
@@ -1208,6 +1217,10 @@ The GuardianBot Team`
             res.sendFile(path.join(__dirname, 'views/access-share.html'));
         });
 
+        // Notifications & Logs page - FREE (with premium sections)
+        this.app.get('/setup/notifications', this.authenticateToken.bind(this), (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/setup-notifications.html'));
+        });
 
         // Help page with command reference - FREE
         this.app.get('/help', this.authenticateToken.bind(this), (req, res) => {
@@ -1237,9 +1250,12 @@ The GuardianBot Team`
             res.redirect('/signin');
         });
 
-        // Admin dashboard - Now handled by Darklock Platform (darklock/server.js)
-        // The /admin route is registered by the Darklock server which mounts on this app
-        // Do NOT register /admin here to avoid route conflicts
+        // ============ UNIFIED ADMIN DASHBOARD ============
+        // Registered here (before Darklock mountOn) so it takes priority
+        this.app.get('/admin', (req, res) => {
+            console.log('[Admin] Serving unified admin dashboard');
+            res.sendFile(path.join(__dirname, 'views/unified-admin.html'));
+        });
 
         // Authentication routes
         this.app.post('/auth/login', this.handleLogin.bind(this));
@@ -1343,7 +1359,7 @@ The GuardianBot Team`
         });
 
         // Public theme CSS endpoint (avoid /signin HTML redirects for stylesheet requests)
-        this.app.get('/api/v3/theme/css', async (req, res) => {
+        this.app.get('/api/v4/admin/theme/css', async (req, res) => {
             try {
                 const themeManager = require('../../darklock/utils/theme-manager');
                 const activeTheme = await themeManager.getActiveTheme();
@@ -1365,10 +1381,10 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         });
 
         // === PROTECTED API ROUTES - All require authentication ===
-        // Apply auth middleware to all /api/* routes (except /api/current-theme, /api/v3/theme/css and /api/csrf-token)
+        // Apply auth middleware to all /api/* routes (except /api/current-theme, /api/v4/admin/theme/css and /api/csrf-token)
         this.app.use('/api/', (req, res, next) => {
             // Skip auth for public endpoints
-            if (req.path === '/current-theme' || req.path === '/csrf-token' || req.path === '/v3/theme/css') {
+            if (req.path === '/current-theme' || req.path === '/csrf-token' || req.path === '/v4/admin/theme/css') {
                 return next();
             }
             this.authenticateToken(req, res, next);
@@ -1946,6 +1962,15 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         this.app.get('/api/roles', this.getRoles.bind(this));
         this.app.get('/api/settings/security', this.getSecuritySettings.bind(this));
         this.app.post('/api/settings/security', this.saveSecuritySettings.bind(this));
+        // Anti-phishing specific endpoints (used by setup-anti-phishing-modern.html)
+        this.app.get('/api/settings/antiphishing', this.getAntiPhishingSettings.bind(this));
+        this.app.post('/api/settings/antiphishing', this.saveAntiPhishingSettings.bind(this));
+        // Anti-nuke specific endpoints (used by setup-antinuke-modern.html)
+        this.app.get('/api/settings/antinuke', this.getAntiNukeSettings.bind(this));
+        this.app.post('/api/settings/antinuke', this.saveAntiNukeSettings.bind(this));
+        // Notifications & Logs endpoints
+        this.app.get('/api/settings/notifications', this.getNotificationSettings.bind(this));
+        this.app.post('/api/settings/notifications', this.saveNotificationSettings.bind(this));
         this.app.get('/api/settings/tickets', this.getTicketSettings.bind(this));
         this.app.post('/api/settings/tickets', this.saveTicketSettings.bind(this));
         this.app.get('/api/settings/moderation', this.getModerationSettings.bind(this));
@@ -2143,6 +2168,10 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         // Multi-server management routes
         this.app.get('/api/servers/list', this.getUserServers.bind(this));
         this.app.post('/api/servers/select', this.selectServer.bind(this));
+        
+        // Word filter preset routes
+        this.app.get('/api/word-filter/presets', this.authenticateToken.bind(this), this.getWordFilterPresets.bind(this));
+        this.app.post('/api/guild/:guildId/word-filter/preset', this.authenticateToken.bind(this), this.applyWordFilterPreset.bind(this));
 
         // Access code routes for dashboard access control
         this.app.post('/api/access-codes/generate', this.generateAccessCode.bind(this));
@@ -8354,11 +8383,378 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 });
             }
 
+            // Invalidate config cache
+            try {
+                if (this.bot.configService?.cache) this.bot.configService.cache.delete(guild.id);
+            } catch (e) { /* ignore */ }
+
             this.bot.logger.info(`Security settings updated for guild ${guild.id}`);
             res.json({ success: true, message: 'Settings saved successfully' });
         } catch (error) {
             this.bot.logger.error('Error saving security settings:', error);
             res.status(500).json({ error: 'Failed to save settings' });
+        }
+    }
+
+    // =====================================================
+    // Anti-Phishing dedicated endpoints
+    // =====================================================
+    async getAntiPhishingSettings(req, res) {
+        try {
+            const guildId = req.query.guildId || req.headers['x-guild-id'];
+            const guild = guildId ? this.bot.client.guilds.cache.get(guildId) : this.bot.client.guilds.cache.first();
+            if (!guild) return res.json({});
+
+            const config = await this.bot.database.get('SELECT * FROM guild_configs WHERE guild_id = ?', [guild.id]);
+
+            res.json({
+                enabled: !!(config?.antiphishing_enabled || config?.anti_phishing_enabled),
+                actionType: config?.phishing_action || 'delete',
+                logDetections: !!(config?.phishing_log_all ?? true),
+                useDatabase: true,
+                detectNitroScams: true,
+                blockShorteners: !!(config?.phishing_block_shorteners),
+                blockIpLinks: !!(config?.phishing_block_ip_links),
+                whitelistedDomains: this.safeJsonParse(config?.phishing_whitelist_domains, []),
+                blacklistedDomains: this.safeJsonParse(config?.phishing_blacklist_domains, []),
+                dmUser: !!(config?.phishing_dm_user ?? true),
+                sensitivity: config?.phishing_sensitivity || 'medium'
+            });
+        } catch (error) {
+            this.bot.logger?.error('Error getting anti-phishing settings:', error);
+            res.status(500).json({ error: 'Failed to get settings' });
+        }
+    }
+
+    async saveAntiPhishingSettings(req, res) {
+        try {
+            const guildId = req.query.guildId || req.headers['x-guild-id'];
+            const guild = guildId ? this.bot.client.guilds.cache.get(guildId) : this.bot.client.guilds.cache.first();
+            if (!guild) return res.status(400).json({ error: 'No guild found' });
+
+            const s = req.body;
+            if (!s || typeof s !== 'object') return res.status(400).json({ error: 'Invalid settings' });
+
+            // Build updates only for columns that exist
+            const updates = {
+                antiphishing_enabled: s.enabled ? 1 : 0,
+                anti_phishing_enabled: s.enabled ? 1 : 0,
+                phishing_action: s.actionType || 'delete',
+                phishing_log_all: s.logDetections ? 1 : 0,
+                phishing_dm_user: s.dmUser ? 1 : 0,
+                phishing_sensitivity: s.sensitivity || 'medium'
+            };
+
+            // Check which columns exist to avoid errors
+            let existingColumns;
+            try {
+                const tableInfo = await this.bot.database.all('PRAGMA table_info(guild_configs)');
+                existingColumns = new Set(tableInfo.map(col => col.name));
+            } catch (e) { existingColumns = null; }
+
+            const validUpdates = {};
+            for (const [k, v] of Object.entries(updates)) {
+                if (!existingColumns || existingColumns.has(k)) validUpdates[k] = v;
+            }
+
+            if (Object.keys(validUpdates).length > 0) {
+                const setClauses = Object.keys(validUpdates).map(key => `${key} = ?`).join(', ');
+                const vals = [...Object.values(validUpdates), guild.id];
+                await this.bot.database.run(`UPDATE guild_configs SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`, vals);
+            }
+
+            // Invalidate config cache so bot respects the new enabled/disabled state immediately
+            try {
+                if (this.bot.configService?.cache) this.bot.configService.cache.delete(guild.id);
+            } catch (e) { /* ignore */ }
+
+            this.bot.logger?.info(`Anti-phishing settings updated for guild ${guild.id}`);
+            res.json({ success: true, message: 'Settings saved successfully' });
+        } catch (error) {
+            this.bot.logger?.error('Error saving anti-phishing settings:', error);
+            res.status(500).json({ error: 'Failed to save settings' });
+        }
+    }
+
+    // =====================================================
+    // Anti-Nuke dedicated endpoints
+    // =====================================================
+    async getAntiNukeSettings(req, res) {
+        try {
+            const guildId = req.query.guildId || req.headers['x-guild-id'];
+            const guild = guildId ? this.bot.client.guilds.cache.get(guildId) : this.bot.client.guilds.cache.first();
+            if (!guild) return res.json({});
+
+            const config = await this.bot.database.get('SELECT * FROM guild_configs WHERE guild_id = ?', [guild.id]);
+
+            res.json({
+                enabled: !!(config?.antinuke_enabled),
+                actionLimit: config?.antinuke_limit || config?.antinuke_role_limit || 5,
+                detectionWindow: config?.antinuke_window || 10,
+                punishmentType: config?.antinuke_punishment || 'kick',
+                protections: this.safeJsonParse(config?.antinuke_protections, {
+                    channel_delete: true, channel_create: true,
+                    role_delete: true, role_create: true,
+                    ban: true, kick: true, webhook: true, emoji: true
+                }),
+                whitelistedRoles: this.safeJsonParse(config?.antinuke_whitelist, []),
+                roleLimit: config?.antinuke_role_limit || 3,
+                channelLimit: config?.antinuke_channel_limit || 3,
+                banLimit: config?.antinuke_ban_limit || 3
+            });
+        } catch (error) {
+            this.bot.logger?.error('Error getting anti-nuke settings:', error);
+            res.status(500).json({ error: 'Failed to get settings' });
+        }
+    }
+
+    async saveAntiNukeSettings(req, res) {
+        try {
+            const guildId = req.query.guildId || req.headers['x-guild-id'];
+            const guild = guildId ? this.bot.client.guilds.cache.get(guildId) : this.bot.client.guilds.cache.first();
+            if (!guild) return res.status(400).json({ error: 'No guild found' });
+
+            const s = req.body;
+            if (!s || typeof s !== 'object') return res.status(400).json({ error: 'Invalid settings' });
+
+            const roleLimit = this.validateLimit(s.actionLimit || s.roleLimit || 3, 50);
+            const channelLimit = this.validateLimit(s.channelLimit || s.actionLimit || 3, 50);
+            const banLimit = this.validateLimit(s.banLimit || s.actionLimit || 3, 50);
+
+            const updates = {
+                antinuke_enabled: s.enabled ? 1 : 0,
+                antinuke_role_limit: roleLimit,
+                antinuke_channel_limit: channelLimit,
+                antinuke_ban_limit: banLimit,
+                antinuke_limit: s.actionLimit || 5,
+                antinuke_window: s.detectionWindow || 10,
+                antinuke_punishment: s.punishmentType || 'kick',
+                antinuke_protections: JSON.stringify(s.protections || {}),
+                antinuke_whitelist: JSON.stringify(s.whitelistedRoles || [])
+            };
+
+            // Check which columns exist
+            let existingColumns;
+            try {
+                const tableInfo = await this.bot.database.all('PRAGMA table_info(guild_configs)');
+                existingColumns = new Set(tableInfo.map(col => col.name));
+            } catch (e) { existingColumns = null; }
+
+            const validUpdates = {};
+            for (const [k, v] of Object.entries(updates)) {
+                if (!existingColumns || existingColumns.has(k)) validUpdates[k] = v;
+            }
+
+            if (Object.keys(validUpdates).length > 0) {
+                const setClauses = Object.keys(validUpdates).map(key => `${key} = ?`).join(', ');
+                const vals = [...Object.values(validUpdates), guild.id];
+                await this.bot.database.run(`UPDATE guild_configs SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`, vals);
+            }
+
+            // Invalidate config cache
+            try {
+                if (this.bot.configService?.cache) this.bot.configService.cache.delete(guild.id);
+            } catch (e) { /* ignore */ }
+
+            this.bot.logger?.info(`Anti-nuke settings updated for guild ${guild.id}`);
+            res.json({ success: true, message: 'Settings saved successfully' });
+        } catch (error) {
+            this.bot.logger?.error('Error saving anti-nuke settings:', error);
+            res.status(500).json({ error: 'Failed to save settings' });
+        }
+    }
+
+    // =====================================================
+    // Notifications & Logs dedicated endpoints
+    // =====================================================
+    async getNotificationSettings(req, res) {
+        try {
+            const guildId = req.query.guildId || req.headers['x-guild-id'];
+            const guild = guildId ? this.bot.client.guilds.cache.get(guildId) : this.bot.client.guilds.cache.first();
+            if (!guild) return res.json({});
+
+            const config = await this.bot.database.get('SELECT * FROM guild_configs WHERE guild_id = ?', [guild.id]);
+            const custom = await this.bot.database.get('SELECT * FROM guild_customization WHERE guild_id = ?', [guild.id]);
+
+            // Merge both tables — guild_configs has channel IDs, guild_customization has log toggles
+            const logToggles = custom || config || {};
+
+            // Parse notification_settings JSON column if it exists
+            let notifSettings = {};
+            try {
+                if (config?.notification_settings) {
+                    notifSettings = typeof config.notification_settings === 'string' 
+                        ? JSON.parse(config.notification_settings) : config.notification_settings;
+                }
+            } catch (e) { /* ignore parse errors */ }
+
+            res.json({
+                // Free: Log Channels
+                log_channel_id: config?.log_channel_id || '',
+                mod_log_channel: config?.mod_log_channel || '',
+                alert_channel: config?.alert_channel || '',
+
+                // Free: Event Toggles
+                mod_logging: !!(logToggles.mod_logging ?? true),
+                log_edits: !!(logToggles.log_edits ?? true),
+                log_deletes: !!(logToggles.log_deletes ?? true),
+                log_members: !!(logToggles.log_members ?? true),
+                log_roles: !!(logToggles.log_roles ?? false),
+                log_channels: !!(logToggles.log_channels ?? false),
+                log_compact: !!(logToggles.log_compact ?? false),
+
+                // Free: Basic Notification Toggles
+                notify_security_alerts: !!(notifSettings.notify_security_alerts ?? true),
+                notify_new_tickets: !!(notifSettings.notify_new_tickets ?? true),
+                notify_settings_changes: !!(notifSettings.notify_settings_changes ?? true),
+                notify_automod: !!(notifSettings.notify_automod ?? true),
+
+                // Premium: Advanced Channels
+                join_leave_channel: notifSettings.join_leave_channel || '',
+                message_log_channel: notifSettings.message_log_channel || '',
+                server_changes_channel: notifSettings.server_changes_channel || '',
+                automod_log_channel: notifSettings.automod_log_channel || '',
+
+                // Premium: Granular Events
+                granular_events: notifSettings.granular_events || {},
+
+                // Premium: Webhooks
+                webhook_primary: notifSettings.webhook_primary || '',
+                webhook_secondary: notifSettings.webhook_secondary || '',
+
+                // Premium: DM Notifications
+                dm_on_raid: !!(notifSettings.dm_on_raid ?? true),
+                dm_on_nuke: !!(notifSettings.dm_on_nuke ?? true),
+                dm_on_escalation: !!(notifSettings.dm_on_escalation ?? true),
+                dm_on_settings: !!(notifSettings.dm_on_settings ?? false),
+
+                // Premium: Formatting
+                log_embed_color: notifSettings.log_embed_color || '#5865F2',
+                timestamp_format: notifSettings.timestamp_format || 'long',
+                audit_retention: notifSettings.audit_retention || 30,
+                log_show_avatars: !!(notifSettings.log_show_avatars ?? true),
+                log_show_content: !!(notifSettings.log_show_content ?? true)
+            });
+        } catch (error) {
+            this.bot.logger?.error('Error getting notification settings:', error);
+            res.status(500).json({ error: 'Failed to get notification settings' });
+        }
+    }
+
+    async saveNotificationSettings(req, res) {
+        try {
+            const guildId = req.query.guildId || req.headers['x-guild-id'];
+            const guild = guildId ? this.bot.client.guilds.cache.get(guildId) : this.bot.client.guilds.cache.first();
+            if (!guild) return res.status(400).json({ error: 'No guild found' });
+
+            const s = req.body;
+            if (!s || typeof s !== 'object') return res.status(400).json({ error: 'Invalid settings' });
+
+            // ── Free-tier columns (guild_configs) ──
+            const freeUpdates = {};
+            if (s.log_channel_id !== undefined) freeUpdates.log_channel_id = s.log_channel_id || null;
+            if (s.mod_log_channel !== undefined) freeUpdates.mod_log_channel = s.mod_log_channel || null;
+            if (s.alert_channel !== undefined) freeUpdates.alert_channel = s.alert_channel || null;
+
+            // Check which columns exist in guild_configs
+            let existingCols;
+            try {
+                const tableInfo = await this.bot.database.all('PRAGMA table_info(guild_configs)');
+                existingCols = new Set(tableInfo.map(col => col.name));
+            } catch (e) { existingCols = null; }
+
+            // Ensure row exists
+            await this.bot.database.run('INSERT OR IGNORE INTO guild_configs (guild_id) VALUES (?)', [guild.id]);
+
+            // Add new columns if they don't exist yet
+            const newCols = [
+                ['mod_log_channel', 'TEXT'],
+                ['notification_settings', 'TEXT']
+            ];
+            for (const [col, type] of newCols) {
+                if (existingCols && !existingCols.has(col)) {
+                    try {
+                        await this.bot.database.run(`ALTER TABLE guild_configs ADD COLUMN ${col} ${type}`);
+                        existingCols.add(col);
+                    } catch (e) { /* column may already exist */ }
+                }
+            }
+
+            // Update free-tier columns
+            const validFree = {};
+            for (const [k, v] of Object.entries(freeUpdates)) {
+                if (!existingCols || existingCols.has(k)) validFree[k] = v;
+            }
+            if (Object.keys(validFree).length > 0) {
+                const setClauses = Object.keys(validFree).map(key => `${key} = ?`).join(', ');
+                const vals = [...Object.values(validFree), guild.id];
+                await this.bot.database.run(`UPDATE guild_configs SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`, vals);
+            }
+
+            // Update log toggles in guild_customization
+            await this.bot.database.run('INSERT OR IGNORE INTO guild_customization (guild_id) VALUES (?)', [guild.id]);
+            await this.bot.database.run(`UPDATE guild_customization SET 
+                mod_logging = ?, log_edits = ?, log_deletes = ?, log_members = ?,
+                log_roles = ?, log_channels = ?, log_compact = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE guild_id = ?`, [
+                s.mod_logging ? 1 : 0, s.log_edits ? 1 : 0, s.log_deletes ? 1 : 0, s.log_members ? 1 : 0,
+                s.log_roles ? 1 : 0, s.log_channels ? 1 : 0, s.log_compact ? 1 : 0,
+                guild.id
+            ]);
+
+            // ── Premium settings (stored as JSON blob) ──
+            const premiumSettings = {
+                // Basic notification toggles (free but stored here for simplicity)
+                notify_security_alerts: !!s.notify_security_alerts,
+                notify_new_tickets: !!s.notify_new_tickets,
+                notify_settings_changes: !!s.notify_settings_changes,
+                notify_automod: !!s.notify_automod,
+
+                // Advanced channels
+                join_leave_channel: s.join_leave_channel || '',
+                message_log_channel: s.message_log_channel || '',
+                server_changes_channel: s.server_changes_channel || '',
+                automod_log_channel: s.automod_log_channel || '',
+
+                // Granular events
+                granular_events: s.granular_events || {},
+
+                // Webhooks
+                webhook_primary: s.webhook_primary || '',
+                webhook_secondary: s.webhook_secondary || '',
+
+                // DM notifications
+                dm_on_raid: !!s.dm_on_raid,
+                dm_on_nuke: !!s.dm_on_nuke,
+                dm_on_escalation: !!s.dm_on_escalation,
+                dm_on_settings: !!s.dm_on_settings,
+
+                // Formatting
+                log_embed_color: s.log_embed_color || '#5865F2',
+                timestamp_format: s.timestamp_format || 'long',
+                audit_retention: s.audit_retention || 30,
+                log_show_avatars: s.log_show_avatars !== false,
+                log_show_content: s.log_show_content !== false
+            };
+
+            // Store premium settings as JSON blob in notification_settings column
+            if (!existingCols || existingCols.has('notification_settings')) {
+                await this.bot.database.run(
+                    'UPDATE guild_configs SET notification_settings = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?',
+                    [JSON.stringify(premiumSettings), guild.id]
+                );
+            }
+
+            // Invalidate config cache
+            try {
+                if (this.bot.configService?.cache) this.bot.configService.cache.delete(guild.id);
+            } catch (e) { /* ignore */ }
+
+            this.bot.logger?.info(`Notification settings updated for guild ${guild.id}`);
+            res.json({ success: true, message: 'Notification settings saved successfully' });
+        } catch (error) {
+            this.bot.logger?.error('Error saving notification settings:', error);
+            res.status(500).json({ error: 'Failed to save notification settings' });
         }
     }
 
@@ -8470,18 +8866,39 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
     }
     async getTicketSettings(req, res) {
         try {
-            const guild = this.getGuildFromRequest(req);
+            // Support guildId from query params, headers, or body
+            const guildId = req.query.guildId || req.headers['x-guild-id'] || req.body?.guildId;
+            let guild = null;
+            if (guildId) {
+                guild = this.bot.client.guilds.cache.get(guildId);
+            }
             if (!guild) {
-                return res.status(400).json({ error: 'No guild found', settings: {} });
+                guild = this.getGuildFromRequest(req);
+            }
+            if (!guild) {
+                // Return empty settings instead of 500 when no guild found
+                return res.json({ settings: {
+                    enabled: false, category: '', panelChannel: '', transcriptChannel: '',
+                    supportRoles: [], welcomeMessage: 'Thank you for creating a ticket!',
+                    ticketCategories: ["General Support","Technical Issue","Billing","Report User","Other"],
+                    autoClose: { enabled: false, hours: 48 }
+                }});
             }
 
-            const config = await this.bot.database.get(
-                'SELECT * FROM guild_configs WHERE guild_id = ?',
-                [guild.id]
-            );
+            // Ensure guild config exists
+            let config;
+            try {
+                config = await this.bot.database.get(
+                    'SELECT * FROM guild_configs WHERE guild_id = ?',
+                    [guild.id]
+                );
+            } catch (dbError) {
+                this.bot.logger?.warn('DB query failed for ticket settings, returning defaults:', dbError.message);
+                config = null;
+            }
 
             const settings = {
-                enabled: config?.tickets_enabled || false,
+                enabled: !!(config?.tickets_enabled),
                 category: config?.ticket_category || '',
                 panelChannel: config?.ticket_panel_channel || '',
                 transcriptChannel: config?.ticket_transcript_channel || '',
@@ -8489,7 +8906,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 welcomeMessage: config?.ticket_welcome_message || 'Thank you for creating a ticket! A support team member will be with you shortly.',
                 ticketCategories: this.safeJsonParse(config?.ticket_categories, ["General Support","Technical Issue","Billing","Report User","Other"]),
                 autoClose: {
-                    enabled: config?.ticket_autoclose || false,
+                    enabled: !!(config?.ticket_autoclose),
                     hours: config?.ticket_autoclose_hours || 48
                 }
             };
@@ -8558,53 +8975,23 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 guild.id
             ]);
 
-            // Post-save: compute diffs, emit setting changes, send confirmation embeds and broadcast
+            // Invalidate ConfigService cache so bot picks up changes immediately
             try {
-                const fields = {
-                    tickets_enabled: settings.enabled ? 1 : 0,
-                    ticket_category: this.sanitizeString(settings.category || '', 20),
-                    ticket_panel_channel: this.sanitizeString(settings.panelChannel || '', 20),
-                    ticket_transcript_channel: this.sanitizeString(settings.transcriptChannel || '', 20),
-                    ticket_support_roles: JSON.stringify(supportRoles),
-                    ticket_welcome_message: welcomeMessage,
-                    ticket_categories: JSON.stringify(ticketCategories),
-                    ticket_autoclose: settings.autoClose?.enabled ? 1 : 0,
-                    ticket_autoclose_hours: autoCloseHours
-                };
+                if (this.bot.configService?.cache) this.bot.configService.cache.delete(guild.id);
+            } catch (e) { /* ignore */ }
 
-                const changes = {};
-                for (const [k, v] of Object.entries(fields)) {
-                    const prev = previous ? (previous[k] === null || typeof previous[k] === 'undefined' ? undefined : previous[k]) : undefined;
-                    const cur = v;
-                    if (String(prev || '') !== String(cur || '')) {
-                        changes[k] = { before: prev, after: cur };
-
-                        // Emit setting change via unified helper if available
-                        try {
-                            const changedBy = req.user?.id || req.user?.sub || null;
-                            if (typeof this.bot.emitSettingChange === 'function') {
-                                await this.bot.emitSettingChange(guild.id, changedBy, k, cur, null, 'tickets');
-                            }
-                        } catch (e) { this.bot.logger?.warn('Emit setting change failed for tickets:', e.message || e); }
-
-                        // Send confirmation via confirmationManager if available
-                        try {
-                            if (this.bot.confirmationManager && typeof this.bot.confirmationManager.sendConfirmation === 'function') {
-                                await this.bot.confirmationManager.sendConfirmation(guild.id, 'tickets', k, cur, prev, req.user?.id || req.user?.sub || 'dashboard');
-                            }
-                        } catch (e) { this.bot.logger?.warn('Confirmation send failed for tickets:', e.message || e); }
-                    }
+            // Single batch notification
+            try {
+                if (this.bot.confirmationManager) {
+                    await this.bot.confirmationManager.sendConfirmation(guild.id, 'tickets', 'ticket_settings', 'Ticket settings updated', null, req.user?.id || req.user?.sub || 'dashboard');
                 }
+            } catch (e) { this.bot.logger?.warn('Confirmation send failed for tickets:', e.message || e); }
 
-                // Broadcast to connected dashboards
-                try {
-                    if (Object.keys(changes).length && this.broadcastToGuild) {
-                        this.broadcastToGuild(guild.id, { type: 'settings_updated', data: changes, timestamp: new Date().toISOString() });
-                    }
-                } catch (e) { this.bot.logger?.warn('Broadcast ticket settings failed:', e.message || e); }
-            } catch (e) {
-                this.bot.logger?.warn('Post-save hooks for ticket settings failed:', e.message || e);
-            }
+            try {
+                if (this.broadcastToGuild) {
+                    this.broadcastToGuild(guild.id, { type: 'settings_updated', data: { section: 'tickets' }, timestamp: new Date().toISOString() });
+                }
+            } catch (e) { this.bot.logger?.warn('Broadcast ticket settings failed:', e.message || e); }
 
             this.bot.logger.info(`Ticket settings updated for guild ${guild.id}`);
             res.json({ success: true, message: 'Settings saved successfully' });
@@ -8684,56 +9071,23 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 guild.id
             ]);
 
-            // Read previous row for diffing & confirmations
-            const previous = await this.bot.database.get(
-                'SELECT mod_log_channel, auto_mod_enabled, dm_on_warn, dm_on_kick, dm_on_ban, max_warnings, warning_action FROM guild_configs WHERE guild_id = ?',
-                [guild.id]
-            );
-
-            // Apply update (already executed)
-
-            // Post-save: compute diffs, emit setting changes, send confirmation embeds and broadcast
+            // Invalidate ConfigService cache so bot picks up changes immediately
             try {
-                const fields = {
-                    mod_log_channel: this.sanitizeString(settings.modLogChannel || '', 20),
-                    auto_mod_enabled: settings.autoModEnabled ? 1 : 0,
-                    dm_on_warn: settings.dmOnWarn ? 1 : 0,
-                    dm_on_kick: settings.dmOnKick ? 1 : 0,
-                    dm_on_ban: settings.dmOnBan ? 1 : 0,
-                    max_warnings: maxWarnings,
-                    warning_action: warningAction
-                };
+                if (this.bot.configService?.cache) this.bot.configService.cache.delete(guild.id);
+            } catch (e) { /* ignore */ }
 
-                const changes = {};
-                for (const [k, v] of Object.entries(fields)) {
-                    const prev = previous ? (previous[k] === null || typeof previous[k] === 'undefined' ? undefined : previous[k]) : undefined;
-                    const cur = v;
-                    if (String(prev || '') !== String(cur || '')) {
-                        changes[k] = { before: prev, after: cur };
-
-                        try {
-                            const changedBy = req.user?.id || req.user?.sub || null;
-                            if (typeof this.bot.emitSettingChange === 'function') {
-                                await this.bot.emitSettingChange(guild.id, changedBy, k, cur, null, 'moderation');
-                            }
-                        } catch (e) { this.bot.logger?.warn('Emit setting change failed for moderation:', e.message || e); }
-
-                        try {
-                            if (this.bot.confirmationManager && typeof this.bot.confirmationManager.sendConfirmation === 'function') {
-                                await this.bot.confirmationManager.sendConfirmation(guild.id, 'moderation', k, cur, prev, req.user?.id || req.user?.sub || 'dashboard');
-                            }
-                        } catch (e) { this.bot.logger?.warn('Confirmation send failed for moderation:', e.message || e); }
-                    }
+            // Single batch notification (not per-field)
+            try {
+                if (this.bot.confirmationManager) {
+                    await this.bot.confirmationManager.sendConfirmation(guild.id, 'moderation', 'moderation_settings', 'Moderation settings updated', null, req.user?.id || req.user?.sub || 'dashboard');
                 }
+            } catch (e) { this.bot.logger?.warn('Confirmation send failed for moderation:', e.message || e); }
 
-                try {
-                    if (Object.keys(changes).length && this.broadcastToGuild) {
-                        this.broadcastToGuild(guild.id, { type: 'settings_updated', data: changes, timestamp: new Date().toISOString() });
-                    }
-                } catch (e) { this.bot.logger?.warn('Broadcast moderation settings failed:', e.message || e); }
-            } catch (e) {
-                this.bot.logger?.warn('Post-save hooks for moderation settings failed:', e.message || e);
-            }
+            try {
+                if (this.broadcastToGuild) {
+                    this.broadcastToGuild(guild.id, { type: 'settings_updated', data: { section: 'moderation' }, timestamp: new Date().toISOString() });
+                }
+            } catch (e) { this.bot.logger?.warn('Broadcast moderation settings failed:', e.message || e); }
 
             this.bot.logger.info(`Moderation settings updated for guild ${guild.id}`);
             res.json({ success: true, message: 'Settings saved successfully' });
@@ -8825,47 +9179,33 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             );
 
             // Post-save: compute diffs, emit setting changes, send confirmation embeds and broadcast
+            const fields = {
+                autorole_enabled: settings.autoRole?.enabled ? 1 : 0,
+                reactionroles_enabled: settings.reactionRoles?.enabled ? 1 : 0,
+                welcome_enabled: settings.welcomeMessages?.enabled ? 1 : 0,
+                welcome_channel: this.sanitizeString(settings.welcomeMessages?.channel || '', 20),
+                welcome_message: welcomeMessage,
+                verification_enabled: settings.verification?.enabled ? 1 : 0,
+                verification_role: this.sanitizeString(settings.verification?.role || '', 20)
+            };
+
+            // Invalidate ConfigService cache so bot picks up changes immediately
             try {
-                const fields = {
-                    autorole_enabled: settings.autoRole?.enabled ? 1 : 0,
-                    reactionroles_enabled: settings.reactionRoles?.enabled ? 1 : 0,
-                    welcome_enabled: settings.welcomeMessages?.enabled ? 1 : 0,
-                    welcome_channel: this.sanitizeString(settings.welcomeMessages?.channel || '', 20),
-                    welcome_message: welcomeMessage,
-                    verification_enabled: settings.verification?.enabled ? 1 : 0,
-                    verification_role: this.sanitizeString(settings.verification?.role || '', 20)
-                };
+                if (this.bot.configService?.cache) this.bot.configService.cache.delete(guild.id);
+            } catch (e) { /* ignore */ }
 
-                const changes = {};
-                for (const [k, v] of Object.entries(fields)) {
-                    const prev = previous ? (previous[k] === null || typeof previous[k] === 'undefined' ? undefined : previous[k]) : undefined;
-                    const cur = v;
-                    if (String(prev || '') !== String(cur || '')) {
-                        changes[k] = { before: prev, after: cur };
-
-                        try {
-                            const changedBy = req.user?.id || req.user?.sub || null;
-                            if (typeof this.bot.emitSettingChange === 'function') {
-                                await this.bot.emitSettingChange(guild.id, changedBy, k, cur, null, 'features');
-                            }
-                        } catch (e) { this.bot.logger?.warn('Emit setting change failed for features:', e.message || e); }
-
-                        try {
-                            if (this.bot.confirmationManager && typeof this.bot.confirmationManager.sendConfirmation === 'function') {
-                                await this.bot.confirmationManager.sendConfirmation(guild.id, 'features', k, cur, prev, req.user?.id || req.user?.sub || 'dashboard');
-                            }
-                        } catch (e) { this.bot.logger?.warn('Confirmation send failed for features:', e.message || e); }
-                    }
+            // Single batch notification
+            try {
+                if (this.bot.confirmationManager) {
+                    await this.bot.confirmationManager.sendConfirmation(guild.id, 'features', 'feature_settings', 'Feature settings updated', null, req.user?.id || req.user?.sub || 'dashboard');
                 }
+            } catch (e) { this.bot.logger?.warn('Confirmation send failed for features:', e.message || e); }
 
-                try {
-                    if (Object.keys(changes).length && this.broadcastToGuild) {
-                        this.broadcastToGuild(guild.id, { type: 'settings_updated', data: changes, timestamp: new Date().toISOString() });
-                    }
-                } catch (e) { this.bot.logger?.warn('Broadcast feature settings failed:', e.message || e); }
-            } catch (e) {
-                this.bot.logger?.warn('Post-save hooks for feature settings failed:', e.message || e);
-            }
+            try {
+                if (this.broadcastToGuild) {
+                    this.broadcastToGuild(guild.id, { type: 'settings_updated', data: { section: 'features' }, timestamp: new Date().toISOString() });
+                }
+            } catch (e) { this.bot.logger?.warn('Broadcast feature settings failed:', e.message || e); }
 
             this.bot.logger.info(`Feature settings updated for guild ${guild.id}`);
             res.json({ success: true, message: 'Settings saved successfully' });
@@ -10749,6 +11089,13 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             }
 
             // Update database
+            // JSON-stringify any array/object values for TEXT column storage
+            for (const key of Object.keys(validUpdates)) {
+                const val = validUpdates[key];
+                if (val !== null && typeof val === 'object') {
+                    validUpdates[key] = JSON.stringify(val);
+                }
+            }
             const setClauses = Object.keys(validUpdates).map(key => `${key} = ?`).join(', ');
             const values = [...Object.values(validUpdates), guildId];
 
@@ -10757,51 +11104,56 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 values
             );
 
-                // Apply certain updates to in-memory modules immediately (e.g., AI toggle)
-                try {
-                    if (typeof validUpdates.ai_enabled !== 'undefined' && this.bot.aiAssistant) {
-                        this.bot.aiAssistant.enabled = !!validUpdates.ai_enabled && !!this.bot.aiAssistant.openai;
-                        // Optionally persist into ai_settings table for assistant; keep in sync
-                        if (typeof this.bot.aiAssistant.updateGuildSettings === 'function') {
-                            await this.bot.aiAssistant.updateGuildSettings(guildId, { enabled: validUpdates.ai_enabled ? 1 : 0 });
-                        }
-                    }
-                } catch (e) {
-                    this.bot.logger?.warn('Failed to apply in-memory AI enabled update:', e.message || e);
-                }
-
-            // Emit event for real-time updates using unified helper
+            // Invalidate ConfigService cache so bot picks up changes immediately
             try {
-                const changedBy = req.user?.id || req.user?.sub || null;
-                if (typeof this.bot.emitSettingChange === 'function') {
-                    for (const [key, value] of Object.entries(validUpdates)) {
-                        try {
-                            await this.bot.emitSettingChange(guildId, changedBy, key, value, null, 'configuration');
-                        } catch (e) {
-                            this.bot.logger?.warn('Failed to emit settingChange event:', e.message || e);
-                        }
+                if (this.bot.configService?.cache) {
+                    this.bot.configService.cache.delete(guildId);
+                }
+                // Also invalidate word filter cache if word filter settings changed
+                if (this.bot.wordFilter?.configCache) {
+                    this.bot.wordFilter.configCache.delete(guildId);
+                }
+            } catch (e) {
+                this.bot.logger?.warn('Cache invalidation failed:', e.message || e);
+            }
+
+            // Apply certain updates to in-memory modules immediately (e.g., AI toggle)
+            try {
+                if (typeof validUpdates.ai_enabled !== 'undefined' && this.bot.aiAssistant) {
+                    this.bot.aiAssistant.enabled = !!validUpdates.ai_enabled && !!this.bot.aiAssistant.openai;
+                    if (typeof this.bot.aiAssistant.updateGuildSettings === 'function') {
+                        await this.bot.aiAssistant.updateGuildSettings(guildId, { enabled: validUpdates.ai_enabled ? 1 : 0 });
                     }
                 }
             } catch (e) {
-                this.bot.logger?.warn('Failed to emit bulk settingChange events:', e?.message || e);
+                this.bot.logger?.warn('Failed to apply in-memory AI enabled update:', e.message || e);
             }
 
-            // Send confirmation messages and broadcast to dashboard clients
+            // Emit ONE setting change event for the batch (not per-field)
+            try {
+                const changedBy = req.user?.id || req.user?.sub || null;
+                if (typeof this.bot.emitSettingChange === 'function') {
+                    await this.bot.emitSettingChange(guildId, changedBy, 'bulk_update', validUpdates, null, 'configuration');
+                }
+            } catch (e) {
+                this.bot.logger?.warn('Failed to emit settingChange event:', e?.message || e);
+            }
+
+            // Send ONE summary confirmation (not per-field — prevents notification flood)
             if (this.bot.confirmationManager) {
-                for (const [key, value] of Object.entries(validUpdates)) {
-                    const oldValue = previous ? previous[key] : undefined;
-                    try {
-                        await this.bot.confirmationManager.sendConfirmation(
-                            guildId,
-                            'dashboard', // settingType
-                            key, // settingName
-                            value,
-                            oldValue,
-                            req.user?.id || req.user?.sub || 'unknown'
-                        );
-                    } catch (e) {
-                        this.bot.logger?.warn('Failed to send confirmation for', key, e.message || e);
-                    }
+                try {
+                    const changedKeys = Object.keys(validUpdates);
+                    const summaryValue = `Updated ${changedKeys.length} setting(s): ${changedKeys.slice(0, 5).join(', ')}${changedKeys.length > 5 ? '...' : ''}`;
+                    await this.bot.confirmationManager.sendConfirmation(
+                        guildId,
+                        'dashboard',
+                        'settings_batch_update',
+                        summaryValue,
+                        null,
+                        req.user?.id || req.user?.sub || 'unknown'
+                    );
+                } catch (e) {
+                    this.bot.logger?.warn('Failed to send batch confirmation:', e.message || e);
                 }
             }
 
@@ -13180,6 +13532,69 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         } catch (error) {
             this.bot.logger.error('[AccessCode] Error revoking code:', error);
             res.status(500).json({ error: 'Failed to revoke access code' });
+        }
+    }
+    
+    // ==================== WORD FILTER PRESETS ====================
+    
+    async getWordFilterPresets(req, res) {
+        try {
+            if (!this.bot.wordFilter) {
+                return res.status(503).json({ error: 'Word filter system not initialized' });
+            }
+            
+            const presets = await this.bot.wordFilter.getPresets();
+            res.json({ success: true, presets });
+        } catch (error) {
+            this.bot.logger.error('[WordFilter] Error fetching presets:', error);
+            res.status(500).json({ error: 'Failed to fetch presets' });
+        }
+    }
+    
+    async applyWordFilterPreset(req, res) {
+        try {
+            const { guildId } = req.params;
+            const { presetName, action } = req.body;
+            const userId = req.user?.discordId || req.user?.userId;
+            
+            if (!guildId || !presetName) {
+                return res.status(400).json({ error: 'Guild ID and preset name required' });
+            }
+            
+            if (!this.bot.wordFilter) {
+                return res.status(503).json({ error: 'Word filter system not initialized' });
+            }
+            
+            // Check authorization
+            const access = await this.checkGuildAccess(userId, guildId, true);
+            if (!access.authorized) {
+                return res.status(403).json({ error: access.error || 'Access denied' });
+            }
+            
+            // Apply the preset
+            const wordsAdded = await this.bot.wordFilter.applyPreset(
+                guildId, 
+                presetName, 
+                action || 'delete', 
+                userId
+            );
+            
+            // Clear cache
+            if (this.bot.wordFilter.configCache) {
+                this.bot.wordFilter.configCache.delete(guildId);
+                this.bot.wordFilter.cacheExpiry.delete(guildId);
+            }
+            
+            this.bot.logger.info(`[WordFilter] Preset "${presetName}" applied to guild ${guildId} by ${userId} (${wordsAdded} words added)`);
+            
+            res.json({ 
+                success: true, 
+                message: `Preset applied successfully`,
+                wordsAdded 
+            });
+        } catch (error) {
+            this.bot.logger.error('[WordFilter] Error applying preset:', error);
+            res.status(500).json({ error: error.message || 'Failed to apply preset' });
         }
     }
 }

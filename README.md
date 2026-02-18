@@ -1,41 +1,190 @@
-# DarkLock - Personal Setup Guide
+# DarkLock - Complete Setup & Command Guide
 
 Discord security and moderation bot with dashboard, analytics, ticket system, leveling, and Darklock Guard platform.
 
 ---
-## darklock app
-# start
-pgrep -f "tauri dev" > /dev/null && echo "Already running" || (cd "/home/cayden/discord bot/discord bot/guard-v2/desktop" && npx tauri dev) 
 
+## 🚀 ONE-COMMAND START - Everything at Once!
 
+**Start ALL services with ONE command:**
 
-
-## Quick Start (Copy & Paste)
-
-```bash
-# Navigate to project directory
-cd /home/cayden/discord\ bot
-
-# Install dependencies
-npm install
-
-# Setup environment
-cp .env.example .env
-nano .env  # Edit with your settings
-
-# Generate anti-tampering baseline
-0
-
-# Run the bot (choose one)
-npm start       # Production mode
-npm run dev     # Development mode (auto-restart on file changes)
-./startup.sh    # With baseline generation
+```bas
 ```
 
-cd /home/cayden/discord\ bot/discord\ bot/ainti-tampering-app/tauri-app && DARKLOCK_API_URL=http://localhost:3002 npm run tauri:dev
+**Stop everything:**
+```bash
+cd /home/cayden/discord\ bot && ./stop-all.sh
+```
+
+**What starts:**
+- ✅ Discord Bot (port 3001)
+- ✅ Darklock Platform Server (port 3002)  
+- ✅ Darklock Guard App (Tauri)
+
+**Access URLs:**
+- **Unified Admin Dashboard**: http://localhost:3001/admin (⭐ NEW - All admin functions in one place)
+- Dashboard: http://localhost:3001
+- Platform: http://localhost:3001/platform
+- Darklock API: http://localhost:3002
+- Darklock Guard Desktop: Launch via Tauri app
 
 ---
 
+## 🎯 Unified Admin Dashboard
+
+**NEW**: All admin functionality consolidated at **http://localhost:3001/admin**
+
+**Features**:
+- 📊 **Real-time Overview**: Bot, Platform, and Guard stats in one view
+- 🤖 **Bot Management**: Discord bot dashboard embedded
+- 🌐 **Platform Admin**: User and device management
+- 🛡️ **Guard Monitoring**: Darklock Guard device tracking
+- 👥 **User Management**: Centralized user administration
+- 📈 **Analytics**: Combined reports and insights
+- ⚙️ **Settings**: System-wide configuration
+- 📝 **Activity Logs**: Unified audit trail
+
+**Quick Actions**:
+- Broadcast messages across all servers
+- Database backups
+- Clear caches
+- Restart services
+
+All previous admin URLs redirect to the unified dashboard:
+- `http://localhost:3002/admin` → `http://localhost:3001/admin`
+- `http://localhost:3002/admin/v3` → `http://localhost:3001/admin`
+- `http://localhost:3001/platform/admin` → Embedded in unified dashboard
+
+---
+
+## 🌐 Complete URLs & Endpoints Reference
+
+### Local Development URLs
+- **🎯 Unified Admin Dashboard**: http://localhost:3001/admin **(NEW - All admin in one place)**
+- **Main Dashboard**: http://localhost:3001
+- **Bot API**: http://localhost:3001/api
+- **Discord OAuth Callback**: http://localhost:3001/auth/discord/callback
+- **Platform Home**: http://localhost:3001/platform
+- **Platform Dashboard**: http://localhost:3001/platform/dashboard
+- **Platform Login**: http://localhost:3001/platform/auth/login
+- **Platform Signup**: http://localhost:3001/platform/auth/signup
+- **Platform Profile**: http://localhost:3001/platform/profile
+- **Platform Admin** (legacy): http://localhost:3001/platform/admin → Redirects to unified admin
+- **Darklock Guard Download**: http://localhost:3001/platform/download/darklock-guard
+- **Darklock Guard Launch**: http://localhost:3001/platform/launch/darklock-guard
+- **Darklock Guard Monitor**: http://localhost:3001/platform/monitor/darklock-guard
+- **Darklock API Server**: http://localhost:3002
+- **Darklock Admin v4**: http://localhost:3002/admin (Enterprise RBAC Dashboard - requires signin)
+- **Darklock Admin Signin**: http://localhost:3002/signin
+- **Health Check Endpoint**: http://localhost:3001/health
+- **API Status**: http://localhost:3001/api/status
+- **User Info**: http://localhost:3001/api/me
+
+### Network Access (replace YOUR_IP with your machine's IP)
+- **Dashboard (LAN)**: http://YOUR_IP:3001
+- **Platform (LAN)**: http://YOUR_IP:3001/platform
+- **Darklock API (LAN)**: http://YOUR_IP:3002
+
+### Discord URLs
+- **Discord Developer Portal**: https://discord.com/developers/applications
+- **Bot Invite URL Template**: https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=8&scope=bot%20applications.commands
+- **OAuth2 Authorization**: https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=http://localhost:3001/auth/discord/callback&response_type=code&scope=identify%20guilds
+
+### Production/Deployment URLs (if applicable)
+- **Render Deployment**: https://your-app-name.onrender.com
+- **Cloudflare Tunnel**: Your configured tunnel URL
+- **Pi Deployment**: Your Raspberry Pi's public IP or domain
+
+### External Services
+- **VirusTotal API**: https://www.virustotal.com/gui/home/upload
+- **URLVoid API**: https://www.urlvoid.com/
+- **Google Safe Browsing**: https://safebrowsing.google.com/
+- **Discord API**: https://discord.com/api/v10
+- **Discord Gateway**: wss://gateway.discord.gg
+
+### Documentation & Resources
+- **Node.js Documentation**: https://nodejs.org/en/docs/
+- **npm Registry**: https://www.npmjs.com/
+- **Discord.js Guide**: https://discordjs.guide/
+- **Discord Developer Docs**: https://discord.com/developers/docs/intro
+- **MicroPython Download**: https://micropython.org/download/rp2-pico/
+- **Tauri Documentation**: https://tauri.app/
+- **Rust Documentation**: https://www.rust-lang.org/
+
+### WebSocket Endpoints
+- **Discord Gateway**: wss://gateway.discord.gg/?v=10&encoding=json
+- **Platform WebSocket** (if enabled): ws://localhost:3002/ws
+
+### API Endpoints (Bot)
+```
+GET  /api/status              - Bot status
+GET  /api/health              - Health check
+GET  /api/me                  - Current user info
+GET  /api/guilds              - User's guilds
+GET  /api/guild/:id           - Guild details
+GET  /api/guild/:id/config    - Guild configuration
+GET  /api/admin/dashboard     - Unified admin dashboard data (NEW)
+POST /api/admin/action/:type  - Quick admin actions (NEW)
+POST /api/guild/:id/config    - Update guild config
+GET  /api/dashboard           - Dashboard data
+```
+
+### API Endpoints (Darklock Platform)
+```
+POST /api/auth/login          - User login
+POST /api/auth/register       - User registration
+POST /api/auth/logout         - User logout
+GET  /api/devices             - List devices
+GET  /api/device/:id          - Device details
+POST /api/device/:id/action   - Device action
+GET  /api/downloads           - Available downloads
+GET  /api/admin/*             - Admin endpoints
+```
+
+---
+
+## 📋 Table of Contents
+
+- [Quick Start](#quick-start)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation--environment-setup)
+- [Environment Variables](#environment-variables-env)
+- [Starting Services](#starting-services)
+- [Complete Commands Reference](#complete-commands-reference)
+- [Dashboard & Platform](#dashboard--platform)
+- [Process Management](#process-management)
+- [Monitoring & Logs](#monitoring--logs)
+- [Troubleshooting](#troubleshooting)
+- [Development Workflow](#development-workflow)
+- [Deployment Options](#deployment-options)
+- [Raspberry Pi Setup](#raspberry-pi-setup)
+- [Hardware Watchdog](#raspberry-pi-pico-hardware-watchdog-micropython)
+
+---
+
+## Quick Start
+
+```bash
+# 1. Navigate to project
+cd /home/cayden/discord\ bot
+
+# 2. Install dependencies
+npm install
+
+# 3. Setup environment
+cp .env.example .env
+nano .env  # Edit with your Discord tokens and settings
+
+# 4. Generate anti-tampering baseline
+npm run tamper:generate
+
+# 5. ⭐ START EVERYTHING
+./start-all.sh
+
+# OR run individual services:
+npm start       # Bot only (production)
+npm run dev     # Bot only (development mode)
+```
 ## Prerequisites
 
 - **Node.js** v18+ and npm v8+
@@ -54,15 +203,18 @@ cd /home/cayden/discord\ bot
 # Install dependenciesv
 npm install
 
-# Copy and configure environment
+# Clone/navigate to project
+cd /home/cayden/discord\ bot
+
+# Install all dependencies
+npm install
+
+# If you encounter peer dependency issues:
+npm install --legacy-peer-deps
+
+# Configure environment
 cp .env.example .env
-nano .env  # Edit with your settings
-```
-
----
-
-## Environment Variables (.env)
-
+nano .env  # Edit with your Discord tokens and API
 ```env
 # Discord Bot Configuration
 BOT_TOKEN=your_discord_bot_token
@@ -108,179 +260,268 @@ ENABLE_VPN_DETECTION=true
 LOG_RETENTION_DAYS=30
 NODE_ENV=development  # or production
 ```
-
+Starting Services
 ---
 
-## Running the Bot
+## Complete Commands Reference - Run & Test Everything
+
+### 🚀 Starting Services
 
 ```bash
-# Navigate to project
 cd /home/cayden/discord\ bot
 
-# Production mode (standard)
-npm start
+# ⭐ START EVERYTHING AT ONCE (Recommended)
+./start-all.sh                         # Start bot + platform + both Tauri apps
+./stop-all.sh                          # Stop all services
 
-# Development mode (auto-restart on changes)
-npm run dev
+# OR start services individually:
 
-# With anti-tampering baseline
-chmod +x startup.sh
-./startup.sh
+# Start Discord Bot
+npm start                              # Production mode
+npm run dev                            # Development mode (auto-restart)
+node start-bot.js                      # Alternative start method
+./startup.sh                           # Start with baseline generation
+
+# Start Darklock Guard App (Tauri)
+cd "/home/cayden/discord bot/discord bot/guard-v2" && ./start.sh
+# Or check if already running:
+pgrep -f "guard-service" > /dev/null && echo "Already running" || (cd "/home/cayden/discord bot/discord bot/guard-v2" && ./start.sh)
+
+# Darklock Guard Security Modes:
+# - Normal Mode: Balanced protection for everyday use
+# - Strict Mode: Maximum security with password protection
+#   * Requires password on every app launch
+#   * Password required to disable strict mode
+#   * To enable: Settings → Security Mode → Strict → Create password
+#   * To disable: Settings → Security Mode → Normal → Enter password
+
+# Start Darklock Platform Server
+node darklock/start.js                 # Darklock platform server (use this!)
+node darklock/test-server.js           # Test Darklock server
 ```
 
-
-cd "/home/cayden/discord bot/discord bot/guard-v2/desktop" && npx tauri dev
-
-
-
----
-
-## Generate Anti-Tampering Baseline
+### 🧪 Testing - Complete Suite
 
 ```bash
 cd /home/cayden/discord\ bot
-node file-protection/agent/baseline-generator.js
+
+# General Tests
+npm test                               # Run all tests
+node tests/smoke-tests.js              # Smoke tests - basic functionality check
+node healthcheck.js                    # Health check - verify bot is running properly
+
+# Anti-Tampering & File Integrity Tests
+node test-tamper-attack.js             # Test tamper attack detection
+node test-manual-tamper.js             # Manual tamper test
+node test-live-tamper-demo.js          # Live tamper demo (real-time)
+node test-destructive-real.js          # Destructive real test (dangerous)
+node file-protection/test.js           # Standard file integrity test
+node file-protection/test-live.js      # Live file integrity monitoring
+npm run tamper:test                    # Test file integrity against baseline
+
+# Platform & API Tests
+node test-platform.js                  # Test Darklock platform
+node test-platform-route.js            # Test platform routes
+node fix-api-me.js                     # Test and fix /api/me endpoint
+node test-logger.js                    # Test logging system
+
+# Security Tests
+node test-password.js                  # Test password hashing/verification
+node test-phishing-detection.js        # Test phishing domain detection
+node check-2fa-status.js               # Check 2FA status on accounts
+
+# Premium & Membership Tests
+node activate-premium-test.js          # Test premium activation
+node add-test-member.js                # Add test member to database
 ```
 
-This generates HMAC-signed hashes and backups for all protected files.
+### 👤 User Management
 
----
-
-## NPM Scripts - All Commands
-
-### Core Bot Commands
 ```bash
 cd /home/cayden/discord\ bot
-npm start              # Production mode
-npm run dev            # Development mode (auto-restart)
-npm test               # Run tests
-npm run setup          # Run setup wizard
-```
 
-### Anti-Tampering & File Protection
-```bash
-cd /home/cayden/discord\ bot
-npm run tamper:generate    # Generate baseline for file integrity
-npm run tamper:test        # Test file integrity against baseline
-npm run fix-encoding       # Fix mojibake encoding issues
-```
-
-### Security
-```bash
-cd /home/cayden/discord\ bot
-npm run security:audit      # Run security audit
-npm run security:fix        # Auto-fix security vulnerabilities
-npm run security:check      # Check security status
-```
-
-### Database
-```bash
-cd /home/cayden/discord\ bot
-npm run db:backup          # Backup database
-npm run db:restore         # Restore from backup
-npm run db:init            # Initialize database
-npm run db:migrate         # Run migrations
-```
-
-### Testing & Development
-```bash
-cd /home/cayden/discord\ bot
-npm run test:seed-preserve  # Test seed preservation
-npm test                    # Run all tests
-```
-
-### Utility
-```bash
-cd /home/cayden/discord\ bot
-npm run list-ports         # Show all USB/serial devices
-npm run create-backups     # Manually create file backups
-npm run cleanup            # Clean up temporary files
-```
-
----
-
-## Admin & Setup Scripts
-
-### User Management
-```bash
-cd /home/cayden/discord\ bot
-node create-admin-user.js              # Create admin user
-node create-test-user-json.js          # Create test user (JSON format)
+# Create Users
+node create-admin-user.js              # Create admin user (interactive)
+node create-darklock-user.js           # Create Darklock platform user
+node create-user.js                    # Create general user
 node create-test-user.js               # Create test user (interactive)
-node fix-test-user.js                  # Fix test user
-node create-darklock-user.js           # Create Darklock user
-node set-owner-role.js                 # Set owner role
-node upgrade-admin-role.js             # Upgrade admin role
+node create-test-user-json.js          # Create test user (JSON format)
+node create-owner-account.js           # Create owner account
+node setup-cayden-account.js           # Setup Cayden's account
+node create-render-admin.js            # Create Render deployment admin
+
+# Fix Users
+node fix-test-user.js                  # Fix test user issues
+
+# Modify Roles & Permissions
+node set-owner-role.js                 # Set owner role on user
+node upgrade-admin-role.js             # Upgrade user to admin role
+
+# Reset & Update
 node reset-admin.js                    # Reset admin password
 node update-admin-password.js          # Update admin password
+node hash-password.js                  # Generate password hash
 ```
 
-### RBAC & Security
+### 🔐 Security & Authentication
+
 ```bash
 cd /home/cayden/discord\ bot
+
+# RBAC (Role-Based Access Control)
 node init-rbac.js                      # Initialize RBAC schema
-node drop-and-init-rbac.js             # Drop and reinitialize RBAC
-chmod +x fix-permissions.sh
-./fix-permissions.sh                   # Fix permissions
-```
+node drop-and-init-rbac.js             # Drop and reinitialize RBAC (destructive)
 
-### Authentication
-```bash
-cd /home/cayden/discord\ bot
-node update-auth.js                    # Update auth system
-node migrate-2fa.js                    # Migrate 2FA
+# 2FA Management
+node migrate-2fa.js                    # Migrate 2FA system
 node check-2fa-status.js               # Check 2FA status
+
+# Authentication Updates
+node update-auth.js                    # Update authentication system
+
+# Anti-Tampering
+npm run tamper:generate                # Generate integrity baseline
+npm run tamper:test                    # Test file integrity
+node file-protection/agent/baseline-generator.js  # Generate baseline manually
+
+# Security Audits
+npm run security:audit                 # Run security audit
+npm run security:fix                   # Auto-fix vulnerabilities
+npm run security:check                 # Check security status
+
+# Permissions
+chmod +x fix-permissions.sh
+./fix-permissions.sh                   # Fix file permissions
 ```
 
-### Password & Hashing
-```bash
-cd /home/cayden/discord\ bot
-node hash-password.js                  # Hash password
-```
+### 🗄️ Database Management
 
-### Logs & Monitoring
 ```bash
 cd /home/cayden/discord\ bot
-node check-logs.js                     # Check logs
-chmod +x check-enabled.sh
-./check-enabled.sh                     # Check enabled status
-```
 
-### Database Maintenance
-```bash
-cd /home/cayden/discord\ bot
-node check-db-maintenance.js           # Check database maintenance status
-node check-maintenance-settings.js     # Check maintenance settings
-node check-maintenance.js              # Check maintenance status
+# Operations
+npm run db:backup                      # Backup
+npm run db:restore                     # Restore
+npm run db:init                        # Initialize
+npm run db:migrate                     # Migrations
+
+# Checks & Maintenance
+node check-admin-db.js                 # Check admin DB
+node check-db-maintenance.js           # Maintenance status
+node check-maintenance-settings.js     # Maintenance settings
+node check-maintenance.js              # Maintenance mode
 node query-maintenance.js              # Query maintenance
-node check-spam-setting.js             # Check spam setting
+node check-spam-setting.js             # Spam settings
+
+# Fixes & Migrations
+node fix-database-schema.js            # Fix schema
+node migrate-xp-db.js                  # Migrate XP
+node deploy-xp-commands.js             # Deploy XP commands
+node setup-team-db.js                  # Setup teams
+npm run fix-encoding                   # Fix encoding
+node fix-all-mojibake.cjs              # Fix mojibake
 ```
 
-### Darklock Platform
+### 🛡️ Darklock Platform
+
 ```bash
 cd /home/cayden/discord\ bot
-node darklock/create-admin.js          # Create Darklock admin
-node darklock/server.js                # Initialize Darklock server
+
+# Darklock Server
+node darklock/start.js                 # Start Darklock platform server (use this!)
 node darklock/test-server.js           # Test Darklock server
-node darklock/migrate-maintenance.js   # Migrate Darklock maintenance
-node darklock/check-downloads.js       # Check Darklock downloads
+node darklock/create-admin.js          # Create Darklock admin user
+node darklock/migrate-maintenance.js   # Migrate maintenance mode
+node darklock/check-downloads.js       # Check download availability
+
+# Phishing & Security
+node import-phishing-domains.js        # Import phishing DB
+node test-phishing-detection.js        # Test detection
+node generate-license.js               # Generate license
+
+# View Logs
+tail -f logs/combined.log              # View all logs (real-time)
+tail -f logs/error.log                 # View errors only (real-time)
+tail -50 logs/combined.log             # Last 50 lines
+grep "ERROR" logs/combined.log         # Search for errors
+node check-logs.js                     # Check logs programmatically
+
+# Check Status
+chmod +x check-enabled.sh
+./check-enabled.sh                     # Check if bot is enabled
+node healthcheck.js                    # Comprehensive health check
+
+# Clear Logs
+> logs/combined.log                    # Clear combined log
+> logs/error.log                       # Clear error log
 ```
 
----
+### 🔧 Setup & Installation
 
-## File Protection & Anti-Tampering
-
-### Generate Baseline
 ```bash
 cd /home/cayden/discord\ bot
 
-```
+# Initial Setup
+npm run setup                          # Run setup wizard
+node setup.js                          # Alternative setup method
+�️ Utility & Maintenance
 
-### Test Anti-Tampering
 ```bash
 cd /home/cayden/discord\ bot
-node file-protection/test.js           # Standard test
-node file-protection/test-live.js      # Live test (real-time monitoring)
+
+# Setup
+npm run setup                          # Setup wizard
+node setup.js                          # Alt setup
+
+# Dependencies
+npm install                            # Install deps
+npm install --legacy-peer-deps         # Legacy mode
+npm audit fix                          # Fix vulnerabilities
+np Raspberry Pi Setup
+
+```bash
+cd /home/cayden/discord\ bot
+
+# Installation
+chmod +x install-pi5.sh quickstart-pi5.sh
+./install-pi5.sh                       # Full Pi 5 install
+./quickstart-pi5.sh                    # Quick start Pi 5
+./install-bot.sh                       # Install bot
+./install-nodejs.sh                    # Install Node.js
+./install_hardware_on_pi.sh            # Hardware support
+
+# Hardware
+python3 hardware_controller.py         # Watchdog controller
+python3 test_lcd.py                    # Test LCD
+python3 rgb_led_status.py              # RGB LED status
+
+# Cloudflare Tunnel
+chmod +x setup_cloudflare_tunnel.sh install_tunnel_on_pi.sh
+./setup_cloudflare_tunnel.sh           # Setup tunnel
+./install_tunnel_on_pi.sh              # Install tunnel
+./run_tunnel_direct.sh                 # Run directly
+./test_tunnel.sh                       # Test connection
+./create_tunnel_service.sh             # Create service
+
+# Network & Fixes
+./fix_pi_network.sh                    # Fix network
+./quick_dns_fix.sh                     # DNS fix
+./fix_cloudflared_service.sh           # Fix service
+
+# Bot Management
+./restart-bot.sh                       # Restart bot
+./diagnose_bot.sh                      # Diagnose
+./check_bot_on_pi.sh                   # Check status
+
+# Darklock Network
+./setup_darklock_net.sh                # Setup network
+./setup-darklock.sh                    # Setup environment
+
+# 9. Test logger
+node test-logger.js
+
+# 10. Check logs for errors
+grep -i "error" logs/combined.log | tail -20
 ```
 
 ---
@@ -319,28 +560,63 @@ chmod +x git-push.sh
 ## Dashboard & Platform
 
 ### Access Dashboard
-
-After starting the bot:
+🎯 Unified Admin** (NEW): http://localhost:3001/admin
 - **Local**: http://localhost:3001
 - **Network**: http://YOUR_IP:3001
+- **Discord OAuth**: http://localhost:3001/auth/discord/callback
+
+### Unified Admin Dashboard
+
+The new unified admin dashboard combines all admin functionality:
+- **Overview Tab**: Real-time stats from bot, platform, and guard
+- **Bot Tab**: Discord bot dashboard (embedded)
+- **Platform Tab**: Darklock platform admin (embedded)
+- **Guard Tab**: Darklock Guard device management
+- **Users Tab**: User management across all services
+- **Analytics Tab**: Combined analytics and reports
+- **Settings Tab**: System-wide configuration
+- **Logs Tab**: Unified activity and audit logs
+
+**Quick Actions Available**:
+- 📢 Broadcast messages
+- 💾 Database backup
+- 🗑️ Clear cache
+- 🔄 Restart services
+- **Network**: http://YOUR_IP:3001
+- **Discord OAuth**: http://localhost:3001/auth/discord/callback
 
 ### Access Darklock Platform
 
-- **Integrated**: Available on port 3001 at `/platform`
+- **Integrated**: http://localhost:3001/platform
+- **Standalone Server**: http://localhost:3002
+- **Admin Panel**: http://localhost:3001/platform/admin
 
 ### Platform Routes
 
 ```
-/platform/                      Dashboard home
-/platform/dashboard             Main dashboard
-/platform/auth/login            Login page
-/platform/auth/signup           Registration
-/platform/auth/logout           Logout
-/platform/profile               User profile
+/platform/                          Platform home
+/platform/dashboard                 Main dashboard
+/platform/auth/login                Login page  
+/platform/auth/signup               Registration
+/platform/auth/logout               Logout
+/platform/profile                   User profile
 /platform/download/darklock-guard   Download Darklock Guard app
 /platform/launch/darklock-guard     Launch Darklock Guard (installed)
 /platform/monitor/darklock-guard    Web-based monitor
-/platform/admin                 Admin panel (admin users only)
+/platform/admin                     Admin panel (admin users only)
+/api/status                         API status check
+/api/me                             Current user info
+/health                             Health check endpoint
+```
+
+### Darklock Guard URLs
+
+```
+Desktop App: Launch via Tauri (npx tauri dev)
+Guard Service: Unix socket at ~/.local/share/guard/
+Status Socket: ~/.local/share/guard/status.sock
+IPC Socket: ~/.local/share/guard/ipc.sock
+Vault Location: ~/.local/share/guard/vault.dat
 ```
 
 ---
@@ -629,11 +905,37 @@ npm test
 
 ## Support & Documentation
 
+### Official Documentation
 - **Discord Developer Portal**: https://discord.com/developers/applications
-- **Node.js Docs**: https://nodejs.org/en/docs/
+- **Discord API Documentation**: https://discord.com/developers/docs/intro
+- **Discord.js Guide**: https://discordjs.guide/
+- **Discord.js Documentation**: https://discord.js.org/#/docs/main/stable/general/welcome
+- **Node.js Documentation**: https://nodejs.org/en/docs/
 - **npm Registry**: https://www.npmjs.com/
+- **Tauri Documentation**: https://tauri.app/v1/guides/
+- **Rust Documentation**: https://www.rust-lang.org/learn
+- **MicroPython**: https://micropython.org/download/rp2-pico/
+
+### API References
+- **Discord API**: https://discord.com/developers/docs/reference
+- **Discord Gateway**: https://discord.com/developers/docs/topics/gateway
+- **Discord OAuth2**: https://discord.com/developers/docs/topics/oauth2
+- **VirusTotal API**: https://developers.virustotal.com/reference
+- **URLVoid API**: https://www.urlvoid.com/api/
+
+### Community & Support
+- **Discord.js Support Server**: https://discord.gg/djs
+- **Node.js Help**: https://nodejs.org/en/docs/guides/
+- **Stack Overflow**: https://stackoverflow.com/questions/tagged/discord.js
 
 For issues, check logs: `tail -f logs/combined.log`
+
+### Quick Links
+- Create Discord Bot: https://discord.com/developers/applications
+- Invite Bot Template: `https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=8&scope=bot%20applications.commands`
+- Dashboard: http://localhost:3001
+- Platform: http://localhost:3001/platform
+- API Docs: http://localhost:3001/api
 
 ---
 
@@ -696,21 +998,20 @@ Any mismatch, invalid JSON, or HTTP errors trigger a failure path.
 1. Set `HEALTH_URL` to a valid endpoint and verify **OK** (OK LED on).
 2. Stop the server or block the endpoint.
 3. The watchdog will transition **OK → DEGRADED → FAIL** after retries and thresholds.
-4. Confirm:
-	 - FAIL LED/relay toggles
-	 - Webhook alert received
-	 - Optional recovery endpoint called
+4. Best Practices
 
-## Integration Notes
-### Discord bot health endpoint
-Expose `/health` from the bot or web dashboard that returns `status` and `integrity`. The watchdog checks it every `INTERVAL_S`.
+### Performance
+- Dev: `npm run dev` (auto-restart on changes)
+- Prod: `npm start` (stable, no overhead)
+- Monitor: `tail -f logs/combined.log`
+- Backup: `npm run db:backup` (regularly)  
+- Integrity: `npm run tamper:test` (check frequently)
 
-### Darklock integrity checks
-Include Darklock results in the health JSON (e.g., `integrity: "pass" | "fail"`). Any integrity failure triggers immediate **FAIL**.
-
-### Automated recovery/alerting
-On **FAIL**, the watchdog:
-1) asserts GPIO (LED/relay),
-2) sends a Discord webhook alert,
-3) optionally calls `SHUTDOWN_URL` (use this to trigger a graceful restart or emergency shutdown on the host).
-
+### Security
+- Never commit `.env` to git
+- Rotate secrets regularly (JWT_SECRET, API keys)
+- Use strong passwords (16+ characters)
+- Enable 2FA on admin accounts
+- Monitor logs for suspicious activity
+- Keep dependencies updated: `npm audit && npm update`
+- Regular database backups---

@@ -1,145 +1,120 @@
 /*
- * DARKLOCK Hardware Display Module
- * ELEGOO Mega 2560 - LCD + LEDs controlled via serial from Pi 5
- * 
- * Hardware:
- *   16x2 LCD (4-bit): RS=A0, E=A1, D4=A2, D5=A3, D6=A4, D7=D30
- *   RGB LED 1 (Bot Status): R=D23, G=D25, B=D27  (PWM pins)
- *   Red LED (RFID Denied):  D32  (digital only)
- *   Green LED (RFID OK):    D34  (digital only)
- * 
- * Serial Protocol (115200 baud):
- *   LCD:line1|line2   - Update LCD (16 chars max per line)
- *   LED1:r,g,b        - Set RGB LED 1 (0-255 each)
- *   LED2:r,g,b        - Set RFID LEDs (r>0 = red ON, g>0 = green ON)
- *   CLEAR              - Clear LCD
- *   PING               - Health check (responds PONG)
+ * DARKLOCK Display Module — Elegoo Mega 2560
+ * LCD + RGB LEDs display controller (simplified version)
+ *
+ * Pin Map:
+ *   LCD 16×2:  RS=P7  EN=P8  D4=P9  D5=P10  D6=P11  D7=P12
+ *   RGB-LED 1: R=D29  G=D31  B=D33
+ *   RGB-LED 2: R=D23  G=D25  B=D27
+ *   Tamper:    R=D32
+ *   RFID LEDs: G=D28  R=D30
+ *
+ * Protocol: 115200 baud, newline-delimited
+ *   LCD:line1|line2    LED1:r,g,b    LED2:r,g,b
+ *   TAMPER:0/1         RFID:GREEN/RED/OFF    PING
  */
 
 #include <LiquidCrystal.h>
 
-// -- Pin Definitions --
-// LCD (4-bit mode)
-#define LCD_RS  A0
-#define LCD_E   A1
-#define LCD_D4  A2
-#define LCD_D5  A3
-#define LCD_D6  A4
-#define LCD_D7  30
+#define LCD_RS   7
+#define LCD_E    8
+#define LCD_D4   9
+#define LCD_D5  10
+#define LCD_D6  11
+#define LCD_D7  12
 
-// RGB LED 1 - Bot/System Status (PWM capable pins)
-#define LED1_R  23
-#define LED1_G  25
-#define LED1_B  27
+#define LED1_R  29
+#define LED1_G  31
+#define LED1_B  33
 
-// Single-color RFID status LEDs (digital only - ON/OFF)
-#define RFID_RED    32
-#define RFID_GREEN  34
+#define LED2_R  23
+#define LED2_G  25
+#define LED2_B  27
 
-// -- Objects --
+#define LED_TAMPER      32
+#define LED_RFID_GREEN  28
+#define LED_RFID_RED    30
+
 LiquidCrystal lcd(LCD_RS, LCD_E, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
+String curL1 = "", curL2 = "";
 
-// -- Setup --
 void setup() {
   Serial.begin(115200);
-  
   lcd.begin(16, 2);
   lcd.clear();
   lcd.print("DARKLOCK v2.0");
   lcd.setCursor(0, 1);
   lcd.print("Booting...");
-  
-  // RGB LED 1 - PWM outputs
-  pinMode(LED1_R, OUTPUT);
-  pinMode(LED1_G, OUTPUT);
-  pinMode(LED1_B, OUTPUT);
-  
-  // RFID LEDs - digital outputs
-  pinMode(RFID_RED, OUTPUT);
-  pinMode(RFID_GREEN, OUTPUT);
-  
-  // Initial state: red = waiting for gateway
-  setLED1(255, 0, 0);
-  setRFID(0, 0);
-  
-  delay(500);
+
+  int pins[] = {LED1_R, LED1_G, LED1_B, LED2_R, LED2_G, LED2_B,
+                LED_TAMPER, LED_RFID_GREEN, LED_RFID_RED};
+  for (int i = 0; i < 9; i++) {
+    pinMode(pins[i], OUTPUT);
+    digitalWrite(pins[i], LOW);
+  }
+
+  // Self-test
+  for (int i = 0; i < 9; i++) {
+    digitalWrite(pins[i], HIGH); delay(100);
+    digitalWrite(pins[i], LOW);
+  }
+
+  lcd.clear();
+  lcd.print("DARKLOCK v2.0");
+  lcd.setCursor(0, 1);
+  lcd.print("Waiting for Pi..");
   Serial.println("READY");
 }
 
-// -- Main Loop --
 void loop() {
-  if (Serial.available() > 0) {
+  if (Serial.available()) {
     String cmd = Serial.readStringUntil('\n');
     cmd.trim();
-    if (cmd.length() > 0) {
-      processCommand(cmd);
-    }
+    if (cmd.length() > 0) processCmd(cmd);
   }
+  delay(10);
 }
 
-// -- Command Processor --
-void processCommand(String cmd) {
-  
+void processCmd(String cmd) {
   if (cmd.startsWith("LCD:")) {
-    String payload = cmd.substring(4);
-    int sep = payload.indexOf('|');
+    String p = cmd.substring(4);
+    int s = p.indexOf('|');
     lcd.clear();
-    if (sep >= 0) {
-      lcd.setCursor(0, 0);
-      lcd.print(payload.substring(0, min(sep, 16)));
-      lcd.setCursor(0, 1);
-      lcd.print(payload.substring(sep + 1, min((int)payload.length(), sep + 17)));
+    if (s >= 0) {
+      lcd.setCursor(0, 0); lcd.print(p.substring(0, min(s, 16)));
+      lcd.setCursor(0, 1); lcd.print(p.substring(s+1, min((int)p.length(), s+17)));
     } else {
-      lcd.setCursor(0, 0);
-      lcd.print(payload.substring(0, min((int)payload.length(), 16)));
+      lcd.setCursor(0, 0); lcd.print(p.substring(0, 16));
     }
     Serial.println("ACK:LCD");
   }
-  
   else if (cmd.startsWith("LED1:")) {
-    String rgb = cmd.substring(5);
-    int c1 = rgb.indexOf(',');
-    int c2 = rgb.indexOf(',', c1 + 1);
-    if (c1 > 0 && c2 > 0) {
-      int r = constrain(rgb.substring(0, c1).toInt(), 0, 255);
-      int g = constrain(rgb.substring(c1 + 1, c2).toInt(), 0, 255);
-      int b = constrain(rgb.substring(c2 + 1).toInt(), 0, 255);
-      setLED1(r, g, b);
-      Serial.println("ACK:LED1");
-    }
+    parseLED(cmd.substring(5), LED1_R, LED1_G, LED1_B);
+    Serial.println("ACK:LED1");
   }
-  
   else if (cmd.startsWith("LED2:")) {
-    String rgb = cmd.substring(5);
-    int c1 = rgb.indexOf(',');
-    int c2 = rgb.indexOf(',', c1 + 1);
-    if (c1 > 0 && c2 > 0) {
-      int r = rgb.substring(0, c1).toInt();
-      int g = rgb.substring(c1 + 1, c2).toInt();
-      setRFID(r, g);
-      Serial.println("ACK:LED2");
-    }
+    parseLED(cmd.substring(5), LED2_R, LED2_G, LED2_B);
+    Serial.println("ACK:LED2");
   }
-  
-  else if (cmd == "CLEAR") {
-    lcd.clear();
-    Serial.println("ACK:CLEAR");
+  else if (cmd.startsWith("TAMPER:")) {
+    digitalWrite(LED_TAMPER, cmd.substring(7).toInt() ? HIGH : LOW);
+    Serial.println("ACK:TAMPER");
   }
-  
-  else if (cmd == "PING") {
-    Serial.println("PONG");
+  else if (cmd.startsWith("RFID:")) {
+    String m = cmd.substring(5);
+    if (m == "GREEN")     { digitalWrite(LED_RFID_GREEN, HIGH); digitalWrite(LED_RFID_RED, LOW); }
+    else if (m == "RED")  { digitalWrite(LED_RFID_GREEN, LOW);  digitalWrite(LED_RFID_RED, HIGH); }
+    else                  { digitalWrite(LED_RFID_GREEN, LOW);  digitalWrite(LED_RFID_RED, LOW); }
+    Serial.println("ACK:RFID");
   }
+  else if (cmd == "PING") Serial.println("PONG");
+  else if (cmd == "CLEAR") { lcd.clear(); Serial.println("ACK:CLEAR"); }
 }
 
-// RGB LED 1 - full PWM color control
-void setLED1(int r, int g, int b) {
-  analogWrite(LED1_R, r);
-  analogWrite(LED1_G, g);
-  analogWrite(LED1_B, b);
-}
-
-// RFID status LEDs - digital ON/OFF
-void setRFID(int r, int g) {
-  digitalWrite(RFID_RED,   r > 0 ? HIGH : LOW);
-  digitalWrite(RFID_GREEN, g > 0 ? HIGH : LOW);
+void parseLED(String csv, int pR, int pG, int pB) {
+  int c1 = csv.indexOf(','), c2 = csv.indexOf(',', c1+1);
+  if (c1 < 0 || c2 < 0) return;
+  digitalWrite(pR, csv.substring(0, c1).toInt() > 127 ? HIGH : LOW);
+  digitalWrite(pG, csv.substring(c1+1, c2).toInt() > 127 ? HIGH : LOW);
+  digitalWrite(pB, csv.substring(c2+1).toInt() > 127 ? HIGH : LOW);
 }

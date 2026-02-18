@@ -140,10 +140,10 @@ class SecurityScanner {
             }
         }
 
-        // Check for phishing
+        // Check for phishing (scan mode = passive, no DMs)
         if (config.scanPhishing && this.bot.antiPhishing) {
-            const phishingCheck = await this.bot.antiPhishing.checkMessage(message);
-            if (phishingCheck && phishingCheck.isPhishing) {
+            const phishingCheck = await this.bot.antiPhishing.checkMessage(message, { scanMode: true });
+            if (phishingCheck) {
                 threats.push('phishing');
                 this.scanResults.phishingAttempts.push({
                     messageId: message.id,
@@ -152,8 +152,7 @@ class SecurityScanner {
                     userId: message.author.id,
                     username: message.author.tag,
                     content: message.content.substring(0, 200),
-                    timestamp: message.createdAt,
-                    similarity: phishingCheck.similarity
+                    timestamp: message.createdAt
                 });
             }
         }

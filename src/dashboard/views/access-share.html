@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/css/design-system.css">
     <link rel="stylesheet" href="/css/premium-gating.css">
-    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v4/admin/theme/css">
     <script src="/js/global-theme.js"></script>
     <script src="/js/theme-effects.js"></script>
     <script src="/js/premium-gating.js"></script>
@@ -495,8 +495,9 @@
                     method: 'GET'
                 });
                 
-                if (res.success && res.members) {
-                    const members = res.members;
+                if (res.ok) {
+                    const data = await res.json();
+                    const members = data.members || (Array.isArray(data) ? data : []);
                     if (members.length === 0) {
                         dropdown.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--ds-text-muted);">No members found</div>';
                     } else {
@@ -566,12 +567,13 @@
                     body: JSON.stringify({ userId, permission })
                 });
                 
-                if (res.success) {
+                if (res.ok) {
                     showMessage(msg, 'Access granted successfully!', 'success');
                     clearSelectedMember();
                     loadUsers();
                 } else {
-                    showMessage(msg, res.message || 'Failed to grant access', 'error');
+                    const err = await res.json().catch(() => ({}));
+                    showMessage(msg, err.message || 'Failed to grant access', 'error');
                 }
             } catch (e) {
                 showMessage(msg, 'Failed to grant access', 'error');
@@ -602,12 +604,13 @@
                     body: JSON.stringify({ roleId, permission })
                 });
                 
-                if (res.success) {
+                if (res.ok) {
                     showMessage(msg, 'Role access granted successfully!', 'success');
                     document.getElementById('roleSelect').value = '';
                     loadRoles();
                 } else {
-                    showMessage(msg, res.message || 'Failed to grant access', 'error');
+                    const err = await res.json().catch(() => ({}));
+                    showMessage(msg, err.message || 'Failed to grant access', 'error');
                 }
             } catch (e) {
                 showMessage(msg, 'Failed to grant access', 'error');
@@ -647,9 +650,11 @@
         async function loadRoleOptions() {
             try {
                 const res = await SecureAuth.fetch(`/api/guild/${guildId}/roles`, { method: 'GET' });
-                if (res.success && res.roles) {
+                if (res.ok) {
+                    const data = await res.json();
+                    const roleList = Array.isArray(data) ? data : (data.roles || []);
                     const select = document.getElementById('roleSelect');
-                    res.roles.forEach(role => {
+                    roleList.forEach(role => {
                         if (role.name !== '@everyone') {
                             const option = document.createElement('option');
                             option.value = role.id;

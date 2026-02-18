@@ -20,10 +20,13 @@ export type ServiceStatus = {
 };
 
 export type EventEntry = {
+  event_type: string;
+  severity: string;
   timestamp: string;
-  severity: 'info' | 'warning' | 'error';
-  message: string;
   data?: Record<string, unknown>;
+  detail?: string;
+  seq?: number;
+  hash?: string;
 };
 
 export type UpdateInfo = {
@@ -54,4 +57,11 @@ export type DeviceState = {
   safeMode?: boolean;
   safeModeReason?: string;
   error?: string;
+};
+
+export type SystemMetrics = {
+  cpu_percent: number;
+  memory_used_mb: number;
+  memory_total_mb: number;
+  memory_percent: number;
 };

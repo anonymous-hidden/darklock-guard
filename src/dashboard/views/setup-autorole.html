@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/css/design-system.css">
     <link rel="stylesheet" href="/css/premium-gating.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v3/theme/css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v4/admin/theme/css">
     <script src="/js/secure-auth.js"></script>
     <script src="/js/global-theme.js"></script>
     <script src="/js/premium-gating.js"></script>
@@ -402,13 +402,14 @@
         // Load roles and channels
         async function loadRolesAndChannels() {
             try {
-                const [rolesData, channelsData] = await Promise.all([
+                const [rolesRes, channelsRes] = await Promise.all([
                     SecureAuth.fetch(`/api/guild/${guildId}/roles`, { method: 'GET' }),
                     SecureAuth.fetch(`/api/guild/${guildId}/channels`, { method: 'GET' })
                 ]);
 
-                if (rolesData.success) {
-                    roles = rolesData.roles;
+                if (rolesRes.ok) {
+                    const rolesData = await rolesRes.json();
+                    roles = Array.isArray(rolesData) ? rolesData : (rolesData.roles || []);
                     const autoroleSelect = document.getElementById('autoroleSelect');
                     const reactionRoleSelect = document.getElementById('reactionRoleSelect');
                     
@@ -420,8 +421,10 @@
                     });
                 }
 
-                if (channelsData.success) {
-                    channels = channelsData.channels.filter(c => c.type === 'GUILD_TEXT' || c.type === 0);
+                if (channelsRes.ok) {
+                    const channelsData = await channelsRes.json();
+                    const channelList = Array.isArray(channelsData) ? channelsData : (channelsData.channels || []);
+                    channels = channelList.filter(c => c.type === 'GUILD_TEXT' || c.type === 0);
                     const channelSelect = document.getElementById('reactionChannel');
                     
                     channels.forEach(channel => {
@@ -440,15 +443,21 @@
                     method: 'GET'
                 });
 
-                if (response.success) {
-                    const data = response.settings;
+                if (response.ok) {
+                    const raw = await response.json();
+                    const data = raw.settings || raw.data || raw;
 
                     // Auto-role settings
                     document.getElementById('autoroleEnabled').checked = data.autorole_enabled || false;
                     document.getElementById('botAutorole').checked = data.bot_autorole || false;
                     document.getElementById('autoroleDelay').value = data.autorole_delay || 0;
                     
-                    autoroles = data.autoroles || [];
+                    // Parse autoroles if stored as JSON string
+                    let autorolesData = data.autoroles || [];
+                    if (typeof autorolesData === 'string') {
+                        try { autorolesData = JSON.parse(autorolesData); } catch(e) { autorolesData = []; }
+                    }
+                    autoroles = autorolesData;
                     renderAutoroles();
 
                     // Reaction roles settings
@@ -457,7 +466,12 @@
                     document.getElementById('reactionTitle').value = data.reaction_title || '';
                     document.getElementById('reactionDesc').value = data.reaction_desc || '';
                     
-                    reactionRoles = data.reaction_roles || [];
+                    // Parse reaction_roles if stored as JSON string
+                    let reactionRolesData = data.reaction_roles || [];
+                    if (typeof reactionRolesData === 'string') {
+                        try { reactionRolesData = JSON.parse(reactionRolesData); } catch(e) { reactionRolesData = []; }
+                    }
+                    reactionRoles = reactionRolesData;
                     renderReactionRoles();
                 }
             } catch (error) {
@@ -593,10 +607,11 @@
                     body: JSON.stringify(settings)
                 });
 
-                if (response.success) {
+                if (response.ok) {
                     showStatus('Settings saved successfully!', 'success');
                 } else {
-                    showStatus(response.message || 'Failed to save settings', 'error');
+                    const err = await response.json().catch(() => ({}));
+                    showStatus(err.message || err.error || 'Failed to save settings', 'error');
                 }
             } catch (error) {
                 console.error('Save error:', error);

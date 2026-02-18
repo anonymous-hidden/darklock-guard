@@ -21,12 +21,8 @@ module.exports = {
             try {
                 const owner = await guild.fetchOwner();
                 
-                const welcomeEmbeds = createWelcomeEmbeds(guild, bot.client);
-                
-                // Send all embeds to owner
-                for (const embed of welcomeEmbeds) {
-                    await owner.send({ embeds: [embed] });
-                }
+                const welcomeDM = createWelcomeEmbed(guild, bot.client);
+                await owner.send({ embeds: [welcomeDM] });
 
                 bot.logger.info(`📧 Sent welcome guide to ${owner.user.tag}`);
             } catch (dmError) {
@@ -36,22 +32,34 @@ module.exports = {
             
             // Send welcome message in server channel
             const welcomeEmbed = new EmbedBuilder()
-                .setTitle('🛡️ DarkLock is now online!')
+                .setTitle('🛡️ DarkLock Security Bot is Online!')
                 .setDescription(`
-Thank you for adding me to **${guild.name}**!
+Thanks for adding **DarkLock** to **${guild.name}**! 🚀
 
-I'm performing an **initial security scan** and **automatic backup** of your server. This will complete in a few minutes.
+**🎯 First Steps:**
+• Run \`/wizard\` for quick setup
+• Use \`/serversetup\` to create channels & roles
+• Visit the dashboard for advanced config
 
-**Server owner:** Check your DMs for a complete feature guide!
-**Quick start:** Use \`/wizard\` to configure the bot
-**Server setup:** Use \`/serversetup\` to create a complete server structure
+**🔒 Security Features:**
+• Anti-Raid & Anti-Spam Protection
+• Phishing Link Detection
+• Toxicity Filtering
+• Automatic Threat Scanning
+
+**⚙️ I'm now performing:**
+✓ Initial security scan (analyzing existing messages)
+✓ Automatic server backup
+
+**💡 Server owner:** Check your DMs for the full guide!
                 `)
                 .setColor('#00d4ff')
                 .addFields(
-                    { name: '🔧 Setup', value: '`/wizard` or `/setup`', inline: true },
-                    { name: '❓ Help', value: '`/help`', inline: true },
-                    { name: '🌐 Dashboard', value: process.env.DASHBOARD_URL || 'See DM', inline: true }
+                    { name: '🚀 Quick Setup', value: '`/wizard`', inline: true },
+                    { name: '📚 Commands', value: '`/help`', inline: true },
+                    { name: '🌐 Dashboard', value: process.env.DASHBOARD_URL || '[See DM]', inline: true }
                 )
+                .setFooter({ text: 'DarkLock will send a scan report when complete' })
                 .setTimestamp();
 
             const firstChannel = guild.channels.cache.find(c => 
@@ -297,168 +305,67 @@ async function sendScanReport(guild, bot, scanResults, backupResult) {
 }
 
 /**
- * Create all the welcome embeds for the DM guide
+ * Create single comprehensive welcome embed for DM
  */
-function createWelcomeEmbeds(guild, client) {
-    const welcomeDM1 = new EmbedBuilder()
+function createWelcomeEmbed(guild, client) {
+    const dashboardURL = process.env.DASHBOARD_URL || 'https://darklock.xyz/dashboard';
+    
+    return new EmbedBuilder()
         .setTitle('🛡️ Welcome to DarkLock!')
         .setDescription(`
 Thank you for adding **DarkLock** to **${guild.name}**!
 
-I'm an advanced security and moderation bot designed to protect your server and make management easier.
+I'm an advanced security and moderation bot designed to protect your server. I'm currently performing an **initial security scan** and **automatic backup** - you'll receive a detailed report shortly.
 
-**🎯 I'm currently performing an initial security scan** of your server to check for existing threats. This will complete in a few minutes.
+**🚀 Quick Start Guide:**
+
+**1️⃣ Run Setup Wizard** → \`/wizard\`
+Interactive guided setup for all features
+
+**2️⃣ Configure Security** → \`/security enable\`
+Enable protection features (anti-raid, anti-spam, phishing detection)
+
+**3️⃣ Optional: Server Setup** → \`/serversetup [template]\`
+Create complete server structure with channels & roles
+Templates: Gaming, Business, Education, Creative, General
+
+**4️⃣ Access Web Dashboard** → [${dashboardURL}](${dashboardURL})
+Configure advanced settings, view analytics, manage quarantine
         `)
         .setColor('#00d4ff')
         .setThumbnail(client.user.displayAvatarURL())
-        .setTimestamp();
-
-    const securityFeatures = new EmbedBuilder()
-        .setTitle('🔒 Security Features')
-        .setColor('#e74c3c')
-        .setDescription('DarkLock provides comprehensive protection:')
         .addFields(
             { 
-                name: '🚨 Anti-Raid Protection', 
-                value: 'Automatically detects and stops server raids\n• Monitors join patterns\n• Configurable thresholds\n• Auto-lockdown capabilities', 
+                name: '🔒 Security Features', 
+                value: '• **Anti-Raid** - Stops coordinated attacks\n• **Anti-Spam** - Filters spam & flooding\n• **Link Protection** - Blocks phishing & malicious URLs\n• **Toxicity Filter** - Removes harmful content\n• **Proactive Scanning** - Regular security audits', 
                 inline: false 
             },
             { 
-                name: '🗑️ Anti-Spam System', 
-                value: 'Prevents spam and flooding\n• Message rate limiting\n• Duplicate detection\n• Auto-delete spam', 
+                name: '⚖️ Moderation Tools', 
+                value: '`/ban` `/kick` `/timeout` `/warn` `/purge` `/lockdown`\nComplete moderation suite with auto-logging', 
+                inline: true 
+            },
+            { 
+                name: '🎫 Utility Commands', 
+                value: '`/ticket` `/serverinfo` `/userinfo` `/analytics` `/status` `/help`', 
+                inline: true 
+            },
+            { 
+                name: '🌐 Web Dashboard Features', 
+                value: '• Real-time server statistics & analytics\n• Configure all settings visually\n• View security alerts & quarantine\n• Manage tickets & users\n• Auto-delete threat configuration', 
                 inline: false 
             },
             { 
-                name: '🔗 Link Protection', 
-                value: 'Blocks malicious links and phishing\n• Real-time URL scanning\n• Phishing database checks\n• Scam prevention', 
+                name: '💡 Pro Tips', 
+                value: '• Grant **Administrator** permission for full functionality\n• Use `/help [command]` for detailed command info\n• Check the dashboard for advanced configuration\n• Security scans run automatically every 24 hours', 
                 inline: false 
             },
             { 
-                name: '🧹 Toxicity Detection', 
-                value: 'Filters toxic and harmful content\n• Advanced content analysis\n• Configurable sensitivity\n• Automatic warnings', 
-                inline: false 
-            },
-            { 
-                name: '📊 Proactive Scanning', 
-                value: 'Regular security scans of all channels\n• Scheduled automatic scans\n• Manual scan triggers\n• Detailed threat reports', 
+                name: '❓ Need Help?', 
+                value: '**Commands:** `/help`\n**Status:** `/status`\n**Support:** https://discord.gg/Vsq9PUTrgb\n**Website:** https://darklock.xyz', 
                 inline: false 
             }
-        );
-
-    const moderationCommands = new EmbedBuilder()
-        .setTitle('⚖️ Moderation Commands')
-        .setColor('#3498db')
-        .addFields(
-            { name: '`/ban` `[user] [reason]`', value: 'Ban a user from the server', inline: true },
-            { name: '`/kick` `[user] [reason]`', value: 'Kick a user from the server', inline: true },
-            { name: '`/timeout` `[user] [duration]`', value: 'Timeout a user temporarily', inline: true },
-            { name: '`/warn` `[user] [reason]`', value: 'Issue a warning to a user', inline: true },
-            { name: '`/purge` `[amount]`', value: 'Delete multiple messages', inline: true },
-            { name: '`/lockdown` `[channel]`', value: 'Lock a channel temporarily', inline: true }
-        );
-
-    const adminCommands = new EmbedBuilder()
-        .setTitle('🛠️ Setup & Admin Commands')
-        .setColor('#f39c12')
-        .addFields(
-            { name: '`/wizard`', value: '**⭐ Recommended first step!**\nInteractive setup wizard for all features', inline: false },
-            { name: '`/serversetup` `[template]`', value: '**NEW!** Complete server setup with channels & roles\nChoose from Gaming, Business, Education, Creative, or General templates', inline: false },
-            { name: '`/setup`', value: 'Configure security features and channels', inline: true },
-            { name: '`/settings` `[feature]`', value: 'View and modify bot settings', inline: true },
-            { name: '`/security` `[action]`', value: 'Manage security features', inline: true },
-            { name: '`/permissions` `[role]`', value: 'Configure role permissions', inline: true }
-        );
-
-    const utilityCommands = new EmbedBuilder()
-        .setTitle('🔧 Utility Commands')
-        .setColor('#2ecc71')
-        .addFields(
-            { name: '`/ticket` `[create/close]`', value: 'Manage support tickets', inline: true },
-            { name: '`/help` `[command]`', value: 'Get help with commands', inline: true },
-            { name: '`/serverinfo`', value: 'View server information', inline: true },
-            { name: '`/userinfo` `[user]`', value: 'View user information', inline: true },
-            { name: '`/analytics`', value: 'View server analytics', inline: true },
-            { name: '`/status`', value: 'Check security status', inline: true }
-        );
-
-    const dashboardInfo = new EmbedBuilder()
-        .setTitle('🌐 Web Dashboard')
-        .setColor('#9b59b6')
-        .setDescription(`
-**Access your dashboard at:** \`${process.env.DASHBOARD_URL || 'Your Dashboard URL'}\`
-
-**Dashboard Features:**
-🎨 Modern, responsive interface
-📊 Real-time server statistics
-🔧 Configure all bot settings
-🚨 View security alerts and quarantined content
-📈 Detailed analytics and insights
-🎫 Manage tickets
-👥 User management tools
-⚙️ Auto-delete configuration for threats
-📋 Security scan history
-
-**Login:** Use your Discord account to authenticate
-        `);
-
-    const quickStart = new EmbedBuilder()
-        .setTitle('🚀 Quick Start Guide')
-        .setColor('#1abc9c')
-        .setDescription(`
-**Recommended Setup Steps:**
-
-**1️⃣ Run the Setup Wizard**
-Use \`/wizard\` to configure basic settings in a guided format
-
-**2️⃣ Set Up Your Server Structure** *(Optional)*
-Use \`/serversetup\` to create a complete server template with channels and roles
-
-**3️⃣ Configure Security Features**
-Use \`/security enable\` to enable protection features
-• Anti-raid protection
-• Anti-spam filtering
-• Link protection
-• Toxicity detection
-
-**4️⃣ Set Moderation Roles**
-Use \`/setup\` to assign moderator and admin roles
-
-**5️⃣ Configure Auto-Delete Settings**
-Visit the web dashboard to configure automatic deletion of threats
-
-**6️⃣ Review Security Scan Results**
-Check the scan report I'm generating now!
-
-**💡 Pro Tips:**
-• Use the web dashboard for advanced configuration
-• Enable notifications for security events
-• Set up a dedicated log channel
-• Regular security scans are automatically performed
-• Check quarantined messages before deletion
-        `);
-
-    const supportInfo = new EmbedBuilder()
-        .setTitle('❓ Need Help?')
-        .setColor('#95a5a6')
-        .setDescription(`
-**Support Resources:**
-
-📖 **Documentation:** Use \`/help\` for command documentation
-🌐 **Web Dashboard:** Full feature documentation available
-💬 **In-Server Help:** Use \`/help [command]\` for specific commands
-🔍 **Status Check:** Use \`/status\` to verify bot functionality
-🔗 **Website:** https://DarkLock.xyz
-💬 **Community Server:** https://discord.gg/Vsq9PUTrgb
-
-**Common Issues:**
-• Missing permissions: Grant Administrator permission
-• Commands not working: Check role hierarchy
-• Features not triggering: Verify settings with \`/settings\`
-
-**All set!** DarkLock is now protecting your server. Run \`/wizard\` to get started!
-        `)
-        .setFooter({ text: 'DarkLock - Advanced Security & Moderation' })
+        )
+        .setFooter({ text: 'DarkLock - Advanced Security & Moderation | Protecting your server 24/7' })
         .setTimestamp();
-
-    return [welcomeDM1, securityFeatures, moderationCommands, adminCommands, utilityCommands, dashboardInfo, quickStart, supportInfo];
 }

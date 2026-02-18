@@ -33,14 +33,30 @@ export async function triggerScan(kind: 'quick' | 'full' | 'custom'): Promise<{ 
   return invoke<{ accepted: boolean }>('trigger_scan', { kind });
 }
 
-export async function updateCheck(): Promise<UpdateCheckResponse> {
-  return invoke<UpdateCheckResponse>('update_check');
+export async function updateCheck(channel?: string): Promise<UpdateCheckResponse> {
+  return invoke<UpdateCheckResponse>('update_check', { channel: channel || 'stable' });
 }
 
-export async function updateInstall(): Promise<{ ok: boolean }> {
-  return invoke<{ ok: boolean }>('update_install');
+export async function updateInstall(channel?: string): Promise<{ ok: boolean }> {
+  return invoke<{ ok: boolean }>('update_install', { channel: channel || 'stable' });
 }
 
 export async function updateRollback(backupManifest: string): Promise<{ ok: boolean }> {
   return invoke<{ ok: boolean }>('update_rollback', { backupManifest });
+}
+
+export async function sendCrashReport(report: {
+  type: string;
+  description?: string;
+  diagnostics?: string;
+  stack_trace?: string;
+  app_version?: string;
+  platform?: string;
+  error_code?: string;
+}): Promise<{ ok: boolean }> {
+  return invoke<{ ok: boolean }>('send_crash_report', { report });
+}
+
+export async function fetchSystemMetrics(): Promise<import('./types').SystemMetrics> {
+  return invoke<import('./types').SystemMetrics>('get_system_metrics');
 }

@@ -1,0 +1,27 @@
+[Unit]
+Description=DarkLock Discord Bot
+After=network-online.target
+Wants=network-online.target
+# Start after the platform if it's running
+After=darklock-platform.service
+
+[Service]
+Type=simple
+User=cayden
+Group=cayden
+WorkingDirectory=/home/cayden/discord bot/discord bot
+ExecStartPre=/bin/bash -c 'node /home/cayden/discord\ bot/discord\ bot/file-protection/agent/baseline-generator.js || true'
+ExecStart=/usr/bin/node src/bot.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/home/cayden/discord bot/discord bot/logs/bot.log
+StandardError=append:/home/cayden/discord bot/discord bot/logs/bot.log
+Environment=NODE_ENV=production
+EnvironmentFile=/home/cayden/discord bot/discord bot/.env
+
+# Resource limits (Pi 5 friendly)
+MemoryMax=512M
+CPUQuota=150%
+
+[Install]
+WantedBy=multi-user.target
