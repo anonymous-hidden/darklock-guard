@@ -12183,7 +12183,15 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 [guildId, roleId]
             );
 
-            this.bot.logger.info(`[SHARED_ACCESS] User ${userId} revoked access from role ${roleId} for guild ${guildId}`);
+            // Also remove any persistent entries that were auto-created via system_role_based
+            // for this guild. Users who still have OTHER active role grants will still see
+            // the guild via the live checkGuildAccess role check (Check 4).
+            await this.bot.database.run(
+                `DELETE FROM dashboard_access WHERE guild_id = ? AND granted_by = 'system_role_based'`,
+                [guildId]
+            );
+
+            this.bot.logger.info(`[SHARED_ACCESS] User ${userId} revoked access from role ${roleId} for guild ${guildId} — cleared system_role_based entries`);
             res.json({ success: true, message: 'Role access revoked successfully' });
         } catch (error) {
             this.bot.logger.error('Error revoking role access:', error);
@@ -12312,7 +12320,9 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
                     if (existingAccess) continue; // Already has access
 
-                    // Check for role-based access
+                    // Check for role-based access dynamically — do NOT create persistent
+                    // dashboard_access entries for role grants; checkGuildAccess already
+                    // handles them live, and persisting them breaks revocation.
                     const roleAccess = await this.bot.database.all(
                         `SELECT role_id FROM dashboard_role_access WHERE guild_id = ?`,
                         [guildId]
@@ -12320,15 +12330,9 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
                     for (const roleGrant of roleAccess) {
                         if (member.roles.cache.has(roleGrant.role_id)) {
-                            // User has a role that grants access - automatically grant it
-                            await this.bot.database.run(
-                                `INSERT INTO dashboard_access (guild_id, user_id, granted_by, created_at) 
-                                 VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
-                                [guildId, userId, 'system_role_based']
-                            );
-
+                            // Count the access (no persistent DB insert — revocation must work)
                             newAccessGranted++;
-                            this.bot.logger.info(`[ACCESS_RECHECK] Granted role-based access to user ${userId} for guild ${guildId}`);
+                            this.bot.logger.info(`[ACCESS_RECHECK] Role-based access detected for user ${userId} in guild ${guildId} (dynamic, not persisted)`);
                             break;
                         }
                     }
