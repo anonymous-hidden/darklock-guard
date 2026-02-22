@@ -12,6 +12,9 @@ class WebDashboard {
         this.client = discordClient;
         this.port = port;
         this.app = express();
+        // SECURITY FIX (LOW 25): In-memory rate limiter + response cache
+        this._rateLimits = new Map(); // ip -> { count, resetAt }
+        this._cache = new Map(); // key -> { data, expiresAt }
         this.setupMiddleware();
         this.setupRoutes();
     }
@@ -20,14 +23,47 @@ class WebDashboard {
      * Setup Express middleware
      */
     setupMiddleware() {
-        // CORS for API access
-        this.app.use(cors());
+        // SECURITY FIX (LOW 25): Restrict CORS to dashboard origin only
+        const allowedOrigins = process.env.DASHBOARD_ORIGIN
+            ? process.env.DASHBOARD_ORIGIN.split(',')
+            : ['http://localhost:3001'];
+        this.app.use(cors({
+            origin: (origin, cb) => {
+                // Allow requests with no origin (server-to-server, curl, etc.)
+                if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+                cb(new Error('CORS not allowed'));
+            },
+            credentials: true
+        }));
 
         // JSON body parser
         this.app.use(express.json());
 
         // Static files (CSS, JS, images)
         this.app.use('/public', express.static(path.join(__dirname, 'public')));
+
+        // SECURITY FIX (LOW 25): Simple rate limiter (60 req/min per IP)
+        this.app.use((req, res, next) => {
+            const ip = req.ip || req.connection.remoteAddress;
+            const now = Date.now();
+            let entry = this._rateLimits.get(ip);
+            if (!entry || now > entry.resetAt) {
+                entry = { count: 0, resetAt: now + 60000 };
+                this._rateLimits.set(ip);
+            }
+            entry.count++;
+            this._rateLimits.set(ip, entry);
+            if (entry.count > 60) {
+                return res.status(429).json({ error: 'Too many requests' });
+            }
+            // Prune old entries periodically
+            if (this._rateLimits.size > 10000) {
+                for (const [k, v] of this._rateLimits) {
+                    if (now > v.resetAt) this._rateLimits.delete(k);
+                }
+            }
+            next();
+        });
 
         // Logging middleware
         this.app.use((req, res, next) => {
@@ -59,6 +95,18 @@ class WebDashboard {
         this.app.get('/api/leaderboard/:guildId', async (req, res) => {
             try {
                 const guildId = req.params.guildId;
+                // SECURITY FIX (LOW 25): Validate snowflake format
+                if (!/^\d{17,20}$/.test(guildId)) {
+                    return res.status(400).json({ success: false, error: 'Invalid guild ID' });
+                }
+
+                // SECURITY FIX (LOW 25): Response cache (30s TTL)
+                const cacheKey = `lb:${guildId}`;
+                const cached = this._cache.get(cacheKey);
+                if (cached && Date.now() < cached.expiresAt) {
+                    return res.json(cached.data);
+                }
+
                 const leaderboard = await this.db.getFullLeaderboard(guildId);
 
                 // Enrich with Discord user data
@@ -83,10 +131,18 @@ class WebDashboard {
                     })
                 );
 
-                res.json({
+                const response = {
                     success: true,
                     data: enrichedLeaderboard
-                });
+                };
+                // Cache for 30 seconds
+                this._cache.set(cacheKey, { data: response, expiresAt: Date.now() + 30000 });
+                // Prune stale cache entries if >500
+                if (this._cache.size > 500) {
+                    const now = Date.now();
+                    for (const [k, v] of this._cache) { if (now > v.expiresAt) this._cache.delete(k); }
+                }
+                res.json(response);
 
             } catch (error) {
                 console.error('Error fetching leaderboard:', error);
@@ -108,6 +164,10 @@ class WebDashboard {
      */
     async renderLeaderboard(req, res) {
         const guildId = req.params.guildId;
+        // SECURITY FIX (LOW 25): Validate snowflake format
+        if (!/^\d{17,20}$/.test(guildId)) {
+            return res.status(400).send('Invalid guild ID');
+        }
 
         // Fetch guild info
         let guildName = 'Server Leaderboard';

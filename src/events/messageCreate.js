@@ -248,16 +248,15 @@ async function handleXPGain(message, bot) {
     }
 }
 
+// DEAD CODE (LOW 22): handleXPGain is defined but never called in this file.
+// The live version is in src/core/events/messageCreate.js
+// SECURITY FIX (MEDIUM 19): Formula corrected to match canonical level formula.
 function calculateLevel(xp) {
-    // Inverse of: 5 * (level^2) + 50 * level + 100
-    // Using quadratic formula
-    let level = 0;
-    while (getXPForLevel(level + 1) <= xp) {
-        level++;
-    }
-    return level;
+    const { calculateLevel: calcLevel } = require('../utils/levelFormula');
+    return calcLevel(xp);
 }
 
 function getXPForLevel(level) {
-    return Math.floor(5 * Math.pow(level, 2) + 50 * level + 100);
+    const { xpForLevel } = require('../utils/levelFormula');
+    return xpForLevel(level);
 }

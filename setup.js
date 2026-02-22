@@ -239,12 +239,9 @@ LOG_RETENTION_DAYS=30
     }
 
     generateRandomString(length) {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        let result = '';
-        for (let i = 0; i < length; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return result;
+        // SECURITY FIX: Use crypto.randomBytes for cryptographically strong secrets
+        const crypto = require('crypto');
+        return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').slice(0, length);
     }
 
     showFinalInstructions() {

@@ -1,4 +1,5 @@
 const EventEmitter = require('events');
+const { xpForLevel } = require('../utils/levelFormula');
 
 class RankSystem extends EventEmitter {
     constructor(database) {
@@ -12,7 +13,8 @@ class RankSystem extends EventEmitter {
             messageXP: { min: 15, max: 25 },
             voiceXPPerMinute: 10,
             cooldownSeconds: 60,
-            levelFormula: (level) => Math.pow(level, 2) * 100
+            // SECURITY FIX (MEDIUM 19): Use canonical formula from levelFormula module
+            levelFormula: (level) => xpForLevel(level)
         };
     }
 

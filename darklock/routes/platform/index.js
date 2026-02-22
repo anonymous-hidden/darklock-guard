@@ -11,8 +11,8 @@ let discordBot = null;
 function setDiscordBot(bot) {
     discordBot = bot;
 }
-// GET /platform/api/metrics
-router.get('/api/metrics', async (req, res) => {
+// GET /platform/api/metrics — SECURITY: require admin auth
+router.get('/api/metrics', requireAuth, async (req, res) => {
     try {
         // System metrics
         const memUsage = process.memoryUsage();

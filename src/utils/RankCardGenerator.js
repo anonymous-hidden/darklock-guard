@@ -353,7 +353,10 @@ class RankCardGenerator {
     }
 
     getXPForLevel(level) {
-        return Math.floor(Math.pow(level, 2) * 100);
+        // SECURITY FIX (MEDIUM 19): Use canonical formula from levelFormula module
+        // Previously used level² × 100, now matches rest of codebase: (level/0.1)²
+        const { xpForLevel } = require('./levelFormula');
+        return xpForLevel(level);
     }
 }
 

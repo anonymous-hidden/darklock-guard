@@ -55,6 +55,7 @@
     "ws": "^8.14.2"
   },
   "devDependencies": {
+    "jest": "^30.2.0",
     "nodemon": "^3.0.2"
   },
   "keywords": [

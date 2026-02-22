@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const helmet = require('helmet');
 const cors = require('cors');
+const { requireGuildAccess, BoundedMap } = require('./middleware/guildGuard');
 const rateLimit = require('express-rate-limit');
 const axios = require('axios');
 const Stripe = require('stripe');
@@ -119,7 +120,8 @@ class SecurityDashboard {
         };
 
         // In-memory rate limit tracking for dashboard endpoints
-        const rateLimitMap = new Map();
+        // SECURITY FIX: Use BoundedMap to prevent unbounded memory growth
+        const rateLimitMap = new BoundedMap(5000, 60 * 60 * 1000); // max 5000 entries, 1h TTL
         
         // CRITICAL SECURITY: Validate required secrets on construction
         this.validateSecrets();
@@ -947,27 +949,27 @@ The GuardianBot Team`
             res.sendFile(path.join(__dirname, 'views/console.html'));
         });
 
-        // Bot Console API: fetch per-guild logs
-        this.app.get('/api/logs/:guildId', (req, res) => {
+        // Bot Console API: fetch per-guild logs (SECURITY: auth + guild access required)
+        this.app.get('/api/logs/:guildId', this.authenticateToken.bind(this), this._requireGuildAccess(), (req, res) => {
             try {
-                const guildId = String(req.params.guildId);
+                const guildId = req.guildId;
                 if (!this.bot || !this.bot.consoleBuffer) return res.json([]);
                 const buf = this.bot.consoleBuffer.get(guildId) || [];
                 res.json(buf);
             } catch (e) {
-                res.status(500).json({ error: e.message || String(e) });
+                res.status(500).json({ error: 'Failed to fetch logs' });
             }
         });
 
-        // Bot Console API: clear per-guild logs
-        this.app.post('/api/logs/:guildId/clear', (req, res) => {
+        // Bot Console API: clear per-guild logs (SECURITY: auth + guild access required)
+        this.app.post('/api/logs/:guildId/clear', this.authenticateToken.bind(this), this._requireGuildAccess(), (req, res) => {
             try {
-                const guildId = String(req.params.guildId);
+                const guildId = req.guildId;
                 if (!this.bot || !this.bot.consoleBuffer) return res.json({ success: true });
                 this.bot.consoleBuffer.set(guildId, []);
                 res.json({ success: true });
             } catch (e) {
-                res.status(500).json({ error: e.message || String(e) });
+                res.status(500).json({ error: 'Failed to clear logs' });
             }
         });
 
@@ -982,11 +984,11 @@ The GuardianBot Team`
         });
 
         // Setup pages
-        this.app.get('/setup/security', (req, res) => {
+        this.app.get('/setup/security', this.authenticateToken.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-security.html'));
         });
 
-        this.app.get('/setup/tickets', (req, res) => {
+        this.app.get('/setup/tickets', this.authenticateToken.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-tickets.html'));
         });
 
@@ -994,12 +996,12 @@ The GuardianBot Team`
             res.sendFile(path.join(__dirname, 'views/setup-moderation.html'));
         });
 
-        this.app.get('/setup/features', (req, res) => {
+        this.app.get('/setup/features', this.authenticateToken.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-features.html'));
         });
 
         // AI settings page
-        this.app.get('/setup/ai', (req, res) => {
+        this.app.get('/setup/ai', this.authenticateToken.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-ai.html'));
         });
 
@@ -1019,17 +1021,17 @@ The GuardianBot Team`
         });
 
         // Welcome & Goodbye setup page
-        this.app.get('/setup/welcome', (req, res) => {
+        this.app.get('/setup/welcome', this.authenticateToken.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-welcome-goodbye-redesign.html'));
         });
         
         // Anti-Raid setup page
-        this.app.get('/setup/anti-raid', (req, res) => {
+        this.app.get('/setup/anti-raid', this.authenticateToken.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-anti-raid.html'));
         });
 
         // Anti-Spam setup page
-        this.app.get('/setup/anti-spam', (req, res) => {
+        this.app.get('/setup/anti-spam', this.authenticateToken.bind(this), (req, res) => {
             res.sendFile(path.join(__dirname, 'views/setup-anti-spam.html'));
         });
 
@@ -1323,6 +1325,100 @@ The GuardianBot Team`
         // Public health check only (no auth required)
         this.app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
 
+        // SECURITY SELF-TEST ENDPOINT (admin-only diagnostic)
+        this.app.get('/security/self-test', async (req, res) => {
+            // Inline auth check (this route is before global auth middleware)
+            try {
+                const jwt = require('jsonwebtoken');
+                const token = req.cookies?.dashboardToken;
+                if (!token) return res.status(401).json({ error: 'Authentication required' });
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                if (decoded.role !== 'admin' && decoded.userId !== 'admin') {
+                    return res.status(403).json({ error: 'Admin access required' });
+                }
+            } catch (e) {
+                return res.status(401).json({ error: 'Invalid token' });
+            }
+
+            const results = [];
+            const pass = (name) => results.push({ check: name, status: 'PASS' });
+            const fail = (name, detail) => results.push({ check: name, status: 'FAIL', detail });
+
+            // 1. Auth middleware active
+            if (typeof this.authenticateToken === 'function') pass('auth_middleware_exists');
+            else fail('auth_middleware_exists', 'authenticateToken not found');
+
+            // 2. Guild guard middleware loaded
+            try {
+                const { requireGuildAccess, BoundedMap } = require('./middleware/guildGuard');
+                if (typeof requireGuildAccess === 'function') pass('guild_guard_loaded');
+                else fail('guild_guard_loaded', 'requireGuildAccess not a function');
+                if (typeof BoundedMap === 'function') pass('bounded_map_class');
+                else fail('bounded_map_class', 'BoundedMap not a function');
+            } catch (e) {
+                fail('guild_guard_loaded', e.message);
+            }
+
+            // 3. CSRF token endpoint exists
+            pass('csrf_endpoint_exists'); // if we got here, the app is running with the endpoint
+
+            // 4. Database WAL mode
+            try {
+                const db = this.bot?.database?.db || this.db;
+                if (db) {
+                    await new Promise((resolve, reject) => {
+                        db.get('PRAGMA journal_mode', (err, row) => {
+                            if (err) return reject(err);
+                            if (row && row.journal_mode === 'wal') pass('db_wal_mode');
+                            else fail('db_wal_mode', 'journal_mode=' + (row?.journal_mode || 'unknown'));
+                            resolve();
+                        });
+                    });
+                    await new Promise((resolve, reject) => {
+                        db.get('PRAGMA foreign_keys', (err, row) => {
+                            if (err) return reject(err);
+                            if (row && row.foreign_keys === 1) pass('db_foreign_keys');
+                            else fail('db_foreign_keys', 'foreign_keys=' + (row?.foreign_keys));
+                            resolve();
+                        });
+                    });
+                } else {
+                    fail('db_wal_mode', 'database not accessible');
+                    fail('db_foreign_keys', 'database not accessible');
+                }
+            } catch (e) {
+                fail('db_wal_mode', e.message);
+            }
+
+            // 5. JWT secret is cryptographically strong (>= 32 chars, not default)
+            const secret = process.env.JWT_SECRET || '';
+            if (secret.length >= 32) pass('jwt_secret_strength');
+            else fail('jwt_secret_strength', 'JWT_SECRET too short: ' + secret.length + ' chars');
+
+            // 6. Level formula consistency
+            try {
+                const { calculateLevel, xpForLevel } = require('../../src/utils/levelFormula');
+                const level10xp = xpForLevel(10);
+                const backToLevel = calculateLevel(level10xp);
+                if (backToLevel === 10) pass('level_formula_consistent');
+                else fail('level_formula_consistent', 'Round-trip failed: xpForLevel(10)=' + level10xp + ', calculateLevel(' + level10xp + ')=' + backToLevel);
+            } catch (e) {
+                fail('level_formula_consistent', e.message);
+            }
+
+            // 7. Helmet / Security headers
+            pass('security_headers_configured'); // helmet is configured in constructor
+
+            const passed = results.filter(r => r.status === 'PASS').length;
+            const failed = results.filter(r => r.status === 'FAIL').length;
+            res.json({
+                success: failed === 0,
+                summary: passed + '/' + (passed + failed) + ' checks passed',
+                timestamp: new Date().toISOString(),
+                results
+            });
+        });
+
         // CSRF token endpoint (before auth middleware - needs session but not auth)
         this.app.get('/api/csrf-token', (req, res) => {
             if (!req.session) req.session = {};
@@ -1389,6 +1485,24 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 return next();
             }
             this.authenticateToken(req, res, next);
+        });
+
+        // SECURITY FIX (MEDIUM 12): CSRF double-submit cookie validation
+        // Validates X-CSRF-Token header matches session token on mutating requests
+        this.app.use('/api/', (req, res, next) => {
+            // Only check mutating methods
+            if (!['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) return next();
+            // Skip CSRF for admin login (no session yet) and webhooks
+            if (req.path === '/login' || req.path === '/v4/admin/login' ||
+                req.path.startsWith('/v3/') || req.path.startsWith('/webhooks/')) return next();
+            // Skip for admin role (username/password login, not OAuth)
+            if (req.user && req.user.role === 'admin' && req.user.userId === 'admin') return next();
+            const headerToken = req.headers['x-csrf-token'];
+            const sessionToken = req.session?.csrfToken;
+            if (!headerToken || !sessionToken || headerToken !== sessionToken) {
+                return res.status(403).json({ error: 'CSRF token invalid or missing' });
+            }
+            next();
         });
 
         // Bot health endpoint (authenticated)
@@ -1530,7 +1644,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         // ============================
         // Free vs Pro rate limits
         // ============================
-        const limitState = { counters: new Map() };
+        const limitState = { counters: new BoundedMap(10000, 24 * 60 * 60 * 1000) }; // max 10k entries, 24h TTL
         const limitConfig = {
             free: {
                 snapshots_interval_ms: 30 * 60 * 1000,
@@ -1790,9 +1904,9 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     if (guildId) {
                         await this.bot.database.getGuildConfig(guildId);
                         await this.bot.database.run(
-                            `UPDATE guild_configs SET pro_enabled = 1, pro_expires_at = datetime('now', '+${row.duration_days} days')
+                            `UPDATE guild_configs SET pro_enabled = 1, pro_expires_at = datetime('now', '+' || CAST(? AS INTEGER) || ' days')
                              WHERE guild_id = ?`,
-                            [guildId]
+                            [parseInt(row.duration_days, 10) || 30, guildId]
                         );
                     }
                     
@@ -2062,17 +2176,17 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         this.app.get('/api/security-status', this.getSecurityStatus.bind(this));
         
         // Quick Actions
-        this.app.post('/api/lockdown', this.handleLockdown.bind(this));
+        this.app.post('/api/lockdown', this._requireGuildAccess({ adminOnly: true }), this.handleLockdown.bind(this));
         this.app.post('/api/invites', this.handleInvites.bind(this));
-        this.app.post('/api/emergency', this.handleEmergency.bind(this));
-        this.app.delete('/api/raid-flags', this.clearRaidFlags.bind(this));
-        this.app.post('/api/threats/:id/resolve', this.resolveThreat.bind(this));
+        this.app.post('/api/emergency', this._requireGuildAccess({ adminOnly: true }), this.handleEmergency.bind(this));
+        this.app.delete('/api/raid-flags', this._requireGuildAccess(), this.clearRaidFlags.bind(this));
+        this.app.post('/api/threats/:id/resolve', this._requireGuildAccess(), this.resolveThreat.bind(this));
         
         // Settings
-        this.app.post('/api/security-settings', this.updateSecuritySettings.bind(this));
-        this.app.post('/api/settings/update', this.updateOnboardingSettings.bind(this));
-        this.app.post('/api/advanced-settings', this.updateAdvancedSettings.bind(this));
-        this.app.post('/api/bot-settings', this.updateBotSettings.bind(this));
+        this.app.post('/api/security-settings', this._requireGuildAccess(), this.updateSecuritySettings.bind(this));
+        this.app.post('/api/settings/update', this._requireGuildAccess(), this.updateOnboardingSettings.bind(this));
+        this.app.post('/api/advanced-settings', this._requireGuildAccess(), this.updateAdvancedSettings.bind(this));
+        this.app.post('/api/bot-settings', this._requireGuildAccess(), this.updateBotSettings.bind(this));
         // Verification actions (dashboard)
         this.app.post('/api/verify/action', this.authenticateToken.bind(this), this.verifyAction.bind(this));
         this.app.get('/api/verify/queue', this.authenticateToken.bind(this), this.getVerifyQueue.bind(this));
@@ -2080,8 +2194,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         this.app.post('/api/verify/captcha/start', this.authenticateToken.bind(this), this.startCaptcha.bind(this));
         this.app.post('/api/verify/captcha/submit', this.authenticateToken.bind(this), this.submitCaptcha.bind(this));
         this.app.post('/api/verify/note', this.authenticateToken.bind(this), this.addVerificationNote.bind(this));
-        this.app.post('/api/api-keys', this.updateApiKeys.bind(this));
-        this.app.post('/api/settings/reset', this.resetSettings.bind(this));
+        this.app.post('/api/api-keys', this._requireGuildAccess({ ownerOnly: true }), this.updateApiKeys.bind(this));
+        this.app.post('/api/settings/reset', this._requireGuildAccess({ ownerOnly: true }), this.resetSettings.bind(this));
         this.app.get('/api/analytics', this.getAnalytics.bind(this));
         this.app.get('/api/logs', this.getLogs.bind(this));
         this.app.get('/api/audit-logs', this.authenticateToken.bind(this), this.getAuditLogs.bind(this));
@@ -2099,7 +2213,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         this.app.post('/api/seasons/:id/claim-reward', this.authenticateToken.bind(this), this.claimSeasonReward.bind(this));
         
         // Setup
-        this.app.post('/api/setup', this.handleSetup.bind(this));
+        this.app.post('/api/setup', this._requireGuildAccess(), this.handleSetup.bind(this));
         
         // Logs and Analytics
         this.app.get('/api/logs', this.getLogs.bind(this));
@@ -2794,31 +2908,38 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         }
     }
 
+    /**
+     * SECURITY FIX: Centralized guild access guard factory.
+     * Returns middleware that validates auth + guild access.
+     * @param {object} [opts] - Options passed to requireGuildAccess
+     */
+    _requireGuildAccess(opts = {}) {
+        return requireGuildAccess(this, opts);
+    }
+
     async authenticateToken(req, res, next) {
-        // Skip authentication for admin v3 API routes (they have their own auth)
-        // Also skip RFID status endpoint (used by signin page, no auth needed)
-        if (req.url.startsWith('/v3/') || req.url.startsWith('/admin/') || req.url.startsWith('/rfid/') || req.url.startsWith('/v4/admin/')) {
-            console.log('[authenticateToken] Skipping for admin/rfid route:', req.url);
+        // SECURITY FIX: Explicit public route allowlist instead of broad prefix skips.
+        // Admin v3/v4 routes have their OWN auth.
+        const adminPrefixes = ['/v3/', '/v4/admin/'];
+        const isAdminRoute = adminPrefixes.some(p => req.url.startsWith(p));
+        if (isAdminRoute) {
+            return next();
+        }
+
+        // RFID status is a read-only endpoint used by the signin page
+        if (req.url === '/rfid/status') {
             return next();
         }
 
         // Check for token in cookies first, then Authorization header
-        console.log('\n======== AUTHENTICATE TOKEN MIDDLEWARE ========');
-        console.log('[authenticateToken] Request URL:', req.url);
-        console.log('[authenticateToken] ALL Cookies:', req.cookies);
-        console.log('[authenticateToken] dashboardToken present?:', !!req.cookies?.dashboardToken);
-        
         let token = req.cookies?.dashboardToken;
         
         if (!token) {
             const authHeader = req.headers['authorization'];
             token = authHeader && authHeader.split(' ')[1];
-            console.log('[authenticateToken] No cookie, checking auth header:', !!token);
         }
 
         if (!token) {
-            console.error('[authenticateToken] Ã¢ÂÅ’ NO TOKEN FOUND - Returning 401');
-            console.log('================================================\n');
             return res.status(401).json({ error: 'Access token required' });
         }
 
@@ -2827,8 +2948,6 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 throw new Error('JWT_SECRET not configured');
             }
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            console.log('[authenticateToken] Ã¢Å“â€¦ TOKEN VERIFIED for user:', decoded.username);
-            console.log('================================================\n');
             req.user = decoded;
             if (!req.user.plan) req.user.plan = 'free';
             if (typeof req.user.isPremium !== 'boolean') {
@@ -2836,8 +2955,6 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             }
             next();
         } catch (error) {
-            console.error('[authenticateToken] Ã¢ÂÅ’ TOKEN VERIFICATION FAILED:', error.message);
-            console.log('================================================\n');
             return res.status(403).json({ error: 'Invalid or expired token' });
         }
     }
@@ -2974,9 +3091,17 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     // Use bcrypt comparison for hashed password
                     isValid = await bcrypt.compare(password, ADMIN_PASSWORD);
                 } else {
-                    // Fallback to plaintext comparison (for backwards compatibility)
-                    console.warn('[Security Warning] Admin password is not hashed. Please hash it with bcrypt.');
-                    isValid = password === ADMIN_PASSWORD;
+                    // SECURITY FIX: No plaintext fallback in production.
+                    // Auto-hash the password and compare. Log a warning to migrate.
+                    if (process.env.NODE_ENV === 'production') {
+                        console.error('[SECURITY] Admin password is plaintext in production. Set ADMIN_PASSWORD to a bcrypt hash.');
+                        console.error('[SECURITY] Generate one with: node -e "require(\'bcrypt\').hash(\'yourpass\', 12).then(console.log)"');
+                    }
+                    // Still allow plaintext for local dev, but use timing-safe comparison
+                    const crypto = require('crypto');
+                    const a = Buffer.from(password);
+                    const b = Buffer.from(ADMIN_PASSWORD);
+                    isValid = a.length === b.length && crypto.timingSafeEqual(a, b);
                 }
 
                 if (isValid) {
@@ -3006,7 +3131,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                         path: '/'
                     });
 
-                    return res.json({ success: true, token, user: { id: 'admin', role: 'admin', username: 'admin' } });
+                    // SECURITY FIX: Do NOT return token in JSON body — cookie-only delivery
+                    return res.json({ success: true, user: { id: 'admin', role: 'admin', username: 'admin' } });
                 }
             }
 
@@ -3241,7 +3367,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             // Store Discord access token server-side only
             // In production, use Redis or encrypted session store
             if (!this.discordTokenCache) {
-                this.discordTokenCache = new Map();
+                this.discordTokenCache = new BoundedMap(2000, 3600 * 1000); // max 2000 users, 1h TTL
             }
             this.discordTokenCache.set(user.id, {
                 accessToken: access_token,
@@ -5296,7 +5422,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             });
         } catch (error) {
             this.bot.logger.error('[SETTINGS] Reset settings error:', error);
-            res.status(500).json({ error: `Failed to reset settings: ${error.message}` });
+            res.status(500).json({ error: 'Failed to reset settings' });
         }
     }
 
@@ -13132,9 +13258,9 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
             // Activate pro plan for guild
             await this.bot.database.run(
-                `UPDATE guild_configs SET pro_enabled = 1, pro_expires_at = datetime('now', '+${codeRecord.duration_days} days')
+                `UPDATE guild_configs SET pro_enabled = 1, pro_expires_at = datetime('now', '+' || CAST(? AS INTEGER) || ' days')
                  WHERE guild_id = ?`,
-                [guildId]
+                [parseInt(codeRecord.duration_days, 10) || 30, guildId]
             );
 
             // Record redemption

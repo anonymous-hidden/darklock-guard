@@ -33,6 +33,13 @@ class Database {
                     reject(err);
                 } else {
                     console.log('📊 Connected to SQLite database at:', this.dbPath);
+                    // SECURITY FIX: Enable WAL mode for concurrent read/write safety
+                    await new Promise((r, j) => this.db.run('PRAGMA journal_mode=WAL', e => e ? j(e) : r()));
+                    // SECURITY FIX: Set busy timeout to avoid SQLITE_BUSY under load
+                    await new Promise((r, j) => this.db.run('PRAGMA busy_timeout=5000', e => e ? j(e) : r()));
+                    // SECURITY FIX: Enforce foreign key constraints
+                    await new Promise((r, j) => this.db.run('PRAGMA foreign_keys=ON', e => e ? j(e) : r()));
+                    console.log('🔒 Database PRAGMAs set: WAL mode, busy_timeout=5000, foreign_keys=ON');
                     await this.createTables();
                     // Run versioned migrations (tracked in schema_migrations table)
                     await this.runVersionedMigrations();
@@ -948,6 +955,13 @@ class Database {
                 handled BOOLEAN DEFAULT 0,
                 lockdown_activated BOOLEAN DEFAULT 0,
                 user_ids TEXT
+            )`,
+
+            // SECURITY FIX: Permission snapshot storage for safe lockdown/unlock
+            `CREATE TABLE IF NOT EXISTS lockdown_snapshots (
+                guild_id TEXT PRIMARY KEY,
+                snapshot_data TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )`,
 
             // Spam detection
@@ -2725,11 +2739,37 @@ class Database {
     }
 
     async createOrUpdateUserRecord(guildId, userId, userData) {
+        // SECURITY FIX: Column name allowlist to prevent SQL injection via object keys
+        const ALLOWED_COLUMNS = new Set([
+            'username', 'display_name', 'avatar', 'discriminator',
+            'trust_score', 'risk_level', 'flags', 'notes',
+            'verification_status', 'verified_at', 'verified_by',
+            'join_count', 'last_join', 'last_leave',
+            'total_messages', 'total_warnings', 'total_kicks', 'total_bans',
+            'is_blocked', 'blocked_reason', 'blocked_at',
+            'behavior_score', 'alt_account_of', 'metadata'
+        ]);
+
+        // Filter userData to only allowed columns
+        const safeData = {};
+        for (const [key, value] of Object.entries(userData)) {
+            if (ALLOWED_COLUMNS.has(key)) {
+                safeData[key] = value;
+            } else {
+                console.warn(`[Security] Rejected unknown column in createOrUpdateUserRecord: ${key}`);
+            }
+        }
+
+        if (Object.keys(safeData).length === 0) {
+            console.warn('[Security] No valid columns in createOrUpdateUserRecord');
+            return null;
+        }
+
         const existing = await this.getUserRecord(guildId, userId);
         
         if (existing) {
-            const setClause = Object.keys(userData).map(key => `${key} = ?`).join(', ');
-            const values = [...Object.values(userData), guildId, userId];
+            const setClause = Object.keys(safeData).map(key => `${key} = ?`).join(', ');
+            const values = [...Object.values(safeData), guildId, userId];
             
             return this.run(`
                 UPDATE user_records 
@@ -2737,9 +2777,9 @@ class Database {
                 WHERE guild_id = ? AND user_id = ?
             `, values);
         } else {
-            const columns = ['guild_id', 'user_id', ...Object.keys(userData)];
+            const columns = ['guild_id', 'user_id', ...Object.keys(safeData)];
             const placeholders = columns.map(() => '?').join(', ');
-            const values = [guildId, userId, ...Object.values(userData)];
+            const values = [guildId, userId, ...Object.values(safeData)];
             
             return this.run(`
                 INSERT INTO user_records (${columns.join(', ')})
@@ -2831,6 +2871,8 @@ class Database {
     }
 
     async getActionStats(guildId, days = 7) {
+        // SECURITY FIX: Parameterize 'days' instead of string interpolation
+        const safeDays = Math.max(1, Math.min(365, parseInt(days, 10) || 7));
         return this.all(`
             SELECT 
                 action_category,
@@ -2838,10 +2880,10 @@ class Database {
                 COUNT(*) as count,
                 SUM(CASE WHEN undone = 1 THEN 1 ELSE 0 END) as undone_count
             FROM action_logs
-            WHERE guild_id = ? AND created_at > datetime('now', '-${days} days')
+            WHERE guild_id = ? AND created_at > datetime('now', '-' || CAST(? AS INTEGER) || ' days')
             GROUP BY action_category, action_type
             ORDER BY count DESC
-        `, [guildId]);
+        `, [guildId, safeDays]);
     }
 
     async logEvent(eventData) {
@@ -2915,49 +2957,55 @@ class Database {
     }
 
     async transferCoins(guildId, fromUserId, toUserId, amount) {
-        try {
-            // Check sender balance
-            const senderBalance = await this.getCoins(guildId, fromUserId);
-            if (senderBalance < amount) {
-                return { success: false, error: 'Insufficient coins' };
-            }
+        // SECURITY FIX: Wrap entire transfer in a transaction to prevent race conditions.
+        // Balance check + debit + credit + log are now atomic.
+        return new Promise((resolve) => {
+            this.db.serialize(() => {
+                this.db.run('BEGIN IMMEDIATE TRANSACTION', (beginErr) => {
+                    if (beginErr) {
+                        console.error('Error starting coin transfer transaction:', beginErr);
+                        return resolve({ success: false, error: 'Transfer failed - try again' });
+                    }
 
-            // Initialize recipient if needed
-            await this.run(
-                'INSERT OR IGNORE INTO coins (guild_id, user_id, balance) VALUES (?, ?, 0)',
-                [guildId, toUserId]
-            );
+                    // Check balance inside transaction (no TOCTOU race)
+                    this.db.get(
+                        'SELECT balance FROM coins WHERE guild_id = ? AND user_id = ?',
+                        [guildId, fromUserId],
+                        (err, row) => {
+                            const balance = row ? row.balance : 0;
+                            if (balance < amount) {
+                                this.db.run('ROLLBACK');
+                                return resolve({ success: false, error: 'Insufficient coins' });
+                            }
 
-            // Atomic transfer (deduct from sender)
-            await this.run(
-                'UPDATE coins SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ? AND user_id = ?',
-                [amount, guildId, fromUserId]
-            );
+                            // Init recipient
+                            this.db.run('INSERT OR IGNORE INTO coins (guild_id, user_id, balance) VALUES (?, ?, 0)',
+                                [guildId, toUserId]);
+                            // Debit sender
+                            this.db.run('UPDATE coins SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ? AND user_id = ?',
+                                [amount, guildId, fromUserId]);
+                            // Credit recipient
+                            this.db.run('UPDATE coins SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ? AND user_id = ?',
+                                [amount, guildId, toUserId]);
+                            // Log
+                            this.db.run('INSERT INTO coin_transactions (guild_id, from_user_id, to_user_id, amount, transaction_type) VALUES (?, ?, ?, ?, ?)',
+                                [guildId, fromUserId, toUserId, amount, 'TRANSFER']);
 
-            // Add to recipient
-            await this.run(
-                'UPDATE coins SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ? AND user_id = ?',
-                [amount, guildId, toUserId]
-            );
-
-            // Log transaction
-            await this.run(
-                'INSERT INTO coin_transactions (guild_id, from_user_id, to_user_id, amount, transaction_type) VALUES (?, ?, ?, ?, ?)',
-                [guildId, fromUserId, toUserId, amount, 'TRANSFER']
-            );
-
-            const newSenderBalance = await this.getCoins(guildId, fromUserId);
-            const newRecipientBalance = await this.getCoins(guildId, toUserId);
-
-            return {
-                success: true,
-                senderBalance: newSenderBalance,
-                recipientBalance: newRecipientBalance
-            };
-        } catch (error) {
-            console.error('Error transferring coins:', error);
-            return { success: false, error: error.message };
-        }
+                            this.db.run('COMMIT', async (commitErr) => {
+                                if (commitErr) {
+                                    this.db.run('ROLLBACK');
+                                    console.error('Error committing coin transfer:', commitErr);
+                                    return resolve({ success: false, error: 'Transfer failed - try again' });
+                                }
+                                const newSender = await this.getCoins(guildId, fromUserId);
+                                const newRecipient = await this.getCoins(guildId, toUserId);
+                                resolve({ success: true, senderBalance: newSender, recipientBalance: newRecipient });
+                            });
+                        }
+                    );
+                });
+            });
+        });
     }
 
     async getCoinLeaderboard(guildId, limit = 10) {
