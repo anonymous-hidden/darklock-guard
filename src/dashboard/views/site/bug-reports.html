@@ -291,28 +291,31 @@
             errorMsg.classList.remove('show');
             
             try {
+                const type   = document.getElementById('reportType').value;
+                const email  = document.getElementById('contactEmail').value;
                 const formData = {
-                    type: document.getElementById('reportType').value,
-                    severity: document.getElementById('severity').value,
+                    source: 'site',
+                    reporter: email || 'Anonymous',
+                    email: email || null,
                     title: document.getElementById('title').value,
                     description: document.getElementById('description').value,
+                    severity: document.getElementById('severity').value,
                     environment: document.getElementById('environment').value,
-                    email: document.getElementById('contactEmail').value,
-                    timestamp: new Date().toISOString(),
-                    userAgent: navigator.userAgent
+                    logs: `Type: ${type} | UA: ${navigator.userAgent} | At: ${new Date().toISOString()}`,
+                    app_version: null
                 };
                 
-                const response = await fetch('/api/bug-report', {
+                const response = await fetch('/api/v4/admin/bug-reports/submit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData)
                 });
                 
-                if (response.ok) {
+                const data = await response.json();
+                if (response.ok && data.success) {
                     this.style.display = 'none';
                     successMsg.classList.add('show');
                 } else {
-                    const data = await response.json();
                     throw new Error(data.error || 'Failed to submit report');
                 }
             } catch (error) {

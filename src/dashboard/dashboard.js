@@ -1065,67 +1065,44 @@ The GuardianBot Team`
             res.sendFile(path.join(__dirname, 'views/site/sitemap.html'));
         });
 
-        // Bug report submission endpoint
-        this.app.post('/api/bug-report', express.json(), async (req, res) => {
+        // Bug report submission endpoints (public — no auth required)
+        // Shared handler writing into admin-v4's bug_reports_v2 table
+        const _submitBugReportV2 = async (req, res) => {
             try {
-                const { type, severity, title, description, environment, email, timestamp, userAgent } = req.body;
-                
-                if (!type || !severity || !title || !description) {
-                    return res.status(400).json({ error: 'Missing required fields' });
+                const adminQueries = require('../../darklock/admin-v4/db/queries');
+                const { type, source, reporter, email, title, description, severity,
+                        app_version, environment, logs, timestamp, userAgent } = req.body;
+
+                if (!title || !description) {
+                    return res.status(400).json({ success: false, error: 'Title and description are required' });
                 }
 
-                const bugReport = {
-                    id: Date.now(),
-                    type,
-                    severity,
+                const report = await adminQueries.createBugReport({
+                    source: source || 'site',
+                    reporter: reporter || email || 'Anonymous',
+                    email: email || null,
                     title,
                     description,
-                    environment,
-                    email,
-                    timestamp: timestamp || new Date().toISOString(),
-                    userAgent,
-                    status: 'open'
-                };
+                    severity: severity || 'medium',
+                    app_version: app_version || null,
+                    environment: environment || null,
+                    // attach legacy fields (type, userAgent, timestamp) into logs for reference
+                    logs: logs || `Type: ${type || 'bug'} | UA: ${userAgent || req.headers['user-agent'] || ''} | At: ${timestamp || new Date().toISOString()}`,
+                    user_agent: userAgent || req.headers['user-agent'] || null,
+                    ip_address: req.ip || req.connection?.remoteAddress || null,
+                });
 
-                // Store in database using Darklock database module
-                const darklockDb = require('../../darklock/utils/database');
-                
-                await darklockDb.run(`CREATE TABLE IF NOT EXISTS bug_reports (
-                    id INTEGER PRIMARY KEY,
-                    type TEXT NOT NULL,
-                    severity TEXT NOT NULL,
-                    title TEXT NOT NULL,
-                    description TEXT NOT NULL,
-                    environment TEXT,
-                    email TEXT,
-                    timestamp TEXT NOT NULL,
-                    userAgent TEXT,
-                    status TEXT DEFAULT 'open'
-                )`);
-
-                await darklockDb.run(
-                    `INSERT INTO bug_reports (id, type, severity, title, description, environment, email, timestamp, userAgent, status)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [
-                        bugReport.id,
-                        bugReport.type,
-                        bugReport.severity,
-                        bugReport.title,
-                        bugReport.description,
-                        bugReport.environment,
-                        bugReport.email,
-                        bugReport.timestamp,
-                        bugReport.userAgent,
-                        bugReport.status
-                    ]
-                );
-
-                res.json({ success: true, id: bugReport.id });
+                res.json({ success: true, report });
             } catch (error) {
-                console.error('Bug report submission error:', error);
-                res.status(500).json({ error: 'Failed to submit bug report' });
+                console.error('[Dashboard] Bug report submission error:', error);
+                res.status(500).json({ success: false, error: 'Failed to submit bug report' });
             }
-        });
+        };
+
+        // Legacy path (kept for any existing integrations)
+        this.app.post('/api/bug-report', express.json(), _submitBugReportV2);
+        // New canonical public path (same as platform server, no auth required)
+        this.app.post('/api/v4/admin/bug-reports/submit', express.json(), _submitBugReportV2);
 
         // Admin: Get bug reports
         this.app.get('/api/admin/bug-reports', this.authenticateToken.bind(this), async (req, res) => {
@@ -1384,7 +1361,10 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         // Apply auth middleware to all /api/* routes (except /api/current-theme, /api/v4/admin/theme/css and /api/csrf-token)
         this.app.use('/api/', (req, res, next) => {
             // Skip auth for public endpoints
-            if (req.path === '/current-theme' || req.path === '/csrf-token' || req.path === '/v4/admin/theme/css') {
+            if (req.path === '/current-theme' || req.path === '/csrf-token' ||
+                req.path === '/v4/admin/theme/css' ||
+                req.path === '/bug-report' ||             // legacy public submit
+                req.path === '/v4/admin/bug-reports/submit') { // new public submit
                 return next();
             }
             this.authenticateToken(req, res, next);
