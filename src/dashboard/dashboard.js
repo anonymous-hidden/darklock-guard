@@ -911,6 +911,27 @@ The GuardianBot Team`
         this.app.post('/api/web-verify/submit', this.handleWebVerifySubmit.bind(this));
         this.app.post('/api/web-verify/refresh', this.handleWebVerifyRefresh.bind(this));
 
+        // XP Leaderboard proxy - forwards to internal XP dashboard (port 3007) so users get a public URL
+        const _proxyToXP = (req, res) => {
+            const http = require('http');
+            const xpPort = parseInt(process.env.XP_DASHBOARD_PORT || '3007');
+            const options = {
+                hostname: '127.0.0.1',
+                port: xpPort,
+                path: req.url,
+                method: req.method,
+                headers: { ...req.headers, host: `127.0.0.1:${xpPort}` }
+            };
+            const proxy = http.request(options, (proxyRes) => {
+                res.writeHead(proxyRes.statusCode, proxyRes.headers);
+                proxyRes.pipe(res, { end: true });
+            });
+            proxy.on('error', () => res.status(502).send('Leaderboard service temporarily unavailable'));
+            req.pipe(proxy, { end: true });
+        };
+        this.app.get('/leaderboard/:guildId', _proxyToXP);
+        this.app.get('/api/leaderboard/:guildId', _proxyToXP);
+
         // Main dashboard (authenticated UI)
         this.app.get('/dashboard', (req, res) => {
             console.log('\n========== /dashboard ROUTE HIT ==========');
