@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { invoke } from '@tauri-apps/api/core';
 import { Layout } from './components/Layout';
 import { ServiceProvider } from './state/service';
 import StatusPage from './pages/StatusPage';
@@ -21,35 +20,13 @@ import {
 } from './utils/strictMode';
 
 /**
- * First-run detection.
- * Checks: 1) localStorage flag, 2) vault existence via Tauri command.
- * Returns true if onboarding is needed.
+ * First-run detection — synchronous localStorage read so it re-evaluates
+ * every render (including after onboarding writes the completion flags).
  */
-function useNeedsOnboarding(): { loading: boolean; needsOnboarding: boolean } {
-  const [loading, setLoading] = useState(true);
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
-
-  useEffect(() => {
-    const check = async () => {
-      // Require both a stored auth token AND completed onboarding flag.
-      // If either is missing the user must log in / complete setup.
-      const authToken = localStorage.getItem('darklock_auth_token');
-      const onboardingComplete = localStorage.getItem('darklock_onboarding_complete') === 'true';
-
-      if (authToken && onboardingComplete) {
-        setNeedsOnboarding(false);
-        setLoading(false);
-        return;
-      }
-
-      // No valid session — show login / onboarding
-      setNeedsOnboarding(true);
-      setLoading(false);
-    };
-    check();
-  }, []);
-
-  return { loading, needsOnboarding };
+function isOnboardingComplete(): boolean {
+  const authToken = localStorage.getItem('darklock_auth_token');
+  const onboardingComplete = localStorage.getItem('darklock_onboarding_complete') === 'true';
+  return !!(authToken && onboardingComplete);
 }
 
 /** Loading screen while checking first-run state */
@@ -64,18 +41,16 @@ const StartupLoader: React.FC = () => (
 
 /** Route guard that redirects to /setup if onboarding is needed */
 const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { loading, needsOnboarding } = useNeedsOnboarding();
+  const complete = isOnboardingComplete();
   const location = useLocation();
 
-  if (loading) return <StartupLoader />;
-
   // If onboarding is needed and user isn't on /setup, redirect
-  if (needsOnboarding && location.pathname !== '/setup') {
+  if (!complete && location.pathname !== '/setup') {
     return <Navigate to="/setup" replace />;
   }
 
   // If onboarding is done and user navigates to /setup, redirect to dashboard
-  if (!needsOnboarding && location.pathname === '/setup') {
+  if (complete && location.pathname === '/setup') {
     return <Navigate to="/" replace />;
   }
 
