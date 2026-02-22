@@ -40,7 +40,7 @@ except ImportError:
     SERIAL_AVAILABLE = False
 
 # ─── Configuration ───────────────────────────────────────────────
-ELEGOO_PORT = os.environ.get("ELEGOO_PORT", "/dev/ttyACM0")
+ELEGOO_PORT = os.environ.get("ELEGOO_PORT", "/dev/elegoo")
 BAUD_RATE = 115200
 STATUS_CHECK_INTERVAL = 2.0
 HEARTBEAT_INTERVAL = 10.0
@@ -49,7 +49,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 DB_PATH = os.path.join(DATA_DIR, "darklock.db")
 STATUS_FILE = os.path.join(DATA_DIR, "bot_status.json")
-BOT_SERVICE = "discord-bot.service"
+BOT_SERVICE = "darklock-bot.service"
 
 
 class HardwareController:
