@@ -3,7 +3,6 @@ node_modules/
 .env.local
 .env.*.local
 config.json
-data/*.db
 logs/*.log
 temp/
 uploads/
@@ -28,11 +27,42 @@ build/
 *.md
 !README.md
 
+# ─── RUNTIME / MUTABLE DATA (never overwrite on deploy) ────────────────────────
+# All SQLite databases and their WAL/SHM companion files
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/*.db.backup
+data/*.backup
+darklock/data/*.db
+darklock/data/*.db-shm
+darklock/data/*.db-wal
+
+# Dynamic JSON data files written by the bot at runtime
+data/*.json
+data/snapshots/
+
+# User session and account data written at runtime
+darklock/data/sessions.json
+darklock/data/users.json
+
+# ─── APP RELEASE BINARIES (uploaded separately, not via git) ───────────────────
+darklock/downloads/*.deb
+darklock/downloads/*.AppImage
+darklock/downloads/*.exe
+darklock/downloads/*.msi
+darklock/downloads/*.tar.gz
+darklock/downloads/*.zip
+darklock/downloads/*.dmg
+darklock/downloads/*.pkg
+
 # Security files (local only)
 SECURITY_INTEGRATION_GUIDE.js
 file-protection/backups/
 file-protection/logs/
-file-protection/config/baseline.json# Build artifacts
+file-protection/config/baseline.json
+
+# Build artifacts
 ainti-tampering-app/tauri-app/src-tauri/target/
 ainti-tampering-app/tauri-app/node_modules/
 guard-v2/target/
