@@ -173,7 +173,7 @@ class WebDashboard {
             return `
             <div class="podium-card ${order} flex flex-col items-center gap-4 px-5 py-8 rounded-2xl relative" style="background:rgba(255,255,255,0.03);border:1px solid ${m.border}30;box-shadow:0 4px 40px ${m.glow};">
                 <div class="absolute -top-5 text-4xl">${m.icon}</div>
-                <div class="relative mt-2">
+                <div class="relative mt-2 mx-auto" style="width:96px;height:96px;">
                     <img src="${entry.avatar}" alt="${this.escapeHtml(entry.username)}" class="w-24 h-24 rounded-full object-cover" style="border:3px solid ${m.color};box-shadow:0 0 24px ${m.glow};">
                     <div class="absolute -bottom-2 -right-2 w-9 h-9 rounded-full flex items-center justify-center text-sm font-black text-black" style="background:${m.color};">${rank}</div>
                 </div>
