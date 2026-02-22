@@ -161,13 +161,25 @@ class DarklockPlatform {
         const allowedOrigins = process.env.CORS_ORIGINS 
             ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
             : (process.env.NODE_ENV === 'production' 
-                ? ['https://darklock.net', 'https://www.darklock.net'] 
+                ? [
+                    'https://darklock.net',
+                    'https://www.darklock.net',
+                    'https://platform.darklock.net',
+                    'https://admin.darklock.net',
+                    'tauri://localhost',       // Tauri production app
+                    'http://tauri.localhost',  // Tauri alternative
+                    'http://localhost:5173',   // Vite dev (tauri dev)
+                    'http://localhost:5174',   // Vite dev alt port (tauri dev)
+                    'http://localhost:1420',   // Tauri default dev port
+                  ]
                 : [
                     'http://localhost:3000', 
                     'http://127.0.0.1:3000',
                     'http://localhost:3002',  // Darklock server itself
                     'http://127.0.0.1:3002',
                     'http://localhost:5173',  // Vite dev server
+                    'http://localhost:5174',  // Vite dev alt port
+                    'http://localhost:1420',  // Tauri default dev port
                     'tauri://localhost',      // Tauri app
                     'http://tauri.localhost'  // Tauri alternative
                   ]);
