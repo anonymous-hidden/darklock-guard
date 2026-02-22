@@ -36,6 +36,12 @@
     }
   },
   "bundle": {
+    "active": true,
+    "targets": "all",
+    "publisher": "Darklock",
+    "copyright": "Copyright © 2025 Darklock",
+    "category": "Utility",
+    "shortDescription": "Bot management and server security guard",
     "icon": [
       "icons/icon.ico",
       "icons/icon.icns",
@@ -43,6 +49,11 @@
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png"
-    ]
+    ],
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    }
   }
 }
