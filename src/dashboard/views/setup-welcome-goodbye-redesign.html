@@ -607,7 +607,7 @@
 
                 // Welcome settings
                 document.getElementById('welcomeEnabled').checked = data.welcome_enabled || false;
-                document.getElementById('welcomeChannel').value = data.welcome_channel_id || '';
+                document.getElementById('welcomeChannel').value = data.welcome_channel_id || data.welcome_channel || '';
                 document.getElementById('welcomeMessage').value = data.welcome_message || '';
                 document.getElementById('welcomeEmbedEnabled').checked = data.welcome_embed_enabled || false;
                 document.getElementById('welcomePingUser').checked = data.welcome_ping_user || false;
@@ -615,7 +615,7 @@
 
                 // Goodbye settings
                 document.getElementById('goodbyeEnabled').checked = data.goodbye_enabled || false;
-                document.getElementById('goodbyeChannel').value = data.goodbye_channel_id || '';
+                document.getElementById('goodbyeChannel').value = data.goodbye_channel_id || data.goodbye_channel || '';
                 document.getElementById('goodbyeMessage').value = data.goodbye_message || '';
                 document.getElementById('goodbyeEmbedEnabled').checked = data.goodbye_embed_enabled || false;
                 document.getElementById('goodbyeDeleteAfter').value = data.goodbye_delete_after || 0;
@@ -636,12 +636,14 @@
                 const settings = {
                     welcome_enabled: document.getElementById('welcomeEnabled').checked,
                     welcome_channel_id: document.getElementById('welcomeChannel').value,
+                    welcome_channel: document.getElementById('welcomeChannel').value,
                     welcome_message: document.getElementById('welcomeMessage').value,
                     welcome_embed_enabled: document.getElementById('welcomeEmbedEnabled').checked,
                     welcome_ping_user: document.getElementById('welcomePingUser').checked,
                     welcome_delete_after: parseInt(document.getElementById('welcomeDeleteAfter').value) || 0,
                     goodbye_enabled: document.getElementById('goodbyeEnabled').checked,
                     goodbye_channel_id: document.getElementById('goodbyeChannel').value,
+                    goodbye_channel: document.getElementById('goodbyeChannel').value,
                     goodbye_message: document.getElementById('goodbyeMessage').value,
                     goodbye_embed_enabled: document.getElementById('goodbyeEmbedEnabled').checked,
                     goodbye_delete_after: parseInt(document.getElementById('goodbyeDeleteAfter').value) || 0

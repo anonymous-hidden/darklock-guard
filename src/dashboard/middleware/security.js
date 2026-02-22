@@ -43,7 +43,7 @@ function createSecurityMiddleware(options = {}) {
         
         const cspDirectives = {
             'default-src': ["'self'"],
-            'script-src': ["'self'", "'unsafe-inline'", "https://js.stripe.com", "https://cdn.jsdelivr.net", "'unsafe-hashes'"],
+            'script-src': ["'self'", "'unsafe-inline'", "https://js.stripe.com", "https://cdn.jsdelivr.net", "https://static.cloudflareinsights.com", "'unsafe-hashes'"],
             'script-src-attr': ["'unsafe-inline'"],
             'frame-src': ["https://js.stripe.com", "https://hooks.stripe.com"],
             'connect-src': ["'self'", "https://api.stripe.com", "https://cdn.jsdelivr.net", wsUrl],

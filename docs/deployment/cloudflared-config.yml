@@ -1,0 +1,21 @@
+# cloudflared tunnel config — darklock-pi5
+# Place this file at: ~/.cloudflared/config.yml  (on the Pi5)
+#
+# Replace TUNNEL_ID below with the actual UUID from:
+#   cloudflared tunnel list
+#   or the Cloudflare dashboard → Zero Trust → Networks → Tunnels
+
+tunnel: TUNNEL_ID
+credentials-file: /home/YOUR_USER/.cloudflared/TUNNEL_ID.json
+
+ingress:
+  # admin.darklock.net → Dashboard (port 3001)
+  - hostname: admin.darklock.net
+    service: http://localhost:3001
+
+  # platform.darklock.net → Darklock server (port 3002)
+  - hostname: platform.darklock.net
+    service: http://localhost:3002
+
+  # Catch-all (required by cloudflared)
+  - service: http_status:404

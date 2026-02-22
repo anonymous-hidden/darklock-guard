@@ -122,6 +122,18 @@ class TicketSystem {
 
     // ------- Creation -------
     async handleCreateButton(interaction) {
+        // Check if ticket system is enabled before showing the modal
+        const cfg = await this.bot.database.get(
+            'SELECT tickets_enabled FROM guild_configs WHERE guild_id = ?',
+            [interaction.guild.id]
+        );
+        if (cfg && !cfg.tickets_enabled) {
+            return interaction.reply({
+                content: '❌ The ticket system is currently disabled. Please contact a server administrator.',
+                ephemeral: true
+            });
+        }
+
         const modal = new ModalBuilder()
             .setCustomId('ticket_create_modal')
             .setTitle('Create a Support Ticket');
@@ -150,6 +162,17 @@ class TicketSystem {
 
     async handleModalSubmit(interaction) {
         await interaction.deferReply({ ephemeral: true });
+
+        // Check if ticket system is enabled
+        const enabledCfg = await this.bot.database.get(
+            'SELECT tickets_enabled FROM guild_configs WHERE guild_id = ?',
+            [interaction.guild.id]
+        );
+        if (enabledCfg && !enabledCfg.tickets_enabled) {
+            return interaction.editReply({
+                content: '❌ The ticket system is currently disabled. Please contact a server administrator.'
+            });
+        }
 
         // Check if server is in lockdown
         if (this.bot.lockdownManager) {
@@ -211,7 +234,7 @@ class TicketSystem {
         });
 
         if (!channel) {
-            return interaction.editReply({ content: '❌ Failed to create ticket channel. Please contact staff.' });
+            return interaction.editReply({ content: '❌ Failed to create ticket channel. The bot may be missing **Manage Channels** permission, or the ticket category is invalid. Please contact staff.' });
         }
 
         await interaction.editReply({ content: `✅ Ticket #${ticketId} created: ${channel}` });
@@ -260,13 +283,57 @@ class TicketSystem {
         }
 
         try {
-            const channel = await guild.channels.create({
-                name: channelName.slice(0, 90),
-                type: ChannelType.GuildText,
-                parent: config.ticket_category_id || null,
-                topic: `Ticket #${ticketId} | ${requester.tag}`,
-                permissionOverwrites: overwrites
-            });
+            // If a category is specified, validate it still exists
+            const parentId = config.ticket_category_id || null;
+            const resolvedParent = parentId ? (guild.channels.cache.get(parentId) ? parentId : null) : null;
+
+            // Build fallback overwrites (user + bot only — no role overwrites)
+            // Used when the bot's role is lower than the staff role in the hierarchy
+            const minimalOverwrites = [
+                { id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
+                { id: requester.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles] },
+                { id: this.bot.client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageChannels] }
+            ];
+
+            let channel;
+            try {
+                channel = await guild.channels.create({
+                    name: channelName.slice(0, 90),
+                    type: ChannelType.GuildText,
+                    parent: resolvedParent,
+                    topic: `Ticket #${ticketId} | ${requester.username ?? requester.tag}`,
+                    permissionOverwrites: overwrites
+                });
+            } catch (permErr) {
+                // Retry without role overwrites if Missing Permissions (bot role hierarchy issue)
+                if (permErr.code === 50013) {
+                    this.bot.logger.warn(`createTicketChannel: Missing Permissions with full overwrites, retrying with minimal overwrites. Ensure the bot's role is above the staff role. (guild: ${guild.id})`);
+                    channel = await guild.channels.create({
+                        name: channelName.slice(0, 90),
+                        type: ChannelType.GuildText,
+                        parent: resolvedParent,
+                        topic: `Ticket #${ticketId} | ${requester.username ?? requester.tag}`,
+                        permissionOverwrites: minimalOverwrites
+                    });
+                    // Try to add role overwrites individually after channel creation
+                    try {
+                        await channel.permissionOverwrites.create(config.ticket_staff_role, {
+                            ViewChannel: true, SendMessages: true, ReadMessageHistory: true, AttachFiles: true, ManageMessages: true
+                        });
+                    } catch (e) {
+                        this.bot.logger.warn(`createTicketChannel: Could not set staff role overwrite (${e.message}). Move bot's role above staff role.`);
+                    }
+                    if (config.ticket_manage_role) {
+                        try {
+                            await channel.permissionOverwrites.create(config.ticket_manage_role, {
+                                ViewChannel: true, SendMessages: true, ReadMessageHistory: true, AttachFiles: true, ManageMessages: true, ManageChannels: true
+                            });
+                        } catch (e) { /* non-critical */ }
+                    }
+                } else {
+                    throw permErr;
+                }
+            }
 
             await this.bot.database.run(
                 `INSERT INTO active_tickets (guild_id, channel_id, user_id, ticket_id, subject, description, status, created_at, last_message_at)
@@ -275,7 +342,7 @@ class TicketSystem {
             );
 
             await this.bot.database.run(
-                `INSERT INTO tickets (guild_id, channel_id, user_id, ticket_id, subject, description, status, created_at, last_message_at)
+                `INSERT OR IGNORE INTO tickets (guild_id, channel_id, user_id, ticket_id, subject, description, status, created_at, last_message_at)
                  VALUES (?, ?, ?, ?, ?, ?, 'open', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
                 [guild.id, channel.id, requester.id, ticketId, subject, description]
             );
@@ -312,7 +379,7 @@ class TicketSystem {
 
             return channel;
         } catch (error) {
-            this.bot.logger.error('Failed to create ticket channel:', error);
+            this.bot.logger.error('Failed to create ticket channel:', error?.message || error, `(code: ${error?.code}, status: ${error?.status})`);
             return null;
         }
     }

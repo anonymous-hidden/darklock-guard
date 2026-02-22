@@ -11,7 +11,16 @@ import os, sys, json, socket, hashlib, threading, time, signal, glob
 from datetime import datetime
 
 # -- GPIO init MUST happen before mfrc522 import --
-import RPi.GPIO as GPIO
+# rpi-lgpio is the Pi5-compatible drop-in for RPi.GPIO
+try:
+    import RPi.GPIO as GPIO
+except RuntimeError:
+    import importlib, sys
+    sys.modules.pop('RPi', None)
+    sys.modules.pop('RPi.GPIO', None)
+    import rpi_lgpio as GPIO  # Pi5 compatible
+    sys.modules['RPi'] = type(sys)('RPi')
+    sys.modules['RPi.GPIO'] = GPIO
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
@@ -20,11 +29,11 @@ import serial
 
 # Custom RFID reader using free GPIO pin for RST
 # Pi5 Ubuntu 24 has GPIO 22/25 busy (SPI subsystem), GPIO 13 is free
-RFID_RST_PIN = 13
+RFID_RST_PIN = 25
 
 # ── Configuration ─────────────────────────────────────────────────
 CONFIG = {
-    "allowlist_path": "/home/ubuntu/darklock/rfid_allowlist.json",
+    "allowlist_path": "/mnt/nvme/discord-bot/data/rfid_allowlist.json",
     "socket_path": "/tmp/darklock_rfid.sock",
     "tcp_host": "0.0.0.0",
     "tcp_port": 9999,

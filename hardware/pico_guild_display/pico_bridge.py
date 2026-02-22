@@ -20,7 +20,7 @@ sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
 # Configuration
-PICO_SERIAL_PORT = os.environ.get("PICO_PORT", "/dev/ttyACM0")
+PICO_SERIAL_PORT = os.environ.get("PICO_PORT", "/dev/pico")
 BAUD_RATE = 115200
 UPDATE_INTERVAL = 5  # seconds between updates
 DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "http://localhost:3001")

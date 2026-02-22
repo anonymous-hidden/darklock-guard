@@ -5,6 +5,8 @@
   "main": "src/bot.js",
   "scripts": {
     "start": "node src/bot.js",
+    "start:portable": "node start-portable.js",
+    "start:bridge": "node pico-bridge.js",
     "start:render": "node scripts/render-start.js",
     "build": "echo 'no build required'",
     "dev": "nodemon src/bot.js",
@@ -42,8 +44,8 @@
     "nodemailer": "^7.0.11",
     "openai": "^4.66.0",
     "qrcode": "^1.5.3",
+    "serialport": "^13.0.0",
     "sharp": "^0.33.5",
-    "serialport": "^12.0.4",
     "speakeasy": "^2.0.0",
     "sqlite3": "^5.1.7",
     "string-similarity": "^4.0.4",

@@ -3,9 +3,17 @@ const { SerialPort } = require('serialport');
 /**
  * Streams guild count to Arduino 7-seg display.
  * Sends lines like: COUNT:1234\n
+ *
+ * Disabled automatically when PORTABLE=true (portable Pico LED mode).
+ * The portable Pico runs pico_portable_status.py and is owned by pico-bridge.js.
  */
 class GuildCounterDisplay {
   constructor(path = process.env.SEGMENT_PORT || '/dev/ttyACM0', baudRate = 115200) {
+    // Skip in portable mode — the ACM port belongs to the LED bridge
+    if (process.env.PORTABLE === 'true') {
+      this.port = null;
+      return;
+    }
     this.port = null;
     try {
       this.port = new SerialPort({ path, baudRate });
@@ -23,6 +31,10 @@ class GuildCounterDisplay {
 }
 
 module.exports = function wireGuildCounterDisplay(client) {
+  if (process.env.PORTABLE === 'true') {
+    console.log('[7seg] Skipped — portable LED mode active (PORTABLE=true)');
+    return;
+  }
   const display = new GuildCounterDisplay();
   if (!display.port) return;
 

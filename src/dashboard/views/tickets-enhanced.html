@@ -403,6 +403,10 @@
                     <h1><i class="fas fa-ticket-alt"></i> Support Tickets</h1>
                 </div>
                 <div class="header-actions">
+                    <a href="/setup/tickets" class="btn btn-secondary">
+                        <i class="fas fa-cog"></i>
+                        Ticket Settings
+                    </a>
                     <button class="btn btn-secondary" onclick="refreshTickets()">
                         <i class="fas fa-sync-alt"></i>
                         Refresh
@@ -604,10 +608,11 @@
                 const response = await apiFetch('/api/tickets/stats');
                 const stats = await response.json();
 
-                document.getElementById('statsOpenTickets').textContent = stats.openCount || 0;
-                document.getElementById('statsAvgResponse').textContent = stats.avgResponseTime || '--';
-                document.getElementById('statsResolvedToday').textContent = stats.resolvedToday || 0;
-                document.getElementById('statsEscalated').textContent = stats.escalatedCount || 0;
+                // Support both old and new field name formats
+                document.getElementById('statsOpenTickets').textContent = stats.openCount ?? stats.activeTickets ?? stats.open ?? 0;
+                document.getElementById('statsAvgResponse').textContent = stats.avgResponseTime ?? (stats.avgResolutionMinutes ? Math.round(stats.avgResolutionMinutes) + 'm' : '--');
+                document.getElementById('statsResolvedToday').textContent = stats.resolvedToday ?? stats.closedToday ?? 0;
+                document.getElementById('statsEscalated').textContent = stats.escalatedCount ?? stats.escalated ?? 0;
             } catch (error) {
                 console.error('Error loading analytics:', error);
             }
@@ -628,28 +633,51 @@
                     return;
                 }
 
+                // Try the detailed list endpoint first
                 let response = await apiFetch('/api/tickets/list?limit=100').catch(() => null);
-                
-                if (!response || response.status === 404) {
+                let data = null;
+
+                if (response && response.ok) {
+                    const raw = await response.json();
+                    // getTicketsList returns an array directly
+                    data = Array.isArray(raw) ? raw : (Array.isArray(raw?.tickets) ? raw.tickets : null);
+                }
+
+                // Fallback to /api/tickets
+                if (!data) {
                     response = await apiFetch('/api/tickets?limit=100').catch(() => null);
+                    if (response && response.ok) {
+                        const raw = await response.json();
+                        // getTickets returns array or {tickets:[...]} - normalise to list format
+                        const arr = Array.isArray(raw) ? raw : (Array.isArray(raw?.tickets) ? raw.tickets : []);
+                        // Map minimal format to list format
+                        data = arr.map(t => ({
+                            id: t.id,
+                            channelId: t.channel_id || t.channelId,
+                            userId: t.user_id || t.userId,
+                            userName: t.user || t.userName || 'Unknown',
+                            userAvatar: null,
+                            status: t.status || 'open',
+                            priority: t.priority || 'normal',
+                            subject: t.subject || 'Support Ticket',
+                            description: t.description || '',
+                            createdAt: t.created || t.createdAt || t.created_at
+                        }));
+                    }
                 }
 
-                if (!response) {
-                    throw new Error('Failed to fetch tickets');
-                }
+                if (!data) throw new Error('Failed to load tickets from server');
 
-                const data = await response.json();
-                
-                allTickets = Array.isArray(data?.tickets) ? data.tickets :
-                             Array.isArray(data?.data) ? data.data :
-                             Array.isArray(data) ? data : [];
+                allTickets = data;
 
                 // Update badge
-                const openCount = allTickets.filter(t => t.status === 'open' || t.status === 'in-progress').length;
+                const openCount = allTickets.filter(t => t.status === 'open' || t.status === 'in-progress' || t.status === 'in_progress').length;
                 const badge = document.getElementById('openTicketsCount');
                 if (openCount > 0) {
                     badge.textContent = openCount;
                     badge.style.display = 'inline';
+                } else {
+                    badge.style.display = 'none';
                 }
 
                 renderTickets();
@@ -684,7 +712,9 @@
                         <div class="empty-icon">📭</div>
                         <div class="empty-title">No tickets found</div>
                         <div class="empty-description">
-                            ${currentFilter === 'all' ? 'No tickets have been created yet.' : `No ${currentFilter} tickets.`}
+                            ${currentFilter === 'all' 
+                                ? 'No tickets yet. Make sure the ticket system is configured in <a href="/setup/tickets" style="color:#00d4ff;">Ticket Settings</a> and use <code>/ticket setup</code> in Discord to post the panel.' 
+                                : `No ${currentFilter} tickets.`}
                         </div>
                     </div>
                 `;
@@ -1104,7 +1134,13 @@
         // View in Discord
         function viewInDiscord(channelId) {
             if (channelId) {
-                window.open(`https://discord.com/channels/@me/${channelId}`, '_blank');
+                const guildId = localStorage.getItem('selectedGuildId');
+                const url = guildId
+                    ? `https://discord.com/channels/${guildId}/${channelId}`
+                    : `https://discord.com/channels/@me/${channelId}`;
+                window.open(url, '_blank');
+            } else {
+                alert('No channel ID available for this ticket.');
             }
         }
 

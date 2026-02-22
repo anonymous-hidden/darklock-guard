@@ -47,73 +47,21 @@ module.exports = {
 
 async function sendSetupDM(owner, guild, client) {
     try {
-        const dashboardURL = process.env.DASHBOARD_URL || 'https://darklock.xyz/dashboard';
-        
-        const setupEmbed = new EmbedBuilder()
-            .setTitle('🛡️ Welcome to DarkLock!')
-            .setDescription(`
-Thank you for adding **DarkLock** to **${guild.name}**!
-
-I'm an advanced security and moderation bot designed to protect your server. I'm currently performing an **initial security scan** and **automatic backup** - you'll receive a detailed report shortly.
-
-**🚀 Quick Start Guide:**
-
-**1️⃣ Run Setup Wizard** → \`/wizard\`
-Interactive guided setup for all features
-
-**2️⃣ Configure Security** → \`/security enable\`
-Enable protection features (anti-raid, anti-spam, phishing detection)
-
-**3️⃣ Optional: Server Setup** → \`/serversetup [template]\`
-Create complete server structure with channels & roles
-Templates: Gaming, Business, Education, Creative, General
-
-**4️⃣ Access Web Dashboard** → [${dashboardURL}](${dashboardURL})
-Configure advanced settings, view analytics, manage quarantine
-            `)
-            .setColor(CONFIG.BOT_COLOR)
-            .setThumbnail(client.user.displayAvatarURL())
-            .addFields(
-                { 
-                    name: '🔒 Security Features', 
-                    value: '• **Anti-Raid** - Stops coordinated attacks\n• **Anti-Spam** - Filters spam & flooding\n• **Link Protection** - Blocks phishing & malicious URLs\n• **Toxicity Filter** - Removes harmful content\n• **Proactive Scanning** - Regular security audits', 
-                    inline: false 
-                },
-                { 
-                    name: '⚖️ Moderation Tools', 
-                    value: '`/ban` `/kick` `/timeout` `/warn` `/purge` `/lockdown`\nComplete moderation suite with auto-logging', 
-                    inline: true 
-                },
-                { 
-                    name: '🎫 Utility Commands', 
-                    value: '`/ticket` `/serverinfo` `/userinfo` `/analytics` `/status` `/help`', 
-                    inline: true 
-                },
-                { 
-                    name: '🌐 Web Dashboard Features', 
-                    value: '• Real-time server statistics & analytics\n• Configure all settings visually\n• View security alerts & quarantine\n• Manage tickets & users\n• Auto-delete threat configuration', 
-                    inline: false 
-                },
-                { 
-                    name: '💡 Pro Tips', 
-                    value: '• Grant **Administrator** permission for full functionality\n• Use `/help [command]` for detailed command info\n• Check the dashboard for advanced configuration\n• Security scans run automatically every 24 hours', 
-                    inline: false 
-                },
-                { 
-                    name: '❓ Need Help?', 
-                    value: `**Commands:** \`/help\`\n**Status:** \`/status\`\n**Support:** ${CONFIG.SUPPORT_SERVER_INVITE}\n**Website:** https://darklock.xyz`, 
-                    inline: false 
-                }
+        const welcomeEmbed = new EmbedBuilder()
+            .setTitle('👋 Welcome to DarkLock!')
+            .setDescription(
+                `DarkLock is your all-in-one Discord security bot — protecting your server from raids, nukes, phishing, spam, and more.\n\n` +
+                `🎯 I'm currently performing an initial security scan of your server to check for existing threats. This will complete in a few minutes.`
             )
-            .setFooter({ text: 'DarkLock - Advanced Security & Moderation | Protecting your server 24/7' })
+            .setColor(0x6366f1)
+            .setThumbnail(client.user.displayAvatarURL())
             .setTimestamp();
 
-        await owner.send({ embeds: [setupEmbed] });
-        console.log(`[GUILD_CREATE] Sent setup DM to ${owner.user.tag} (${guild.name})`);
+        await owner.send({ embeds: [welcomeEmbed] });
+        console.log(`[GUILD_CREATE] Sent welcome DM to ${owner.user.tag} (${guild.name})`);
 
     } catch (error) {
-        console.log(`[GUILD_CREATE] Could not DM owner ${owner.user.tag}: ${error.message}`);
-        await sendSystemChannelFallback(guild, client);
+        console.log(`[GUILD_CREATE] Could not DM owner: ${error.message}`);
     }
 }
 

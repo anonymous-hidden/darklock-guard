@@ -677,7 +677,110 @@ class Database {
             // Add pro plan columns to guild_configs if needed
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN pro_enabled INTEGER DEFAULT 0`); console.log('✅ Added pro_enabled'); } catch (e) {}
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN pro_expires_at DATETIME`); console.log('✅ Added pro_expires_at'); } catch (e) {}
-            
+
+            // Migration 22: Anti-Phishing advanced settings columns
+            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_action TEXT DEFAULT 'delete'`); console.log('✅ Added phishing_action'); } catch (e) {}
+            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_log_all INTEGER DEFAULT 1`); console.log('✅ Added phishing_log_all'); } catch (e) {}
+            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_dm_user INTEGER DEFAULT 1`); console.log('✅ Added phishing_dm_user'); } catch (e) {}
+            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_sensitivity TEXT DEFAULT 'medium'`); console.log('✅ Added phishing_sensitivity'); } catch (e) {}
+            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_block_shorteners INTEGER DEFAULT 0`); console.log('✅ Added phishing_block_shorteners'); } catch (e) {}
+            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_block_ip_links INTEGER DEFAULT 0`); console.log('✅ Added phishing_block_ip_links'); } catch (e) {}
+            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_blacklist_domains TEXT DEFAULT '[]'`); console.log('✅ Added phishing_blacklist_domains'); } catch (e) {}
+            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_whitelist_domains TEXT DEFAULT '[]'`); console.log('✅ Added phishing_whitelist_domains'); } catch (e) {}
+
+            // Migration 23: Ensure all core guild_configs columns exist
+            // These are in CREATE TABLE but missing from DBs created before they were added
+            const coreColumns = [
+                // Welcome/Goodbye
+                { name: 'welcome_enabled', def: "BOOLEAN DEFAULT 0" },
+                { name: 'welcome_channel', def: "TEXT" },
+                { name: 'welcome_channel_id', def: "TEXT" },
+                { name: 'welcome_message', def: "TEXT DEFAULT 'Welcome {user} to {server}!'" },
+                { name: 'goodbye_enabled', def: "BOOLEAN DEFAULT 0" },
+                { name: 'goodbye_channel', def: "TEXT" },
+                { name: 'goodbye_channel_id', def: "TEXT" },
+                { name: 'goodbye_message', def: "TEXT DEFAULT 'Goodbye {user}, thanks for being part of {server}!'" },
+                // Tickets
+                { name: 'tickets_enabled', def: "BOOLEAN DEFAULT 0" },
+                { name: 'ticket_category', def: "TEXT" },
+                { name: 'ticket_panel_channel', def: "TEXT" },
+                { name: 'ticket_transcript_channel', def: "TEXT" },
+                { name: 'ticket_support_roles', def: "TEXT DEFAULT '[]'" },
+                { name: 'ticket_welcome_message', def: "TEXT DEFAULT 'Thank you for creating a ticket!'" },
+                { name: 'ticket_categories', def: "TEXT DEFAULT '[\"General Support\",\"Technical Issue\",\"Billing\",\"Report User\",\"Other\"]'" },
+                { name: 'ticket_autoclose', def: "BOOLEAN DEFAULT 0" },
+                { name: 'ticket_autoclose_hours', def: "INTEGER DEFAULT 48" },
+                // Moderation
+                { name: 'mod_log_channel', def: "TEXT" },
+                { name: 'auto_mod_enabled', def: "BOOLEAN DEFAULT 0" },
+                { name: 'dm_on_warn', def: "BOOLEAN DEFAULT 1" },
+                { name: 'dm_on_kick', def: "BOOLEAN DEFAULT 1" },
+                { name: 'dm_on_ban', def: "BOOLEAN DEFAULT 1" },
+                { name: 'max_warnings', def: "INTEGER DEFAULT 3" },
+                { name: 'warning_action', def: "TEXT DEFAULT 'timeout'" },
+                { name: 'warning_expiry_days', def: "INTEGER DEFAULT 30" },
+                { name: 'autorole_enabled', def: "BOOLEAN DEFAULT 0" },
+                { name: 'reactionroles_enabled', def: "BOOLEAN DEFAULT 0" },
+                { name: 'verification_role', def: "TEXT" },
+                // Spam
+                { name: 'spam_action', def: "TEXT DEFAULT 'timeout'" },
+                { name: 'spam_timeout_duration', def: "INTEGER DEFAULT 5" },
+                { name: 'spam_mute_duration', def: "INTEGER DEFAULT 300" },
+                // Word filter
+                { name: 'word_filter_enabled', def: "BOOLEAN DEFAULT 0" },
+                { name: 'banned_words', def: "TEXT DEFAULT '[]'" },
+                { name: 'banned_phrases', def: "TEXT DEFAULT '[]'" },
+                { name: 'word_filter_action', def: "TEXT DEFAULT 'delete'" },
+                { name: 'word_filter_mode', def: "TEXT DEFAULT 'exact'" },
+                { name: 'word_filter_whitelist_channels', def: "TEXT DEFAULT '[]'" },
+                { name: 'word_filter_whitelist_roles', def: "TEXT DEFAULT '[]'" },
+                { name: 'word_filter_custom_message', def: "TEXT" },
+                { name: 'log_filtered_messages', def: "BOOLEAN DEFAULT 1" },
+                { name: 'filter_display_names', def: "BOOLEAN DEFAULT 0" },
+            ];
+            for (const col of coreColumns) {
+                try {
+                    await this.run(`ALTER TABLE guild_configs ADD COLUMN ${col.name} ${col.def}`);
+                    console.log(`✅ Added missing column: ${col.name}`);
+                } catch (e) {
+                    // Column already exists — fine
+                }
+            }
+
+            // Migration 24: Create security_events table (used by dashboard event tracking)
+            try {
+                await this.run(`CREATE TABLE IF NOT EXISTS security_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    guild_id TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    event_action TEXT,
+                    executor_id TEXT,
+                    target_id TEXT,
+                    details TEXT,
+                    timestamp TEXT DEFAULT (datetime('now')),
+                    created_at TEXT DEFAULT (datetime('now'))
+                )`);
+                console.log('✅ security_events table ensured');
+            } catch (e) {
+                console.error('⚠️ security_events table creation failed:', e.message);
+            }
+
+            // Migration 25: Add missing notification/logging columns to guild_configs
+            const notifColumns = [
+                ['alert_channel', 'TEXT'],
+                ['notification_settings', 'TEXT'],
+                ['join_leave_channel', 'TEXT'],
+                ['message_log_channel', 'TEXT'],
+                ['server_changes_channel', 'TEXT'],
+                ['automod_log_channel', 'TEXT']
+            ];
+            for (const [col, type] of notifColumns) {
+                try {
+                    await this.run(`ALTER TABLE guild_configs ADD COLUMN ${col} ${type}`);
+                    console.log(`✅ Added ${col} to guild_configs`);
+                } catch (e) { /* column already exists */ }
+            }
+
             console.log('✅ Database migrations complete');
         } catch (error) {
             console.error('⚠️ Migration error:', error);
@@ -2283,6 +2386,10 @@ class Database {
         'admin_perm_overview', 'admin_perm_customize',
         // AutoRole / ReactionRoles
         'autorole_enabled', 'reactionroles_enabled',
+        // Anti-Phishing advanced
+        'phishing_action', 'phishing_log_all', 'phishing_dm_user', 'phishing_sensitivity',
+        'phishing_block_shorteners', 'phishing_block_ip_links',
+        'phishing_blacklist_domains', 'phishing_whitelist_domains',
     ]);
 
     async updateGuildConfig(guildId, updates) {

@@ -86,6 +86,8 @@ const ConfirmationManager = require('./utils/ConfirmationManager');
 const TicketSystem = require('./utils/TicketSystem');
 const ForensicsManager = require('./utils/ForensicsManager');
 const LockdownManager = require('./utils/LockdownManager');
+const AppealSystem = require('./systems/appealsystem');
+const DiscordLogger = require('./systems/DiscordLogger');
 
 // Import rank system modules
 const RankSystem = require('./utils/RankSystem');
@@ -96,6 +98,12 @@ try {
     wireGuildCounterDisplay = require('./hardware/guildCounterDisplay');
 } catch (err) {
     console.warn('[7seg] guild counter display disabled:', err.message);
+}
+let HardwareStatusWriter;
+try {
+    HardwareStatusWriter = require('./hardware/statusWriter');
+} catch (err) {
+    console.warn('[StatusWriter] not available:', err.message);
 }
 
 // Import new XP system modules
@@ -359,6 +367,20 @@ class SecurityBot {
             // Help Ticket System
             this.helpTicketSystem = new HelpTicketSystem(this.database, this.logger);
             this.logger.info('   ✅ Help Ticket System initialized');
+
+            // Appeal System
+            try {
+                this.appealSystem = new AppealSystem(this);
+                await this.appealSystem.initialize();
+                this.logger.info('   ✅ Appeal System initialized');
+            } catch (e) {
+                this.logger.warn('   ⚠️ Appeal System failed to init:', e.message);
+            }
+
+            // Discord Logger (event logging to configured channels)
+            this.discordLogger = new DiscordLogger(this);
+            this.client.discordLogger = this.discordLogger;
+            this.logger.info('   ✅ Discord Logger initialized');
 
             // Rank System for XP and leveling
             this.rankSystem = new RankSystem(this);
@@ -853,7 +875,7 @@ class SecurityBot {
             if (!fs.existsSync(folderPath)) continue;
             
             const commandFiles = fs.readdirSync(folderPath)
-                .filter(file => file.endsWith('.js') && !file.includes('.old'));
+                .filter(file => file.endsWith('.js') && !file.includes('.old') && !file.includes('-old'));
             
             for (const file of commandFiles) {
                 try {
@@ -892,6 +914,12 @@ class SecurityBot {
             
             // Set bot presence
             this.client.user.setActivity('🛡️ guardianbot.xyz | Protecting servers', { type: 'WATCHING' });
+
+            // Write hardware status file for Pico LED bridge
+            if (HardwareStatusWriter) {
+                this._statusWriter = new HardwareStatusWriter(this);
+                this._statusWriter.start();
+            }
             
             // Register slash commands (global + per-guild for immediacy)
             await this.registerSlashCommands();
@@ -1322,6 +1350,19 @@ class SecurityBot {
                     if (linkResult && linkResult.isBlocked) return;
                 }
 
+                // Word filter check (banned words/phrases)
+                if (this.wordFilter && guildConfig.word_filter_enabled) {
+                    try {
+                        const filterResult = await this.wordFilter.checkMessage(message);
+                        if (filterResult?.blocked) {
+                            this.logger.debug(`Word filter blocked message from ${message.author.tag}: ${filterResult.term}`);
+                            return;
+                        }
+                    } catch (e) {
+                        this.logger.warn('Word filter check failed:', e.message);
+                    }
+                }
+
                 // Toxicity filter (part of auto-mod)
                 if (this.toxicityFilter && guildConfig.auto_mod_enabled !== 0) {
                     await this.toxicityFilter.checkMessage(message);
@@ -1445,10 +1486,22 @@ class SecurityBot {
             }
         });
 
+        // Message delete logging
+        this.client.on('messageDelete', async (message) => {
+            try {
+                if (this.discordLogger) await this.discordLogger.logMessageDelete(message);
+            } catch (err) {
+                this.logger.debug('Error in messageDelete logger:', err.message);
+            }
+        });
+
         // Message edit security — Security Rule 9
         // Runs the same security pipeline on edited messages to prevent bypass
         this.client.on('messageUpdate', async (oldMessage, newMessage) => {
             try {
+                // Log edit to Discord channel (respects log_edits toggle)
+                if (this.discordLogger) await this.discordLogger.logMessageEdit(oldMessage, newMessage).catch(() => {});
+
                 const messageUpdateHandler = require('./events/messageUpdate');
                 await messageUpdateHandler.execute(oldMessage, newMessage, this);
             } catch (error) {
@@ -1523,12 +1576,15 @@ class SecurityBot {
                     });
                 }
                 
+                // Log join to Discord log channel
+                if (this.discordLogger) await this.discordLogger.logMemberJoin(member).catch(() => {});
+
                 // Welcome message
                 if (this.database) {
                     const config = await this.database.getGuildConfig(member.guild.id);
-                    if (config.welcome_enabled && config.welcome_channel) {
+                    if (config.welcome_enabled && (config.welcome_channel || config.welcome_channel_id)) {
                         try {
-                            const channel = member.guild.channels.cache.get(config.welcome_channel);
+                            const channel = member.guild.channels.cache.get(config.welcome_channel_id || config.welcome_channel);
                             if (channel && channel.permissionsFor(member.guild.members.me).has('SendMessages')) {
                                 const welcomeMessage = this.formatWelcomeMessage(
                                     config.welcome_message || 'Welcome {user} to **{server}**! You are member #{memberCount}! 🎉',
@@ -1557,253 +1613,23 @@ class SecurityBot {
                     await this.database.getGuildConfig(guild.id);
                 }
                 
-                // Send comprehensive DM guide to server owner
+                // Send welcome DM to server owner
                 try {
                     const owner = await guild.fetchOwner();
-                    
-                    const welcomeDM1 = new EmbedBuilder()
-                        .setTitle('🛡️ Welcome to GuardianBot!')
-                        .setDescription(`
-Thank you for adding **GuardianBot** to **${guild.name}**!
 
-I'm an advanced security and moderation bot designed to protect your server and make management easier.
-
-**🎯 I'm currently performing an initial security scan** of your server to check for existing threats. This will complete in a few minutes.
-                        `)
-                        .setColor('#00d4ff')
+                    const welcomeDM = new EmbedBuilder()
+                        .setTitle('👋 Welcome to DarkLock!')
+                        .setDescription(
+                            `DarkLock is your all-in-one Discord security bot — protecting your server from raids, nukes, phishing, spam, and more.\n\n` +
+                            `🎯 I'm currently performing an initial security scan of your server to check for existing threats. This will complete in a few minutes.`
+                        )
+                        .setColor(0x6366f1)
                         .setThumbnail(this.client.user.displayAvatarURL())
                         .setTimestamp();
 
-                    const securityFeatures = new EmbedBuilder()
-                        .setTitle('🔒 Security Features')
-                        .setColor('#e74c3c')
-                        .setDescription('GuardianBot provides comprehensive protection:')
-                        .addFields(
-                            { 
-                                name: '🚨 Anti-Raid Protection', 
-                                value: 'Automatically detects and stops server raids\n• Monitors join patterns\n• Configurable thresholds\n• Auto-lockdown capabilities', 
-                                inline: false 
-                            },
-                            { 
-                                name: '🗑️ Anti-Spam System', 
-                                value: 'Prevents spam and flooding\n• Message rate limiting\n• Duplicate detection\n• Auto-delete spam', 
-                                inline: false 
-                            },
-                            { 
-                                name: '🔗 Link Protection', 
-                                value: 'Blocks malicious links and phishing\n• Real-time URL scanning\n• Phishing database checks\n• Scam prevention', 
-                                inline: false 
-                            },
-                            { 
-                                name: '🧹 Toxicity Detection', 
-                                value: 'Filters toxic and harmful content\n• Advanced content analysis\n• Configurable sensitivity\n• Automatic warnings', 
-                                inline: false 
-                            },
-                            { 
-                                name: '📊 Proactive Scanning', 
-                                value: 'Regular security scans of all channels\n• Scheduled automatic scans\n• Manual scan triggers\n• Detailed threat reports', 
-                                inline: false 
-                            }
-                        );
+                    await owner.send({ embeds: [welcomeDM] });
 
-                    const moderationCommands = new EmbedBuilder()
-                        .setTitle('⚖️ Moderation Commands')
-                        .setColor('#3498db')
-                        .addFields(
-                            { 
-                                name: '`/ban` `[user] [reason]`', 
-                                value: 'Ban a user from the server', 
-                                inline: true 
-                            },
-                            { 
-                                name: '`/kick` `[user] [reason]`', 
-                                value: 'Kick a user from the server', 
-                                inline: true 
-                            },
-                            { 
-                                name: '`/timeout` `[user] [duration]`', 
-                                value: 'Timeout a user temporarily', 
-                                inline: true 
-                            },
-                            { 
-                                name: '`/warn` `[user] [reason]`', 
-                                value: 'Issue a warning to a user', 
-                                inline: true 
-                            },
-                            { 
-                                name: '`/purge` `[amount]`', 
-                                value: 'Delete multiple messages', 
-                                inline: true 
-                            },
-                            { 
-                                name: '`/lockdown` `[channel]`', 
-                                value: 'Lock a channel temporarily', 
-                                inline: true 
-                            }
-                        );
-
-                    const adminCommands = new EmbedBuilder()
-                        .setTitle('🛠️ Setup & Admin Commands')
-                        .setColor('#f39c12')
-                        .addFields(
-                            { 
-                                name: '`/wizard`', 
-                                value: '**⭐ Recommended first step!**\nInteractive setup wizard for all features', 
-                                inline: false 
-                            },
-                            { 
-                                name: '`/serversetup` `[template]`', 
-                                value: '**NEW!** Complete server setup with channels & roles\nChoose from Gaming, Business, Education, Creative, or General templates', 
-                                inline: false 
-                            },
-                            { 
-                                name: '`/setup`', 
-                                value: 'Configure security features and channels', 
-                                inline: true 
-                            },
-                            { 
-                                name: '`/settings` `[feature]`', 
-                                value: 'View and modify bot settings', 
-                                inline: true 
-                            },
-                            { 
-                                name: '`/security` `[action]`', 
-                                value: 'Manage security features', 
-                                inline: true 
-                            },
-                            { 
-                                name: '`/permissions` `[role]`', 
-                                value: 'Configure role permissions', 
-                                inline: true 
-                            }
-                        );
-
-                    const utilityCommands = new EmbedBuilder()
-                        .setTitle('🔧 Utility Commands')
-                        .setColor('#2ecc71')
-                        .addFields(
-                            { 
-                                name: '`/ticket` `[create/close]`', 
-                                value: 'Manage support tickets', 
-                                inline: true 
-                            },
-                            { 
-                                name: '`/help` `[command]`', 
-                                value: 'Get help with commands', 
-                                inline: true 
-                            },
-                            { 
-                                name: '`/serverinfo`', 
-                                value: 'View server information', 
-                                inline: true 
-                            },
-                            { 
-                                name: '`/userinfo` `[user]`', 
-                                value: 'View user information', 
-                                inline: true 
-                            },
-                            { 
-                                name: '`/analytics`', 
-                                value: 'View server analytics', 
-                                inline: true 
-                            },
-                            { 
-                                name: '`/status`', 
-                                value: 'Check security status', 
-                                inline: true 
-                            }
-                        );
-
-                    const dashboardInfo = new EmbedBuilder()
-                        .setTitle('🌐 Web Dashboard')
-                        .setColor('#9b59b6')
-                        .setDescription(`
-**Access your dashboard at:** \`${process.env.DASHBOARD_URL || 'Your Dashboard URL'}\`
-
-**Dashboard Features:**
-🎨 Modern, responsive interface
-📊 Real-time server statistics
-🔧 Configure all bot settings
-🚨 View security alerts and quarantined content
-📈 Detailed analytics and insights
-🎫 Manage tickets
-👥 User management tools
-⚙️ Auto-delete configuration for threats
-📋 Security scan history
-
-**Login:** Use your Discord account to authenticate
-                        `);
-
-                    const quickStart = new EmbedBuilder()
-                        .setTitle('🚀 Quick Start Guide')
-                        .setColor('#1abc9c')
-                        .setDescription(`
-**Recommended Setup Steps:**
-
-**1️⃣ Run the Setup Wizard**
-Use \`/wizard\` to configure basic settings in a guided format
-
-**2️⃣ Set Up Your Server Structure** *(Optional)*
-Use \`/serversetup\` to create a complete server template with channels and roles
-
-**3️⃣ Configure Security Features**
-Use \`/security enable\` to enable protection features
-• Anti-raid protection
-• Anti-spam filtering
-• Link protection
-• Toxicity detection
-
-**4️⃣ Set Moderation Roles**
-Use \`/setup\` to assign moderator and admin roles
-
-**5️⃣ Configure Auto-Delete Settings**
-Visit the web dashboard to configure automatic deletion of threats
-
-**6️⃣ Review Security Scan Results**
-Check the scan report I'm generating now!
-
-**💡 Pro Tips:**
-• Use the web dashboard for advanced configuration
-• Enable notifications for security events
-• Set up a dedicated log channel
-• Regular security scans are automatically performed
-• Check quarantined messages before deletion
-                        `);
-
-                    const supportInfo = new EmbedBuilder()
-                        .setTitle('❓ Need Help?')
-                        .setColor('#95a5a6')
-                        .setDescription(`
-**Support Resources:**
-
-📖 **Documentation:** Use \`/help\` for command documentation
-🌐 **Web Dashboard:** Full feature documentation available
-💬 **In-Server Help:** Use \`/help [command]\` for specific commands
-🔍 **Status Check:** Use \`/status\` to verify bot functionality
-🔗 **Website:** https://guardianbot.xyz
-💬 **Community Server:** https://discord.gg/Vsq9PUTrgb
-
-**Common Issues:**
-• Missing permissions: Grant Administrator permission
-• Commands not working: Check role hierarchy
-• Features not triggering: Verify settings with \`/settings\`
-
-**All set!** GuardianBot is now protecting your server. Run \`/wizard\` to get started!
-                        `)
-                        .setFooter({ text: 'GuardianBot - Advanced Security & Moderation' })
-                        .setTimestamp();
-
-                    // Send all embeds to owner
-                    await owner.send({ embeds: [welcomeDM1] });
-                    await owner.send({ embeds: [securityFeatures] });
-                    await owner.send({ embeds: [moderationCommands] });
-                    await owner.send({ embeds: [adminCommands] });
-                    await owner.send({ embeds: [utilityCommands] });
-                    await owner.send({ embeds: [dashboardInfo] });
-                    await owner.send({ embeds: [quickStart] });
-                    await owner.send({ embeds: [supportInfo] });
-
-                    this.logger.info(`📧 Sent welcome guide to ${owner.user.tag}`);
+                    this.logger.info(`📧 Sent welcome DM to ${owner.user.tag}`);
                 } catch (dmError) {
                     this.logger.error('Could not send DM to server owner:', dmError);
                     // Fallback: send basic message in server
@@ -1875,6 +1701,26 @@ I'm performing an initial security scan to check for threats. This will complete
                 // NEW: Analytics tracking
                 if (this.analyticsManager) {
                     await this.analyticsManager.trackMemberLeave(member);
+                }
+
+                // Log leave to Discord log channel
+                if (this.discordLogger) await this.discordLogger.logMemberLeave(member).catch(() => {});
+
+                // Goodbye message
+                if (this.database) {
+                    const config = await this.database.getGuildConfig(member.guild.id).catch(() => ({}));
+                    if (config?.goodbye_enabled && (config.goodbye_channel_id || config.goodbye_channel)) {
+                        try {
+                            const ch = member.guild.channels.cache.get(config.goodbye_channel_id || config.goodbye_channel);
+                            if (ch && ch.permissionsFor(member.guild.members.me)?.has('SendMessages')) {
+                                const msg = this.formatWelcomeMessage(
+                                    config.goodbye_message || 'Goodbye **{username}**! We will miss you. 👋',
+                                    member
+                                );
+                                await ch.send(msg);
+                            }
+                        } catch (_) {}
+                    }
                 }
 
                 if (this.forensicsManager) {
@@ -2043,6 +1889,7 @@ I'm performing an initial security scan to check for threats. This will complete
         this.client.on('roleCreate', async (role) => {
             try {
                 await this.handleRoleCreate(role);
+                if (this.discordLogger && role.guild) await this.discordLogger.logRoleEvent(role, 'create').catch(() => {});
             } catch (error) {
                 this.logger.error('Error handling roleCreate:', error);
             }
@@ -2051,6 +1898,7 @@ I'm performing an initial security scan to check for threats. This will complete
         this.client.on('roleDelete', async (role) => {
             try {
                 await this.handleRoleDelete(role);
+                if (this.discordLogger && role.guild) await this.discordLogger.logRoleEvent(role, 'delete').catch(() => {});
             } catch (error) {
                 this.logger.error('Error handling roleDelete:', error);
             }
@@ -2059,6 +1907,7 @@ I'm performing an initial security scan to check for threats. This will complete
         this.client.on('channelCreate', async (channel) => {
             try {
                 await this.handleChannelCreate(channel);
+                if (this.discordLogger && channel.guild) await this.discordLogger.logChannelEvent(channel, 'create').catch(() => {});
             } catch (error) {
                 this.logger.error('Error handling channelCreate:', error);
             }
@@ -2067,6 +1916,7 @@ I'm performing an initial security scan to check for threats. This will complete
         this.client.on('channelDelete', async (channel) => {
             try {
                 await this.handleChannelDelete(channel);
+                if (this.discordLogger && channel.guild) await this.discordLogger.logChannelEvent(channel, 'delete').catch(() => {});
             } catch (error) {
                 this.logger.error('Error handling channelDelete:', error);
             }
@@ -3044,6 +2894,15 @@ I'm performing an initial security scan to check for threats. This will complete
                 changes: { action: 'ban' }
             });
         }
+
+        // Appeal system — send DM to banned user
+        if (this.appealSystem) {
+            try {
+                await this.appealSystem.handleBan(ban);
+            } catch (e) {
+                this.logger.debug('Appeal DM failed:', e.message);
+            }
+        }
     }
 
     async handleWebhookUpdate(channel) {
@@ -3427,9 +3286,15 @@ The channel will be deleted in 10 seconds...
 
             // Save to database
             await this.database.run(
-                `INSERT INTO active_tickets (guild_id, channel_id, user_id, ticket_id, problem, description, status, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-                [interaction.guild.id, ticketChannel.id, interaction.user.id, ticketId, problem, description, 'open']
+                `INSERT INTO active_tickets (guild_id, channel_id, user_id, ticket_id, subject, description, status, created_at, last_message_at)
+                 VALUES (?, ?, ?, ?, ?, ?, 'open', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+                [interaction.guild.id, ticketChannel.id, interaction.user.id, ticketId, problem, description]
+            );
+            // Also insert into tickets table for dashboard visibility
+            await this.database.run(
+                `INSERT OR IGNORE INTO tickets (guild_id, channel_id, user_id, ticket_id, subject, description, status, created_at, last_message_at)
+                 VALUES (?, ?, ?, ?, ?, ?, 'open', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+                [interaction.guild.id, ticketChannel.id, interaction.user.id, ticketId, problem, description]
             );
 
             // Send welcome message in ticket channel

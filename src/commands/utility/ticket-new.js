@@ -162,6 +162,18 @@ module.exports = {
 
         // ============ CREATE ============
         if (sub === 'create') {
+            // Block creation when ticket system is disabled
+            const enabledRow = await bot.database.get(
+                'SELECT tickets_enabled FROM guild_configs WHERE guild_id = ?',
+                [interaction.guild.id]
+            );
+            if (enabledRow && !enabledRow.tickets_enabled) {
+                return interaction.reply({
+                    content: '❌ The ticket system is currently disabled. Please contact a server administrator.',
+                    ephemeral: true
+                });
+            }
+
             const userId = interaction.user.id;
             const guildId = interaction.guild.id;
             const cooldownKey = `${guildId}_${userId}`;
@@ -228,6 +240,18 @@ module.exports = {
         if (sub === 'setup') {
             if (!isAdmin) {
                 return interaction.reply({ content: '❌ Only administrators can configure tickets.', ephemeral: true });
+            }
+
+            // Block setup when ticket system is disabled in dashboard
+            const setupEnabledRow = await bot.database.get(
+                'SELECT tickets_enabled FROM guild_configs WHERE guild_id = ?',
+                [interaction.guild.id]
+            );
+            if (setupEnabledRow && !setupEnabledRow.tickets_enabled) {
+                return interaction.reply({
+                    content: '❌ The ticket system is currently disabled in the dashboard. Enable it first before running setup.',
+                    ephemeral: true
+                });
             }
             
             const channel = interaction.options.getChannel('channel');

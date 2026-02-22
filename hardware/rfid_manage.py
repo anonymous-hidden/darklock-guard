@@ -11,7 +11,7 @@ from datetime import datetime
 from mfrc522 import SimpleMFRC522
 import RPi.GPIO as GPIO
 
-ALLOWLIST_PATH = "/home/ubuntu/darklock/rfid_allowlist.json"
+ALLOWLIST_PATH = "/mnt/nvme/discord-bot/data/rfid_allowlist.json"
 
 def load_allowlist():
     if os.path.exists(ALLOWLIST_PATH):

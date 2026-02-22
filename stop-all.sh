@@ -26,8 +26,14 @@ kill_process() {
 
 # Stop all services
 kill_process "node src/bot.js" "Discord Bot"
-kill_process "node darklock/server.js" "Darklock Platform"
-kill_process "tauri dev" "Tauri Apps"
+kill_process "node darklock/start.js" "Darklock Platform"
+kill_process "node darklock/server.js" "Darklock Platform (alt)"
+kill_process "guard-service run" "Guard Service Daemon"
+kill_process "vite dev" "Tauri Vite Dev Server"
+kill_process "darklock-guard-ui" "Tauri App"
+kill_process "tauri dev" "Tauri Dev"
+# Free Vite's port in case of orphaned processes
+lsof -ti:5173 | xargs kill -9 2>/dev/null || true
 
 echo ""
 echo "=========================================="
@@ -39,4 +45,5 @@ echo ""
 echo "Checking ports..."
 lsof -ti:3001 > /dev/null 2>&1 && echo "⚠ Port 3001 still in use" || echo "✓ Port 3001 free"
 lsof -ti:3002 > /dev/null 2>&1 && echo "⚠ Port 3002 still in use" || echo "✓ Port 3002 free"
+lsof -ti:5173 > /dev/null 2>&1 && echo "⚠ Port 5173 still in use" || echo "✓ Port 5173 free"
 echo ""

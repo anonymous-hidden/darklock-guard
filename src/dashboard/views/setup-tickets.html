@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="">
-    <title>Ticket System - DarkLock Dashboard</title>
+    <title>Ticket System Settings - DarkLock Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -47,18 +47,28 @@
         .setup-form-group { margin-bottom: var(--ds-space-lg); }
         .setup-form-group:last-child { margin-bottom: 0; }
         .setup-form-label { display: block; font-size: 14px; font-weight: 500; color: var(--ds-text-primary); margin-bottom: var(--ds-space-xs); }
+        .setup-form-label .required { color: var(--ds-danger, #ff5252); margin-left: 3px; }
         .setup-form-desc { font-size: 13px; color: var(--ds-text-muted); margin-bottom: var(--ds-space-sm); }
-        .setup-form-input, .setup-form-select, .setup-form-textarea { width: 100%; padding: 10px 14px; background: var(--ds-surface-0); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); color: var(--ds-text-primary); font-size: 14px; transition: all var(--ds-transition-fast); }
+        .setup-form-input, .setup-form-select, .setup-form-textarea { width: 100%; padding: 10px 14px; background: var(--ds-surface-0); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); color: var(--ds-text-primary); font-size: 14px; transition: all var(--ds-transition-fast); box-sizing: border-box; }
         .setup-form-input:focus, .setup-form-select:focus, .setup-form-textarea:focus { outline: none; border-color: var(--ds-primary); box-shadow: 0 0 0 3px var(--ds-primary-shadow); }
         .setup-form-textarea { resize: vertical; min-height: 100px; font-family: inherit; }
-        .alert-info { display: flex; align-items: flex-start; gap: var(--ds-space-md); padding: var(--ds-space-md); background: var(--ds-info-bg); border: 1px solid var(--ds-info-border); border-radius: var(--ds-radius-md); color: var(--ds-info); margin-bottom: var(--ds-space-md); }
-        .alert-info i { font-size: 18px; }
+        .setup-form-select option { background: #1a1a2e; }
+        .alert-info { display: flex; align-items: flex-start; gap: var(--ds-space-md); padding: var(--ds-space-md); background: var(--ds-info-bg); border: 1px solid var(--ds-info-border); border-radius: var(--ds-radius-md); color: var(--ds-info); margin-bottom: var(--ds-space-md); font-size: 13px; }
+        .alert-info i { font-size: 16px; margin-top: 2px; flex-shrink: 0; }
+        .alert-success { display: flex; align-items: flex-start; gap: var(--ds-space-md); padding: var(--ds-space-md); background: var(--ds-success-bg); border: 1px solid var(--ds-success-border); border-radius: var(--ds-radius-md); color: var(--ds-success); margin-bottom: var(--ds-space-md); font-size: 13px; }
         .btn-save { width: 100%; padding: 14px 24px; background: var(--ds-primary); color: white; border: none; border-radius: var(--ds-radius-md); font-size: 15px; font-weight: 600; cursor: pointer; transition: all var(--ds-transition-fast); }
         .btn-save:hover { background: var(--ds-primary-hover); transform: translateY(-1px); }
-        .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-save:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ds-space-lg); }
+        @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+        .badge-required { display: inline-block; background: rgba(255,82,82,0.15); color: #ff5252; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
+        #toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 500; z-index: 9999; display: none; min-width: 200px; }
+        #toast.success { background: #1a3a2a; border: 1px solid #06ffa5; color: #06ffa5; }
+        #toast.error { background: #3a1a1a; border: 1px solid #ff5252; color: #ff5252; }
     </style>
 </head>
 <body class="setup-page">
+    <div id="toast"></div>
     <nav class="setup-nav">
         <div style="display: flex; align-items: center; gap: var(--ds-space-lg);">
             <a href="/dashboard" class="back-button">
@@ -70,7 +80,7 @@
                 <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
                 <a href="/dashboard">Dashboard</a>
                 <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
-                <span class="setup-breadcrumb-current">Tickets</span>
+                <span class="setup-breadcrumb-current">Ticket Settings</span>
             </div>
         </div>
         <div class="setup-status disabled" id="featureStatus">
@@ -82,10 +92,11 @@
     <main class="setup-container">
         <div class="setup-header">
             <div class="setup-header-icon"><i class="fas fa-ticket-alt"></i></div>
-            <h1>Ticket System</h1>
-            <p>Configure your support ticket system for member assistance</p>
+            <h1>Ticket System Settings</h1>
+            <p>Configure your support ticket system. Settings here sync directly with the bot in Discord.</p>
         </div>
 
+        <!-- Enable / Disable -->
         <div class="setup-card">
             <div class="setup-card-header">
                 <div class="setup-card-title"><i class="fas fa-power-off"></i><h3>Enable Tickets</h3></div>
@@ -94,70 +105,113 @@
                 <div class="setup-toggle-row">
                     <div class="setup-toggle-info">
                         <h4>Enable Ticket System</h4>
-                        <p>Allow members to create support tickets</p>
+                        <p>Allow server members to create support tickets</p>
                     </div>
                     <label class="ds-toggle"><input type="checkbox" id="ticketsEnabled"><span class="ds-toggle-slider"></span></label>
                 </div>
             </div>
         </div>
 
+        <!-- Roles — most critical for the bot -->
         <div class="setup-card">
             <div class="setup-card-header">
-                <div class="setup-card-title"><i class="fas fa-cog"></i><h3>Channels</h3></div>
+                <div class="setup-card-title">
+                    <i class="fas fa-user-shield"></i>
+                    <h3>Roles <span class="badge-required">Required for bot to work</span></h3>
+                </div>
             </div>
             <div class="setup-card-body">
-                <div class="setup-form-group">
-                    <label class="setup-form-label">Ticket Category</label>
-                    <p class="setup-form-desc">Category where new tickets will be created</p>
-                    <select class="setup-form-select" id="ticketCategory">
-                        <option value="">Select a category...</option>
-                    </select>
+                <div class="alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <div>The <strong>Staff Role</strong> is pinged when a ticket is created and gets access to the ticket channel. Make sure the bot's role is positioned <strong>above</strong> the staff role in Discord's role hierarchy (Server Settings → Roles).</div>
+                </div>
+                <div class="grid-2">
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Staff Role <span class="required">*</span></label>
+                        <p class="setup-form-desc">Role pinged when a ticket opens — gets access to all ticket channels</p>
+                        <select class="setup-form-select" id="staffRoleId">
+                            <option value="">Select a role...</option>
+                        </select>
+                    </div>
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Manage Role</label>
+                        <p class="setup-form-desc">Optional higher-tier role (admins) with extra permissions in tickets</p>
+                        <select class="setup-form-select" id="manageRoleId">
+                            <option value="">None (optional)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Channels -->
+        <div class="setup-card">
+            <div class="setup-card-header">
+                <div class="setup-card-title"><i class="fas fa-hashtag"></i><h3>Channels</h3></div>
+            </div>
+            <div class="setup-card-body">
+                <div class="grid-2">
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Panel Channel <span class="required">*</span></label>
+                        <p class="setup-form-desc">Channel where the <code>/ticket setup</code> panel is posted</p>
+                        <select class="setup-form-select" id="panelChannelId">
+                            <option value="">Select a channel...</option>
+                        </select>
+                    </div>
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Ticket Category</label>
+                        <p class="setup-form-desc">Discord category where new ticket channels are created</p>
+                        <select class="setup-form-select" id="categoryId">
+                            <option value="">Select a category...</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="setup-form-group">
-                    <label class="setup-form-label">Panel Channel</label>
-                    <p class="setup-form-desc">Channel where the ticket panel will be displayed</p>
-                    <select class="setup-form-select" id="ticketPanelChannel">
-                        <option value="">Select a channel...</option>
-                    </select>
-                </div>
-                <div class="setup-form-group" data-premium-feature="tickets-advanced">
-                    <label class="setup-form-label">Transcript Channel</label>
-                    <p class="setup-form-desc">Channel where ticket transcripts will be saved</p>
-                    <select class="setup-form-select" id="ticketTranscriptChannel">
-                        <option value="">Select a channel...</option>
+                    <label class="setup-form-label">Log Channel</label>
+                    <p class="setup-form-desc">Channel where ticket events (open/close/claim) are logged</p>
+                    <select class="setup-form-select" id="logChannelId">
+                        <option value="">None (optional)</option>
                     </select>
                 </div>
             </div>
         </div>
 
+        <!-- Welcome Message -->
         <div class="setup-card">
             <div class="setup-card-header">
-                <div class="setup-card-title"><i class="fas fa-comment"></i><h3>Welcome Message</h3></div>
+                <div class="setup-card-title"><i class="fas fa-comment-alt"></i><h3>Welcome Message</h3></div>
             </div>
             <div class="setup-card-body">
                 <div class="setup-form-group">
-                    <label class="setup-form-label">Ticket Welcome Message</label>
-                    <p class="setup-form-desc">Message shown when a new ticket is created</p>
+                    <label class="setup-form-label">Message shown when a ticket is created</label>
+                    <p class="setup-form-desc">Sent in the ticket channel. Leave blank for default.</p>
                     <textarea class="setup-form-textarea" id="ticketWelcomeMessage" placeholder="Thank you for creating a ticket! A support team member will be with you shortly."></textarea>
                 </div>
             </div>
         </div>
 
-        <div class="setup-card" data-premium-feature="tickets-advanced">
+        <!-- Advanced -->
+        <div class="setup-card">
             <div class="setup-card-header">
-                <div class="setup-card-title"><i class="fas fa-clock"></i><h3>Auto-Close</h3></div>
+                <div class="setup-card-title"><i class="fas fa-sliders-h"></i><h3>Advanced Settings</h3></div>
             </div>
             <div class="setup-card-body">
+                <div class="grid-2">
+                    <div class="setup-form-group">
+                        <label class="setup-form-label">Max Open Tickets per User</label>
+                        <p class="setup-form-desc">How many tickets a single user can have open at once</p>
+                        <input type="number" class="setup-form-input" id="maxOpen" value="1" min="1" max="10">
+                    </div>
+                </div>
                 <div class="setup-toggle-row">
                     <div class="setup-toggle-info">
                         <h4>Auto-Close Inactive Tickets</h4>
-                        <p>Automatically close tickets after inactivity</p>
+                        <p>Automatically close tickets with no activity after a set number of hours</p>
                     </div>
                     <label class="ds-toggle"><input type="checkbox" id="ticketAutoclose"><span class="ds-toggle-slider"></span></label>
                 </div>
-                <div class="setup-form-group">
-                    <label class="setup-form-label">Auto-Close Hours</label>
-                    <p class="setup-form-desc">Close tickets after this many hours of inactivity</p>
+                <div class="setup-form-group" style="margin-top:12px;">
+                    <label class="setup-form-label">Auto-Close After (hours)</label>
                     <input type="number" class="setup-form-input" id="ticketAutocloseHours" value="48" min="1" max="168">
                 </div>
             </div>
@@ -166,6 +220,10 @@
         <button class="btn-save" id="saveBtn" onclick="saveSettings()">
             <i class="fas fa-save"></i> Save Settings
         </button>
+
+        <div style="margin-top: 16px; text-align: center; color: var(--ds-text-muted); font-size: 13px;">
+            After saving, run <code>/ticket setup</code> in your Discord server for any channel changes to take effect.
+        </div>
     </main>
 
     <script src="/js/secure-auth.js"></script>
@@ -173,107 +231,93 @@
         const guildId = localStorage.getItem('selectedGuildId');
         if (!guildId) { alert('Please select a server first'); window.location.href = '/dashboard'; }
 
-        async function loadChannels() {
-            if (!guildId) return;
-            try {
-                const res = await fetch(`/api/guild/${guildId}/channels`, { credentials: 'include' });
-                
-                // Check if response is HTML instead of JSON
-                const contentType = res.headers.get('content-type');
-                if (contentType && contentType.includes('text/html')) {
-                    console.error('Received HTML instead of JSON - possible routing error');
-                    return;
-                }
-                
-                if (res.status === 503) {
-                    console.log('Bot is starting up, retrying channels in 3 seconds...');
-                    setTimeout(loadChannels, 3000);
-                    return;
-                }
-                
-                if (res.ok) {
-                    const payload = await res.json();
-                    let allChannels = Array.isArray(payload) ? payload : (payload.data?.channels || payload.data || payload.channels || []);
-                    const textChannels = allChannels.filter(ch => ch.type === 0);
-                    const categories = allChannels.filter(ch => ch.type === 4);
-                    
-                    const categorySelect = document.getElementById('ticketCategory');
-                    categorySelect.innerHTML = '<option value="">Select a category...</option>';
-                    categories.forEach(cat => {
-                        const option = document.createElement('option');
-                        option.value = cat.id;
-                        option.textContent = cat.name;
-                        categorySelect.appendChild(option);
-                    });
-                    
-                    const panelSelect = document.getElementById('ticketPanelChannel');
-                    const transcriptSelect = document.getElementById('ticketTranscriptChannel');
-                    [panelSelect, transcriptSelect].forEach(select => {
-                        select.innerHTML = '<option value="">Select a channel...</option>';
-                        textChannels.forEach(ch => {
-                            const option = document.createElement('option');
-                            option.value = ch.id;
-                            option.textContent = '# ' + ch.name;
-                            select.appendChild(option);
-                        });
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading channels:', error);
-            }
+        function showToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = type;
+            t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 3500);
         }
 
         async function loadSettings() {
             try {
-                const guildId = localStorage.getItem('selectedGuildId');
-                if (!guildId) {
-                    alert('Please select a server first');
-                    return;
-                }
-                
                 const res = await fetch(`/api/settings/tickets?guildId=${guildId}`, { 
                     credentials: 'include',
-                    headers: {
-                        'X-Guild-Id': guildId
-                    }
+                    headers: { 'X-Guild-Id': guildId }
                 });
                 
-                // Check if response is HTML instead of JSON
                 const contentType = res.headers.get('content-type');
-                if (contentType && contentType.includes('text/html')) {
-                    console.error('Received HTML instead of JSON - possible routing error');
-                    throw new Error('Server returned HTML instead of JSON');
+                if (!contentType?.includes('application/json')) {
+                    console.error('Received non-JSON response from /api/settings/tickets');
+                    return;
                 }
-                
+
                 if (res.status === 503) {
-                    console.log('Bot is starting up, retrying in 3 seconds...');
                     setTimeout(loadSettings, 3000);
                     return;
                 }
                 
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-                }
-                
                 const response = await res.json();
-                const data = response.settings || response.data || response;
-                
+                const data = response.settings || response;
+                const channels = response.channels || [];
+                const roles = response.roles || [];
+
+                // Populate role selects
+                populateRoles(roles, 'staffRoleId', data.staffRoleId);
+                populateRoles(roles, 'manageRoleId', data.manageRoleId, true);
+
+                // Populate channel/category selects
+                populateChannels(channels, 'panelChannelId', data.panelChannelId);
+                populateChannels(channels, 'categoryId', data.categoryId, true);
+                populateChannels(channels, 'logChannelId', data.logChannelId, true);
+
+                // Set other field values
                 document.getElementById('ticketsEnabled').checked = data.enabled || false;
-                document.getElementById('ticketCategory').value = data.category || '';
-                document.getElementById('ticketPanelChannel').value = data.panelChannel || '';
-                document.getElementById('ticketTranscriptChannel').value = data.transcriptChannel || '';
                 document.getElementById('ticketWelcomeMessage').value = data.welcomeMessage || '';
+                document.getElementById('maxOpen').value = data.maxOpen || 1;
                 document.getElementById('ticketAutoclose').checked = data.autoClose?.enabled || false;
                 document.getElementById('ticketAutocloseHours').value = data.autoClose?.hours || 48;
-                
+
                 updateFeatureStatus(data.enabled);
             } catch (error) {
-                console.error('Error loading settings:', error);
-                // Show user-friendly error
-                if (error.message.includes('HTML')) {
-                    alert('Error: Unable to load settings. Please refresh the page.');
-                }
+                console.error('Error loading ticket settings:', error);
+                showToast('Failed to load settings: ' + error.message, 'error');
             }
+        }
+
+        function populateRoles(roles, selectId, currentValue, allowNone = false) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = allowNone
+                ? '<option value="">None (optional)</option>'
+                : '<option value="">Select a role...</option>';
+            roles.forEach(role => {
+                const opt = document.createElement('option');
+                opt.value = role.id;
+                opt.textContent = '@' + role.name;
+                if (role.color && role.color !== '#000000') {
+                    opt.style.color = role.color;
+                }
+                if (role.id === currentValue) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        function populateChannels(channels, selectId, currentValue, allowNone = false) {
+            const select = document.getElementById(selectId);
+            const isCategory = selectId === 'categoryId';
+            select.innerHTML = allowNone
+                ? `<option value="">None (optional)</option>`
+                : `<option value="">Select a ${isCategory ? 'category' : 'channel'}...</option>`;
+            
+            // Filter: categoryId gets type 4, others get type 0
+            const filtered = channels.filter(ch => isCategory ? ch.type === 4 : ch.type === 0);
+            filtered.forEach(ch => {
+                const opt = document.createElement('option');
+                opt.value = ch.id;
+                opt.textContent = isCategory ? '📁 ' + ch.name : '# ' + ch.name;
+                if (ch.id === currentValue) opt.selected = true;
+                select.appendChild(opt);
+            });
         }
 
         async function saveSettings() {
@@ -282,25 +326,27 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             
             try {
-                const guildId = localStorage.getItem('selectedGuildId');
-                if (!guildId) {
-                    alert('Please select a server first');
+                const settings = {
+                    enabled: document.getElementById('ticketsEnabled').checked,
+                    panelChannelId: document.getElementById('panelChannelId').value,
+                    categoryId: document.getElementById('categoryId').value,
+                    staffRoleId: document.getElementById('staffRoleId').value,
+                    manageRoleId: document.getElementById('manageRoleId').value,
+                    logChannelId: document.getElementById('logChannelId').value,
+                    welcomeMessage: document.getElementById('ticketWelcomeMessage').value,
+                    maxOpen: parseInt(document.getElementById('maxOpen').value) || 1,
+                    autoClose: {
+                        enabled: document.getElementById('ticketAutoclose').checked,
+                        hours: parseInt(document.getElementById('ticketAutocloseHours').value) || 48
+                    }
+                };
+
+                if (!settings.staffRoleId) {
+                    showToast('⚠️ Staff Role is required for the ticket system to work', 'error');
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-save"></i> Save Settings';
                     return;
                 }
-                
-                const settings = {
-                    enabled: document.getElementById('ticketsEnabled').checked,
-                    category: document.getElementById('ticketCategory').value,
-                    panelChannel: document.getElementById('ticketPanelChannel').value,
-                    transcriptChannel: document.getElementById('ticketTranscriptChannel').value,
-                    welcomeMessage: document.getElementById('ticketWelcomeMessage').value,
-                    autoClose: {
-                        enabled: document.getElementById('ticketAutoclose').checked,
-                        hours: parseInt(document.getElementById('ticketAutocloseHours').value)
-                    }
-                };
                 
                 const res = await SecureAuth.fetch(`/api/settings/tickets?guildId=${guildId}`, {
                     method: 'POST',
@@ -313,15 +359,18 @@
                 });
                 
                 if (res.ok) {
-                    btn.innerHTML = '<i class="fas fa-check"></i> Saved!';
-                    setTimeout(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Settings'; }, 2000);
+                    showToast('✅ Settings saved! Run /ticket setup in Discord to apply panel changes.', 'success');
+                    updateFeatureStatus(settings.enabled);
                 } else {
-                    throw new Error('Failed to save');
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || `HTTP ${res.status}`);
                 }
             } catch (error) {
                 console.error('Error saving settings:', error);
-                btn.innerHTML = '<i class="fas fa-times"></i> Error';
-                setTimeout(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Settings'; }, 2000);
+                showToast('Failed to save: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Save Settings';
             }
         }
 
@@ -337,7 +386,6 @@
         }
 
         document.getElementById('ticketsEnabled').addEventListener('change', (e) => updateFeatureStatus(e.target.checked));
-        loadChannels();
         loadSettings();
     </script>
 </body>

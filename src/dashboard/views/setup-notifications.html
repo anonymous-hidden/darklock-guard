@@ -105,6 +105,15 @@
         .premium-unlock-btn { padding: 8px 20px; background: linear-gradient(135deg, #ffc107, #ff9800); color: #1a1a2e; border: none; border-radius: var(--ds-radius-md); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
         .premium-unlock-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(255,193,7,0.3); }
 
+        /* Email section */
+        .email-verified { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: var(--ds-radius-full); font-size: 11px; font-weight: 600; background: var(--ds-success-bg); color: var(--ds-success); border: 1px solid var(--ds-success-border); margin-left: 8px; }
+        .email-input-row { display: flex; gap: 10px; align-items: center; }
+        .email-input-row .setup-form-input { flex: 1; }
+        .email-verify-btn { padding: 10px 18px; background: var(--ds-surface-2); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); color: var(--ds-text-secondary); font-size: 13px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+        .email-verify-btn:hover { background: var(--ds-primary-bg); color: var(--ds-primary); border-color: var(--ds-primary); }
+        .email-frequency-row { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+        .email-frequency-row select { flex: 1; }
+
         /* Webhook section */
         .webhook-input-row { display: flex; gap: 10px; align-items: center; }
         .webhook-input-row .setup-form-input { flex: 1; }
@@ -509,7 +518,130 @@
         </div>
 
         <!-- ═══════════════════════════════════════════ -->
-        <!--  SECTION 8: LOG FORMATTING (PREMIUM)      -->
+        <!--  SECTION 8: EMAIL NOTIFICATIONS (PREMIUM) -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="setup-card premium-card" id="card-email-notify" data-premium-feature="advanced-notifications">
+            <div class="setup-card-header">
+                <div class="setup-card-title">
+                    <i class="fas fa-at"></i> Email Notifications
+                    <span class="tier-badge tier-premium"><i class="fas fa-crown" style="font-size: 9px;"></i> PREMIUM</span>
+                </div>
+            </div>
+            <div class="setup-card-body">
+                <p class="setup-card-desc">Receive email alerts for critical server events. Emails are sent directly to your address even when you're offline — perfect for raid alerts, security triggers, and daily digests.</p>
+
+                <div class="info-box" style="margin-bottom: var(--ds-space-lg);">
+                    <i class="fas fa-info-circle"></i>
+                    <p>Emails are sent from <strong>alerts@darklock.net</strong>. Add this address to your contacts to prevent spam filtering.</p>
+                </div>
+
+                <div class="setup-form-group">
+                    <label class="setup-form-label">Notification Email Address</label>
+                    <p class="setup-form-desc">Where email alerts will be sent. Must be a verified address.</p>
+                    <div class="email-input-row">
+                        <input type="email" class="setup-form-input" id="emailAddress" placeholder="admin@yourdomain.com">
+                        <button class="email-verify-btn" onclick="sendVerificationEmail()"><i class="fas fa-paper-plane"></i> Verify</button>
+                    </div>
+                    <p class="setup-form-desc" id="emailVerifiedStatus" style="margin-top: 6px; display: none;"></p>
+                </div>
+
+                <div class="section-divider"></div>
+
+                <label class="setup-form-label" style="margin-bottom: 12px; display: block;">Security &amp; Raid Alerts</label>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-users-slash" style="color: #ef4444; font-size: 14px;"></i> Raid Detection</h4>
+                        <p>Email immediately when a raid is detected (mass join, coordinated attack)</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="emailOnRaid" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-radiation" style="color: #f97316; font-size: 14px;"></i> Anti-Nuke Trigger</h4>
+                        <p>Email when anti-nuke protection activates (mass channel/role deletions)</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="emailOnNuke" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-hammer" style="color: #f59e0b; font-size: 14px;"></i> Mass Ban / Kick</h4>
+                        <p>Email when 5+ members are banned or kicked in a short window</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="emailOnMassBan" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-fish" style="color: #3b82f6; font-size: 14px;"></i> Phishing Link Detected</h4>
+                        <p>Email when a phishing or scam link is caught in your server</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="emailOnPhishing" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-user-secret" style="color: #8b5cf6; font-size: 14px;"></i> Suspicious Account Joined</h4>
+                        <p>Email when a new-or-flagged account joins (low age, bot pattern)</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="emailOnSuspicious"><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="section-divider"></div>
+
+                <label class="setup-form-label" style="margin-bottom: 12px; display: block;">Moderation &amp; Admin Alerts</label>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-cog" style="color: #f59e0b; font-size: 14px;"></i> Settings Changed</h4>
+                        <p>Email when any bot setting is modified via the dashboard</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="emailOnSettingsChange"><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-ticket-alt" style="color: #3b82f6; font-size: 14px;"></i> Ticket Escalation</h4>
+                        <p>Email when a support ticket is escalated to high-priority</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="emailOnTicketEscalation" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-user-slash" style="color: #ef4444; font-size: 14px;"></i> Admin / Staff Removed</h4>
+                        <p>Email when a staff member loses their admin or mod role</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="emailOnStaffRemoved" checked><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="section-divider"></div>
+
+                <label class="setup-form-label" style="margin-bottom: 12px; display: block;">Digest &amp; Summaries</label>
+
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <h4><i class="fas fa-chart-bar" style="color: #22c55e; font-size: 14px;"></i> Activity Digest</h4>
+                        <p>Receive a scheduled summary of moderation, security events, and server activity</p>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="emailDigestEnabled"><span class="toggle-slider"></span></label>
+                </div>
+
+                <div class="setup-form-group" id="emailDigestFrequencyGroup" style="margin-top: 12px; display: none;">
+                    <label class="setup-form-label">Digest Frequency</label>
+                    <select class="setup-form-select" id="emailDigestFrequency">
+                        <option value="daily">Daily (sent at midnight UTC)</option>
+                        <option value="weekly" selected>Weekly (sent Monday 00:00 UTC)</option>
+                        <option value="monthly">Monthly (sent 1st of each month)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!--  SECTION 9: LOG FORMATTING (PREMIUM)      -->
         <!-- ═══════════════════════════════════════════ -->
         <div class="setup-card premium-card" id="card-formatting" data-premium-feature="advanced-notifications">
             <div class="setup-card-header">
@@ -601,6 +733,12 @@
             await checkPremium();
             await loadChannels();
             await loadSettings();
+            // Show toast if redirected back after email confirmation
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('emailVerified') === '1') {
+                showToast('success', '\u2705 Email address verified successfully!');
+                history.replaceState({}, '', window.location.pathname);
+            }
         });
 
         // ── Premium Check ─────────────────────────────
@@ -718,6 +856,24 @@
                 setValue('webhookPrimary', s.webhook_primary || '');
                 setValue('webhookSecondary', s.webhook_secondary || '');
 
+                // Premium: Email Notifications
+                setValue('emailAddress', s.email_address || '');
+                setChecked('emailOnRaid', s.email_on_raid !== false);
+                setChecked('emailOnNuke', s.email_on_nuke !== false);
+                setChecked('emailOnMassBan', s.email_on_mass_ban !== false);
+                setChecked('emailOnPhishing', s.email_on_phishing !== false);
+                setChecked('emailOnSuspicious', !!s.email_on_suspicious);
+                setChecked('emailOnSettingsChange', !!s.email_on_settings_change);
+                setChecked('emailOnTicketEscalation', s.email_on_ticket_escalation !== false);
+                setChecked('emailOnStaffRemoved', s.email_on_staff_removed !== false);
+                setChecked('emailDigestEnabled', !!s.email_digest_enabled);
+                setValue('emailDigestFrequency', s.email_digest_frequency || 'weekly');
+                if (s.email_digest_enabled) document.getElementById('emailDigestFrequencyGroup').style.display = 'block';
+                if (s.email_verified) {
+                    const st = document.getElementById('emailVerifiedStatus');
+                    if (st) { st.style.display = 'block'; st.innerHTML = '<i class="fas fa-check-circle" style="color: var(--ds-success);"></i> <span style="color: var(--ds-success);">Email verified</span>'; }
+                }
+
                 // Premium: DM Notifications
                 setChecked('dmOnRaid', s.dm_on_raid !== false);
                 setChecked('dmOnNuke', s.dm_on_nuke !== false);
@@ -796,6 +952,19 @@
                     webhook_primary: getVal('webhookPrimary'),
                     webhook_secondary: getVal('webhookSecondary'),
 
+                    // Premium: Email Notifications
+                    email_address: getVal('emailAddress'),
+                    email_on_raid: isChecked('emailOnRaid'),
+                    email_on_nuke: isChecked('emailOnNuke'),
+                    email_on_mass_ban: isChecked('emailOnMassBan'),
+                    email_on_phishing: isChecked('emailOnPhishing'),
+                    email_on_suspicious: isChecked('emailOnSuspicious'),
+                    email_on_settings_change: isChecked('emailOnSettingsChange'),
+                    email_on_ticket_escalation: isChecked('emailOnTicketEscalation'),
+                    email_on_staff_removed: isChecked('emailOnStaffRemoved'),
+                    email_digest_enabled: isChecked('emailDigestEnabled'),
+                    email_digest_frequency: getVal('emailDigestFrequency'),
+
                     // Premium: DM Notifications
                     dm_on_raid: isChecked('dmOnRaid'),
                     dm_on_nuke: isChecked('dmOnNuke'),
@@ -834,6 +1003,36 @@
                 btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
             }
         };
+
+        // ── Send Verification Email ───────────────────
+        window.sendVerificationEmail = async function() {
+            const email = getVal('emailAddress');
+            if (!email || !email.includes('@')) {
+                showToast('error', 'Enter a valid email address first');
+                return;
+            }
+            try {
+                const res = await SecureAuth.fetch('/api/settings/notifications/verify-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, guildId })
+                });
+                if (res.ok) {
+                    showToast('success', 'Verification email sent! Check your inbox.');
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showToast('error', err.message || 'Failed to send verification email');
+                }
+            } catch (e) {
+                showToast('error', 'Failed to send verification email');
+            }
+        };
+
+        // Digest frequency toggle
+        document.getElementById('emailDigestEnabled')?.addEventListener('change', function() {
+            const group = document.getElementById('emailDigestFrequencyGroup');
+            if (group) group.style.display = this.checked ? 'block' : 'none';
+        });
 
         // ── Test Webhook ──────────────────────────────
         window.testWebhook = async function(inputId) {

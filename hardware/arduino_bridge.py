@@ -27,7 +27,7 @@ from pathlib import Path
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
 
-SERIAL_PORT = os.environ.get("ELEGOO_PORT", "/dev/ttyACM0")
+SERIAL_PORT = os.environ.get("ELEGOO_PORT", "/dev/elegoo")
 BAUD_RATE = 115200
 HEARTBEAT_INTERVAL = 5  # seconds
 STATUS_INTERVAL = 2     # seconds between status checks

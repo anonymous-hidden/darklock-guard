@@ -8,18 +8,82 @@ Discord security and moderation bot with dashboard, analytics, ticket system, le
 
 **Start ALL services with ONE command:**
 
-```bas
+```bash
+cd "/home/cayden/discord bot/discord bot" && ./start-all.sh
 ```
 
 **Stop everything:**
 ```bash
-cd /home/cayden/discord\ bot && ./stop-all.sh
+cd "/home/cayden/discord bot/discord bot" && ./stop-all.sh
 ```
 
 **What starts:**
 - ✅ Discord Bot (port 3001)
-- ✅ Darklock Platform Server (port 3002)  
-- ✅ Darklock Guard App (Tauri)
+- ✅ Darklock Platform Server (port 3002)
+- ✅ Darklock Guard Service + App (Tauri)
+- ✅ Darklock Secure Channel — IDS (port 4100) + RLY (port 4101) + Tauri app
+
+---
+
+## ⚡ All-in-One Commands — Per App
+
+### 1. Discord Bot only
+```bash
+cd "/home/cayden/discord bot/discord bot" && npm start
+```
+> Development mode (auto-restart on file change):
+```bash
+cd "/home/cayden/discord bot/discord bot" && npm run dev
+```
+
+### 2. Darklock Platform Server only (port 3002)
+```bash
+cd "/home/cayden/discord bot/discord bot" && node darklock/start.js
+```
+
+### 3. Darklock Guard — daemon + UI (Tauri)
+> Pre-built binary (fast, no recompile):
+```bash
+export GUARD_VAULT_PASSWORD=darklock2026
+"/home/cayden/discord bot/discord bot/guard-v2/target/debug/guard-service" run &
+"/home/cayden/discord bot/discord bot/guard-v2/target/debug/darklock-guard-ui" &
+```
+> First-time build / dev mode:
+```bash
+cd "/home/cayden/discord bot/discord bot/guard-v2/desktop" && npm install && npx tauri dev
+```
+> Build the binary once:
+```bash
+cd "/home/cayden/discord bot/discord bot/guard-v2" && cargo build
+```
+
+### 4. Darklock Secure Channel — all three parts
+> Run each in a separate terminal tab:
+```bash
+# Terminal 1 — IDS (Identity & Key Distribution, port 4100)
+cd "/home/cayden/discord bot/discord bot/secure-channel/services/dl_ids" && npm install && node src/server.js
+
+# Terminal 2 — RLY (Message Relay, port 4101)
+cd "/home/cayden/discord bot/discord bot/secure-channel/services/dl_rly" && npm install && node src/server.js
+
+# Terminal 3 — Tauri app (hot-reload dev)
+cd "/home/cayden/discord bot/discord bot/secure-channel/apps/dl-secure-channel" && npm install && npm run tauri dev
+```
+> Or start IDS + RLY in the background then launch the app:
+```bash
+cd "/home/cayden/discord bot/discord bot/secure-channel/services/dl_ids" && node src/server.js >> /tmp/ids.log 2>&1 &
+cd "/home/cayden/discord bot/discord bot/secure-channel/services/dl_rly" && node src/server.js >> /tmp/rly.log 2>&1 &
+cd "/home/cayden/discord bot/discord bot/secure-channel/apps/dl-secure-channel" && npm run tauri dev
+```
+> Check IDS + RLY health:
+```bash
+curl -s http://localhost:4100/health && curl -s http://localhost:4101/health
+```
+> **First-time Rust setup (required once):**
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+sudo apt install libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev
+```
 
 **Access URLs:**
 - **Unified Admin Dashboard**: http://localhost:3001/admin (⭐ NEW - All admin functions in one place)
@@ -287,6 +351,16 @@ cd "/home/cayden/discord bot/discord bot/guard-v2" && ./start.sh
 # Or check if already running:
 pgrep -f "guard-service" > /dev/null && echo "Already running" || (cd "/home/cayden/discord bot/discord bot/guard-v2" && ./start.sh)
 
+# Start Darklock Secure Channel (Tauri E2E encrypted messenger)
+cd "/home/cayden/discord bot/discord bot/secure-channel/apps/dl-secure-channel"
+npm run tauri dev                      # Development mode (hot-reload)
+npm run tauri build                    # Build production binary
+# Requirements: Rust toolchain + Cargo (https://rustup.rs)
+# First-time setup:
+#   npm install
+#   rustup target add x86_64-unknown-linux-gnu  # Linux
+#   rustup target add x86_64-pc-windows-msvc    # Windows cross-compile
+
 # Darklock Guard Security Modes:
 # - Normal Mode: Balanced protection for everyday use
 # - Strict Mode: Maximum security with password protection
@@ -421,6 +495,48 @@ node setup-team-db.js                  # Setup teams
 npm run fix-encoding                   # Fix encoding
 node fix-all-mojibake.cjs              # Fix mojibake
 ```
+
+### 💬 Darklock Secure Channel
+
+```bash
+cd "/home/cayden/discord bot/discord bot/secure-channel/apps/dl-secure-channel"
+
+# Install dependencies (first time or after pulling changes)
+npm install
+
+# Development — launches Vite dev server + Tauri window with hot-reload
+npm run tauri dev
+
+# Production build — outputs installer to src-tauri/target/release/bundle/
+npm run tauri build
+
+# Frontend only (browser, no Tauri features)
+npm run dev                            # http://localhost:5173
+
+# Type-check only
+npx tsc --noEmit
+```
+
+**Backend services** (required for full functionality):
+```bash
+cd "/home/cayden/discord bot/discord bot/secure-channel"
+
+# IDS — Identity & Key Distribution Service (port 4100)
+cd services/dl_ids && npm install && node src/server.js
+
+# RLY — Message Relay Service (port 4101)
+cd services/dl_rly && npm install && node src/server.js
+
+# Or start both with Docker Compose
+docker-compose up -d
+```
+
+**Prerequisites:**
+- Node.js v18+
+- Rust + Cargo: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+- Linux build deps: `sudo apt install libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev`
+
+---
 
 ### 🛡️ Darklock Platform
 
@@ -836,6 +952,16 @@ discord bot/
 │   ├── public/                 # Static assets & JS
 │   ├── downloads/              # Installer files
 │   └── utils/                  # Platform utilities
+├── secure-channel/             # Darklock Secure Channel (E2E messenger)
+│   ├── apps/
+│   │   └── dl-secure-channel/  # Tauri + React frontend
+│   │       ├── src/            # React app (components, stores, pages)
+│   │       └── src-tauri/      # Rust backend (crypto, vault, IPC)
+│   ├── crates/                 # Shared Rust crates (dl_crypto, dl_store, dl_proto)
+│   └── services/
+│       ├── ids/                # Identity & Key Distribution Service (port 4100)
+│       └── rly/                # Message Relay Service (port 4101)
+├── guard-v2/                   # Darklock Guard app (Tauri)
 ├── file-protection/            # Anti-tampering system
 │   ├── agent/                  # Monitoring agent
 │   ├── backups/                # File backups
