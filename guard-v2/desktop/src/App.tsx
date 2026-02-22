@@ -31,24 +31,19 @@ function useNeedsOnboarding(): { loading: boolean; needsOnboarding: boolean } {
 
   useEffect(() => {
     const check = async () => {
+      // Require both a stored auth token AND completed onboarding flag.
+      // If either is missing the user must log in / complete setup.
+      const authToken = localStorage.getItem('darklock_auth_token');
       const onboardingComplete = localStorage.getItem('darklock_onboarding_complete') === 'true';
-      
-      // If onboarding was completed in this session, trust that
-      if (onboardingComplete) {
+
+      if (authToken && onboardingComplete) {
         setNeedsOnboarding(false);
         setLoading(false);
         return;
       }
 
-      // First launch: check if vault exists
-      try {
-        const result: any = await invoke('check_first_run');
-        setNeedsOnboarding(result.needs_setup);
-      } catch (err) {
-        console.error('Failed to check first run status:', err);
-        // If backend check fails, assume onboarding needed
-        setNeedsOnboarding(true);
-      }
+      // No valid session — show login / onboarding
+      setNeedsOnboarding(true);
       setLoading(false);
     };
     check();

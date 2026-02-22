@@ -116,7 +116,7 @@ const OnlineLinkStep: React.FC<Props> = ({ state, onUpdate, onNext, onBack }) =>
       <StepHeader
         title="Link This Device"
         subtitle="Register this device with your Darklock Cloud account. This creates your encryption vault and device identity."
-        step={{ current: 2, total: 3 }}
+        step={{ current: 2, total: 2 }}
       />
 
       {state.error && (

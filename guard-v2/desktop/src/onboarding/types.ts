@@ -47,8 +47,8 @@ export interface OnboardingState {
 }
 
 export const INITIAL_STATE: OnboardingState = {
-  step: 'mode-select',
-  mode: null,
+  step: 'online-auth',
+  mode: 'online',
   password: '',
   confirmPassword: '',
   securityProfile: 'standard',

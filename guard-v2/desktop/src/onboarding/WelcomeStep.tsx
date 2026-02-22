@@ -7,15 +7,14 @@
 
 import React from 'react';
 import type { OnboardingState } from './types';
-import { OnboardingCard, PrimaryButton, GhostButton } from './components';
+import { OnboardingCard, PrimaryButton } from './components';
 
 interface Props {
   state: OnboardingState;
   onStartTour: () => void;
-  onSkip: () => void;
 }
 
-const WelcomeStep: React.FC<Props> = ({ state, onStartTour, onSkip }) => {
+const WelcomeStep: React.FC<Props> = ({ state, onStartTour }) => {
   return (
     <OnboardingCard>
       <div className="text-center py-4">
@@ -85,16 +84,16 @@ const WelcomeStep: React.FC<Props> = ({ state, onStartTour, onSkip }) => {
           <div className="flex-1 h-px bg-white/[0.06]" />
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <PrimaryButton onClick={onStartTour} className="min-w-[180px]">
+        <div className="flex flex-col items-center justify-center gap-3">
+          <PrimaryButton onClick={onStartTour} className="min-w-[220px]">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" /><polygon points="10 8 16 12 10 16 10 8" />
             </svg>
-            Take the Tour
+            Start Quick Tour
           </PrimaryButton>
-          <GhostButton onClick={onSkip}>
-            Skip to Dashboard
-          </GhostButton>
+          <p className="text-[11px] text-text-muted mt-1">
+            Takes about 60 seconds · learn key features
+          </p>
         </div>
       </div>
     </OnboardingCard>

@@ -23,10 +23,9 @@ interface Props {
   state: OnboardingState;
   onUpdate: (patch: Partial<OnboardingState>) => void;
   onNext: () => void;
-  onBack: () => void;
 }
 
-const OnlineAuthStep: React.FC<Props> = ({ state, onUpdate, onNext, onBack }) => {
+const OnlineAuthStep: React.FC<Props> = ({ state, onUpdate, onNext }) => {
   const [localError, setLocalError] = useState<string | null>(null);
   const tab = state.authTab;
   const setTab = (t: AuthTab) => {
@@ -52,6 +51,7 @@ const OnlineAuthStep: React.FC<Props> = ({ state, onUpdate, onNext, onBack }) =>
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Authentication failed');
+      localStorage.setItem('darklock_auth_token', data.token);
       onUpdate({
         sessionToken: data.token,
         loading: false,
@@ -87,6 +87,7 @@ const OnlineAuthStep: React.FC<Props> = ({ state, onUpdate, onNext, onBack }) =>
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Registration failed');
+      localStorage.setItem('darklock_auth_token', data.token);
       onUpdate({
         sessionToken: data.token,
         loading: false,
@@ -103,7 +104,7 @@ const OnlineAuthStep: React.FC<Props> = ({ state, onUpdate, onNext, onBack }) =>
       <StepHeader
         title="Darklock Cloud"
         subtitle="Sign in to enable remote management, encrypted cloud sync, and real-time threat intelligence."
-        step={{ current: 1, total: 3 }}
+        step={{ current: 1, total: 2 }}
       />
 
       {/* Tab switcher */}
@@ -200,8 +201,7 @@ const OnlineAuthStep: React.FC<Props> = ({ state, onUpdate, onNext, onBack }) =>
         </div>
       )}
 
-      <div className="flex justify-between mt-8">
-        <GhostButton onClick={onBack}>Back</GhostButton>
+      <div className="flex justify-end mt-8">
         <PrimaryButton
           onClick={tab === 'login' ? handleLogin : handleRegister}
           loading={state.loading}
