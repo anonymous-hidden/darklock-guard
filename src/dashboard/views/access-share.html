@@ -639,11 +639,137 @@
 
         // Load users and roles
         async function loadUsers() {
-            // Implement user list loading
+            const container = document.getElementById('usersList');
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Loading...</p></div>';
+            try {
+                const res = await SecureAuth.fetch(`/api/dashboard/${guildId}/shared-access`, { method: 'GET' });
+                if (!res.ok) throw new Error('Failed to load');
+                const data = await res.json();
+                const users = data.data?.users || [];
+                if (users.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><i class="fas fa-user-slash"></i><h4>No Users</h4><p>No users have been granted direct access yet</p></div>';
+                    return;
+                }
+                container.innerHTML = users.map(u => `
+                    <div class="access-item" id="user-${u.user_id}">
+                        <div class="access-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="access-info">
+                            <div class="access-name">${escapeHtml(u.username || u.user_id)}</div>
+                            <div class="access-meta">
+                                <span>ID: ${escapeHtml(u.user_id)}</span>
+                                <span>•</span>
+                                <span>Granted by ${escapeHtml(u.granted_by_username || 'Unknown')}</span>
+                                <span>•</span>
+                                <span>${new Date(u.created_at).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                        <div class="access-actions">
+                            <button onclick="revokeUserAccess('${u.user_id}', this)">
+                                <i class="fas fa-times"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to load users</p></div>';
+            }
         }
         
         async function loadRoles() {
-            // Implement role list loading
+            const container = document.getElementById('rolesList');
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Loading...</p></div>';
+            try {
+                const res = await SecureAuth.fetch(`/api/dashboard/${guildId}/shared-access`, { method: 'GET' });
+                if (!res.ok) throw new Error('Failed to load');
+                const data = await res.json();
+                const roles = data.data?.roles || [];
+                if (roles.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><i class="fas fa-users-slash"></i><h4>No Roles</h4><p>No roles have been granted dashboard access yet</p></div>';
+                    return;
+                }
+                container.innerHTML = roles.map(r => `
+                    <div class="access-item" id="role-${r.role_id}">
+                        <div class="access-avatar role" style="background: linear-gradient(135deg, var(--ds-primary), #7c5cbf);">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="access-info">
+                            <div class="access-name">${escapeHtml(r.role_name || r.role_id)}</div>
+                            <div class="access-meta">
+                                <span>ID: ${escapeHtml(r.role_id)}</span>
+                                <span>•</span>
+                                <span>All members with this role</span>
+                                <span>•</span>
+                                <span>${new Date(r.created_at).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                        <div class="access-actions">
+                            <button onclick="revokeRoleAccess('${r.role_id}', this)">
+                                <i class="fas fa-times"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to load roles</p></div>';
+            }
+        }
+
+        async function revokeUserAccess(userId, btn) {
+            if (!confirm('Remove this user\'s dashboard access?')) return;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            try {
+                const res = await SecureAuth.fetch(`/api/dashboard/${guildId}/shared-access/revoke-user`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+                if (res.ok) {
+                    document.getElementById(`user-${userId}`)?.remove();
+                    const container = document.getElementById('usersList');
+                    if (!container.querySelector('.access-item')) {
+                        container.innerHTML = '<div class="empty-state"><i class="fas fa-user-slash"></i><h4>No Users</h4><p>No users have been granted direct access yet</p></div>';
+                    }
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-times"></i> Remove';
+                    alert('Failed to revoke access. Please try again.');
+                }
+            } catch (e) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-times"></i> Remove';
+                alert('Failed to revoke access. Please try again.');
+            }
+        }
+
+        async function revokeRoleAccess(roleId, btn) {
+            if (!confirm('Remove this role\'s dashboard access?')) return;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            try {
+                const res = await SecureAuth.fetch(`/api/dashboard/${guildId}/shared-access/revoke-role`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ roleId })
+                });
+                if (res.ok) {
+                    document.getElementById(`role-${roleId}`)?.remove();
+                    const container = document.getElementById('rolesList');
+                    if (!container.querySelector('.access-item')) {
+                        container.innerHTML = '<div class="empty-state"><i class="fas fa-users-slash"></i><h4>No Roles</h4><p>No roles have been granted dashboard access yet</p></div>';
+                    }
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-times"></i> Remove';
+                    alert('Failed to revoke access. Please try again.');
+                }
+            } catch (e) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-times"></i> Remove';
+                alert('Failed to revoke access. Please try again.');
+            }
         }
         
         // Load roles for select
