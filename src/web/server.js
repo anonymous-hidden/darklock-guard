@@ -171,22 +171,22 @@ class WebDashboard {
             const order = rank === 1 ? 'order-2' : rank === 2 ? 'order-1' : 'order-3';
             const scale = rank === 1 ? 'scale-y-100' : 'scale-y-90 mt-6';
             return `
-            <div class="podium-card ${order} flex flex-col items-center gap-3 px-4 py-6 rounded-2xl relative" style="background:rgba(255,255,255,0.03);border:1px solid ${m.border}30;box-shadow:0 4px 40px ${m.glow};">
-                <div class="absolute -top-4 text-3xl">${m.icon}</div>
-                <div class="relative">
-                    <img src="${entry.avatar}" alt="${this.escapeHtml(entry.username)}" class="w-20 h-20 rounded-full object-cover" style="border:3px solid ${m.color};box-shadow:0 0 20px ${m.glow};">
-                    <div class="absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center text-sm font-black text-black" style="background:${m.color};">${rank}</div>
+            <div class="podium-card ${order} flex flex-col items-center gap-4 px-5 py-8 rounded-2xl relative" style="background:rgba(255,255,255,0.03);border:1px solid ${m.border}30;box-shadow:0 4px 40px ${m.glow};">
+                <div class="absolute -top-5 text-4xl">${m.icon}</div>
+                <div class="relative mt-2">
+                    <img src="${entry.avatar}" alt="${this.escapeHtml(entry.username)}" class="w-24 h-24 rounded-full object-cover" style="border:3px solid ${m.color};box-shadow:0 0 24px ${m.glow};">
+                    <div class="absolute -bottom-2 -right-2 w-9 h-9 rounded-full flex items-center justify-center text-sm font-black text-black" style="background:${m.color};">${rank}</div>
                 </div>
-                <div class="text-center mt-2">
-                    <div class="font-bold text-lg truncate max-w-[140px]" title="${this.escapeHtml(entry.username)}" style="color:${m.labelColor};">${this.escapeHtml(entry.username)}</div>
-                    <div class="text-xs mt-1" style="color:rgba(255,255,255,0.5);">Level ${entry.level}</div>
+                <div class="text-center mt-1">
+                    <div class="font-bold text-base truncate max-w-[160px]" title="${this.escapeHtml(entry.username)}" style="color:${m.labelColor};">${this.escapeHtml(entry.username)}</div>
+                    <div class="text-sm mt-1" style="color:rgba(255,255,255,0.5);">Level ${entry.level}</div>
                 </div>
                 <div class="text-center">
-                    <div class="font-black text-xl" style="color:${m.color};">${this.formatNumber(entry.xp)}</div>
-                    <div class="text-xs" style="color:rgba(255,255,255,0.4);">total XP</div>
+                    <div class="font-black text-2xl" style="color:${m.color};">${this.formatNumber(entry.xp)}</div>
+                    <div class="text-xs mt-0.5" style="color:rgba(255,255,255,0.4);">total XP</div>
                 </div>
                 <!-- mini progress -->
-                <div class="w-full rounded-full overflow-hidden" style="height:4px;background:rgba(255,255,255,0.08);">
+                <div class="w-full rounded-full overflow-hidden" style="height:5px;background:rgba(255,255,255,0.08);">
                     <div style="height:100%;width:${entry.progress_percent || 0}%;background:${m.color};border-radius:9999px;transition:width .6s ease;"></div>
                 </div>
             </div>`;
@@ -277,8 +277,8 @@ class WebDashboard {
         .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
 
         /* podium */
-        .podium{display:flex;align-items:flex-end;justify-content:center;gap:14px;margin-bottom:40px;flex-wrap:wrap;}
-        .podium-card{flex:1;min-width:140px;max-width:200px;}
+        .podium{display:flex;align-items:flex-end;justify-content:center;gap:18px;margin-bottom:40px;flex-wrap:wrap;}
+        .podium-card{flex:1;min-width:180px;max-width:240px;}
         .podium-card.order-1{order:1;}
         .podium-card.order-2{order:2;}
         .podium-card.order-3{order:3;}
@@ -300,8 +300,8 @@ class WebDashboard {
         @media(max-width:520px){
             .stats{grid-template-columns:repeat(3,1fr);}
             .stat-value{font-size:20px;}
-            .podium{gap:8px;}
-            .podium-card{min-width:110px;}
+            .podium{gap:10px;}
+            .podium-card{min-width:130px;}
         }
     </style>
 </head>
