@@ -14,7 +14,9 @@ const expectedFiles = [
     'darklock-guard-installer.msi',
     'darklocksetup.exe',
     'darklock-guard_0.1.0_amd64.deb',
-    'darklock-guard-linux-portable.tar.gz'
+    'darklock-guard-linux-portable.tar.gz',
+    'darklock-secure-channel-setup.exe',
+    'darklock-secure-channel-setup.msi'
 ];
 
 console.log('[Darklock] Checking installer files...');

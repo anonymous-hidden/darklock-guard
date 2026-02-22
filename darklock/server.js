@@ -593,10 +593,14 @@ class DarklockPlatform {
                     path.join(bundleBase, 'DarklockGuard-linux-portable.tar.gz')
                 ],
                 exe: [
+                    path.join(bundleBase, `nsis/Darklock Guard_${latestVersion}_x64-setup.exe`),
+                    path.join(__dirname, `downloads/darklock-guard_${latestVersion}_x64-setup.exe`),
                     path.join(__dirname, 'downloads/darklock-guard-setup.exe'),
                     path.join(__dirname, 'downloads/darklocksetup.exe')
                 ],
                 msi: [
+                    path.join(bundleBase, `msi/Darklock Guard_${latestVersion}_x64_en-US.msi`),
+                    path.join(__dirname, `downloads/darklock-guard_${latestVersion}_x64_en-US.msi`),
                     path.join(__dirname, 'downloads/darklock-guard-setup.msi'),
                     path.join(__dirname, 'downloads/darklock-guard-installer.msi')
                 ]
@@ -694,9 +698,13 @@ class DarklockPlatform {
                     path.join(__dirname, 'downloads/darklock-secure-channel_0.1.0_amd64.AppImage')
                 ],
                 exe: [
+                    path.join(bundleBase, `nsis/Darklock Secure Channel_${version}_x64-setup.exe`),
+                    path.join(__dirname, `downloads/darklock-secure-channel_${version}_x64-setup.exe`),
                     path.join(__dirname, 'downloads/darklock-secure-channel-setup.exe')
                 ],
                 msi: [
+                    path.join(bundleBase, `msi/Darklock Secure Channel_${version}_x64_en-US.msi`),
+                    path.join(__dirname, `downloads/darklock-secure-channel_${version}_x64_en-US.msi`),
                     path.join(__dirname, 'downloads/darklock-secure-channel-setup.msi')
                 ]
             };
