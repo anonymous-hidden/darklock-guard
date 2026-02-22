@@ -299,7 +299,7 @@ async fn update_check(channel: Option<String>) -> Result<serde_json::Value, Stri
 
     let platform_url = std::env::var("VITE_PLATFORM_URL")
         .or_else(|_| std::env::var("DARKLOCK_PLATFORM_URL"))
-        .unwrap_or_else(|_| "http://localhost:3002".to_string());
+        .unwrap_or_else(|_| "https://platform.darklock.net".to_string());
 
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
@@ -376,7 +376,7 @@ async fn update_install(channel: Option<String>) -> Result<serde_json::Value, St
 
     let platform_url = std::env::var("VITE_PLATFORM_URL")
         .or_else(|_| std::env::var("DARKLOCK_PLATFORM_URL"))
-        .unwrap_or_else(|_| "http://localhost:3002".to_string());
+        .unwrap_or_else(|_| "https://platform.darklock.net".to_string());
 
     let platform = if cfg!(target_os = "windows") { "windows" }
                    else if cfg!(target_os = "macos") { "macos" }
@@ -469,7 +469,7 @@ async fn verify_baseline() -> Result<serde_json::Value, String> {
 #[tauri::command]
 async fn send_crash_report(report: serde_json::Value) -> Result<serde_json::Value, String> {
     let platform_url = std::env::var("DARKLOCK_PLATFORM_URL")
-        .unwrap_or_else(|_| "https://darklock.net".to_string());
+        .unwrap_or_else(|_| "https://platform.darklock.net".to_string());
     
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
