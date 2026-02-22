@@ -2172,6 +2172,77 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         this.app.post('/api/dashboard/:guildId/shared-access/delete-code', this.authenticateToken.bind(this), this.deleteAccessCode.bind(this));
         this.app.post('/api/dashboard/:guildId/shared-access/redeem-code', this.authenticateToken.bind(this), this.redeemAccessCode.bind(this));
         this.app.post('/api/access/recheck', this.authenticateToken.bind(this), this.recheckUserAccess.bind(this));
+
+        // Canonical /api/guild/:guildId/access/* routes used by access-share.html
+        // These alias the /api/dashboard/:guildId/shared-access/* handlers above
+        this.app.post('/api/guild/:guildId/access/users', this.authenticateToken.bind(this), async (req, res) => {
+            // Frontend sends { userId, permission } — map to what grantUserAccess expects
+            req.body.userId = req.body.userId || req.body.userId;
+            return this.grantUserAccess(req, res);
+        });
+        this.app.post('/api/guild/:guildId/access/roles', this.authenticateToken.bind(this), async (req, res) => {
+            // Frontend sends { roleId, permission } — grantRoleAccess already reads roleId
+            return this.grantRoleAccess(req, res);
+        });
+
+        // Guild member search — used by access-share.html member picker
+        this.app.get('/api/guild/:guildId/members/search', this.authenticateToken.bind(this), async (req, res) => {
+            try {
+                const { guildId } = req.params;
+                const q = (req.query.q || '').toLowerCase().trim();
+                const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+                const userId = req.user?.discordId || req.user?.userId;
+
+                const access = await this.checkGuildAccess(userId, guildId, true);
+                if (!access.authorized) return res.status(403).json({ error: access.error });
+
+                const guild = this.bot.client.guilds.cache.get(guildId);
+                if (!guild) return res.status(404).json({ error: 'Guild not found' });
+
+                // Fetch members whose username/displayName matches query
+                let members = [];
+                if (q) {
+                    // Try fetching by username query first (Discord API supports this)
+                    try {
+                        const fetched = await guild.members.search({ query: q, limit });
+                        members = fetched.map(m => ({
+                            id: m.user.id,
+                            username: m.user.username,
+                            displayName: m.displayName || m.user.globalName || m.user.username,
+                            avatar: m.user.avatar,
+                        }));
+                    } catch (e) {
+                        // Fallback: filter from cache
+                        members = guild.members.cache
+                            .filter(m => !m.user.bot &&
+                                (m.user.username.toLowerCase().includes(q) ||
+                                 (m.displayName || '').toLowerCase().includes(q)))
+                            .first(limit)
+                            .map(m => ({
+                                id: m.user.id,
+                                username: m.user.username,
+                                displayName: m.displayName || m.user.globalName || m.user.username,
+                                avatar: m.user.avatar,
+                            }));
+                    }
+                } else {
+                    members = guild.members.cache
+                        .filter(m => !m.user.bot)
+                        .first(limit)
+                        .map(m => ({
+                            id: m.user.id,
+                            username: m.user.username,
+                            displayName: m.displayName || m.user.globalName || m.user.username,
+                            avatar: m.user.avatar,
+                        }));
+                }
+
+                res.json({ members });
+            } catch (error) {
+                this.bot.logger?.error('Error searching guild members:', error);
+                res.status(500).json({ error: 'Failed to search members' });
+            }
+        });
         
         // Simple access code redemption (no guild ID required)
         this.app.post('/api/redeem-access-code', this.authenticateToken.bind(this), this.redeemAccessCodeSimple.bind(this));
