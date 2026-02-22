@@ -99,7 +99,7 @@ class DarklockPlatform {
             contentSecurityPolicy: {
                 directives: {
                     defaultSrc: ["'self'"],
-                    scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-hashes'"], // Needed for inline handlers
+                    scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-hashes'", "https://static.cloudflareinsights.com"], // Needed for inline handlers + CF beacon
                     scriptSrcAttr: ["'unsafe-inline'", "'unsafe-hashes'"], // Allow inline event handlers (onclick, etc.)
                     styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
                     fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
@@ -495,7 +495,7 @@ class DarklockPlatform {
         this.app.use('/platform/static', express.static(path.join(__dirname, 'public')));
         
         // Site static assets
-        const siteAssetsDir = '/home/ubuntu/src/dashboard/views/site';
+        const siteAssetsDir = path.join(__dirname, '..', 'website');
         this.app.use('/site/css', express.static(path.join(siteAssetsDir, 'css')));
         this.app.use('/site/js', express.static(path.join(siteAssetsDir, 'js')));
         this.app.use('/site/images', express.static(path.join(siteAssetsDir, 'images')));
@@ -508,6 +508,14 @@ class DarklockPlatform {
         const avatarsPath = path.join(process.env.DATA_PATH || path.join(__dirname, 'data'), 'avatars');
         this.app.use('/platform/avatars', express.static(avatarsPath));
         
+        // Dashboard redirect → admin subdomain
+        this.app.get('/dashboard', (req, res) => {
+            res.redirect(302, 'https://admin.darklock.net/dashboard');
+        });
+        this.app.get('/signin', (req, res) => {
+            res.redirect(302, 'https://admin.darklock.net/signin');
+        });
+
         // Main homepage (with user state)
         this.app.get('/platform', async (req, res) => {
             const token = req.cookies?.darklock_token;
@@ -560,21 +568,29 @@ class DarklockPlatform {
             const format = (req.query.format || 'deb').toLowerCase();
             const fs = require('fs');
             const latestVersion = '2.0.0-beta.3';
+            const bundleBase = path.join(__dirname, `../guard-v2/target/release/bundle`);
 
             console.log(`[Darklock] Download request for format: ${format} from IP: ${req.ip}`);
 
             // Try multiple file locations in order of preference
             const fileLocations = {
                 deb: [
+                    path.join(bundleBase, `deb/Darklock Guard_${latestVersion}_amd64.deb`),
+                    path.join(__dirname, `downloads/darklock-guard_${latestVersion}_amd64.deb`),
                     path.join(__dirname, 'downloads/darklock-guard_2.0.0-beta.3_amd64.deb'),
                     path.join(__dirname, 'downloads/darklock-guard_0.1.0_amd64.deb'),
-                    path.join(__dirname, '../guard-v2/target/release/bundle/deb/Darklock Guard_2.0.0-beta.3_amd64.deb'),
-                    path.join(__dirname, '../guard-v2/target/release/bundle/deb/Darklock Guard_0.1.0_amd64.deb'),
+                    path.join(bundleBase, 'deb/Darklock Guard_0.1.0_amd64.deb'),
                     path.join(__dirname, 'downloads/darklock-guard-installer.deb')
+                ],
+                appimage: [
+                    path.join(bundleBase, `appimage/darklock-guard_${latestVersion}_amd64.AppImage`),
+                    path.join(bundleBase, `appimage/Darklock Guard_${latestVersion}_amd64.AppImage`),
+                    path.join(__dirname, `downloads/darklock-guard_${latestVersion}_amd64.AppImage`),
+                    path.join(__dirname, 'downloads/darklock-guard.AppImage')
                 ],
                 tar: [
                     path.join(__dirname, 'downloads/darklock-guard-linux-portable.tar.gz'),
-                    path.join(__dirname, '../guard-v2/target/release/bundle/DarklockGuard-linux-portable.tar.gz')
+                    path.join(bundleBase, 'DarklockGuard-linux-portable.tar.gz')
                 ],
                 exe: [
                     path.join(__dirname, 'downloads/darklock-guard-setup.exe'),
@@ -586,10 +602,12 @@ class DarklockPlatform {
                 ]
             };
 
-            // Determine which file type to look for
+            // Determine which format key to look for
             let searchFormats = [];
             if (format === 'deb' || format === 'linux') {
                 searchFormats = ['deb'];
+            } else if (format === 'appimage') {
+                searchFormats = ['appimage'];
             } else if (format === 'tar' || format === 'portable') {
                 searchFormats = ['tar'];
             } else if (format === 'exe' || format === 'windows') {
@@ -597,7 +615,6 @@ class DarklockPlatform {
             } else if (format === 'msi') {
                 searchFormats = ['msi'];
             } else {
-                // Default to deb
                 searchFormats = ['deb'];
             }
 
@@ -613,12 +630,15 @@ class DarklockPlatform {
                 }
             }
 
-            // If installer not found, log available files and return error
+            // Log available files for debugging
             console.error(`[Darklock] Installer not found for format: ${format}`);
             const downloadsDir = path.join(__dirname, 'downloads');
             if (fs.existsSync(downloadsDir)) {
                 const files = fs.readdirSync(downloadsDir);
                 console.log('[Darklock] Available files in downloads:', files);
+            }
+            if (fs.existsSync(path.join(bundleBase, 'deb'))) {
+                console.log('[Darklock] Available in bundle/deb:', fs.readdirSync(path.join(bundleBase, 'deb')));
             }
 
             // Return themed helper page
@@ -628,10 +648,10 @@ class DarklockPlatform {
                         <title>Installer Not Available</title>
                         <link rel="stylesheet" href="/platform/static/css/main.css">
                         <style>
-                            body { background: var(--bg-primary, #0a0a0f); color: var(--text-primary, #f8fafc); display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; }
-                            .card { background: var(--bg-elevated, #111827); border: 1px solid rgba(124,77,255,0.35); padding:32px; border-radius:12px; max-width:560px; text-align:center; box-shadow: 0 20px 60px rgba(0,0,0,0.45); }
+                            body { background: #0a0a0f; color: #f8fafc; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; }
+                            .card { background: #111827; border: 1px solid rgba(124,77,255,0.35); padding:32px; border-radius:12px; max-width:560px; text-align:center; box-shadow: 0 20px 60px rgba(0,0,0,0.45); }
                             h1 { margin:0 0 12px; }
-                            p { color: var(--text-secondary, #94a3b8); line-height:1.6; margin:10px 0; }
+                            p { color: #94a3b8; line-height:1.6; margin:10px 0; }
                             code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; }
                             a.btn { display:inline-block; margin-top:16px; padding:12px 20px; border-radius:8px; background: linear-gradient(135deg,#7c4dff,#00d4ff); color:white; text-decoration:none; }
                         </style>
@@ -639,9 +659,92 @@ class DarklockPlatform {
                     <body>
                         <div class="card">
                             <h1>Installer Not Available</h1>
-                            <p>The requested installer format is not built yet.</p>
-                            <p>Run <code>cd guard-v2/desktop && npx tauri build --bundles deb</code> to generate the latest Linux package, or build Windows installers on a Windows runner.</p>
+                            <p>The <strong>${format}</strong> installer is not yet available.</p>
+                            <p>Build it with: <code>cd guard-v2/desktop && npx tauri build --bundles deb,appimage</code></p>
                             <a class="btn" href="/platform/download/darklock-guard">Back to downloads</a>
+                        </div>
+                    </body>
+                </html>
+            `);
+        });
+
+        // Darklock Secure Channel - Download page
+        this.app.get('/platform/download/secure-channel', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/secure-channel-download.html'));
+        });
+
+        // Darklock Secure Channel - Installer download
+        this.app.get('/platform/api/download/secure-channel-installer', (req, res) => {
+            const format = (req.query.format || 'deb').toLowerCase();
+            const fs = require('fs');
+            const version = '0.1.0';
+            const bundleBase = path.join(__dirname, '../secure-channel/apps/dl-secure-channel/src-tauri/target/release/bundle');
+
+            console.log(`[SecureChannel] Download request for format: ${format} from IP: ${req.ip}`);
+
+            const fileLocations = {
+                deb: [
+                    path.join(bundleBase, `deb/Darklock Secure Channel_${version}_amd64.deb`),
+                    path.join(__dirname, `downloads/darklock-secure-channel_${version}_amd64.deb`),
+                    path.join(__dirname, 'downloads/darklock-secure-channel_0.1.0_amd64.deb')
+                ],
+                appimage: [
+                    path.join(bundleBase, `appimage/Darklock Secure Channel_${version}_amd64.AppImage`),
+                    path.join(__dirname, `downloads/darklock-secure-channel_${version}_amd64.AppImage`),
+                    path.join(__dirname, 'downloads/darklock-secure-channel_0.1.0_amd64.AppImage')
+                ],
+                exe: [
+                    path.join(__dirname, 'downloads/darklock-secure-channel-setup.exe')
+                ],
+                msi: [
+                    path.join(__dirname, 'downloads/darklock-secure-channel-setup.msi')
+                ]
+            };
+
+            let searchFormats = [];
+            if (format === 'deb' || format === 'linux') {
+                searchFormats = ['deb'];
+            } else if (format === 'appimage') {
+                searchFormats = ['appimage'];
+            } else if (format === 'exe' || format === 'windows') {
+                searchFormats = ['exe'];
+            } else if (format === 'msi') {
+                searchFormats = ['msi'];
+            } else {
+                searchFormats = ['deb'];
+            }
+
+            for (const fmt of searchFormats) {
+                const locations = fileLocations[fmt] || [];
+                for (const filePath of locations) {
+                    if (fs.existsSync(filePath)) {
+                        const fileName = path.basename(filePath);
+                        console.log(`[SecureChannel] Serving installer: ${fileName}`);
+                        return res.download(filePath, fileName);
+                    }
+                }
+            }
+
+            console.error(`[SecureChannel] Installer not found for format: ${format}`);
+            return res.status(404).send(`
+                <html>
+                    <head>
+                        <title>Installer Not Available</title>
+                        <style>
+                            body { background: #0a0a0f; color: #f8fafc; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; font-family: system-ui; }
+                            .card { background: #111827; border: 1px solid rgba(0,212,255,0.35); padding:32px; border-radius:12px; max-width:560px; text-align:center; }
+                            h1 { margin:0 0 12px; }
+                            p { color: #94a3b8; line-height:1.6; }
+                            code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; }
+                            a.btn { display:inline-block; margin-top:16px; padding:12px 20px; border-radius:8px; background: linear-gradient(135deg,#00d4ff,#7c4dff); color:white; text-decoration:none; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="card">
+                            <h1>Installer Not Available</h1>
+                            <p>The <strong>${format}</strong> installer is not yet built.</p>
+                            <p>Build it with: <code>cd secure-channel/apps/dl-secure-channel && npx tauri build --bundles deb,appimage</code></p>
+                            <a class="btn" href="/platform/download/secure-channel">Back to downloads</a>
                         </div>
                     </body>
                 </html>
@@ -1831,6 +1934,51 @@ class DarklockPlatform {
             `);
         });
         
+        // Darklock Secure Channel - Download page (existingApp integration)
+        existingApp.get('/platform/download/secure-channel', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/secure-channel-download.html'));
+        });
+
+        // Darklock Secure Channel - Installer download (existingApp integration)
+        existingApp.get('/platform/api/download/secure-channel-installer', (req, res) => {
+            const format = (req.query.format || 'deb').toLowerCase();
+            const fs = require('fs');
+            const version = '0.1.0';
+
+            console.log(`[SecureChannel] (existingApp) Download request for format: ${format} from IP: ${req.ip}`);
+
+            const fileLocations = {
+                deb: [
+                    path.join(__dirname, `downloads/darklock-secure-channel_${version}_amd64.deb`),
+                    path.join(__dirname, 'downloads/darklock-secure-channel_0.1.0_amd64.deb')
+                ],
+                appimage: [
+                    path.join(__dirname, `downloads/darklock-secure-channel_${version}_amd64.AppImage`),
+                    path.join(__dirname, 'downloads/darklock-secure-channel_0.1.0_amd64.AppImage')
+                ],
+                exe: [ path.join(__dirname, 'downloads/darklock-secure-channel-setup.exe') ],
+                msi: [ path.join(__dirname, 'downloads/darklock-secure-channel-setup.msi') ]
+            };
+
+            const fmtKey = format === 'appimage' ? 'appimage' : format === 'exe' || format === 'windows' ? 'exe' : format === 'msi' ? 'msi' : 'deb';
+            for (const filePath of (fileLocations[fmtKey] || [])) {
+                if (fs.existsSync(filePath)) {
+                    return res.download(filePath, path.basename(filePath));
+                }
+            }
+
+            return res.status(404).send(`
+                <html>
+                    <head><title>Installer Not Available</title>
+                    <style>body{background:#0a0a0f;color:#f8fafc;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui}.card{background:#111827;border:1px solid rgba(0,212,255,.35);padding:32px;border-radius:12px;max-width:560px;text-align:center}p{color:#94a3b8}code{background:rgba(255,255,255,.06);padding:2px 6px;border-radius:4px}a.btn{display:inline-block;margin-top:16px;padding:12px 20px;border-radius:8px;background:linear-gradient(135deg,#00d4ff,#7c4dff);color:#fff;text-decoration:none}</style></head>
+                    <body><div class="card"><h1>Installer Not Available</h1>
+                    <p>The <strong>${format}</strong> installer is not yet built.</p>
+                    <p>Build: <code>cd secure-channel/apps/dl-secure-channel && npx tauri build --bundles deb,appimage</code></p>
+                    <a class="btn" href="/platform/download/secure-channel">Back to downloads</a></div></body>
+                </html>
+            `);
+        });
+        
         // Darklock Guard - Web Monitor (requires authentication)
         existingApp.get('/platform/monitor/darklock-guard', requireAuth, (req, res) => {
             res.sendFile(path.join(__dirname, 'views/monitor.html'));
@@ -1985,13 +2133,34 @@ class DarklockPlatform {
         console.log('[Darklock Platform] Registering team management routes at /api/admin/team');
         existingApp.use('/api/admin/team', teamManagementRoutes);
         
-        // Admin v4 API routes (Mounted via standalone server, not here in connected mode)
+// Admin v4 API routes (Enterprise RBAC dashboard)
+        existingApp.use('/api/v4/admin', adminV4Routes);
+
+        // Admin v4 public bug report submission (must be before requireAdminAuth middleware)
+        existingApp.post('/api/v4/admin/bug-reports/submit', async (req, res) => {
+            try {
+                const queries = require('./admin-v4/db/queries');
+                const middleware = require('./admin-v4/middleware');
+                await middleware.validateBugReport(req, res, async () => {
+                    const result = await queries.createBugReport(req.body);
+                    res.json({ success: true, id: result.id });
+                });
+            } catch (err) {
+                console.error('[Admin v4] Bug report submit error:', err);
+                res.status(500).json({ error: 'Failed to submit bug report' });
+            }
+        });
 
         // Backward-compat redirect: old V3 theme CSS path → V4
         existingApp.get('/api/v3/theme/css', (req, res) => res.redirect(301, '/api/v4/admin/theme/css'));
-        
-        // Admin dashboard routes - handled by unified admin in dashboard.js
-        // Do NOT register /admin here to avoid overwriting the unified dashboard
+
+        // Admin v4 dashboard (main admin dashboard)
+        existingApp.get('/admin', requireAdminAuth, (req, res) => {
+            res.sendFile(path.join(__dirname, 'admin-v4', 'views', 'dashboard.html'));
+        });
+        existingApp.get('/admin/v3', requireAdminAuth, (req, res) => res.redirect('/admin'));
+        existingApp.get('/admin/dashboard', requireAdminAuth, (req, res) => res.redirect('/admin'));
+        existingApp.get('/admin/*', requireAdminAuth, (req, res) => res.redirect('/admin'));
         
         // Dashboard routes (Darklock dashboard, not the bot dashboard)
         existingApp.use('/platform/dashboard', dashboardRoutes);

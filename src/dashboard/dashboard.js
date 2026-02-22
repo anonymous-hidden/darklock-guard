@@ -34,6 +34,10 @@ class SecurityDashboard {
         // Trust proxy for correct secure cookie behavior behind Render/Heroku
         this.app.set('trust proxy', 1);
 
+        // Public email confirmation — registered FIRST, before all auth/CSP/Helmet middleware
+        // so unauthenticated users clicking the link from their email inbox can always reach it.
+        this.app.get('/confirm-email', this.confirmNotificationEmail.bind(this));
+
         // Security headers with Helmet (CSP configured dynamically in middleware)
         this.app.use((req, res, next) => {
             // Build dynamic WebSocket URL based on current host
@@ -44,7 +48,7 @@ class SecurityDashboard {
             // Apply CSP with dynamic WebSocket URL
             const cspDirectives = {
                 'default-src': ["'self'"],
-                'script-src': ["'self'", "'unsafe-inline'", "https://js.stripe.com", "https://cdn.jsdelivr.net", "'unsafe-hashes'"],
+                'script-src': ["'self'", "'unsafe-inline'", "https://js.stripe.com", "https://cdn.jsdelivr.net", "https://static.cloudflareinsights.com", "'unsafe-hashes'"],
                 'script-src-attr': ["'unsafe-inline'"],
                 'frame-src': ["https://js.stripe.com", "https://hooks.stripe.com"],
                 'connect-src': ["'self'", "https://api.stripe.com", "https://cdn.jsdelivr.net", wsUrl],
@@ -1250,12 +1254,8 @@ The GuardianBot Team`
             res.redirect('/signin');
         });
 
-        // ============ UNIFIED ADMIN DASHBOARD ============
-        // Registered here (before Darklock mountOn) so it takes priority
-        this.app.get('/admin', (req, res) => {
-            console.log('[Admin] Serving unified admin dashboard');
-            res.sendFile(path.join(__dirname, 'views/unified-admin.html'));
-        });
+        // Admin v4 is the main dashboard — served by Darklock's mountOn() block
+        // All /admin traffic is handled by Darklock admin-v4 (requireAdminAuth + admin-v4/views/dashboard.html)
 
         // Authentication routes
         this.app.post('/auth/login', this.handleLogin.bind(this));
@@ -1971,6 +1971,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         // Notifications & Logs endpoints
         this.app.get('/api/settings/notifications', this.getNotificationSettings.bind(this));
         this.app.post('/api/settings/notifications', this.saveNotificationSettings.bind(this));
+        this.app.post('/api/settings/notifications/verify-email', this.authenticateToken.bind(this), this.verifyNotificationEmail.bind(this));
         this.app.get('/api/settings/tickets', this.getTicketSettings.bind(this));
         this.app.post('/api/settings/tickets', this.saveTicketSettings.bind(this));
         this.app.get('/api/settings/moderation', this.getModerationSettings.bind(this));
@@ -2116,6 +2117,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         this.app.get('/api/tickets/:id/messages', this.authenticateToken.bind(this), this.getTicketMessages.bind(this));
         this.app.post('/api/tickets/:id/reply', this.authenticateToken.bind(this), this.replyToTicket.bind(this));
         this.app.post('/api/tickets/:id/close', this.authenticateToken.bind(this), this.closeTicketAPI.bind(this));
+        this.app.post('/api/tickets/:id/reopen', this.authenticateToken.bind(this), this.reopenTicketAPI.bind(this));
         this.app.post('/api/tickets/:id/assign', this.authenticateToken.bind(this), this.assignTicket.bind(this));
         this.app.post('/api/tickets/:id/status', this.authenticateToken.bind(this), this.updateTicketStatus.bind(this));
         this.app.post('/api/tickets/:id/priority', this.authenticateToken.bind(this), this.updateTicketPriority.bind(this));
@@ -6576,6 +6578,33 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         }
     }
 
+    async reopenTicketAPI(req, res) {
+        try {
+            const ticketId = req.params.id.replace('ticket-', '');
+
+            if (this.bot.database) {
+                await this.bot.database.run(`
+                    UPDATE tickets 
+                    SET status = 'open', closed_at = NULL 
+                    WHERE id = ?
+                `, [ticketId]);
+
+                await this.bot.database.run(`
+                    UPDATE active_tickets 
+                    SET status = 'open', closed_at = NULL 
+                    WHERE id = ?
+                `, [ticketId]);
+
+                res.json({ success: true, message: 'Ticket reopened successfully' });
+            } else {
+                res.status(500).json({ error: 'Database not available' });
+            }
+        } catch (error) {
+            this.bot.logger.error('Error reopening ticket via API:', error);
+            res.status(500).json({ error: 'Failed to reopen ticket' });
+        }
+    }
+
     // Ticket API (supports both DM tickets and channel-based tickets)
     async getTicketDetails(req, res) {
         try {
@@ -7537,7 +7566,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 // 6. Security Events
                 const secEvents = await this.bot.database.all(`
                     SELECT id, event_type, incident_type, description, severity, 
-                           timestamp, created_at
+                           created_at
                     FROM security_logs 
                     WHERE guild_id = ? 
                     ORDER BY created_at DESC
@@ -7550,7 +7579,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     type: e.event_type || e.incident_type,
                     description: e.description || 'No description',
                     severity: e.severity || 'medium',
-                    timestamp: e.timestamp || e.created_at,
+                    timestamp: e.created_at,
                     created_at: e.created_at
                 }));
 
@@ -7911,7 +7940,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             const logs = await this.bot.database.all(`
                 SELECT * FROM security_logs 
                 WHERE guild_id = ? 
-                ORDER BY timestamp DESC 
+                ORDER BY created_at DESC 
                 LIMIT ?
             `, [guildId, limit]);
 
@@ -8083,7 +8112,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
     // NEW: Ticket stats endpoint
     async getTicketStats(req, res) {
         try {
-            const guild = this.bot.client.guilds.cache.first();
+            const guild = this.bot?.client?.guilds?.cache?.first();
             if (!guild) {
                 return res.json({
                     activeTickets: 0,
@@ -8442,7 +8471,11 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 phishing_action: s.actionType || 'delete',
                 phishing_log_all: s.logDetections ? 1 : 0,
                 phishing_dm_user: s.dmUser ? 1 : 0,
-                phishing_sensitivity: s.sensitivity || 'medium'
+                phishing_sensitivity: s.sensitivity || 'medium',
+                phishing_block_shorteners: s.blockShorteners ? 1 : 0,
+                phishing_block_ip_links: s.blockIpLinks ? 1 : 0,
+                phishing_blacklist_domains: JSON.stringify(Array.isArray(s.blacklistedDomains) ? s.blacklistedDomains : []),
+                phishing_whitelist_domains: JSON.stringify(Array.isArray(s.whitelistedDomains) ? s.whitelistedDomains : [])
             };
 
             // Check which columns exist to avoid errors
@@ -8466,6 +8499,13 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             // Invalidate config cache so bot respects the new enabled/disabled state immediately
             try {
                 if (this.bot.configService?.cache) this.bot.configService.cache.delete(guild.id);
+            } catch (e) { /* ignore */ }
+
+            // Invalidate the antilinks guild domain cache so changes apply immediately
+            try {
+                if (this.bot.antiMaliciousLinks?.guildDomainCache) {
+                    this.bot.antiMaliciousLinks.guildDomainCache.delete(guild.id);
+                }
             } catch (e) { /* ignore */ }
 
             this.bot.logger?.info(`Anti-phishing settings updated for guild ${guild.id}`);
@@ -8628,6 +8668,20 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 dm_on_escalation: !!(notifSettings.dm_on_escalation ?? true),
                 dm_on_settings: !!(notifSettings.dm_on_settings ?? false),
 
+                // Premium: Email Notifications
+                email_address: notifSettings.email_address || '',
+                email_verified: !!(notifSettings.email_verified ?? false),
+                email_on_raid: !!(notifSettings.email_on_raid ?? true),
+                email_on_nuke: !!(notifSettings.email_on_nuke ?? true),
+                email_on_mass_ban: !!(notifSettings.email_on_mass_ban ?? true),
+                email_on_phishing: !!(notifSettings.email_on_phishing ?? true),
+                email_on_suspicious: !!(notifSettings.email_on_suspicious ?? false),
+                email_on_settings_change: !!(notifSettings.email_on_settings_change ?? false),
+                email_on_ticket_escalation: !!(notifSettings.email_on_ticket_escalation ?? true),
+                email_on_staff_removed: !!(notifSettings.email_on_staff_removed ?? true),
+                email_digest_enabled: !!(notifSettings.email_digest_enabled ?? false),
+                email_digest_frequency: notifSettings.email_digest_frequency || 'weekly',
+
                 // Premium: Formatting
                 log_embed_color: notifSettings.log_embed_color || '#5865F2',
                 timestamp_format: notifSettings.timestamp_format || 'long',
@@ -8702,6 +8756,13 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 guild.id
             ]);
 
+            // Read existing notification_settings to preserve email_verified status
+            let existingNotif = {};
+            try {
+                const existingRow = await this.bot.database.get('SELECT notification_settings FROM guild_configs WHERE guild_id = ?', [guild.id]);
+                if (existingRow?.notification_settings) existingNotif = JSON.parse(existingRow.notification_settings);
+            } catch (e) { /* ignore */ }
+
             // ── Premium settings (stored as JSON blob) ──
             const premiumSettings = {
                 // Basic notification toggles (free but stored here for simplicity)
@@ -8729,6 +8790,27 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 dm_on_escalation: !!s.dm_on_escalation,
                 dm_on_settings: !!s.dm_on_settings,
 
+                // Email notifications (preserve verified status; don't overwrite on plain save)
+                email_address: s.email_address || '',
+                email_verified: !!(existingNotif && existingNotif.email_verified && existingNotif.email_address === s.email_address),
+                email_on_raid: s.email_on_raid !== false,
+                email_on_nuke: s.email_on_nuke !== false,
+                email_on_mass_ban: s.email_on_mass_ban !== false,
+                email_on_phishing: s.email_on_phishing !== false,
+                email_on_suspicious: !!s.email_on_suspicious,
+                email_on_settings_change: !!s.email_on_settings_change,
+                email_on_ticket_escalation: s.email_on_ticket_escalation !== false,
+                email_on_staff_removed: s.email_on_staff_removed !== false,
+                email_digest_enabled: !!s.email_digest_enabled,
+                email_digest_frequency: s.email_digest_frequency || 'weekly',
+
+                // Preserve any in-flight verify tokens so a save doesn't wipe them
+                ...(existingNotif.email_verify_token ? {
+                    email_pending: existingNotif.email_pending,
+                    email_verify_token: existingNotif.email_verify_token,
+                    email_verify_expires: existingNotif.email_verify_expires
+                } : {}),
+
                 // Formatting
                 log_embed_color: s.log_embed_color || '#5865F2',
                 timestamp_format: s.timestamp_format || 'long',
@@ -8750,11 +8832,166 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 if (this.bot.configService?.cache) this.bot.configService.cache.delete(guild.id);
             } catch (e) { /* ignore */ }
 
+            // Invalidate DiscordLogger cache so new channel settings take effect immediately
+            try {
+                if (this.bot.discordLogger) this.bot.discordLogger.invalidateCache(guild.id);
+            } catch (e) { /* ignore */ }
+
             this.bot.logger?.info(`Notification settings updated for guild ${guild.id}`);
             res.json({ success: true, message: 'Notification settings saved successfully' });
         } catch (error) {
             this.bot.logger?.error('Error saving notification settings:', error);
             res.status(500).json({ error: 'Failed to save notification settings' });
+        }
+    }
+
+    async verifyNotificationEmail(req, res) {
+        try {
+            const { email, guildId } = req.body;
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                return res.status(400).json({ error: 'Invalid email address' });
+            }
+
+            const token = require('crypto').randomBytes(32).toString('hex');
+            const expires = Date.now() + 24 * 60 * 60 * 1000; // 24h
+
+            // Store pending verification token in DB
+            const guild = guildId ? this.bot.client.guilds.cache.get(guildId) : this.bot.client.guilds.cache.first();
+            if (!guild) return res.status(400).json({ error: 'Guild not found' });
+
+            await this.bot.database.run('INSERT OR IGNORE INTO guild_configs (guild_id) VALUES (?)', [guild.id]);
+            // Store token in a JSON field alongside existing notification_settings
+            const existing = await this.bot.database.get('SELECT notification_settings FROM guild_configs WHERE guild_id = ?', [guild.id]);
+            let notifSettings = {};
+            try { if (existing?.notification_settings) notifSettings = JSON.parse(existing.notification_settings); } catch (e) {}
+            notifSettings.email_pending = email;
+            notifSettings.email_verify_token = token;
+            notifSettings.email_verify_expires = expires;
+            // Don't mark verified until confirmed
+            notifSettings.email_verified = false;
+            await this.bot.database.run(
+                'UPDATE guild_configs SET notification_settings = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?',
+                [JSON.stringify(notifSettings), guild.id]
+            );
+
+            // Send verification email via nodemailer
+            const nodemailer = require('nodemailer');
+            const smtpHost = process.env.EMAIL_HOST || process.env.SMTP_HOST;
+            if (!smtpHost) {
+                this.bot.logger?.warn('[Email] No SMTP host configured (EMAIL_HOST). Skipping send.');
+                return res.status(503).json({ error: 'Email service not configured. Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS, EMAIL_FROM in .env' });
+            }
+
+            const transporter = nodemailer.createTransport({
+                host: smtpHost,
+                port: parseInt(process.env.EMAIL_PORT || '587'),
+                secure: process.env.EMAIL_SECURE === 'true',
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASS
+                }
+            });
+
+            const confirmUrl = `${process.env.DOMAIN || 'https://admin.darklock.net'}/confirm-email?token=${token}&guildId=${guild.id}`;
+            const fromAddr = process.env.EMAIL_FROM || 'alerts@darklock.net';
+
+            await transporter.sendMail({
+                from: `"DarkLock Alerts" <${fromAddr}>`,
+                to: email,
+                subject: 'Verify your DarkLock notification email',
+                html: `
+                    <div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;background:#0d0d1a;color:#e2e8f0;padding:32px;border-radius:12px;">
+                        <div style="margin-bottom:24px;">
+                            <span style="font-size:24px;">🔒</span>
+                            <span style="font-size:20px;font-weight:700;margin-left:8px;color:#fff;">DarkLock</span>
+                        </div>
+                        <h2 style="font-size:18px;font-weight:600;color:#fff;margin:0 0 12px 0;">Verify your email address</h2>
+                        <p style="font-size:14px;color:#94a3b8;line-height:1.6;margin:0 0 24px 0;">You requested email notifications for your Discord server. Click the button below to verify this address.</p>
+                        <a href="${confirmUrl}" style="display:inline-block;padding:12px 28px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;font-weight:600;font-size:14px;border-radius:8px;text-decoration:none;">Verify Email Address</a>
+                        <p style="font-size:12px;color:#475569;margin:24px 0 0 0;">This link expires in 24 hours. If you didn't request this, ignore this email.</p>
+                        <p style="font-size:12px;color:#334155;margin:8px 0 0 0;">Or copy this link: ${confirmUrl}</p>
+                    </div>
+                `
+            });
+
+            this.bot.logger?.info(`[Email] Verification email sent to ${email} for guild ${guild.id}`);
+            res.json({ success: true, message: 'Verification email sent! Check your inbox.' });
+        } catch (error) {
+            this.bot.logger?.error('Error sending verification email:', error);
+            res.status(500).json({ error: 'Failed to send verification email: ' + error.message });
+        }
+    }
+
+    async confirmNotificationEmail(req, res) {
+        const _sendPage = (res, status, { icon, title, message, redirectTo, redirectLabel }) => {
+            const csp = "default-src 'self'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'unsafe-inline'; connect-src *; img-src 'self' data:;";
+            res.setHeader('Content-Security-Policy', csp);
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            // Prevent Cloudflare (and other proxies) from injecting scripts or modifying CSP
+            res.setHeader('Cache-Control', 'no-store, no-transform');
+            const meta = redirectTo ? `<meta http-equiv="refresh" content="4;url=${redirectTo}">` : '';
+            const btn = redirectTo ? `<a href="${redirectTo}" style="display:inline-block;margin-top:20px;padding:12px 28px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;font-weight:600;font-size:14px;border-radius:8px;text-decoration:none;">${redirectLabel || 'Continue'}</a>` : '';
+            const countdown = redirectTo ? `<p style="font-size:12px;color:#475569;margin-top:12px;">Redirecting in 4 seconds…</p>` : '';
+            res.status(status).send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${title} — DarkLock</title>${meta}<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Inter,sans-serif;background:#0d0d1a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}.card{background:#13131f;border:1px solid #1e2030;border-radius:16px;padding:40px;max-width:420px;width:100%;text-align:center}.icon{font-size:48px;margin-bottom:16px}.title{font-size:22px;font-weight:700;color:#fff;margin-bottom:8px}.msg{font-size:14px;color:#94a3b8;line-height:1.6}.brand{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:28px;font-size:16px;font-weight:700;color:#fff}.brand-dot{width:8px;height:8px;border-radius:50%;background:#6366f1}</style></head><body><div class="card"><div class="brand"><div class="brand-dot"></div>DarkLock</div><div class="icon">${icon}</div><div class="title">${title}</div><div class="msg">${message}</div>${btn}${countdown}</div></body></html>`);
+        };
+
+        try {
+            const { token, guildId } = req.query;
+            if (!token || !guildId) return _sendPage(res, 400, {
+                icon: '⚠️', title: 'Invalid Link',
+                message: 'This confirmation link is missing required parameters. Please request a new verification email from the dashboard.'
+            });
+
+            const row = await this.bot.database.get('SELECT notification_settings FROM guild_configs WHERE guild_id = ?', [guildId]);
+            if (!row) return _sendPage(res, 404, {
+                icon: '🔍', title: 'Server Not Found',
+                message: 'Could not find your Discord server in our database. Make sure the bot is still in your server.'
+            });
+
+            let notifSettings = {};
+            try { if (row.notification_settings) notifSettings = JSON.parse(row.notification_settings); } catch (e) {}
+
+            if (!notifSettings.email_verify_token || notifSettings.email_verify_token !== token) {
+                return _sendPage(res, 400, {
+                    icon: '❌', title: 'Invalid or Used Link',
+                    message: 'This verification link is invalid or has already been used. Please request a new one from the Notifications settings page.',
+                    redirectTo: '/setup/notifications', redirectLabel: 'Go to Notifications'
+                });
+            }
+            if (Date.now() > (notifSettings.email_verify_expires || 0)) {
+                return _sendPage(res, 400, {
+                    icon: '⏰', title: 'Link Expired',
+                    message: 'This verification link has expired (links are valid for 24 hours). Please request a new verification email from the dashboard.',
+                    redirectTo: '/setup/notifications', redirectLabel: 'Go to Notifications'
+                });
+            }
+
+            // Mark email as verified
+            const verifiedAddr = notifSettings.email_pending || notifSettings.email_address;
+            notifSettings.email_address = verifiedAddr;
+            notifSettings.email_verified = true;
+            delete notifSettings.email_pending;
+            delete notifSettings.email_verify_token;
+            delete notifSettings.email_verify_expires;
+
+            await this.bot.database.run(
+                'UPDATE guild_configs SET notification_settings = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?',
+                [JSON.stringify(notifSettings), guildId]
+            );
+
+            this.bot.logger?.info(`[Email] Email verified for guild ${guildId}: ${verifiedAddr}`);
+            return _sendPage(res, 200, {
+                icon: '✅', title: 'Email Verified!',
+                message: `<strong style="color:#fff">${verifiedAddr}</strong> is now verified and will receive DarkLock security notifications.`,
+                redirectTo: '/setup/notifications?emailVerified=1', redirectLabel: 'Go to Notifications'
+            });
+        } catch (error) {
+            this.bot.logger?.error('Error confirming email:', error);
+            return _sendPage(res, 500, {
+                icon: '⚠️', title: 'Something Went Wrong',
+                message: 'Failed to confirm your email. Please try again or request a new verification email.',
+                redirectTo: '/setup/notifications', redirectLabel: 'Go to Notifications'
+            });
         }
     }
 
@@ -8870,7 +9107,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             const guildId = req.query.guildId || req.headers['x-guild-id'] || req.body?.guildId;
             let guild = null;
             if (guildId) {
-                guild = this.bot.client.guilds.cache.get(guildId);
+                guild = this.bot?.client?.guilds?.cache?.get(guildId);
             }
             if (!guild) {
                 guild = this.getGuildFromRequest(req);
@@ -8878,9 +9115,12 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             if (!guild) {
                 // Return empty settings instead of 500 when no guild found
                 return res.json({ settings: {
-                    enabled: false, category: '', panelChannel: '', transcriptChannel: '',
-                    supportRoles: [], welcomeMessage: 'Thank you for creating a ticket!',
+                    enabled: false,
+                    panelChannelId: '', categoryId: '', logChannelId: '',
+                    staffRoleId: '', manageRoleId: '',
+                    welcomeMessage: 'Thank you for creating a ticket! A support team member will be with you shortly.',
                     ticketCategories: ["General Support","Technical Issue","Billing","Report User","Other"],
+                    maxOpen: 1,
                     autoClose: { enabled: false, hours: 48 }
                 }});
             }
@@ -8897,21 +9137,39 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 config = null;
             }
 
+            // Also try to load guild channels and roles for frontend selects
+            let channels = [];
+            let roles = [];
+            try {
+                channels = guild.channels.cache
+                    .filter(ch => [0, 4].includes(ch.type))
+                    .map(ch => ({ id: ch.id, name: ch.name, type: ch.type }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                roles = guild.roles.cache
+                    .filter(r => !r.managed && r.id !== guild.id)
+                    .map(r => ({ id: r.id, name: r.name, color: r.hexColor }))
+                    .sort((a, b) => b.position - a.position);
+            } catch (e) { /* ignore */ }
+
             const settings = {
                 enabled: !!(config?.tickets_enabled),
-                category: config?.ticket_category || '',
-                panelChannel: config?.ticket_panel_channel || '',
-                transcriptChannel: config?.ticket_transcript_channel || '',
-                supportRoles: this.safeJsonParse(config?.ticket_support_roles, []),
+                // Correct column names that TicketSystem.js actually reads
+                panelChannelId: config?.ticket_channel_id || '',
+                categoryId: config?.ticket_category_id || '',
+                logChannelId: config?.ticket_log_channel || '',
+                staffRoleId: config?.ticket_staff_role || '',
+                manageRoleId: config?.ticket_manage_role || '',
                 welcomeMessage: config?.ticket_welcome_message || 'Thank you for creating a ticket! A support team member will be with you shortly.',
                 ticketCategories: this.safeJsonParse(config?.ticket_categories, ["General Support","Technical Issue","Billing","Report User","Other"]),
+                maxOpen: config?.ticket_max_open || 1,
+                transcriptEnabled: !!(config?.ticket_transcript_enabled),
                 autoClose: {
                     enabled: !!(config?.ticket_autoclose),
                     hours: config?.ticket_autoclose_hours || 48
                 }
             };
 
-            res.json({ settings });
+            res.json({ settings, channels, roles });
         } catch (error) {
             this.bot.logger.error('Error getting ticket settings:', error);
             res.status(500).json({ error: 'Failed to get settings' });
@@ -8920,7 +9178,11 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
     async saveTicketSettings(req, res) {
         try {
-            const guild = this.getGuildFromRequest(req);
+            // Support guildId from query params, headers, or body for consistency
+            const guildIdParam = req.query.guildId || req.headers['x-guild-id'] || req.body?.guildId;
+            let guild = null;
+            if (guildIdParam) guild = this.bot?.client?.guilds?.cache?.get(guildIdParam);
+            if (!guild) guild = this.getGuildFromRequest(req);
             if (!guild) {
                 return res.status(400).json({ error: 'No guild found' });
             }
@@ -8932,10 +9194,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 return res.status(400).json({ error: 'Invalid settings format' });
             }
 
-            // Validate and sanitize arrays
-            const supportRoles = Array.isArray(settings.supportRoles) 
-                ? settings.supportRoles.filter(id => typeof id === 'string' && /^\d{17,19}$/.test(id)).slice(0, 20)
-                : [];
+            // Validate role IDs
+            const validateId = (id) => (typeof id === 'string' && /^\d{17,19}$/.test(id)) ? id : '';
             
             const ticketCategories = Array.isArray(settings.ticketCategories)
                 ? settings.ticketCategories.filter(cat => typeof cat === 'string').slice(0, 25).map(cat => this.sanitizeString(cat, 100))
@@ -8943,35 +9203,34 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
             const welcomeMessage = this.sanitizeString(settings.welcomeMessage || 'Thank you for creating a ticket!', 2000);
             const autoCloseHours = this.validateLimit(settings.autoClose?.hours || 48, 720);
-
-            // Read previous row for diffing & confirmations
-            const previous = await this.bot.database.get(
-                'SELECT tickets_enabled, ticket_category, ticket_panel_channel, ticket_transcript_channel, ticket_support_roles, ticket_welcome_message, ticket_categories, ticket_autoclose, ticket_autoclose_hours FROM guild_configs WHERE guild_id = ?',
-                [guild.id]
-            );
+            const maxOpen = Math.min(Math.max(parseInt(settings.maxOpen) || 1, 1), 10);
 
             await this.bot.database.run(`
                 UPDATE guild_configs SET
                     tickets_enabled = ?,
-                    ticket_category = ?,
-                    ticket_panel_channel = ?,
-                    ticket_transcript_channel = ?,
-                    ticket_support_roles = ?,
+                    ticket_channel_id = ?,
+                    ticket_category_id = ?,
+                    ticket_staff_role = ?,
+                    ticket_manage_role = ?,
+                    ticket_log_channel = ?,
                     ticket_welcome_message = ?,
                     ticket_categories = ?,
                     ticket_autoclose = ?,
-                    ticket_autoclose_hours = ?
+                    ticket_autoclose_hours = ?,
+                    ticket_max_open = ?
                 WHERE guild_id = ?
             `, [
                 settings.enabled ? 1 : 0,
-                this.sanitizeString(settings.category || '', 20),
-                this.sanitizeString(settings.panelChannel || '', 20),
-                this.sanitizeString(settings.transcriptChannel || '', 20),
-                JSON.stringify(supportRoles),
+                validateId(settings.panelChannelId || ''),
+                validateId(settings.categoryId || ''),
+                validateId(settings.staffRoleId || ''),
+                validateId(settings.manageRoleId || ''),
+                validateId(settings.logChannelId || ''),
                 welcomeMessage,
                 JSON.stringify(ticketCategories),
                 settings.autoClose?.enabled ? 1 : 0,
                 autoCloseHours,
+                maxOpen,
                 guild.id
             ]);
 
@@ -11103,6 +11362,11 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 `UPDATE guild_configs SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`,
                 values
             );
+
+            // Log the settings change for visibility
+            const changedKeys = Object.keys(validUpdates);
+            const changedBy = req.user?.username || req.user?.discordId || 'unknown';
+            this.bot.logger?.info(`[SETTINGS] Guild ${guildId}: ${changedBy} updated ${changedKeys.length} setting(s): ${changedKeys.join(', ')}`);
 
             // Invalidate ConfigService cache so bot picks up changes immediately
             try {
