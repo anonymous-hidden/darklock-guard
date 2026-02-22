@@ -152,133 +152,248 @@ class WebDashboard {
     }
 
     /**
-     * Generate leaderboard HTML with Tailwind CSS
+     * Generate leaderboard HTML - polished DarkLock design
      */
     generateLeaderboardHTML(guildName, guildIcon, leaderboard) {
+        const totalXp = leaderboard.reduce((sum, e) => sum + (e.xp || 0), 0);
+        const avgLevel = leaderboard.length ? Math.round(leaderboard.reduce((s, e) => s + (e.level || 0), 0) / leaderboard.length) : 0;
+        const top1 = leaderboard[0] || null;
+        const top2 = leaderboard[1] || null;
+        const top3 = leaderboard[2] || null;
+        const rest  = leaderboard.slice(3);
+
+        const podiumCard = (entry, rank) => {
+            if (!entry) return '';
+            const medals = { 1: { color: '#FFD700', glow: 'rgba(255,215,0,0.35)', icon: '👑', border: '#FFD700', labelColor: '#FFD700' },
+                             2: { color: '#C0C0C0', glow: 'rgba(192,192,192,0.3)',  icon: '🥈', border: '#C0C0C0', labelColor: '#C0C0C0' },
+                             3: { color: '#CD7F32', glow: 'rgba(205,127,50,0.3)',   icon: '🥉', border: '#CD7F32', labelColor: '#CD7F32' } };
+            const m = medals[rank];
+            const order = rank === 1 ? 'order-2' : rank === 2 ? 'order-1' : 'order-3';
+            const scale = rank === 1 ? 'scale-y-100' : 'scale-y-90 mt-6';
+            return `
+            <div class="podium-card ${order} flex flex-col items-center gap-3 px-4 py-6 rounded-2xl relative" style="background:rgba(255,255,255,0.03);border:1px solid ${m.border}30;box-shadow:0 4px 40px ${m.glow};">
+                <div class="absolute -top-4 text-3xl">${m.icon}</div>
+                <div class="relative">
+                    <img src="${entry.avatar}" alt="${this.escapeHtml(entry.username)}" class="w-20 h-20 rounded-full object-cover" style="border:3px solid ${m.color};box-shadow:0 0 20px ${m.glow};">
+                    <div class="absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center text-sm font-black text-black" style="background:${m.color};">${rank}</div>
+                </div>
+                <div class="text-center mt-2">
+                    <div class="font-bold text-lg truncate max-w-[140px]" title="${this.escapeHtml(entry.username)}" style="color:${m.labelColor};">${this.escapeHtml(entry.username)}</div>
+                    <div class="text-xs mt-1" style="color:rgba(255,255,255,0.5);">Level ${entry.level}</div>
+                </div>
+                <div class="text-center">
+                    <div class="font-black text-xl" style="color:${m.color};">${this.formatNumber(entry.xp)}</div>
+                    <div class="text-xs" style="color:rgba(255,255,255,0.4);">total XP</div>
+                </div>
+                <!-- mini progress -->
+                <div class="w-full rounded-full overflow-hidden" style="height:4px;background:rgba(255,255,255,0.08);">
+                    <div style="height:100%;width:${entry.progress_percent || 0}%;background:${m.color};border-radius:9999px;transition:width .6s ease;"></div>
+                </div>
+            </div>`;
+        };
+
+        const rowEntry = (entry) => {
+            const rankColor = entry.rank <= 10 ? '#00d4ff' : 'rgba(255,255,255,0.35)';
+            return `
+            <div class="lb-row group flex items-center gap-4 px-6 py-4 rounded-xl transition-all duration-200" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);">
+                <!-- rank -->
+                <div class="w-9 text-center flex-shrink-0">
+                    <span class="text-base font-black" style="color:${rankColor};">#${entry.rank}</span>
+                </div>
+                <!-- avatar -->
+                <img src="${entry.avatar}" alt="${this.escapeHtml(entry.username)}" class="w-11 h-11 rounded-full flex-shrink-0 object-cover" style="border:2px solid rgba(0,212,255,0.2);">
+                <!-- name + bar -->
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-baseline gap-2 mb-1.5">
+                        <span class="font-semibold truncate text-sm" style="color:rgba(255,255,255,0.9);">${this.escapeHtml(entry.username)}</span>
+                        <span class="text-xs font-bold flex-shrink-0" style="color:#00d4ff;">Lv.${entry.level}</span>
+                    </div>
+                    <div class="w-full rounded-full overflow-hidden" style="height:5px;background:rgba(255,255,255,0.07);">
+                        <div class="xp-bar" style="height:100%;width:0%;border-radius:9999px;transition:width .8s ease;background:linear-gradient(90deg,#00d4ff,#7c3aed);" data-width="${entry.progress_percent || 0}"></div>
+                    </div>
+                </div>
+                <!-- xp + msgs -->
+                <div class="text-right flex-shrink-0 hidden sm:block">
+                    <div class="text-sm font-bold" style="color:rgba(255,255,255,0.85);">${this.formatNumber(entry.xp)} <span style="color:rgba(255,255,255,0.3);font-weight:400;">XP</span></div>
+                    <div class="text-xs" style="color:rgba(255,255,255,0.3);">${this.formatNumber(entry.total_messages || 0)} msgs</div>
+                </div>
+            </div>`;
+        };
+
         return `<!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${guildName} - XP Leaderboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>${this.escapeHtml(guildName)} — Leaderboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        body {
-            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
-            min-height: 100vh;
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+        :root{
+            --bg:#07070f;
+            --surface:rgba(255,255,255,0.03);
+            --border:rgba(255,255,255,0.07);
+            --accent:#00d4ff;
+            --purple:#7c3aed;
+            --text:rgba(255,255,255,0.87);
+            --muted:rgba(255,255,255,0.4);
         }
-        .progress-bar-fill {
-            background: linear-gradient(90deg, #00d4ff 0%, #00ff88 50%, #00d4ff 100%);
-            transition: width 0.3s ease;
+        html{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+        body{min-height:100vh;overflow-x:hidden;}
+
+        /* animated bg mesh */
+        .bg-mesh{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+        .bg-mesh::before{
+            content:'';position:absolute;inset:-50%;
+            background:
+                radial-gradient(ellipse 60% 50% at 20% 20%, rgba(0,212,255,0.07) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 60% at 80% 80%, rgba(124,58,237,0.07) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 40% at 60% 10%, rgba(0,255,136,0.04) 0%, transparent 50%);
+            animation:meshMove 20s ease-in-out infinite alternate;
         }
-        .leaderboard-entry {
-            transition: all 0.2s ease;
-        }
-        .leaderboard-entry:hover {
-            transform: translateX(5px);
-            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
-        }
-        .rank-badge {
-            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
-        }
-        .top-3 {
-            border-left: 3px solid #00d4ff;
+        @keyframes meshMove{from{transform:scale(1) rotate(0deg);}to{transform:scale(1.1) rotate(6deg);}}
+
+        /* layout */
+        .page{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:40px 20px 80px;}
+
+        /* header */
+        .header{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:48px;text-align:center;}
+        .guild-icon{width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid rgba(0,212,255,0.35);box-shadow:0 0 40px rgba(0,212,255,0.2);}
+        .guild-icon-placeholder{width:88px;height:88px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;background:linear-gradient(135deg,rgba(0,212,255,0.15),rgba(124,58,237,0.15));border:3px solid rgba(0,212,255,0.35);}
+        .guild-name{font-size:clamp(26px,5vw,40px);font-weight:900;background:linear-gradient(135deg,#fff 30%,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1;}
+        .header-sub{font-size:15px;color:var(--muted);letter-spacing:.04em;display:flex;align-items:center;gap:8px;}
+        .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);display:inline-block;}
+
+        /* stat cards */
+        .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:40px;}
+        .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 16px;text-align:center;}
+        .stat-value{font-size:clamp(22px,4vw,30px);font-weight:900;margin-bottom:4px;}
+        .stat-label{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.05em;text-transform:uppercase;}
+
+        /* section title */
+        .section-title{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+        .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+        /* podium */
+        .podium{display:flex;align-items:flex-end;justify-content:center;gap:14px;margin-bottom:40px;flex-wrap:wrap;}
+        .podium-card{flex:1;min-width:140px;max-width:200px;}
+        .podium-card.order-1{order:1;}
+        .podium-card.order-2{order:2;}
+        .podium-card.order-3{order:3;}
+
+        /* list */
+        .lb-list{display:flex;flex-direction:column;gap:7px;}
+        .lb-row{cursor:default;}
+        .lb-row:hover{background:rgba(0,212,255,0.05) !important;border-color:rgba(0,212,255,0.2) !important;transform:translateX(3px);}
+
+        /* footer */
+        .footer{text-align:center;margin-top:56px;color:var(--muted);font-size:13px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+        .footer-brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;color:rgba(255,255,255,0.6);}
+        .footer-brand span{color:var(--accent);}
+
+        /* empty */
+        .empty{text-align:center;padding:60px 20px;color:var(--muted);}
+        .empty-icon{font-size:52px;margin-bottom:16px;}
+
+        @media(max-width:520px){
+            .stats{grid-template-columns:repeat(3,1fr);}
+            .stat-value{font-size:20px;}
+            .podium{gap:8px;}
+            .podium-card{min-width:110px;}
         }
     </style>
 </head>
-<body class="text-gray-100">
-    <div class="container mx-auto px-4 py-8 max-w-6xl">
-        <!-- Header -->
-        <div class="text-center mb-12">
-            ${guildIcon ? `<img src="${guildIcon}" alt="Server Icon" class="w-24 h-24 rounded-full mx-auto mb-4 ring-4 ring-cyan-500/50">` : ''}
-            <h1 class="text-5xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                ${this.escapeHtml(guildName)}
-            </h1>
-            <p class="text-gray-400 text-lg">XP Leaderboard</p>
-        </div>
+<body>
+<div class="bg-mesh"></div>
+<div class="page">
 
-        <!-- Stats Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-gray-800/50 rounded-xl p-6 text-center border border-gray-700">
-                <div class="text-4xl font-bold text-cyan-400">${leaderboard.length}</div>
-                <div class="text-gray-400 mt-2">Total Members</div>
-            </div>
-            <div class="bg-gray-800/50 rounded-xl p-6 text-center border border-gray-700">
-                <div class="text-4xl font-bold text-green-400">${leaderboard[0] ? this.formatNumber(leaderboard[0].xp) : '0'}</div>
-                <div class="text-gray-400 mt-2">Top XP</div>
-            </div>
-            <div class="bg-gray-800/50 rounded-xl p-6 text-center border border-gray-700">
-                <div class="text-4xl font-bold text-purple-400">${leaderboard[0] ? leaderboard[0].level : '0'}</div>
-                <div class="text-gray-400 mt-2">Highest Level</div>
-            </div>
-        </div>
+    <!-- Header -->
+    <div class="header">
+        ${guildIcon
+            ? `<img src="${guildIcon}" alt="Server Icon" class="guild-icon">`
+            : `<div class="guild-icon-placeholder">🛡️</div>`}
+        <div class="guild-name">${this.escapeHtml(guildName)}</div>
+        <div class="header-sub"><span class="dot"></span> XP Leaderboard <span class="dot"></span></div>
+    </div>
 
-        <!-- Leaderboard -->
-        <div class="bg-gray-800/30 rounded-2xl border border-gray-700/50 overflow-hidden backdrop-blur-sm">
-            <div class="p-6 border-b border-gray-700">
-                <h2 class="text-2xl font-bold">Overall XP Rankings</h2>
-            </div>
-            
-            <div class="divide-y divide-gray-700/50">
-                ${leaderboard.map((entry, index) => this.generateLeaderboardEntry(entry, index)).join('')}
-            </div>
+    <!-- Stats -->
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-value" style="color:#00d4ff;">${leaderboard.length.toLocaleString()}</div>
+            <div class="stat-label">Members Ranked</div>
         </div>
-
-        <!-- Footer -->
-        <div class="text-center mt-12 text-gray-500">
-            <p>Last updated: ${new Date().toLocaleString()}</p>
+        <div class="stat-card">
+            <div class="stat-value" style="color:#00ff88;">${top1 ? 'Lv.' + top1.level : '—'}</div>
+            <div class="stat-label">Top Level</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color:#a78bfa;">${this.formatCompact(totalXp)}</div>
+            <div class="stat-label">Total XP Earned</div>
         </div>
     </div>
+
+    ${leaderboard.length === 0 ? `
+    <div class="empty">
+        <div class="empty-icon">📊</div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:8px;">No rankings yet</div>
+        <div>Start chatting to earn XP and appear on the leaderboard!</div>
+    </div>` : `
+
+    <!-- Podium (top 3) -->
+    ${(top1 || top2 || top3) ? `
+    <div class="section-title">Top Performers</div>
+    <div class="podium">
+        ${podiumCard(top2, 2)}
+        ${podiumCard(top1, 1)}
+        ${podiumCard(top3, 3)}
+    </div>` : ''}
+
+    <!-- Rest of rankings -->
+    ${rest.length > 0 ? `
+    <div class="section-title">Rankings</div>
+    <div class="lb-list">
+        ${rest.map(e => rowEntry(e)).join('')}
+    </div>` : ''}
+    `}
+
+    <!-- Footer -->
+    <div class="footer">
+        <div class="footer-brand">🛡️ Powered by <span>DarkLock</span></div>
+        <div>Updated ${new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+    </div>
+
+</div>
+<script>
+    // Animate XP bars on load
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            document.querySelectorAll('.xp-bar').forEach(bar => {
+                bar.style.width = bar.dataset.width + '%';
+            });
+        }, 120);
+    });
+</script>
 </body>
 </html>`;
-    }
-
-    /**
-     * Generate individual leaderboard entry HTML
-     */
-    generateLeaderboardEntry(entry, index) {
-        const isTop3 = entry.rank <= 3;
-        const progressPercent = entry.progress_percent;
-
-        return `
-        <div class="leaderboard-entry p-6 flex items-center gap-6 bg-gray-900/20 hover:bg-gray-900/40 ${isTop3 ? 'top-3' : ''}">
-            <!-- Rank Badge -->
-            <div class="rank-badge w-16 h-16 rounded-full flex items-center justify-center font-bold text-2xl flex-shrink-0 ${isTop3 ? 'ring-4 ring-cyan-500/50' : 'bg-gray-700'}">
-                ${entry.rank}
-            </div>
-
-            <!-- Avatar -->
-            <img src="${entry.avatar}" alt="${entry.username}" class="w-16 h-16 rounded-full flex-shrink-0 ring-2 ring-gray-600">
-
-            <!-- User Info -->
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="flex items-center gap-3">
-                        <h3 class="text-xl font-bold truncate">@${this.escapeHtml(entry.username)}</h3>
-                        <span class="text-cyan-400 font-bold text-lg">LVL: ${entry.level}</span>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-sm text-gray-400">${this.formatNumber(entry.xp)} XP</div>
-                        <div class="text-xs text-gray-500">${this.formatNumber(entry.total_messages)} messages</div>
-                    </div>
-                </div>
-
-                <!-- Progress Bar -->
-                <div class="w-full bg-gray-700 rounded-full h-3 overflow-hidden">
-                    <div class="progress-bar-fill h-full rounded-full" style="width: ${progressPercent}%"></div>
-                </div>
-                <div class="text-xs text-gray-500 mt-1">
-                    ${this.formatNumber(entry.xp_progress)} / ${this.formatNumber(entry.xp_needed)} XP to next level (${progressPercent}%)
-                </div>
-            </div>
-        </div>`;
     }
 
     /**
      * Format number with commas
      */
     formatNumber(num) {
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    /**
+     * Format large numbers compactly (e.g. 12400 → 12.4K)
+     */
+    formatCompact(num) {
+        if (!num) return '0';
+        if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+        if (num >= 1_000) return (num / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
+        return num.toString();
     }
 
     /**
