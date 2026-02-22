@@ -2725,7 +2725,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
     async authenticateToken(req, res, next) {
         // Skip authentication for admin v3 API routes (they have their own auth)
         // Also skip RFID status endpoint (used by signin page, no auth needed)
-        if (req.url.startsWith('/v3/') || req.url.startsWith('/admin/') || req.url.startsWith('/rfid/')) {
+        if (req.url.startsWith('/v3/') || req.url.startsWith('/admin/') || req.url.startsWith('/rfid/') || req.url.startsWith('/v4/admin/')) {
             console.log('[authenticateToken] Skipping for admin/rfid route:', req.url);
             return next();
         }
