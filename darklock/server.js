@@ -1848,7 +1848,18 @@ class DarklockPlatform {
         existingApp.get('/platform/download/darklock-guard', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/download-page.html'));
         });
-        
+
+        // Darklock Secure Channel - Download page (existingApp integration)
+        existingApp.get('/platform/download/secure-channel', (req, res) => {
+            const scPage = path.join(__dirname, 'views', 'secure-channel-download.html');
+            res.sendFile(scPage, (err) => {
+                if (err) {
+                    console.error('[SecureChannel] sendFile error:', err.message, scPage);
+                    if (!res.headersSent) res.status(500).send('Error loading page');
+                }
+            });
+        });
+
         // Darklock Guard - Actual installer download (existingApp integration)
         existingApp.get('/platform/api/download/darklock-guard-installer', (req, res) => {
             const format = (req.query.format || 'deb').toLowerCase();
@@ -1934,11 +1945,6 @@ class DarklockPlatform {
             `);
         });
         
-        // Darklock Secure Channel - Download page (existingApp integration)
-        existingApp.get('/platform/download/secure-channel', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/secure-channel-download.html'));
-        });
-
         // Darklock Secure Channel - Installer download (existingApp integration)
         existingApp.get('/platform/api/download/secure-channel-installer', (req, res) => {
             const format = (req.query.format || 'deb').toLowerCase();
