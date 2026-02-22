@@ -22,49 +22,65 @@ router.get('/', async (req, res) => {
 });
 
 /**
- * GET /api/updates - Get all published updates (public API)
+ * GET /api/updates - Get all public announcements (public API)
+ * Reads from platform_announcements (created via admin-v4 dashboard)
  */
 router.get('/api/updates', async (req, res) => {
     try {
-        const updates = await db.getAllUpdates();
-        
-        res.json({
-            success: true,
-            updates: updates || []
-        });
+        const rows = await db.all(
+            `SELECT id, title, content, version, pinned, created_at
+             FROM platform_announcements
+             WHERE visibility = 'public'
+             ORDER BY pinned DESC, created_at DESC`
+        );
+
+        // Shape rows to match what updates.html expects
+        const updates = (rows || []).map(r => ({
+            id:           r.id,
+            title:        r.title,
+            content:      r.content,
+            version:      r.version || '—',
+            type:         'announcement',
+            published_at: r.created_at,
+        }));
+
+        res.json({ success: true, updates });
     } catch (err) {
         console.error('[Updates API] Get updates error:', err);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to load updates'
-        });
+        res.status(500).json({ success: false, error: 'Failed to load updates' });
     }
 });
 
 /**
- * GET /api/updates/:id - Get a specific update (public API)
+ * GET /api/updates/:id - Get a specific announcement (public API)
  */
 router.get('/api/updates/:id', async (req, res) => {
     try {
-        const update = await db.getUpdateById(req.params.id);
-        
-        if (!update) {
-            return res.status(404).json({
-                success: false,
-                error: 'Update not found'
-            });
+        const r = await db.get(
+            `SELECT id, title, content, version, pinned, created_at
+             FROM platform_announcements
+             WHERE id = ? AND visibility = 'public'`,
+            [req.params.id]
+        );
+
+        if (!r) {
+            return res.status(404).json({ success: false, error: 'Update not found' });
         }
-        
+
         res.json({
             success: true,
-            update
+            update: {
+                id:           r.id,
+                title:        r.title,
+                content:      r.content,
+                version:      r.version || '—',
+                type:         'announcement',
+                published_at: r.created_at,
+            }
         });
     } catch (err) {
         console.error('[Updates API] Get update error:', err);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to load update'
-        });
+        res.status(500).json({ success: false, error: 'Failed to load update' });
     }
 });
 
