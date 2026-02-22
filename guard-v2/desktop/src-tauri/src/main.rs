@@ -550,6 +550,24 @@ async fn lock_vault(app_handle: tauri::AppHandle) -> Result<serde_json::Value, S
     Ok(serde_json::json!({"ok": true}))
 }
 
+#[tauri::command]
+async fn delete_vault() -> Result<serde_json::Value, String> {
+    let dir = data_dir().map_err(|e| format!("Failed to determine data dir: {e}"))?;
+    let removed: Vec<String> = ["vault.dlock", "vault.dat"]
+        .iter()
+        .filter_map(|name| {
+            let p = dir.join(name);
+            if p.exists() {
+                std::fs::remove_file(&p).ok()?;
+                Some(p.to_string_lossy().to_string())
+            } else {
+                None
+            }
+        })
+        .collect();
+    Ok(serde_json::json!({ "ok": true, "removed": removed }))
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -569,6 +587,7 @@ fn main() {
             check_first_run,
             init_vault,
             lock_vault,
+            delete_vault,
             create_baseline,
             verify_baseline,
             send_crash_report

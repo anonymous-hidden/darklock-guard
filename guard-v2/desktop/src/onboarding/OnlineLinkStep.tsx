@@ -65,12 +65,24 @@ const OnlineLinkStep: React.FC<Props> = ({ state, onUpdate, onNext, onBack }) =>
     }
   }, []);
 
+  const extractError = (err: unknown): string => {
+    if (typeof err === 'string') return err;
+    if (err instanceof Error) return err.message;
+    return 'Device linking failed';
+  };
+
   const handleLink = async () => {
     setLinking(true);
     onUpdate({ error: null });
 
     try {
-      // Step 1: Create vault locally (generates device keys)
+      // Step 1: If a stale vault exists from a prior session, remove it first
+      const firstRun: any = await invoke('check_first_run');
+      if (!firstRun.needs_setup) {
+        await invoke('delete_vault');
+      }
+
+      // Step 2: Create vault locally (generates device keys)
       const vaultResult: any = await invoke('init_vault', {
         args: {
           password: state.authPassword,
@@ -83,7 +95,8 @@ const OnlineLinkStep: React.FC<Props> = ({ state, onUpdate, onNext, onBack }) =>
         deviceId: vaultResult.device_id,
       });
 
-      // Step 2: Register device with platform  
+      // Step 3: Register device with platform
+      const token = state.sessionToken || localStorage.getItem('darklock_auth_token');
       const res = await platformFetch(
         '/api/devices/register',
         {
@@ -92,10 +105,10 @@ const OnlineLinkStep: React.FC<Props> = ({ state, onUpdate, onNext, onBack }) =>
             device_id: vaultResult.device_id,
             public_key: vaultResult.public_key,
             name: deviceName,
-            platform: 'linux',
+            platform: navigator.userAgent.includes('Windows') ? 'windows' : 'linux',
           }),
         },
-        state.sessionToken,
+        token,
       );
 
       const data = await res.json();
@@ -103,9 +116,9 @@ const OnlineLinkStep: React.FC<Props> = ({ state, onUpdate, onNext, onBack }) =>
 
       setLinking(false);
       onNext();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setLinking(false);
-      onUpdate({ error: err.message || 'Device linking failed' });
+      onUpdate({ error: extractError(err) });
     }
   };
 
