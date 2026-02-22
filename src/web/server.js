@@ -164,58 +164,64 @@ class WebDashboard {
 
         const podiumCard = (entry, rank) => {
             if (!entry) return '';
-            const medals = { 1: { color: '#FFD700', glow: 'rgba(255,215,0,0.35)', icon: '👑', border: '#FFD700', labelColor: '#FFD700' },
-                             2: { color: '#C0C0C0', glow: 'rgba(192,192,192,0.3)',  icon: '🥈', border: '#C0C0C0', labelColor: '#C0C0C0' },
-                             3: { color: '#CD7F32', glow: 'rgba(205,127,50,0.3)',   icon: '🥉', border: '#CD7F32', labelColor: '#CD7F32' } };
+            const medals = {
+                1: { color: '#FFD700', glow: 'rgba(255,215,0,0.25)', glowStrong: 'rgba(255,215,0,0.12)', icon: '👑', grad: 'linear-gradient(135deg, rgba(255,215,0,0.15) 0%, rgba(255,180,0,0.05) 100%)', border: 'rgba(255,215,0,0.3)', labelColor: '#FFD700' },
+                2: { color: '#C0C0C0', glow: 'rgba(192,192,192,0.2)', glowStrong: 'rgba(192,192,192,0.08)', icon: '🥈', grad: 'linear-gradient(135deg, rgba(192,192,192,0.1) 0%, rgba(160,160,160,0.04) 100%)', border: 'rgba(192,192,192,0.25)', labelColor: '#d4d4d4' },
+                3: { color: '#CD7F32', glow: 'rgba(205,127,50,0.2)', glowStrong: 'rgba(205,127,50,0.08)', icon: '🥉', grad: 'linear-gradient(135deg, rgba(205,127,50,0.12) 0%, rgba(180,100,30,0.04) 100%)', border: 'rgba(205,127,50,0.25)', labelColor: '#e0a060' }
+            };
             const m = medals[rank];
             const order = rank === 1 ? 'order-2' : rank === 2 ? 'order-1' : 'order-3';
-            const scale = rank === 1 ? 'scale-y-100' : 'scale-y-90 mt-6';
+            const lift = rank === 1 ? '' : 'margin-top:24px;';
+            const avatarSize = rank === 1 ? 104 : 88;
+            const avatarClass = rank === 1 ? 'w-[104px] h-[104px]' : 'w-[88px] h-[88px]';
             return `
-            <div class="podium-card ${order} flex flex-col items-center gap-4 px-5 py-8 rounded-2xl relative" style="background:rgba(255,255,255,0.03);border:1px solid ${m.border}30;box-shadow:0 4px 40px ${m.glow};">
-                <div class="absolute -top-5 text-4xl">${m.icon}</div>
-                <div class="relative mt-2 mx-auto" style="width:96px;height:96px;">
-                    <img src="${entry.avatar}" alt="${this.escapeHtml(entry.username)}" class="w-24 h-24 rounded-full object-cover" style="border:3px solid ${m.color};box-shadow:0 0 24px ${m.glow};">
-                    <div class="absolute -bottom-2 -right-2 w-9 h-9 rounded-full flex items-center justify-center text-sm font-black text-black" style="background:${m.color};">${rank}</div>
-                </div>
-                <div class="text-center mt-1">
-                    <div class="font-bold text-base truncate max-w-[160px]" title="${this.escapeHtml(entry.username)}" style="color:${m.labelColor};">${this.escapeHtml(entry.username)}</div>
-                    <div class="text-sm mt-1" style="color:rgba(255,255,255,0.5);">Level ${entry.level}</div>
-                </div>
-                <div class="text-center">
-                    <div class="font-black text-2xl" style="color:${m.color};">${this.formatNumber(entry.xp)}</div>
-                    <div class="text-xs mt-0.5" style="color:rgba(255,255,255,0.4);">total XP</div>
-                </div>
-                <!-- mini progress -->
-                <div class="w-full rounded-full overflow-hidden" style="height:5px;background:rgba(255,255,255,0.08);">
-                    <div style="height:100%;width:${entry.progress_percent || 0}%;background:${m.color};border-radius:9999px;transition:width .6s ease;"></div>
+            <div class="podium-card ${order}" style="${lift}">
+                <div class="podium-inner">
+                    <div class="podium-glow" style="background:radial-gradient(circle at 50% 0%, ${m.glowStrong} 0%, transparent 70%);"></div>
+                    <div class="podium-content" style="background:${m.grad};border:1px solid ${m.border};backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">
+                        <div class="podium-medal">${m.icon}</div>
+                        <div class="podium-avatar-wrap" style="width:${avatarSize}px;height:${avatarSize}px;">
+                            <img src="${entry.avatar}" alt="${this.escapeHtml(entry.username)}" class="${avatarClass} rounded-full object-cover" style="border:3px solid ${m.color};box-shadow:0 0 20px ${m.glow}, 0 0 60px ${m.glowStrong};">
+                            <div class="podium-rank-badge" style="background:${m.color};box-shadow:0 2px 8px ${m.glow};">${rank}</div>
+                        </div>
+                        <div class="podium-info">
+                            <div class="podium-username" title="${this.escapeHtml(entry.username)}" style="color:${m.labelColor};">${this.escapeHtml(entry.username)}</div>
+                            <div class="podium-level">Level ${entry.level}</div>
+                        </div>
+                        <div class="podium-xp-block">
+                            <div class="podium-xp-value" style="color:${m.color};">${this.formatNumber(entry.xp)}</div>
+                            <div class="podium-xp-label">XP</div>
+                        </div>
+                        <div class="podium-bar-track">
+                            <div class="podium-bar-fill" style="width:${entry.progress_percent || 0}%;background:linear-gradient(90deg, ${m.color}, ${m.color}88);"></div>
+                        </div>
+                    </div>
                 </div>
             </div>`;
         };
 
         const rowEntry = (entry) => {
-            const rankColor = entry.rank <= 10 ? '#00d4ff' : 'rgba(255,255,255,0.35)';
+            const isTop10 = entry.rank <= 10;
+            const rankColor = isTop10 ? '#00d4ff' : 'rgba(255,255,255,0.35)';
+            const accentBorder = isTop10 ? 'rgba(0,212,255,0.12)' : 'rgba(255,255,255,0.04)';
             return `
-            <div class="lb-row group flex items-center gap-4 px-6 py-4 rounded-xl transition-all duration-200" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);">
-                <!-- rank -->
-                <div class="w-9 text-center flex-shrink-0">
-                    <span class="text-base font-black" style="color:${rankColor};">#${entry.rank}</span>
+            <div class="lb-row" style="border-left:3px solid ${accentBorder};">
+                <div class="lb-row-rank" style="color:${rankColor};">#${entry.rank}</div>
+                <div class="lb-row-avatar-wrap">
+                    <img src="${entry.avatar}" alt="${this.escapeHtml(entry.username)}" class="lb-row-avatar" style="border-color:${isTop10 ? 'rgba(0,212,255,0.3)' : 'rgba(255,255,255,0.08)'};">
                 </div>
-                <!-- avatar -->
-                <img src="${entry.avatar}" alt="${this.escapeHtml(entry.username)}" class="w-11 h-11 rounded-full flex-shrink-0 object-cover" style="border:2px solid rgba(0,212,255,0.2);">
-                <!-- name + bar -->
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-baseline gap-2 mb-1.5">
-                        <span class="font-semibold truncate text-sm" style="color:rgba(255,255,255,0.9);">${this.escapeHtml(entry.username)}</span>
-                        <span class="text-xs font-bold flex-shrink-0" style="color:#00d4ff;">Lv.${entry.level}</span>
+                <div class="lb-row-info">
+                    <div class="lb-row-name-line">
+                        <span class="lb-row-name">${this.escapeHtml(entry.username)}</span>
+                        <span class="lb-row-level">Lv.${entry.level}</span>
                     </div>
-                    <div class="w-full rounded-full overflow-hidden" style="height:5px;background:rgba(255,255,255,0.07);">
-                        <div class="xp-bar" style="height:100%;width:0%;border-radius:9999px;transition:width .8s ease;background:linear-gradient(90deg,#00d4ff,#7c3aed);" data-width="${entry.progress_percent || 0}"></div>
+                    <div class="lb-row-bar-track">
+                        <div class="xp-bar lb-row-bar-fill" data-width="${entry.progress_percent || 0}"></div>
                     </div>
                 </div>
-                <!-- xp + msgs -->
-                <div class="text-right flex-shrink-0 hidden sm:block">
-                    <div class="text-sm font-bold" style="color:rgba(255,255,255,0.85);">${this.formatNumber(entry.xp)} <span style="color:rgba(255,255,255,0.3);font-weight:400;">XP</span></div>
-                    <div class="text-xs" style="color:rgba(255,255,255,0.3);">${this.formatNumber(entry.total_messages || 0)} msgs</div>
+                <div class="lb-row-stats">
+                    <div class="lb-row-xp">${this.formatNumber(entry.xp)} <span class="lb-row-xp-label">XP</span></div>
+                    <div class="lb-row-msgs">${this.formatNumber(entry.total_messages || 0)} msgs</div>
                 </div>
             </div>`;
         };
@@ -232,12 +238,12 @@ class WebDashboard {
     <style>
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
         :root{
-            --bg:#07070f;
-            --surface:rgba(255,255,255,0.03);
-            --border:rgba(255,255,255,0.07);
+            --bg:#06060e;
+            --surface:rgba(255,255,255,0.025);
+            --border:rgba(255,255,255,0.06);
             --accent:#00d4ff;
             --purple:#7c3aed;
-            --text:rgba(255,255,255,0.87);
+            --text:rgba(255,255,255,0.88);
             --muted:rgba(255,255,255,0.4);
         }
         html{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
@@ -248,45 +254,105 @@ class WebDashboard {
         .bg-mesh::before{
             content:'';position:absolute;inset:-50%;
             background:
-                radial-gradient(ellipse 60% 50% at 20% 20%, rgba(0,212,255,0.07) 0%, transparent 60%),
-                radial-gradient(ellipse 50% 60% at 80% 80%, rgba(124,58,237,0.07) 0%, transparent 60%),
-                radial-gradient(ellipse 40% 40% at 60% 10%, rgba(0,255,136,0.04) 0%, transparent 50%);
-            animation:meshMove 20s ease-in-out infinite alternate;
+                radial-gradient(ellipse 60% 50% at 20% 20%, rgba(0,212,255,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 60% at 80% 80%, rgba(124,58,237,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 40% at 60% 10%, rgba(0,255,136,0.03) 0%, transparent 50%);
+            animation:meshMove 22s ease-in-out infinite alternate;
         }
-        @keyframes meshMove{from{transform:scale(1) rotate(0deg);}to{transform:scale(1.1) rotate(6deg);}}
+        @keyframes meshMove{from{transform:scale(1) rotate(0deg);}to{transform:scale(1.08) rotate(4deg);}}
 
         /* layout */
-        .page{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:40px 20px 80px;}
+        .page{position:relative;z-index:1;max-width:880px;margin:0 auto;padding:48px 24px 80px;}
 
         /* header */
         .header{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:48px;text-align:center;}
-        .guild-icon{width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid rgba(0,212,255,0.35);box-shadow:0 0 40px rgba(0,212,255,0.2);}
-        .guild-icon-placeholder{width:88px;height:88px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;background:linear-gradient(135deg,rgba(0,212,255,0.15),rgba(124,58,237,0.15));border:3px solid rgba(0,212,255,0.35);}
+        .guild-icon{width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid rgba(0,212,255,0.3);box-shadow:0 0 40px rgba(0,212,255,0.15), 0 0 80px rgba(0,212,255,0.05);}
+        .guild-icon-placeholder{width:88px;height:88px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;background:linear-gradient(135deg,rgba(0,212,255,0.15),rgba(124,58,237,0.15));border:3px solid rgba(0,212,255,0.3);}
         .guild-name{font-size:clamp(26px,5vw,40px);font-weight:900;background:linear-gradient(135deg,#fff 30%,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1;}
-        .header-sub{font-size:15px;color:var(--muted);letter-spacing:.04em;display:flex;align-items:center;gap:8px;}
-        .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);display:inline-block;}
+        .header-sub{font-size:14px;color:var(--muted);letter-spacing:.06em;display:flex;align-items:center;gap:8px;text-transform:uppercase;font-weight:600;}
+        .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);display:inline-block;box-shadow:0 0 6px var(--accent);}
 
         /* stat cards */
-        .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:40px;}
-        .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px 16px;text-align:center;}
+        .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:44px;}
+        .stat-card{
+            background:linear-gradient(135deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.01) 100%);
+            border:1px solid rgba(255,255,255,0.06);
+            border-radius:16px;padding:22px 16px;text-align:center;
+            backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+            transition:transform .2s ease, border-color .2s ease;
+        }
+        .stat-card:hover{transform:translateY(-2px);border-color:rgba(255,255,255,0.12);}
         .stat-value{font-size:clamp(22px,4vw,30px);font-weight:900;margin-bottom:4px;}
-        .stat-label{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.05em;text-transform:uppercase;}
+        .stat-label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.08em;text-transform:uppercase;}
 
         /* section title */
-        .section-title{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:10px;}
-        .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+        .section-title{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;display:flex;align-items:center;gap:12px;}
+        .section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg, var(--border), transparent);}
 
-        /* podium */
-        .podium{display:flex;align-items:flex-end;justify-content:center;gap:18px;margin-bottom:40px;flex-wrap:wrap;}
-        .podium-card{flex:1;min-width:180px;max-width:240px;}
+        /* ===== PODIUM ===== */
+        .podium{display:flex;align-items:flex-end;justify-content:center;gap:20px;margin-bottom:48px;flex-wrap:wrap;}
+        .podium-card{flex:1;min-width:180px;max-width:250px;}
         .podium-card.order-1{order:1;}
         .podium-card.order-2{order:2;}
         .podium-card.order-3{order:3;}
+        .podium-inner{position:relative;border-radius:20px;overflow:visible;}
+        .podium-glow{position:absolute;inset:-20px;border-radius:20px;pointer-events:none;z-index:0;filter:blur(20px);}
+        .podium-content{
+            position:relative;z-index:1;
+            display:flex;flex-direction:column;align-items:center;gap:14px;
+            padding:32px 20px 24px;border-radius:20px;
+            transition:transform .3s ease, box-shadow .3s ease;
+        }
+        .podium-card:hover .podium-content{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,0.3);}
+        .podium-medal{font-size:32px;margin-bottom:-4px;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.4));}
+        .podium-avatar-wrap{position:relative;margin:0 auto;flex-shrink:0;}
+        .podium-avatar-wrap img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;}
+        .podium-rank-badge{
+            position:absolute;bottom:-4px;right:-4px;
+            width:30px;height:30px;border-radius:50%;
+            display:flex;align-items:center;justify-content:center;
+            font-size:13px;font-weight:900;color:#000;
+            border:2px solid rgba(0,0,0,0.3);
+        }
+        .podium-info{text-align:center;}
+        .podium-username{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;}
+        .podium-level{font-size:13px;color:rgba(255,255,255,0.45);margin-top:2px;font-weight:500;}
+        .podium-xp-block{text-align:center;}
+        .podium-xp-value{font-size:24px;font-weight:900;line-height:1;}
+        .podium-xp-label{font-size:11px;color:rgba(255,255,255,0.35);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-top:2px;}
+        .podium-bar-track{width:100%;height:4px;border-radius:4px;background:rgba(255,255,255,0.06);overflow:hidden;}
+        .podium-bar-fill{height:100%;border-radius:4px;transition:width .6s ease;}
 
-        /* list */
-        .lb-list{display:flex;flex-direction:column;gap:7px;}
-        .lb-row{cursor:default;}
-        .lb-row:hover{background:rgba(0,212,255,0.05) !important;border-color:rgba(0,212,255,0.2) !important;transform:translateX(3px);}
+        /* ===== ROW ENTRIES ===== */
+        .lb-list{display:flex;flex-direction:column;gap:6px;}
+        .lb-row{
+            display:flex;align-items:center;gap:14px;
+            padding:14px 18px;border-radius:14px;
+            background:rgba(255,255,255,0.02);
+            border:1px solid rgba(255,255,255,0.04);
+            border-left:3px solid transparent;
+            transition:all .2s ease;cursor:default;
+        }
+        .lb-row:hover{
+            background:rgba(0,212,255,0.04);
+            border-color:rgba(0,212,255,0.15);
+            border-left-color:rgba(0,212,255,0.4) !important;
+            transform:translateX(3px);
+        }
+        .lb-row-rank{width:36px;text-align:center;font-size:15px;font-weight:900;flex-shrink:0;}
+        .lb-row-avatar-wrap{flex-shrink:0;width:44px;height:44px;}
+        .lb-row-avatar{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid;display:block;}
+        .lb-row-info{flex:1;min-width:0;}
+        .lb-row-name-line{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;}
+        .lb-row-name{font-weight:600;font-size:14px;color:rgba(255,255,255,0.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .lb-row-level{font-size:12px;font-weight:700;color:#00d4ff;flex-shrink:0;}
+        .lb-row-bar-track{width:100%;height:4px;border-radius:4px;background:rgba(255,255,255,0.06);overflow:hidden;}
+        .lb-row-bar-fill{height:100%;width:0%;border-radius:4px;background:linear-gradient(90deg,#00d4ff,#7c3aed);transition:width .8s ease;}
+        .lb-row-stats{text-align:right;flex-shrink:0;}
+        .lb-row-xp{font-size:14px;font-weight:700;color:rgba(255,255,255,0.85);}
+        .lb-row-xp-label{font-weight:400;color:rgba(255,255,255,0.3);font-size:12px;}
+        .lb-row-msgs{font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px;}
+        @media(max-width:580px){.lb-row-stats{display:none;}}
 
         /* footer */
         .footer{text-align:center;margin-top:56px;color:var(--muted);font-size:13px;display:flex;flex-direction:column;align-items:center;gap:8px;}
@@ -297,11 +363,25 @@ class WebDashboard {
         .empty{text-align:center;padding:60px 20px;color:var(--muted);}
         .empty-icon{font-size:52px;margin-bottom:16px;}
 
+        /* entrance animation */
+        @keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+        .podium-card{animation:fadeUp .5s ease backwards;}
+        .podium-card.order-1{animation-delay:.1s;}
+        .podium-card.order-2{animation-delay:0s;}
+        .podium-card.order-3{animation-delay:.2s;}
+        .lb-row{animation:fadeUp .35s ease backwards;}
+        .stat-card{animation:fadeUp .4s ease backwards;}
+        .stat-card:nth-child(1){animation-delay:0s;}
+        .stat-card:nth-child(2){animation-delay:.06s;}
+        .stat-card:nth-child(3){animation-delay:.12s;}
+
         @media(max-width:520px){
-            .stats{grid-template-columns:repeat(3,1fr);}
+            .stats{grid-template-columns:repeat(3,1fr);gap:8px;}
             .stat-value{font-size:20px;}
+            .stat-card{padding:16px 10px;border-radius:12px;}
             .podium{gap:10px;}
             .podium-card{min-width:130px;}
+            .podium-content{padding:24px 14px 18px;}
         }
     </style>
 </head>
@@ -372,7 +452,11 @@ class WebDashboard {
             document.querySelectorAll('.xp-bar').forEach(bar => {
                 bar.style.width = bar.dataset.width + '%';
             });
-        }, 120);
+        }, 200);
+    });
+    // Stagger row animations
+    document.querySelectorAll('.lb-row').forEach((row, i) => {
+        row.style.animationDelay = (0.05 * i) + 's';
     });
 </script>
 </body>
