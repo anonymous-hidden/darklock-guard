@@ -217,7 +217,6 @@ class SecurityBot {
             antinuke: 'pro',
             security: 'pro',
             backup: 'pro',
-            serversetup: 'pro',
             ticket_ai_summarize: 'enterprise'
         };
 
@@ -2460,15 +2459,66 @@ I'm performing an initial security scan to check for threats. This will complete
             }
             const isActive = status === 'active';
             const plan = record?.plan || 'free';
+
+            if (isActive) {
+                return {
+                    guild_id: guildId,
+                    plan,
+                    effectivePlan: plan,
+                    status,
+                    current_period_end: record?.current_period_end || null,
+                    stripe_customer_id: record?.stripe_customer_id || null,
+                    stripe_subscription_id: record?.stripe_subscription_id || null,
+                    is_active: true
+                };
+            }
+
+            // No active subscription for this guild — check if the guild owner has an
+            // active subscription on any other guild they own (handles newly-added guilds).
+            if (this.client) {
+                const guild = this.client.guilds.cache.get(guildId);
+                if (guild?.ownerId) {
+                    const tierRank = { free: 0, pro: 1, enterprise: 2 };
+                    let bestPlan = null;
+                    let bestRank = 0;
+                    const ownerGuilds = this.client.guilds.cache.filter(g => g.ownerId === guild.ownerId && g.id !== guildId);
+                    for (const [, ownerGuild] of ownerGuilds) {
+                        try {
+                            const ownerRecord = await this.database.getGuildSubscription(ownerGuild.id);
+                            if (!ownerRecord || ownerRecord.status !== 'active') continue;
+                            if (ownerRecord.current_period_end && ownerRecord.current_period_end <= now) continue;
+                            const rank = tierRank[ownerRecord.plan] || 0;
+                            if (rank > bestRank) {
+                                bestRank = rank;
+                                bestPlan = ownerRecord.plan;
+                            }
+                        } catch { /* skip */ }
+                    }
+                    if (bestPlan && bestPlan !== 'free') {
+                        this.logger?.info(`[Paywall] Guild ${guildId} inheriting '${bestPlan}' plan from owner ${guild.ownerId}`);
+                        return {
+                            guild_id: guildId,
+                            plan: bestPlan,
+                            effectivePlan: bestPlan,
+                            status: 'active',
+                            current_period_end: null,
+                            stripe_customer_id: null,
+                            stripe_subscription_id: null,
+                            is_active: true
+                        };
+                    }
+                }
+            }
+
             return {
                 guild_id: guildId,
                 plan,
-                effectivePlan: isActive ? plan : 'free',
+                effectivePlan: 'free',
                 status,
                 current_period_end: record?.current_period_end || null,
                 stripe_customer_id: record?.stripe_customer_id || null,
                 stripe_subscription_id: record?.stripe_subscription_id || null,
-                is_active: isActive
+                is_active: false
             };
         } catch (error) {
             this.logger?.warn('Failed to load guild subscription state:', error.message || error);
