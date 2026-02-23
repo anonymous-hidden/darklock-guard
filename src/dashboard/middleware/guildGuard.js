@@ -166,6 +166,22 @@ class BoundedMap {
         if (this._expiry) this._expiry.clear();
     }
 
+    entries() {
+        return this._map.entries();
+    }
+
+    keys() {
+        return this._map.keys();
+    }
+
+    values() {
+        return this._map.values();
+    }
+
+    [Symbol.iterator]() {
+        return this._map[Symbol.iterator]();
+    }
+
     /**
      * Clean up expired entries (call periodically)
      */
