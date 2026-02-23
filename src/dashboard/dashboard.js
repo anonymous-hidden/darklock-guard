@@ -1419,14 +1419,23 @@ The GuardianBot Team`
             });
         });
 
-        // CSRF token endpoint (before auth middleware - needs session but not auth)
+        // CSRF token endpoint — double-submit cookie pattern (stateless, no session store needed)
         this.app.get('/api/csrf-token', (req, res) => {
-            if (!req.session) req.session = {};
-            if (!req.session.csrfToken) {
-                const crypto = require('crypto');
-                req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+            const crypto = require('crypto');
+            // Re-use existing token from cookie if valid, otherwise generate a new one
+            let token = req.cookies?.csrf_token;
+            if (!token || typeof token !== 'string' || token.length !== 64) {
+                token = crypto.randomBytes(32).toString('hex');
             }
-            res.json({ csrfToken: req.session.csrfToken });
+            // Set as a non-HttpOnly cookie so client JS can read it
+            const cookieSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+            res.cookie('csrf_token', token, {
+                httpOnly: false,   // Must be readable by JS for double-submit
+                secure: cookieSecure,
+                sameSite: cookieSecure ? 'strict' : 'lax',
+                maxAge: 24 * 60 * 60 * 1000 // 24 hours
+            });
+            res.json({ csrfToken: token });
         });
 
         // Current theme endpoint (public - returns theme from database)
@@ -1487,19 +1496,19 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             this.authenticateToken(req, res, next);
         });
 
-        // SECURITY FIX (MEDIUM 12): CSRF double-submit cookie validation
-        // Validates X-CSRF-Token header matches session token on mutating requests
+        // CSRF double-submit cookie validation
+        // Validates X-CSRF-Token header matches the csrf_token cookie (stateless)
         this.app.use('/api/', (req, res, next) => {
             // Only check mutating methods
             if (!['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) return next();
-            // Skip CSRF for admin login (no session yet) and webhooks
+            // Skip CSRF for login endpoints (no token yet) and webhooks
             if (req.path === '/login' || req.path === '/v4/admin/login' ||
                 req.path.startsWith('/v3/') || req.path.startsWith('/webhooks/')) return next();
             // Skip for admin role (username/password login, not OAuth)
             if (req.user && req.user.role === 'admin' && req.user.userId === 'admin') return next();
             const headerToken = req.headers['x-csrf-token'];
-            const sessionToken = req.session?.csrfToken;
-            if (!headerToken || !sessionToken || headerToken !== sessionToken) {
+            const cookieToken = req.cookies?.csrf_token;
+            if (!headerToken || !cookieToken || headerToken !== cookieToken) {
                 return res.status(403).json({ error: 'CSRF token invalid or missing' });
             }
             next();
