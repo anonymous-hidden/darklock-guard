@@ -1315,8 +1315,8 @@ The GuardianBot Team`
         this.app.get('/invite', (req, res) => {
             const clientId = this.discordConfig.clientId;
             if (!clientId) return res.status(500).send('Bot client ID not configured');
-            // Least-privilege permissions: KICK_MEMBERS (2) + BAN_MEMBERS (4) + MANAGE_CHANNELS (16) + MANAGE_GUILD (32) + MANAGE_ROLES (268435456)
-            const permissions = '268435510'; // Minimal required permissions, not Administrator
+            // Administrator permission (integer 8)
+            const permissions = '8';
             const scopes = 'bot applications.commands';
             const url = `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=${permissions}&scope=${encodeURIComponent(scopes)}`;
             res.redirect(url);
