@@ -32,7 +32,7 @@ module.exports = {
             }
 
             // Send goodbye message if enabled
-            if (config.goodbye_enabled) {
+            if (config?.goodbye_enabled) {
                 await sendGoodbyeMessage(member, config, bot);
             }
 
@@ -56,7 +56,8 @@ module.exports = {
 async function sendGoodbyeMessage(member, config, bot) {
     try {
         const guild = member.guild;
-        const channelId = config?.goodbye_channel_id;
+        // Check both column names: new dashboard saves goodbye_channel_id, /welcome command saves goodbye_channel
+        const channelId = config?.goodbye_channel_id || config?.goodbye_channel;
         const channel = channelId ? guild.channels.cache.get(channelId) : guild.systemChannel;
         if (!channel || !channel.isTextBased()) return;
 

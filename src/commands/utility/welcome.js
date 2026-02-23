@@ -1,265 +1,285 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ChannelType } = require('discord.js');
 
 /**
- * @deprecated This command has been consolidated into /setup welcome
- * Use /setup welcome setup|disable|customize|test|status instead
+ * /welcome — Unified welcome + goodbye configuration command.
+ * Handles both systems in a single command.
+ * Saves to both legacy (welcome_channel) and new (welcome_channel_id) columns
+ * so settings are visible in the dashboard AND work for bot events.
  */
 module.exports = {
-    deprecated: true,
-    newCommand: '/setup welcome',
-    
     data: new SlashCommandBuilder()
         .setName('welcome')
-        .setDescription('⚠️ DEPRECATED → Use /setup welcome instead')
+        .setDescription('Configure welcome & goodbye messages for your server')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName('setup')
-                .setDescription('Set up (and enable) the welcome system')
-                .addChannelOption(option =>
-                    option
-                        .setName('channel')
-                        .setDescription('Channel to send welcome messages')
-                        .addChannelTypes(ChannelType.GuildText)
-                        .setRequired(true))
-                .addStringOption(option =>
-                    option
-                        .setName('message')
-                        .setDescription('Welcome message (use {user}, {server}, {memberCount})')
-                        .setRequired(false))
-                .addStringOption(option =>
-                    option
-                        .setName('goodbye_message')
-                        .setDescription('Goodbye message (use {user}, {server}, {memberCount})')
-                        .setRequired(false)))
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName('customize')
-                .setDescription('Customize the welcome message')
-                .addStringOption(option =>
-                    option
-                        .setName('message')
-                        .setDescription('Welcome message (use {user}, {server}, {memberCount})')
-                        .setRequired(true))
-                .addStringOption(option =>
-                    option
-                        .setName('embed_title')
-                        .setDescription('Title for embed (leave empty for plain message)')
-                        .setRequired(false))
-                .addStringOption(option =>
-                    option
-                        .setName('embed_color')
-                        .setDescription('Hex color for embed (e.g., #00d4ff)')
-                        .setRequired(false))
-                .addStringOption(option =>
-                    option
-                        .setName('image_url')
-                        .setDescription('Image URL for welcome embed')
-                        .setRequired(false))),
+
+        .addSubcommand(sub => sub
+            .setName('setup')
+            .setDescription('Set up welcome and goodbye messages in one step')
+            .addChannelOption(opt => opt
+                .setName('welcome_channel')
+                .setDescription('Channel to send welcome messages in')
+                .addChannelTypes(ChannelType.GuildText)
+                .setRequired(true))
+            .addStringOption(opt => opt
+                .setName('welcome_message')
+                .setDescription('Welcome message — variables: {user} {username} {server} {memberCount}')
+                .setRequired(false))
+            .addChannelOption(opt => opt
+                .setName('goodbye_channel')
+                .setDescription('Channel for goodbye messages (defaults to welcome channel)')
+                .addChannelTypes(ChannelType.GuildText)
+                .setRequired(false))
+            .addStringOption(opt => opt
+                .setName('goodbye_message')
+                .setDescription('Goodbye message — variables: {user} {username} {server} {memberCount}')
+                .setRequired(false)))
+
+        .addSubcommand(sub => sub
+            .setName('disable')
+            .setDescription('Disable welcome or goodbye messages')
+            .addStringOption(opt => opt
+                .setName('type')
+                .setDescription('Which system to disable (default: both)')
+                .setRequired(false)
+                .addChoices(
+                    { name: 'Both', value: 'both' },
+                    { name: 'Welcome only', value: 'welcome' },
+                    { name: 'Goodbye only', value: 'goodbye' }
+                )))
+
+        .addSubcommand(sub => sub
+            .setName('test')
+            .setDescription('Send a test welcome or goodbye message')
+            .addStringOption(opt => opt
+                .setName('type')
+                .setDescription('Which message to preview (default: welcome)')
+                .setRequired(false)
+                .addChoices(
+                    { name: 'Welcome', value: 'welcome' },
+                    { name: 'Goodbye', value: 'goodbye' }
+                )))
+
+        .addSubcommand(sub => sub
+            .setName('status')
+            .setDescription('View the current welcome & goodbye configuration')),
 
     async execute(interaction, bot) {
-        const subcommand = interaction.options.getSubcommand();
-
+        const sub = interaction.options.getSubcommand();
         try {
-            switch (subcommand) {
-                case 'setup':
-                    await this.handleSetup(interaction, bot);
-                    break;
-                case 'customize':
-                    await this.handleCustomize(interaction, bot);
-                    break;
+            switch (sub) {
+                case 'setup':   return await this.handleSetup(interaction, bot);
+                case 'disable': return await this.handleDisable(interaction, bot);
+                case 'test':    return await this.handleTest(interaction, bot);
+                case 'status':  return await this.handleStatus(interaction, bot);
             }
         } catch (error) {
-            if (bot && bot.logger) {
-                bot.logger.error('Error in welcome command:', error);
-            } else {
-                console.error('Error in welcome command:', error);
-            }
-            const errorEmbed = new EmbedBuilder()
-                .setColor('#ef4444')
-                .setTitle('❌ Error')
-                .setDescription('An error occurred while processing the welcome command.')
-                .setTimestamp();
-
-            if (interaction.replied || interaction.deferred) {
-                await interaction.editReply({ embeds: [errorEmbed] });
-            } else {
-                await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
-            }
+            bot?.logger?.error('Error in /welcome command:', error);
+            const msg = { content: '❌ An error occurred. Please try again.', ephemeral: true };
+            if (interaction.replied || interaction.deferred) await interaction.editReply(msg);
+            else await interaction.reply(msg);
         }
     },
 
     async handleSetup(interaction, bot) {
         await interaction.deferReply();
-        
-        const channel = interaction.options.getChannel('channel');
-        const customMessage = interaction.options.getString('message') || 
+        const guildId = interaction.guild.id;
+
+        const welcomeChannel = interaction.options.getChannel('welcome_channel');
+        const goodbyeChannel = interaction.options.getChannel('goodbye_channel') || welcomeChannel;
+        const welcomeMsg = interaction.options.getString('welcome_message') ||
             'Welcome {user} to **{server}**! You are member #{memberCount}! 🎉';
-        const goodbyeMessage = interaction.options.getString('goodbye_message') || 'Goodbye {user}, thanks for being part of **{server}**!';
+        const goodbyeMsg = interaction.options.getString('goodbye_message') ||
+            'Goodbye {user}, thanks for being part of **{server}**! 👋';
 
-        // Check if bot can send messages in the channel
-        if (!channel.permissionsFor(interaction.guild.members.me).has(PermissionFlagsBits.SendMessages)) {
-            return interaction.editReply({
-                content: '❌ I don\'t have permission to send messages in that channel!'
-            });
+        const me = interaction.guild.members.me;
+        if (!welcomeChannel.permissionsFor(me).has(PermissionFlagsBits.SendMessages)) {
+            return interaction.editReply({ content: `❌ I can't send messages in ${welcomeChannel}!` });
+        }
+        if (!goodbyeChannel.permissionsFor(me).has(PermissionFlagsBits.SendMessages)) {
+            return interaction.editReply({ content: `❌ I can't send messages in ${goodbyeChannel}!` });
         }
 
-        // Update database
-        // Ensure goodbye columns exist (fails silently if already there)
-        try { await bot.database.run(`ALTER TABLE guild_configs ADD COLUMN goodbye_enabled BOOLEAN DEFAULT 0`); } catch (_) {}
-        try { await bot.database.run(`ALTER TABLE guild_configs ADD COLUMN goodbye_channel TEXT`); } catch (_) {}
-        try { await bot.database.run(`ALTER TABLE guild_configs ADD COLUMN goodbye_message TEXT DEFAULT 'Goodbye {user}, thanks for being part of {server}!'`); } catch (_) {}
+        // Ensure *_id columns exist (safe no-op if already present)
+        for (const col of [
+            'welcome_channel_id TEXT', 'goodbye_channel_id TEXT',
+            'welcome_embed_enabled BOOLEAN DEFAULT 0',
+            'welcome_ping_user BOOLEAN DEFAULT 0',
+            'goodbye_embed_enabled BOOLEAN DEFAULT 0'
+        ]) {
+            try { await bot.database.run(`ALTER TABLE guild_configs ADD COLUMN ${col}`); } catch (_) {}
+        }
 
+        // Save to BOTH column names so the dashboard AND bot events both see the data
         await bot.database.run(`
-            INSERT INTO guild_configs (guild_id, welcome_enabled, welcome_channel, welcome_message, goodbye_enabled, goodbye_channel, goodbye_message)
-            VALUES (?, 1, ?, ?, 1, ?, ?)
+            INSERT INTO guild_configs (
+                guild_id,
+                welcome_enabled, welcome_channel, welcome_channel_id, welcome_message,
+                goodbye_enabled, goodbye_channel, goodbye_channel_id, goodbye_message
+            ) VALUES (?, 1, ?, ?, ?, 1, ?, ?, ?)
             ON CONFLICT(guild_id) DO UPDATE SET
-                welcome_enabled = 1,
-                welcome_channel = excluded.welcome_channel,
-                welcome_message = excluded.welcome_message,
-                goodbye_enabled = 1,
-                goodbye_channel = excluded.goodbye_channel,
-                goodbye_message = excluded.goodbye_message,
-                updated_at = CURRENT_TIMESTAMP
-        `, [interaction.guild.id, channel.id, customMessage, channel.id, goodbyeMessage]);
+                welcome_enabled      = 1,
+                welcome_channel      = excluded.welcome_channel,
+                welcome_channel_id   = excluded.welcome_channel_id,
+                welcome_message      = excluded.welcome_message,
+                goodbye_enabled      = 1,
+                goodbye_channel      = excluded.goodbye_channel,
+                goodbye_channel_id   = excluded.goodbye_channel_id,
+                goodbye_message      = excluded.goodbye_message,
+                updated_at           = CURRENT_TIMESTAMP
+        `, [
+            guildId,
+            welcomeChannel.id, welcomeChannel.id, welcomeMsg,
+            goodbyeChannel.id, goodbyeChannel.id, goodbyeMsg
+        ]);
 
-        // Invalidate config cache so new welcome/goodbye settings take effect immediately
-        try {
-            await bot.database.invalidateConfigCache(interaction.guild.id);
-        } catch (e) {
-            bot.logger?.warn && bot.logger.warn('Failed to invalidate config cache after welcome setup', e?.message || e);
-        }
-
-        // Emit setting change events
+        try { await bot.database.invalidateConfigCache(guildId); } catch (_) {}
         try {
             if (typeof bot.emitSettingChange === 'function') {
-                await bot.emitSettingChange(interaction.guild.id, interaction.user.id, 'welcome_enabled', 1, null, 'security');
-                await bot.emitSettingChange(interaction.guild.id, interaction.user.id, 'welcome_channel', channel.id, null, 'configuration');
-                await bot.emitSettingChange(interaction.guild.id, interaction.user.id, 'goodbye_enabled', 1, null, 'security');
-                await bot.emitSettingChange(interaction.guild.id, interaction.user.id, 'goodbye_channel', channel.id, null, 'configuration');
+                await bot.emitSettingChange(guildId, interaction.user.id, 'welcome_enabled', 1, null, 'configuration');
+                await bot.emitSettingChange(guildId, interaction.user.id, 'goodbye_enabled', 1, null, 'configuration');
             }
-        } catch (e) {
-            bot.logger?.warn && bot.logger.warn('emitSettingChange failed in welcome.setup:', e?.message || e);
-        }
+        } catch (_) {}
 
         const embed = new EmbedBuilder()
             .setColor('#00d4ff')
-            .setTitle('✅ Welcome System Configured')
-            .setDescription(`Welcome messages will be sent to ${channel}`)
+            .setTitle('✅ Welcome & Goodbye Configured')
             .addFields(
-                { name: 'Channel', value: `${channel}`, inline: true },
-                { name: 'Status', value: '✅ Welcome & Goodbye Enabled', inline: true },
-                { name: 'Welcome Message', value: `\`\`\`${customMessage}\`\`\``, inline: false },
-                { name: 'Goodbye Message', value: `\`\`\`${goodbyeMessage}\`\`\``, inline: false }
+                { name: '👋 Welcome Channel', value: `${welcomeChannel}`, inline: true },
+                { name: '🚪 Goodbye Channel', value: `${goodbyeChannel}`, inline: true },
+                { name: '✅ Status', value: 'Both Enabled', inline: true },
+                { name: '📝 Welcome Message', value: `\`\`\`${welcomeMsg.substring(0, 200)}\`\`\``, inline: false },
+                { name: '📝 Goodbye Message', value: `\`\`\`${goodbyeMsg.substring(0, 200)}\`\`\``, inline: false },
+                { name: '💡 Variables', value: '`{user}` mention · `{username}` name · `{server}` server name · `{memberCount}` count', inline: false }
             )
-            .setFooter({ text: 'Use /welcome customize to change the welcome message' })
+            .setFooter({ text: '/welcome test — preview  ·  /welcome status — view config  ·  /welcome disable — turn off' })
             .setTimestamp();
 
         await interaction.editReply({ embeds: [embed] });
     },
 
+    async handleDisable(interaction, bot) {
+        await interaction.deferReply({ ephemeral: true });
+        const guildId = interaction.guild.id;
+        const type = interaction.options.getString('type') || 'both';
 
-    async handleCustomize(interaction, bot) {
-        await interaction.deferReply();
-        
-        const message = interaction.options.getString('message');
-        const embedTitle = interaction.options.getString('embed_title');
-        const embedColor = interaction.options.getString('embed_color');
-        const imageUrl = interaction.options.getString('image_url');
+        if (type === 'both' || type === 'welcome') {
+            await bot.database.run(
+                'UPDATE guild_configs SET welcome_enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?',
+                [guildId]
+            );
+        }
+        if (type === 'both' || type === 'goodbye') {
+            await bot.database.run(
+                'UPDATE guild_configs SET goodbye_enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?',
+                [guildId]
+            );
+        }
+        try { await bot.database.invalidateConfigCache(guildId); } catch (_) {}
 
-        const config = await bot.database.get(
-            'SELECT welcome_channel FROM guild_configs WHERE guild_id = ?',
-            [interaction.guild.id]
+        const labels = { both: 'Welcome & Goodbye', welcome: 'Welcome', goodbye: 'Goodbye' };
+        await interaction.editReply({ content: `⏸️ ${labels[type]} messages disabled. Use \`/welcome setup\` to re-enable.` });
+    },
+
+    async handleTest(interaction, bot) {
+        await interaction.deferReply({ ephemeral: true });
+        const guildId = interaction.guild.id;
+        const type = interaction.options.getString('type') || 'welcome';
+
+        const cfg = await bot.database.get(
+            `SELECT welcome_enabled, welcome_channel, welcome_channel_id, welcome_message,
+                    welcome_embed_enabled, welcome_ping_user,
+                    goodbye_enabled, goodbye_channel, goodbye_channel_id, goodbye_message,
+                    goodbye_embed_enabled
+             FROM guild_configs WHERE guild_id = ?`,
+            [guildId]
+        );
+        if (!cfg) return interaction.editReply({ content: '❌ Not configured yet. Use `/welcome setup` first.' });
+
+        if (type === 'welcome') {
+            const chId = cfg.welcome_channel_id || cfg.welcome_channel;
+            if (!chId) return interaction.editReply({ content: '❌ Welcome channel not set. Run `/welcome setup` first.' });
+            const channel = interaction.guild.channels.cache.get(chId);
+            if (!channel) return interaction.editReply({ content: '❌ Welcome channel not found. Please run `/welcome setup` again.' });
+
+            const msg = this.formatMessage(cfg.welcome_message || 'Welcome {user} to **{server}**! 🎉', interaction.member, interaction.guild);
+            if (cfg.welcome_embed_enabled) {
+                const embed = new EmbedBuilder().setColor('#00d4ff').setDescription(msg).setTimestamp();
+                await channel.send({ content: cfg.welcome_ping_user ? interaction.user.toString() : undefined, embeds: [embed] });
+            } else {
+                await channel.send({ content: cfg.welcome_ping_user ? `${interaction.user.toString()} ${msg}` : msg });
+            }
+            await interaction.editReply({ content: `✅ Test welcome message sent to ${channel}!` });
+
+        } else {
+            const chId = cfg.goodbye_channel_id || cfg.goodbye_channel;
+            if (!chId) return interaction.editReply({ content: '❌ Goodbye channel not set. Run `/welcome setup` first.' });
+            const channel = interaction.guild.channels.cache.get(chId);
+            if (!channel) return interaction.editReply({ content: '❌ Goodbye channel not found. Please run `/welcome setup` again.' });
+
+            const msg = this.formatMessage(cfg.goodbye_message || 'Goodbye {user}! 👋', interaction.member, interaction.guild);
+            if (cfg.goodbye_embed_enabled) {
+                const embed = new EmbedBuilder().setColor('#ff6b6b').setDescription(msg).setTimestamp();
+                await channel.send({ embeds: [embed] });
+            } else {
+                await channel.send({ content: msg });
+            }
+            await interaction.editReply({ content: `✅ Test goodbye message sent to ${channel}!` });
+        }
+    },
+
+    async handleStatus(interaction, bot) {
+        await interaction.deferReply({ ephemeral: true });
+        const guildId = interaction.guild.id;
+
+        const cfg = await bot.database.get(
+            `SELECT welcome_enabled, welcome_channel, welcome_channel_id, welcome_message,
+                    welcome_embed_enabled, welcome_ping_user, welcome_delete_after,
+                    goodbye_enabled, goodbye_channel, goodbye_channel_id, goodbye_message,
+                    goodbye_embed_enabled, goodbye_delete_after
+             FROM guild_configs WHERE guild_id = ?`,
+            [guildId]
         );
 
-        if (!config || !config.welcome_channel) {
-            return interaction.reply({
-                content: '❌ Welcome system not set up yet! Use `/welcome setup` first.',
-                ephemeral: true
-            });
+        const embed = new EmbedBuilder().setTitle('📋 Welcome & Goodbye Status').setTimestamp();
+        const wChId = cfg?.welcome_channel_id || cfg?.welcome_channel;
+        const gChId = cfg?.goodbye_channel_id || cfg?.goodbye_channel;
+
+        if (!cfg || (!wChId && !gChId)) {
+            embed.setColor('#6b7280')
+                .setDescription('❌ Not configured yet.\nRun `/welcome setup #channel` to get started.');
+        } else {
+            const wCh  = wChId ? (interaction.guild.channels.cache.get(wChId) || `\`Unknown (${wChId})\``) : '`Not set`';
+            const gCh  = gChId ? (interaction.guild.channels.cache.get(gChId) || `\`Unknown (${gChId})\``) : '`Not set`';
+
+            let wMsg = cfg.welcome_message || 'Welcome {user} to **{server}**!';
+            try { const p = JSON.parse(wMsg); wMsg = p.message || wMsg; } catch {}
+            let gMsg = cfg.goodbye_message || 'Goodbye {user}!';
+            try { const p = JSON.parse(gMsg); gMsg = p.message || gMsg; } catch {}
+
+            embed.setColor(cfg.welcome_enabled || cfg.goodbye_enabled ? '#00d4ff' : '#6b7280')
+                .addFields(
+                    { name: '👋 Welcome', value: cfg.welcome_enabled ? '✅ Enabled' : '⏸️ Disabled', inline: true },
+                    { name: '📌 Channel', value: `${wCh}`, inline: true },
+                    { name: '🔧 Options', value: `Embed: ${cfg.welcome_embed_enabled ? 'Yes' : 'No'} · Ping: ${cfg.welcome_ping_user ? 'Yes' : 'No'}${cfg.welcome_delete_after > 0 ? ` · Auto-delete: ${cfg.welcome_delete_after}s` : ''}`, inline: true },
+                    { name: '📝 Welcome Message', value: `\`\`\`${wMsg.substring(0, 200)}\`\`\``, inline: false },
+                    { name: '🚪 Goodbye', value: cfg.goodbye_enabled ? '✅ Enabled' : '⏸️ Disabled', inline: true },
+                    { name: '📌 Channel', value: `${gCh}`, inline: true },
+                    { name: '🔧 Options', value: `Embed: ${cfg.goodbye_embed_enabled ? 'Yes' : 'No'}${cfg.goodbye_delete_after > 0 ? ` · Auto-delete: ${cfg.goodbye_delete_after}s` : ''}`, inline: true },
+                    { name: '📝 Goodbye Message', value: `\`\`\`${gMsg.substring(0, 200)}\`\`\``, inline: false }
+                );
         }
-
-        // Build customization JSON
-        const customization = {
-            message: message,
-            embedTitle: embedTitle || null,
-            embedColor: embedColor || '#00d4ff',
-            imageUrl: imageUrl || null
-        };
-
-        await bot.database.run(`
-            UPDATE guild_configs 
-            SET welcome_message = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE guild_id = ?
-        `, [JSON.stringify(customization), interaction.guild.id]);
-
-        // Invalidate cache so the updated welcome message is used right away
-        try {
-            await bot.database.invalidateConfigCache(interaction.guild.id);
-        } catch (e) {
-            bot.logger?.warn && bot.logger.warn('Failed to invalidate config cache after welcome customize', e?.message || e);
-        }
-
-        try {
-            if (typeof bot.emitSettingChange === 'function') {
-                await bot.emitSettingChange(interaction.guild.id, interaction.user.id, 'welcome_message', JSON.stringify(customization), null, 'configuration');
-            }
-        } catch (e) {
-            bot.logger?.warn && bot.logger.warn('emitSettingChange failed in welcome.customize:', e?.message || e);
-        }
-
-        const embed = new EmbedBuilder()
-            .setColor('#00d4ff')
-            .setTitle('✅ Welcome Message Customized')
-            .setDescription('Your welcome message has been updated!')
-            .addFields(
-                { name: 'Message', value: message, inline: false }
-            )
-            .setTimestamp();
-
-        if (embedTitle) embed.addFields({ name: 'Embed Title', value: embedTitle, inline: true });
-        if (embedColor) embed.addFields({ name: 'Color', value: embedColor, inline: true });
-        if (imageUrl) embed.addFields({ name: 'Image', value: 'Custom image set', inline: true });
 
         await interaction.editReply({ embeds: [embed] });
     },
 
-
-    async formatWelcomeMessage(configMessage, member, guild) {
-        let customization;
-        try {
-            customization = JSON.parse(configMessage);
-        } catch (e) {
-            // Plain string message
-            customization = { message: configMessage };
-        }
-
-        // Replace placeholders
-        const message = customization.message
+    /** Replace message template variables */
+    formatMessage(template, member, guild) {
+        let msg = template || '';
+        try { const p = JSON.parse(msg); msg = p.message || template; } catch {}
+        return msg
             .replace(/{user}/g, member.user.toString())
             .replace(/{username}/g, member.user.username)
             .replace(/{server}/g, guild.name)
             .replace(/{memberCount}/g, guild.memberCount.toString());
-
-        // Build embed if customization exists
-        if (customization.embedTitle || customization.embedColor || customization.imageUrl) {
-            const embed = new EmbedBuilder()
-                .setColor(customization.embedColor || '#00d4ff')
-                .setDescription(message)
-                .setTimestamp();
-
-            if (customization.embedTitle) {
-                embed.setTitle(customization.embedTitle);
-            }
-
-            if (customization.imageUrl) {
-                embed.setImage(customization.imageUrl);
-            }
-
-            return { embeds: [embed] };
-        }
-
-        // Plain message
-        return { content: message };
     }
 };

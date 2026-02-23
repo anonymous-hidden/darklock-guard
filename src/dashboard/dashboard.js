@@ -3964,6 +3964,13 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 welcome_ping_user: false,
                 welcome_delete_after: 0,
                 welcome_auto_role: null,
+                // Goodbye Settings
+                goodbye_enabled: false,
+                goodbye_channel: null,
+                goodbye_channel_id: null,
+                goodbye_message: 'Goodbye {user}, thanks for being part of **{server}**! 👋',
+                goodbye_embed_enabled: false,
+                goodbye_delete_after: 0,
                 // Advanced Ticket Settings
                 ticket_max_open: 3,
                 ticket_auto_close_hours: 72,
@@ -4072,6 +4079,13 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             } catch (dbError) {
                 this.bot.logger.error(`[SETTINGS] Database error for ${guildId}:`, dbError);
             }
+
+            // Normalize welcome/goodbye channel columns — keep both variants in sync
+            // so dashboard fields and bot events both work regardless of which command set them.
+            if (!config.welcome_channel_id && config.welcome_channel) config.welcome_channel_id = config.welcome_channel;
+            if (!config.welcome_channel && config.welcome_channel_id) config.welcome_channel = config.welcome_channel_id;
+            if (!config.goodbye_channel_id && config.goodbye_channel) config.goodbye_channel_id = config.goodbye_channel;
+            if (!config.goodbye_channel && config.goodbye_channel_id) config.goodbye_channel = config.goodbye_channel_id;
             
             // Get real-time security stats for this specific guild
             let securityStats;
@@ -11562,6 +11576,22 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     validUpdates[key] = JSON.stringify(val);
                 }
             }
+
+            // Keep both column-name variants in sync so dashboard settings work for
+            // the bot events (which read welcome_channel_id) AND for /welcome status
+            // (which reads welcome_channel). Write whichever column is missing.
+            const _hasCol = (c) => !existingColumns || existingColumns.has(c);
+            if (validUpdates.welcome_channel_id !== undefined && validUpdates.welcome_channel === undefined && _hasCol('welcome_channel')) {
+                validUpdates.welcome_channel = validUpdates.welcome_channel_id;
+            } else if (validUpdates.welcome_channel !== undefined && validUpdates.welcome_channel_id === undefined && _hasCol('welcome_channel_id')) {
+                validUpdates.welcome_channel_id = validUpdates.welcome_channel;
+            }
+            if (validUpdates.goodbye_channel_id !== undefined && validUpdates.goodbye_channel === undefined && _hasCol('goodbye_channel')) {
+                validUpdates.goodbye_channel = validUpdates.goodbye_channel_id;
+            } else if (validUpdates.goodbye_channel !== undefined && validUpdates.goodbye_channel_id === undefined && _hasCol('goodbye_channel_id')) {
+                validUpdates.goodbye_channel_id = validUpdates.goodbye_channel;
+            }
+
             const setClauses = Object.keys(validUpdates).map(key => `${key} = ?`).join(', ');
             const values = [...Object.values(validUpdates), guildId];
 

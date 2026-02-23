@@ -470,15 +470,19 @@ const welcomeHandlers = {
             return interaction.editReply({ content: '❌ I don\'t have permission to send messages in that channel!' });
         }
 
+        // Ensure *_id column exists
+        try { await bot.database.run('ALTER TABLE guild_configs ADD COLUMN welcome_channel_id TEXT'); } catch (_) {}
+
         await bot.database.run(`
-            INSERT INTO guild_configs (guild_id, welcome_enabled, welcome_channel, welcome_message)
-            VALUES (?, 1, ?, ?)
+            INSERT INTO guild_configs (guild_id, welcome_enabled, welcome_channel, welcome_channel_id, welcome_message)
+            VALUES (?, 1, ?, ?, ?)
             ON CONFLICT(guild_id) DO UPDATE SET
-                welcome_enabled = 1,
-                welcome_channel = excluded.welcome_channel,
-                welcome_message = excluded.welcome_message,
-                updated_at = CURRENT_TIMESTAMP
-        `, [interaction.guild.id, channel.id, customMessage]);
+                welcome_enabled    = 1,
+                welcome_channel    = excluded.welcome_channel,
+                welcome_channel_id = excluded.welcome_channel_id,
+                welcome_message    = excluded.welcome_message,
+                updated_at         = CURRENT_TIMESTAMP
+        `, [interaction.guild.id, channel.id, channel.id, customMessage]);
 
         try { await bot.database.invalidateConfigCache(interaction.guild.id); } catch (e) {}
         
@@ -592,15 +596,19 @@ const goodbyeHandlers = {
         try { await bot.database.run(`ALTER TABLE guild_configs ADD COLUMN goodbye_channel TEXT`); } catch (_) {}
         try { await bot.database.run(`ALTER TABLE guild_configs ADD COLUMN goodbye_message TEXT`); } catch (_) {}
 
+        // Ensure *_id column exists
+        try { await bot.database.run('ALTER TABLE guild_configs ADD COLUMN goodbye_channel_id TEXT'); } catch (_) {}
+
         await bot.database.run(`
-            INSERT INTO guild_configs (guild_id, goodbye_enabled, goodbye_channel, goodbye_message)
-            VALUES (?, 1, ?, ?)
+            INSERT INTO guild_configs (guild_id, goodbye_enabled, goodbye_channel, goodbye_channel_id, goodbye_message)
+            VALUES (?, 1, ?, ?, ?)
             ON CONFLICT(guild_id) DO UPDATE SET
-                goodbye_enabled = 1,
-                goodbye_channel = excluded.goodbye_channel,
-                goodbye_message = excluded.goodbye_message,
-                updated_at = CURRENT_TIMESTAMP
-        `, [interaction.guild.id, channel.id, customMessage]);
+                goodbye_enabled    = 1,
+                goodbye_channel    = excluded.goodbye_channel,
+                goodbye_channel_id = excluded.goodbye_channel_id,
+                goodbye_message    = excluded.goodbye_message,
+                updated_at         = CURRENT_TIMESTAMP
+        `, [interaction.guild.id, channel.id, channel.id, customMessage]);
 
         try { await bot.database.invalidateConfigCache(interaction.guild.id); } catch (e) {}
 

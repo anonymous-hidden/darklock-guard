@@ -97,7 +97,8 @@ async function applyAutoroles(member, bot) {
 async function sendImmediateWelcome(member, config, bot) {
     try {
         const guild = member.guild;
-        const channelId = config?.welcome_channel_id;
+        // Check both column names: new dashboard saves welcome_channel_id, /welcome command saves welcome_channel
+        const channelId = config?.welcome_channel_id || config?.welcome_channel;
         const channel = channelId ? guild.channels.cache.get(channelId) : guild.systemChannel;
         if (!channel || !channel.isTextBased()) return;
 
