@@ -11575,14 +11575,23 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             const changedBy = req.user?.username || req.user?.discordId || 'unknown';
             this.bot.logger?.info(`[SETTINGS] Guild ${guildId}: ${changedBy} updated ${changedKeys.length} setting(s): ${changedKeys.join(', ')}`);
 
-            // Invalidate ConfigService cache so bot picks up changes immediately
+            // Invalidate all cache layers so bot picks up changes immediately
             try {
+                // 1. Invalidate the database-level config cache (5-min TTL)
+                //    This is the primary cache that bot.js messageCreate reads from.
+                //    updateGuildSettings uses database.run() directly (not updateGuildConfig)
+                //    so we must invalidate manually here.
+                if (typeof this.bot.database?.invalidateConfigCache === 'function') {
+                    this.bot.database.invalidateConfigCache(guildId);
+                }
+                // 2. Invalidate ConfigService cache
                 if (this.bot.configService?.cache) {
                     this.bot.configService.cache.delete(guildId);
                 }
-                // Also invalidate word filter cache if word filter settings changed
+                // 3. Invalidate word filter compiled-pattern cache
                 if (this.bot.wordFilter?.configCache) {
                     this.bot.wordFilter.configCache.delete(guildId);
+                    this.bot.wordFilter.cacheExpiry?.delete(guildId);
                 }
             } catch (e) {
                 this.bot.logger?.warn('Cache invalidation failed:', e.message || e);

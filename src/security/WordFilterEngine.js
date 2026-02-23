@@ -302,7 +302,10 @@ class WordFilterEngine {
         }
         
         // Check if user has mod permissions (bypass)
+        // NOTE: Admins and users with ManageMessages are exempt from the word filter.
+        // This means server owners and moderators will NOT be filtered.
         if (this.canBypass(message.member)) {
+            this.bot.logger?.debug(`[WordFilter] Bypassed for ${message.author.tag} (has ManageMessages/Administrator)`);
             return { blocked: false };
         }
         
