@@ -15,6 +15,7 @@ export const sseRouter = Router();
  * Tracks active SSE connections per server.
  */
 const serverClients = new Map();
+const globalClients = new Set();
 
 /**
  * Broadcast an event to all connected clients of a server.
@@ -39,6 +40,42 @@ export function broadcast(serverId, event, data, excludeUserId = null) {
     }
   }
 }
+
+export function broadcastGlobal(event, data, excludeUserId = null) {
+  if (!globalClients.size) return;
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const client of globalClients) {
+    if (excludeUserId && client.userId === excludeUserId) continue;
+    try {
+      client.res.write(payload);
+    } catch {}
+  }
+}
+
+// ── GET /events — global SSE stream for account/profile level events ────────
+sseRouter.get('/events', requireAuth, (req, res) => {
+  const userId = req.userId;
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  res.flushHeaders();
+  res.write(`event: connected\ndata: ${JSON.stringify({ userId })}\n\n`);
+
+  const client = { res, userId };
+  globalClients.add(client);
+
+  const heartbeat = setInterval(() => {
+    try { res.write(': heartbeat\n\n'); } catch {}
+  }, 30000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    globalClients.delete(client);
+  });
+});
 
 // ── GET /servers/:serverId/events — SSE stream ──────────────────────────────
 sseRouter.get('/:serverId/events', requireAuth, (req, res) => {

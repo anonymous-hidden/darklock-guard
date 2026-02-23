@@ -7,6 +7,7 @@
  */
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
+import { broadcastGlobal } from '../sse.js';
 
 export const usersRouter = Router();
 
@@ -129,6 +130,14 @@ usersRouter.get('/:id/profile', requireAuth, (req, res) => {
     let user = db.prepare('SELECT id, username, profile_bio, pronouns, custom_status, profile_color, avatar, banner, system_role FROM users WHERE id = ?').get(id);
     if (!user) user = db.prepare('SELECT id, username, profile_bio, pronouns, custom_status, profile_color, avatar, banner, system_role FROM users WHERE username = ?').get(id);
     if (!user) return res.status(404).json({ error: 'User not found', code: 'not_found' });
+    const selectedTags = db.prepare(`
+      SELECT t.id, t.key, t.label, t.color_hex, uts.position
+      FROM user_tag_selections uts
+      JOIN app_tags t ON t.id = uts.tag_id
+      WHERE uts.user_id = ?
+      ORDER BY uts.position ASC
+    `).all(user.id);
+
     res.json({
       user_id: user.id,
       username: user.username,
@@ -139,6 +148,7 @@ usersRouter.get('/:id/profile', requireAuth, (req, res) => {
       avatar: user.avatar ?? null,
       banner: user.banner ?? null,
       system_role: user.system_role ?? null,
+      selected_tags: selectedTags,
     });
   } catch (err) {
     console.error('Get user profile error:', err);
@@ -165,6 +175,11 @@ usersRouter.put('/me/profile', requireAuth, (req, res) => {
       banner ?? null,
       userId,
     );
+
+    broadcastGlobal('PROFILE_UPDATED', {
+      user_id: userId,
+      updated_at: new Date().toISOString(),
+    }, userId);
 
     res.json({ ok: true });
   } catch (err) {

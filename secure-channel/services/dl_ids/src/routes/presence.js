@@ -12,8 +12,8 @@ import { requireAuth } from '../middleware/auth.js';
 export const presenceRouter = Router();
 
 const IDLE_THRESHOLD_MS = 5 * 60 * 1000;     // 5 min
-const OFFLINE_THRESHOLD_MS = 60 * 1000;        // 60s
-const RECENTLY_ONLINE_MS = 5 * 60 * 1000;     // 5 min
+const OFFLINE_THRESHOLD_MS = 2 * 60 * 1000;   // 2 min (≈ 4 missed heartbeats)
+const RECENTLY_ONLINE_MS = 10 * 60 * 1000;    // 10 min
 
 function computeStatus(row) {
   if (!row) return { status: 'offline', last_seen: null, custom_status: null };

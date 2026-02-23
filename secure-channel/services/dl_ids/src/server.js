@@ -33,6 +33,7 @@ dotenvLoad({ path: localEnvPath, override: false });
 const DEFAULT_IDS_DB = resolve(__dirname_ids, '../data/ids.db');
 
 import express from 'express';
+import http from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -52,7 +53,13 @@ import { presenceRouter } from './routes/presence.js';
 import { invitesRouter } from './routes/invites.js';
 import { automodRouter } from './routes/automod.js';
 import channelMessagesRouter from './routes/channel-messages.js';
+import { voiceRouter, cleanupStaleMembers } from './routes/voice.js';
 import { sseRouter } from './sse.js';
+import { tagsRouter } from './routes/tags.js';
+import { initVoiceWs } from './voice-ws.js';
+import { secureChannelRouter } from './routes/secure-channels.js';
+import { initMessagingGateway, getGatewayStats } from './gateway.js';
+import { securityAlertRouter } from './routes/security-alerts.js';
 
 const PORT = parseInt(process.env.IDS_PORT ?? '4100', 10);
 const JWT_SECRET = process.env.IDS_JWT_SECRET ?? process.env.JWT_SECRET;
@@ -99,14 +106,23 @@ app.use('/servers', serversRouter);
 app.use('/servers', rolesRouter);
 app.use('/servers', auditRouter);
 app.use('/servers', sseRouter);
-app.use('/',        presenceRouter);
+app.use('/', sseRouter);
+app.use('/presence',  presenceRouter);
 app.use('/servers', invitesRouter);
 app.use('/invites', invitesRouter);   // public invite lookup
+app.use('/api/invites', invitesRouter); // preview alias: /api/invites/:code/preview
 app.use('/servers', automodRouter);
+app.use('/voice',   voiceRouter);
+app.use('/',        tagsRouter);
 app.use('/',        channelMessagesRouter);
+app.use('/servers', secureChannelRouter);  // Secure channel RBAC routes
+app.use('/servers', securityAlertRouter);  // Security alert routes
 
-// Health
-app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'dl-ids' }));
+// Health (with gateway stats)
+app.get('/health', (_req, res) => {
+  const stats = getGatewayStats();
+  res.json({ status: 'ok', service: 'dl-ids', gateway: stats });
+});
 
 // ── Error handler ────────────────────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
@@ -114,7 +130,13 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Internal server error', code: 'internal' });
 });
 
-app.listen(PORT, () => {
+const httpServer = http.createServer(app);
+initVoiceWs({ server: httpServer, db, jwtSecret: JWT_SECRET });
+initMessagingGateway({ server: httpServer, db, jwtSecret: JWT_SECRET });
+setInterval(() => {
+  try { cleanupStaleMembers(db); } catch {}
+}, 15000);
+httpServer.listen(PORT, () => {
   console.log(`[IDS] Darklock Identity Service listening on :${PORT}`);
 });
 

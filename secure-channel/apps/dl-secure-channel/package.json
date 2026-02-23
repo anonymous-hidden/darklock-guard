@@ -1,0 +1,43 @@
+{
+  "name": "dl-secure-channel",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "node --test tests/*.test.mjs",
+    "tauri": "tauri",
+    "tauri:dev": "DL_IDS_URL=http://localhost:4100 DL_RLY_URL=http://localhost:4101 tauri dev"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-dialog": "^2.0.0",
+    "@tauri-apps/plugin-fs": "^2.0.0",
+    "@tauri-apps/plugin-http": "^2.0.0",
+    "@tauri-apps/plugin-notification": "^2.0.0",
+    "@tauri-apps/plugin-shell": "^2.0.0",
+    "@tauri-apps/plugin-updater": "^2.0.0",
+    "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
+    "framer-motion": "^11.3.19",
+    "lucide-react": "^0.408.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-error-boundary": "^4.0.13",
+    "react-router-dom": "^6.25.1",
+    "zustand": "^4.5.4"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.39",
+    "tailwindcss": "^3.4.6",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.4"
+  }
+}

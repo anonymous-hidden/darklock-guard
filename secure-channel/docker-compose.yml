@@ -1,0 +1,90 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Darklock Secure Channel — Docker Compose
+# Self-hosted on Raspberry Pi 5 (arm64) or any Linux/amd64 host.
+#
+# Services:
+#   ids  — Identity & Key Distribution Service (port 4100)
+#   rly  — Dumb Relay / Envelope Forwarder     (port 4101)
+#   caddy — Reverse proxy with auto-TLS        (ports 443, 80)
+#
+# Usage:
+#   cp .env.example .env && nano .env
+#   docker compose up -d
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: "3.9"
+
+services:
+  # ── IDS — Identity Service ──────────────────────────────────────────────────
+  ids:
+    build:
+      context: ./services/dl_ids
+      dockerfile: Dockerfile
+    container_name: dl-ids
+    restart: unless-stopped
+    environment:
+      - IDS_PORT=${IDS_PORT:-4100}
+      - IDS_JWT_SECRET=${JWT_SECRET}
+      - IDS_DB_PATH=/data/ids.db
+    volumes:
+      - ids-data:/data
+    networks:
+      - dl-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4100/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── RLY — Relay Service ─────────────────────────────────────────────────────
+  rly:
+    build:
+      context: ./services/dl_rly
+      dockerfile: Dockerfile
+    container_name: dl-rly
+    restart: unless-stopped
+    environment:
+      - RLY_PORT=${RLY_PORT:-4101}
+      - RLY_JWT_SECRET=${JWT_SECRET}
+      - RLY_DB_PATH=/data/rly.db
+      - RLY_ENVELOPE_TTL=${RLY_ENVELOPE_TTL:-7}
+      - RLY_CORS_ORIGIN=${RLY_CORS_ORIGIN:-*}
+    volumes:
+      - rly-data:/data
+    networks:
+      - dl-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4101/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Caddy — Reverse Proxy with auto-TLS ────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: dl-caddy
+    restart: unless-stopped
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - dl-net
+    depends_on:
+      ids:
+        condition: service_healthy
+      rly:
+        condition: service_healthy
+
+volumes:
+  ids-data:
+  rly-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  dl-net:
+    driver: bridge

@@ -5,8 +5,9 @@
  * The password is pre-hashed for security (not stored in plain text).
  * 
  * DEFAULT CREDENTIALS:
- * Email: admin@darklock.net
- * Password: DarkLock@Admin2025!
+ * Email: owner@darklock.net
+ * Username: owner
+ * Password: Untrained6-Comply2-Hammock0-Cytoplast3-Handgun8-Tinfoil1-Anything1-Litigator2-Bluish8-Blurt7
  * Role: owner
  * 
  * SECURITY NOTES:
@@ -24,10 +25,11 @@ const db = require('./utils/database');
 // ============================================================================
 
 const DEFAULT_ADMIN = {
-    email: 'admin@darklock.net',
-    // Password: Client5-Luxury3-Backer0-Diploma2-Goes0-Boxer0-Switch0-Revisit7-Sesame1-Lunchbox6
+    email: 'owner@darklock.net',
+    username: 'owner',
+    // Password: Untrained6-Comply2-Hammock0-Cytoplast3-Handgun8-Tinfoil1-Anything1-Litigator2-Bluish8-Blurt7
     // Pre-hashed with bcrypt (12 rounds) - DO NOT CHANGE THIS HASH
-    passwordHash: '$2b$12$yZbQ3O020tHCPXMwJiqbBOMuAX24dDBjOKVyXAzH7zrvayxXDHIHa',
+    passwordHash: '$2b$12$fK8yNzbMgEgrkVi4uyjxw.FEttzgTJInX8npMgjhXccDU.A46WLZS',
     role: 'owner'
 };
 
@@ -93,18 +95,19 @@ async function initializeDefaultAdmins() {
         // Create primary admin
         const primaryId = crypto.randomUUID();
         await db.run(`
-            INSERT INTO admins (id, email, password_hash, role, created_at, updated_at, active)
-            VALUES (?, ?, ?, ?, ?, ?, 1)
+            INSERT INTO admins (id, email, username, password_hash, role, created_at, updated_at, active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
         `, [
             primaryId,
             primaryEmail,
+            DEFAULT_ADMIN.username || null,
             primaryHash,
             DEFAULT_ADMIN.role,
             now,
             now
         ]);
         createdAdmins.push(primaryEmail);
-        console.log(`[Default Admin] ✅ Created primary admin: ${primaryEmail}`);
+        console.log(`[Default Admin] ✅ Created primary admin: ${primaryEmail} (username: ${DEFAULT_ADMIN.username || 'none'})`);
 
         // Only create backup admin if using defaults (not environment vars)
         if (!envEmail) {
@@ -196,7 +199,8 @@ if (require.main === module) {
             console.log('');
             console.log('Default Credentials:');
             console.log(`  Email: ${DEFAULT_ADMIN.email}`);
-            console.log('  Password: DarkLock@Admin2025!');
+            console.log(`  Username: ${DEFAULT_ADMIN.username}`);
+            console.log('  Password: Untrained6-Comply2-Hammock0-Cytoplast3-Handgun8-Tinfoil1-Anything1-Litigator2-Bluish8-Blurt7');
         }
         
         process.exit(0);

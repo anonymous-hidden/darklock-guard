@@ -7,8 +7,6 @@ class AntiRaid {
         this.lockdowns = new Map(); // guildId -> lockdown info
         this.userCounts = new Map(); // guildId -> recent user count data
         this.raidPatterns = new Map(); // guildId -> detected patterns
-        // SECURITY FIX: Store permission snapshots before lockdown to enable safe restore
-        this.permissionSnapshots = new Map(); // guildId -> Map<channelId, Map<roleId, { allow, deny }>>
     }
 
     async initializeGuild(guildId) {
@@ -252,46 +250,11 @@ class AntiRaid {
             const modRoleId = config.mod_role_id;
             const adminRoleId = config.admin_role_id;
             
-            // SECURITY FIX: Snapshot all @everyone permission overwrites BEFORE modifying them
-            const snapshot = new Map();
-            for (const channel of guild.channels.cache.values()) {
-                if (channel.type === 0 || channel.type === 2 || channel.type === 13) {
-                    const channelOverwrites = new Map();
-                    for (const [id, overwrite] of channel.permissionOverwrites.cache) {
-                        channelOverwrites.set(id, {
-                            id: overwrite.id,
-                            type: overwrite.type,
-                            allow: overwrite.allow.bitfield,
-                            deny: overwrite.deny.bitfield
-                        });
-                    }
-                    snapshot.set(channel.id, channelOverwrites);
-                }
-            }
-            this.permissionSnapshots.set(guild.id, snapshot);
-            this.bot.logger.info(`📸 Snapshotted permissions for ${snapshot.size} channels before lockdown`);
-
-            // Also persist snapshot to DB for crash recovery
-            try {
-                const snapshotJson = JSON.stringify(
-                    Array.from(snapshot.entries()).map(([chId, overwrites]) => [
-                        chId, Array.from(overwrites.entries())
-                    ])
-                );
-                await this.bot.database.run(
-                    `INSERT OR REPLACE INTO lockdown_snapshots (guild_id, snapshot_data, created_at) 
-                     VALUES (?, ?, CURRENT_TIMESTAMP)`,
-                    [guild.id, snapshotJson]
-                );
-            } catch (dbErr) {
-                this.bot.logger.warn('Failed to persist lockdown snapshot to DB:', dbErr.message);
-            }
-
             // Lock down @everyone in all channels except for admins and moderators
             const lockedChannels = [];
             
             for (const channel of guild.channels.cache.values()) {
-                if (channel.type === 0 || channel.type === 2 || channel.type === 13) {
+                if (channel.type === 0 || channel.type === 2 || channel.type === 13) { // Text, voice, or stage channels
                     try {
                         // Deny @everyone from sending messages/speaking
                         await channel.permissionOverwrites.edit(guild.roles.everyone, {
@@ -445,73 +408,17 @@ class AntiRaid {
         const guildId = guild.id;
         
         try {
-            // SECURITY FIX: Restore permissions from snapshot instead of deleting overwrites
-            let snapshot = this.permissionSnapshots.get(guildId);
-            
-            // Try loading from DB if not in memory (crash recovery)
-            if (!snapshot) {
-                try {
-                    const row = await this.bot.database.get(
-                        'SELECT snapshot_data FROM lockdown_snapshots WHERE guild_id = ?', [guildId]
-                    );
-                    if (row && row.snapshot_data) {
-                        const parsed = JSON.parse(row.snapshot_data);
-                        snapshot = new Map(parsed.map(([chId, overwrites]) => [chId, new Map(overwrites)]));
-                        this.bot.logger.info(`📸 Loaded lockdown snapshot from DB for ${guild.name}`);
-                    }
-                } catch (dbErr) {
-                    this.bot.logger.warn('Failed to load lockdown snapshot from DB:', dbErr.message);
-                }
-            }
-
-            const { PermissionsBitField } = require('discord.js');
-            
+            // Restore @everyone permissions in all channels
             for (const channel of guild.channels.cache.values()) {
                 if (channel.type === 0 || channel.type === 2 || channel.type === 13) {
                     try {
-                        const channelSnapshot = snapshot?.get(channel.id);
-                        if (channelSnapshot) {
-                            // Restore exact pre-lockdown @everyone overwrite
-                            const everyoneOverwrite = channelSnapshot.get(guild.roles.everyone.id);
-                            if (everyoneOverwrite) {
-                                await channel.permissionOverwrites.set(
-                                    Array.from(channelSnapshot.values()).map(ow => ({
-                                        id: ow.id,
-                                        type: ow.type,
-                                        allow: new PermissionsBitField(BigInt(ow.allow)),
-                                        deny: new PermissionsBitField(BigInt(ow.deny))
-                                    })),
-                                    'Lockdown ended: restoring original permissions'
-                                );
-                            } else {
-                                // No @everyone overwrite existed before — delete what we added
-                                await channel.permissionOverwrites.delete(guild.roles.everyone, { reason: 'Lockdown ended: removing added overwrite' });
-                            }
-                        } else {
-                            // No snapshot for this channel — safe fallback: only remove deny flags we set
-                            const existing = channel.permissionOverwrites.cache.get(guild.roles.everyone.id);
-                            if (existing) {
-                                await channel.permissionOverwrites.edit(guild.roles.everyone, {
-                                    SendMessages: null,
-                                    AddReactions: null,
-                                    Speak: null,
-                                    Connect: null,
-                                    CreatePublicThreads: null,
-                                    CreatePrivateThreads: null
-                                }, { reason: 'Lockdown ended: clearing lockdown deny flags' });
-                            }
-                        }
+                        // Remove the lockdown permission overwrites for @everyone
+                        await channel.permissionOverwrites.delete(guild.roles.everyone, { reason: 'Lockdown ended' });
                     } catch (err) {
-                        this.bot.logger.warn(`Failed to restore channel ${channel.name}:`, err.message);
+                        this.bot.logger.warn(`Failed to unlock channel ${channel.name}:`, err.message);
                     }
                 }
             }
-            
-            // Clean up snapshot
-            this.permissionSnapshots.delete(guildId);
-            try {
-                await this.bot.database.run('DELETE FROM lockdown_snapshots WHERE guild_id = ?', [guildId]);
-            } catch (e) { /* ignore cleanup errors */ }
         } catch (error) {
             this.bot.logger.error(`Failed to remove lockdown restrictions:`, error);
         }

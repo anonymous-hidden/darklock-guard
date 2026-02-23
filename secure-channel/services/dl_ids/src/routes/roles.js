@@ -25,6 +25,21 @@ import { broadcast } from '../sse.js';
 
 export const rolesRouter = Router();
 
+const MAX_BADGE_BYTES = 512 * 1024; // 512 KB
+const ALLOWED_BADGE_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml']);
+
+function validateBadgeImageDataUrl(dataUrl) {
+  if (dataUrl == null) return { ok: true };
+  if (typeof dataUrl !== 'string') return { ok: false, error: 'badge_image_url must be a data URL string or null' };
+  const m = dataUrl.match(/^data:([^;]+);base64,([A-Za-z0-9+/=]+)$/);
+  if (!m) return { ok: false, error: 'Invalid badge image encoding' };
+  const mime = m[1].toLowerCase();
+  if (!ALLOWED_BADGE_MIME.has(mime)) return { ok: false, error: 'Unsupported badge image type' };
+  const bytes = Buffer.from(m[2], 'base64').byteLength;
+  if (bytes > MAX_BADGE_BYTES) return { ok: false, error: 'Badge image too large (max 512KB)' };
+  return { ok: true };
+}
+
 // ── GET /servers/:sid/roles ──────────────────────────────────────────────────
 rolesRouter.get('/:sid/roles', requireAuth, (req, res) => {
   try {
@@ -62,6 +77,8 @@ rolesRouter.get('/:sid/roles', requireAuth, (req, res) => {
       is_admin: !!r.is_admin,
       show_tag: !!r.show_tag,
       hoist: !!r.hoist,
+      separate_members: !!r.separate_members,
+      badge_image_url: r.badge_image_url ?? null,
       member_count: r.position === 0 ? totalMembers : (countMap[r.id] ?? 0),
     }));
 
@@ -85,9 +102,13 @@ rolesRouter.post('/:sid/roles', requireAuth, (req, res) => {
       return res.status(403).json({ error: 'Missing MANAGE_ROLES permission', code: 'forbidden' });
     }
 
-    const { name, color_hex, permissions: rolePerms, is_admin, show_tag, hoist, tag_style } = req.body;
+    const { name, color_hex, permissions: rolePerms, is_admin, show_tag, hoist, tag_style, separate_members, badge_image_url } = req.body;
     if (!name || name.trim().length < 1 || name.trim().length > 50) {
       return res.status(400).json({ error: 'Role name must be 1-50 characters', code: 'bad_request' });
+    }
+    const badgeValidation = validateBadgeImageDataUrl(badge_image_url);
+    if (!badgeValidation.ok) {
+      return res.status(400).json({ error: badgeValidation.error, code: 'bad_request' });
     }
 
     // Cannot create admin role unless you're owner
@@ -123,7 +144,7 @@ rolesRouter.post('/:sid/roles', requireAuth, (req, res) => {
     }
 
     db.prepare(
-      "INSERT INTO roles (id, server_id, name, color_hex, position, permissions, is_admin, show_tag, hoist, tag_style, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))"
+      "INSERT INTO roles (id, server_id, name, color_hex, position, permissions, is_admin, show_tag, hoist, tag_style, separate_members, badge_image_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))"
     ).run(
       roleId, serverId, name.trim(),
       color_hex ?? '#99aab5',
@@ -133,12 +154,14 @@ rolesRouter.post('/:sid/roles', requireAuth, (req, res) => {
       show_tag !== false ? 1 : 0,
       hoist ? 1 : 0,
       tag_style ?? 'dot',
+      separate_members ? 1 : 0,
+      badge_image_url ?? null,
     );
 
     auditLog(db, serverId, userId, 'ROLE_CREATE', 'role', roleId, { name: name.trim() });
 
     const role = db.prepare('SELECT * FROM roles WHERE id = ?').get(roleId);
-    const roleJson = { ...role, is_admin: !!role.is_admin, show_tag: !!role.show_tag, hoist: !!role.hoist };
+    const roleJson = { ...role, is_admin: !!role.is_admin, show_tag: !!role.show_tag, hoist: !!role.hoist, separate_members: !!role.separate_members, badge_image_url: role.badge_image_url ?? null };
     try {
       broadcast(serverId, 'role.created', roleJson);
     } catch (err) {
@@ -175,7 +198,7 @@ rolesRouter.patch('/:sid/roles/:rid', requireAuth, (req, res) => {
       }
     }
 
-    const { name, color_hex, permissions: rolePerms, is_admin, show_tag, hoist, tag_style } = req.body;
+    const { name, color_hex, permissions: rolePerms, is_admin, show_tag, hoist, tag_style, separate_members, badge_image_url } = req.body;
     const changes = {};
 
     // Cannot promote to admin unless owner
@@ -192,6 +215,12 @@ rolesRouter.patch('/:sid/roles/:rid', requireAuth, (req, res) => {
     if (show_tag !== undefined) changes.show_tag = show_tag ? 1 : 0;
     if (hoist !== undefined) changes.hoist = hoist ? 1 : 0;
     if (tag_style !== undefined) changes.tag_style = tag_style;
+    if (separate_members !== undefined) changes.separate_members = separate_members ? 1 : 0;
+    if (badge_image_url !== undefined) {
+      const badgeValidation = validateBadgeImageDataUrl(badge_image_url);
+      if (!badgeValidation.ok) return res.status(400).json({ error: badgeValidation.error, code: 'bad_request' });
+      changes.badge_image_url = badge_image_url ?? null;
+    }
 
     // Don't allow renaming @everyone
     if (role.position === 0 && changes.name && changes.name !== '@everyone') {
@@ -208,7 +237,7 @@ rolesRouter.patch('/:sid/roles/:rid', requireAuth, (req, res) => {
     auditLog(db, serverId, userId, 'ROLE_UPDATE', 'role', roleId, changes);
 
     const updated = db.prepare('SELECT * FROM roles WHERE id = ?').get(roleId);
-    const updatedJson = { ...updated, is_admin: !!updated.is_admin, show_tag: !!updated.show_tag, hoist: !!updated.hoist };
+    const updatedJson = { ...updated, is_admin: !!updated.is_admin, show_tag: !!updated.show_tag, hoist: !!updated.hoist, separate_members: !!updated.separate_members, badge_image_url: updated.badge_image_url ?? null };
     broadcast(serverId, 'role.updated', updatedJson);
     res.json(updatedJson);
   } catch (err) {
@@ -303,7 +332,16 @@ rolesRouter.put('/:sid/roles/reorder', requireAuth, (req, res) => {
       'SELECT * FROM roles WHERE server_id = ? ORDER BY position DESC'
     ).all(serverId);
 
-    res.json({ roles: roles.map((r) => ({ ...r, is_admin: !!r.is_admin, show_tag: !!r.show_tag })) });
+    res.json({
+      roles: roles.map((r) => ({
+        ...r,
+        is_admin: !!r.is_admin,
+        show_tag: !!r.show_tag,
+        hoist: !!r.hoist,
+        separate_members: !!r.separate_members,
+        badge_image_url: r.badge_image_url ?? null,
+      })),
+    });
   } catch (err) {
     console.error('Reorder roles error:', err);
     res.status(500).json({ error: 'Failed to reorder roles', code: 'internal' });

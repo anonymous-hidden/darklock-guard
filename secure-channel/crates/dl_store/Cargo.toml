@@ -1,0 +1,21 @@
+[package]
+name = "dl_store"
+version = "0.1.0"
+edition = "2021"
+description = "Darklock Secure Channel - Encrypted local storage"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+base64 = { workspace = true }
+hex = { workspace = true }
+zeroize = { workspace = true }
+tracing = { workspace = true }
+dl_crypto = { path = "../dl_crypto" }
+dl_proto = { path = "../dl_proto" }

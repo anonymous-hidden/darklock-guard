@@ -6,7 +6,7 @@ import {
   Terminal, Copy, Check, Shield, Cpu, HardDrive, Monitor, Clock, Loader2
 } from 'lucide-react';
 
-const PLATFORM_BASE = 'https://darklock.net';
+const PLATFORM_BASE = 'http://localhost:3002';
 
 const SupportPage: React.FC = () => {
   const { serviceAvailable, status } = useService();
@@ -153,7 +153,7 @@ const SupportPage: React.FC = () => {
                       logs: diagnosticText,
                     };
                     
-                    const response = await fetch('https://darklock.net/api/v4/admin/bug-reports/submit', {
+                    const response = await fetch(`${PLATFORM_BASE}/api/v4/admin/bug-reports/submit`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify(report),

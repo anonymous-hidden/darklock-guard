@@ -1,0 +1,38 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Caddyfile — Darklock Secure Channel reverse proxy
+#
+# Routes:
+#   /ids/*  → IDS service (port 4100)
+#   /rly/*  → RLY service (port 4101)
+#
+# TLS is automatic:
+#   - Real domain → Let's Encrypt / ZeroSSL
+#   - "internal" → self-signed cert (good for LAN / Pi 5)
+# ─────────────────────────────────────────────────────────────────────────────
+
+{$DOMAIN:darklock.local} {
+	# Use internal TLS for LAN / development (set DOMAIN for production)
+	tls {$TLS_MODE:internal}
+
+	# ── Security headers ──────────────────────────────────────────────────────
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	# ── IDS routes ────────────────────────────────────────────────────────────
+	handle_path /ids/* {
+		reverse_proxy ids:4100
+	}
+
+	# ── RLY routes ────────────────────────────────────────────────────────────
+	handle_path /rly/* {
+		reverse_proxy rly:4101
+	}
+
+	# ── Fallback ──────────────────────────────────────────────────────────────
+	respond "Darklock Secure Channel" 200
+}

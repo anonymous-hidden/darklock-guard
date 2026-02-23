@@ -10,30 +10,45 @@ import { useNavigate } from 'react-router-dom';
 import type { OnboardingState, OnboardingStep } from './types';
 import { INITIAL_STATE } from './types';
 import { OnboardingShell } from './components';
+import ModeSelectStep from './ModeSelectStep';
+import LocalPasswordStep from './LocalPasswordStep';
+import LocalConfigStep from './LocalConfigStep';
 import OnlineAuthStep from './OnlineAuthStep';
 import OnlineLinkStep from './OnlineLinkStep';
+import InitializingStep from './InitializingStep';
 import WelcomeStep from './WelcomeStep';
 import TourStep from './TourStep';
 
 /**
- * Step flow (hosted-only):
+ * Step flow graph:
  *
- * online-auth → online-link → welcome → tour → /
+ * mode-select ──┬── local-password → local-config → initializing → welcome → tour → /
+ *               └── online-auth → online-link → welcome → tour → /
  *
- * Mode-select and local-mode steps are removed: the backend is hosted on
- * darklock.net, so all users must create or sign in to an account.
+ * OnlineLinkStep handles vault creation + device registration internally,
+ * so it skips the initializing step and goes straight to welcome.
  */
 
-// Hosted-only flow: always online auth → server link → welcome → tour
+const STEP_ORDER_LOCAL: OnboardingStep[] = [
+  'mode-select',
+  'local-password',
+  'local-config',
+  'initializing',
+  'welcome',
+  'tour',
+];
+
 const STEP_ORDER_ONLINE: OnboardingStep[] = [
+  'mode-select',
   'online-auth',
   'online-link',
   'welcome',
   'tour',
 ];
 
-function getStepOrder(_mode: 'local' | 'online' | null): OnboardingStep[] {
-  return STEP_ORDER_ONLINE;
+function getStepOrder(mode: 'local' | 'online' | null): OnboardingStep[] {
+  if (mode === 'online') return STEP_ORDER_ONLINE;
+  return STEP_ORDER_LOCAL;
 }
 
 function nextStep(current: OnboardingStep, mode: 'local' | 'online' | null): OnboardingStep {
@@ -89,12 +104,49 @@ const OnboardingPage: React.FC = () => {
 
   const renderStep = () => {
     switch (state.step) {
+      case 'mode-select':
+        return (
+          <ModeSelectStep
+            state={state}
+            onUpdate={update}
+            onNext={() => {
+              const mode = modeRef.current;
+              if (mode === 'online') {
+                goTo('online-auth');
+              } else {
+                goTo('local-password');
+              }
+            }}
+          />
+        );
+
+      case 'local-password':
+        return (
+          <LocalPasswordStep
+            state={state}
+            onUpdate={update}
+            onNext={goNext}
+            onBack={() => goTo('mode-select')}
+          />
+        );
+
+      case 'local-config':
+        return (
+          <LocalConfigStep
+            state={state}
+            onUpdate={update}
+            onNext={goNext}
+            onBack={goBack}
+          />
+        );
+
       case 'online-auth':
         return (
           <OnlineAuthStep
             state={state}
             onUpdate={update}
             onNext={goNext}
+            onBack={() => goTo('mode-select')}
           />
         );
 
@@ -108,11 +160,21 @@ const OnboardingPage: React.FC = () => {
           />
         );
 
+      case 'initializing':
+        return (
+          <InitializingStep
+            state={state}
+            onUpdate={update}
+            onNext={() => goTo('welcome')}
+          />
+        );
+
       case 'welcome':
         return (
           <WelcomeStep
             state={state}
             onStartTour={() => goTo('tour')}
+            onSkip={finish}
           />
         );
 

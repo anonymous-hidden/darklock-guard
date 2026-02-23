@@ -1122,6 +1122,12 @@ class SecurityBot {
                             return true;
                         }
 
+                        // Handle emoji verification buttons
+                        if (interaction.customId.startsWith('verify_emoji_') && this.verificationService) {
+                            await this.verificationService.handleEmojiVerify(interaction);
+                            return true;
+                        }
+
                         // Verification skip/deny
                         if (interaction.customId.startsWith('verify_allow_') || interaction.customId.startsWith('verify_deny_')) {
                             const targetId = interaction.customId.split('_')[2];

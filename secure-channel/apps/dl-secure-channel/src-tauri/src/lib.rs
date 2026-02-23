@@ -86,6 +86,7 @@ pub fn run() {
             commands::servers::cmd_create_channel,
             commands::servers::cmd_update_channel,
             commands::servers::cmd_delete_channel,
+            commands::servers::cmd_reorder_channels,
             commands::servers::cmd_get_roles,
             commands::servers::cmd_create_role,
             commands::servers::cmd_update_role,
@@ -97,6 +98,17 @@ pub fn run() {
             commands::servers::cmd_set_channel_override,
             commands::servers::cmd_delete_channel_override,
             commands::servers::cmd_get_audit_log,
+            // Secure Channels (RBAC)
+            commands::servers::cmd_set_channel_secure,
+            commands::servers::cmd_remove_channel_secure,
+            commands::servers::cmd_trigger_lockdown,
+            commands::servers::cmd_release_lockdown,
+            commands::servers::cmd_get_secure_audit,
+            // Security Alerts
+            commands::servers::cmd_create_security_alert,
+            commands::servers::cmd_get_security_alerts,
+            commands::servers::cmd_resolve_security_alert,
+            commands::servers::cmd_get_security_audit,
             // Profile
             commands::profile::cmd_get_profile,
             commands::profile::cmd_rotate_device_key,
@@ -145,6 +157,26 @@ pub fn run() {
             commands::channel_messages::cmd_send_channel_message,
             commands::channel_messages::cmd_edit_channel_message,
             commands::channel_messages::cmd_delete_channel_message,
+            commands::channel_messages::cmd_mark_channel_read,
+            commands::channel_messages::cmd_get_server_unread,
+            commands::channel_messages::cmd_get_mention_notifications,
+            commands::channel_messages::cmd_mark_mentions_read,
+            // Voice rooms
+            commands::voice::cmd_join_voice_channel,
+            commands::voice::cmd_leave_voice_channel,
+            commands::voice::cmd_get_voice_members,
+            commands::voice::cmd_update_voice_state,
+            commands::voice::cmd_get_server_voice_state,
+            commands::voice::cmd_voice_heartbeat,
+            commands::voice::cmd_stage_request_speak,
+            commands::voice::cmd_stage_promote,
+            commands::voice::cmd_stage_demote,
+            commands::voice::cmd_get_realtime_token,
+            commands::voice::cmd_get_ids_base_url,
+            // User tags
+            commands::tags::cmd_get_my_tags,
+            commands::tags::cmd_update_selected_tags,
+            commands::tags::cmd_get_user_tags,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Darklock Secure Channel");

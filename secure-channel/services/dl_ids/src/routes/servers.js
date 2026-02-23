@@ -25,6 +25,7 @@ import {
   canManageUser,
 } from '../permissions.js';
 import { auditLog } from './audit.js';
+import { filterVisibleChannels } from '../channel-rbac-engine.js';
 
 export const serversRouter = Router();
 
@@ -226,7 +227,7 @@ serversRouter.get('/:id/members', requireAuth, (req, res) => {
     // Join with users and roles
     const members = db.prepare(`
       SELECT sm.user_id, sm.nickname, sm.joined_at,
-             u.username, u.avatar, u.profile_color
+             u.username, u.avatar, u.profile_color, u.banner, u.profile_bio
       FROM server_members sm
       JOIN users u ON u.id = sm.user_id
       WHERE sm.server_id = ?
@@ -235,7 +236,8 @@ serversRouter.get('/:id/members', requireAuth, (req, res) => {
 
     // Get roles for each member
     const memberRoles = db.prepare(`
-      SELECT mr.user_id, r.id as role_id, r.name, r.color_hex, r.position, r.is_admin, r.show_tag
+      SELECT mr.user_id, r.id as role_id, r.name, r.color_hex, r.position, r.is_admin, r.show_tag,
+             r.separate_members, r.badge_image_url
       FROM member_roles mr
       JOIN roles r ON r.id = mr.role_id
       WHERE mr.server_id = ?
@@ -252,20 +254,46 @@ serversRouter.get('/:id/members', requireAuth, (req, res) => {
         position: mr.position,
         is_admin: mr.is_admin,
         show_tag: mr.show_tag,
+        separate_members: !!mr.separate_members,
+        badge_image_url: mr.badge_image_url ?? null,
       });
     }
 
     const server = db.prepare('SELECT owner_id FROM servers WHERE id = ?').get(serverId);
+    const memberTagRows = db.prepare(`
+      SELECT uts.user_id, t.id, t.key, t.label, t.description, t.color_hex, uts.position
+      FROM user_tag_selections uts
+      JOIN app_tags t ON t.id = uts.tag_id
+      WHERE uts.user_id IN (
+        SELECT user_id FROM server_members WHERE server_id = ?
+      )
+      ORDER BY uts.user_id ASC, uts.position ASC
+    `).all(serverId);
+    const tagsByUser = {};
+    for (const row of memberTagRows) {
+      if (!tagsByUser[row.user_id]) tagsByUser[row.user_id] = [];
+      tagsByUser[row.user_id].push({
+        id: row.id,
+        key: row.key,
+        label: row.label,
+        description: row.description ?? null,
+        color_hex: row.color_hex,
+        position: row.position ?? null,
+      });
+    }
 
     const result = members.map((m) => ({
       user_id: m.user_id,
       username: m.username,
       nickname: m.nickname,
       avatar: m.avatar,
+      banner: m.banner,
+      profile_bio: m.profile_bio,
       profile_color: m.profile_color,
       joined_at: m.joined_at,
       is_owner: server?.owner_id === m.user_id,
       roles: rolesByUser[m.user_id] ?? [],
+      selected_tags: tagsByUser[m.user_id] ?? [],
     }));
 
     res.json({ members: result });
@@ -382,11 +410,8 @@ serversRouter.get('/:id/channels', requireAuth, (req, res) => {
       'SELECT * FROM channels WHERE server_id = ? ORDER BY position ASC, created_at ASC'
     ).all(serverId);
 
-    // Filter channels user can see
-    const visible = channels.filter((ch) => {
-      const { permissions: perms } = resolvePermissions({ userId, serverId, channelId: ch.id, db });
-      return hasPermission(perms, Permissions.VIEW_CHANNEL);
-    });
+    // Filter channels user can see (via RBAC engine — includes per-user overrides)
+    const visible = filterVisibleChannels({ userId, serverId, channels, db });
 
     res.json({ channels: visible });
   } catch (err) {
@@ -407,20 +432,33 @@ serversRouter.post('/:id/channels', requireAuth, (req, res) => {
       return res.status(403).json({ error: 'Missing MANAGE_CHANNELS permission', code: 'forbidden' });
     }
 
-    const { name, topic, type } = req.body;
+    const { name, topic, type, category_id, is_secure } = req.body;
     if (!name || name.trim().length < 1 || name.trim().length > 50) {
       return res.status(400).json({ error: 'Channel name must be 1-50 characters', code: 'bad_request' });
     }
 
-    const VALID_TYPES = ['text', 'voice', 'announcement', 'rules'];
+    const VALID_TYPES = ['text', 'voice', 'announcement', 'rules', 'stage', 'forum', 'private_encrypted', 'read_only_news', 'category'];
     const channelType = VALID_TYPES.includes(type) ? type : 'text';
     const maxPos = db.prepare('SELECT MAX(position) as mp FROM channels WHERE server_id = ?').get(serverId);
     const position = (maxPos?.mp ?? -1) + 1;
+    // Validate category_id belongs to this server
+    const validCategoryId = category_id && channelType !== 'category'
+      ? (db.prepare('SELECT id FROM channels WHERE id = ? AND server_id = ? AND type = ?').get(category_id, serverId, 'category')?.id ?? null)
+      : null;
+
+    // Only server owner can create secure channels
+    const secureFlag = is_secure ? 1 : 0;
+    if (secureFlag) {
+      const server = db.prepare('SELECT owner_id FROM servers WHERE id = ?').get(serverId);
+      if (!server || server.owner_id !== userId) {
+        return res.status(403).json({ error: 'Only the server owner can create secure channels', code: 'forbidden' });
+      }
+    }
 
     const channelId = uuidv4();
     db.prepare(
-      "INSERT INTO channels (id, server_id, name, topic, type, position, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))"
-    ).run(channelId, serverId, name.trim().toLowerCase().replace(/\s+/g, '-'), topic ?? null, channelType, position);
+      "INSERT INTO channels (id, server_id, name, topic, type, position, category_id, is_secure, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))"
+    ).run(channelId, serverId, name.trim().toLowerCase().replace(/\s+/g, '-'), topic ?? null, channelType, position, validCategoryId, secureFlag);
 
     auditLog(db, serverId, userId, 'CHANNEL_CREATE', 'channel', channelId, { name: name.trim() });
 
@@ -444,11 +482,16 @@ serversRouter.patch('/:sid/channels/:cid', requireAuth, (req, res) => {
       return res.status(403).json({ error: 'Missing MANAGE_CHANNELS permission', code: 'forbidden' });
     }
 
-    const { name, topic, position } = req.body;
+    const { name, topic, position, category_id } = req.body;
     const changes = {};
     if (name !== undefined) changes.name = name.trim().toLowerCase().replace(/\s+/g, '-');
     if (topic !== undefined) changes.topic = topic;
     if (position !== undefined) changes.position = position;
+    if (category_id !== undefined) {
+      // null clears the category; a string value is validated to belong to this server
+      changes.category_id = category_id === null ? null
+        : (db.prepare('SELECT id FROM channels WHERE id = ? AND server_id = ? AND type = ?').get(category_id, serverId, 'category')?.id ?? null);
+    }
 
     if (Object.keys(changes).length === 0) {
       return res.status(400).json({ error: 'No changes', code: 'bad_request' });
@@ -466,6 +509,66 @@ serversRouter.patch('/:sid/channels/:cid', requireAuth, (req, res) => {
   } catch (err) {
     console.error('Update channel error:', err);
     res.status(500).json({ error: 'Failed to update channel', code: 'internal' });
+  }
+});
+
+// ── PATCH /servers/:id/channels/reorder — bulk reorder channels ──────────────
+serversRouter.patch('/:id/channels/reorder', requireAuth, (req, res) => {
+  try {
+    const db = req.db;
+    const serverId = req.params.id;
+    const userId = req.userId;
+    const { permissions: perms, notFound } = resolvePermissions({ userId, serverId, channelId: null, db });
+    if (notFound) return res.status(404).json({ error: 'Server not found', code: 'not_found' });
+    if (!hasPermission(perms, Permissions.MANAGE_CHANNELS)) {
+      return res.status(403).json({ error: 'Missing MANAGE_CHANNELS permission', code: 'forbidden' });
+    }
+
+    const { channels } = req.body;
+    if (!Array.isArray(channels)) {
+      return res.status(400).json({ error: 'channels array required', code: 'bad_request' });
+    }
+
+    const existing = db.prepare('SELECT id, type FROM channels WHERE server_id = ?').all(serverId);
+    const existingIds = new Set(existing.map((c) => c.id));
+    const categories = new Set(existing.filter((c) => c.type === 'category').map((c) => c.id));
+    const incomingIds = new Set();
+
+    for (const row of channels) {
+      if (!row?.id || !existingIds.has(row.id)) {
+        return res.status(400).json({ error: 'Invalid channel id in reorder payload', code: 'bad_request' });
+      }
+      if (incomingIds.has(row.id)) {
+        return res.status(400).json({ error: 'Duplicate channel id in reorder payload', code: 'bad_request' });
+      }
+      incomingIds.add(row.id);
+      if (row.category_id != null && !categories.has(row.category_id)) {
+        return res.status(400).json({ error: 'Invalid category_id in reorder payload', code: 'bad_request' });
+      }
+    }
+    if (incomingIds.size !== existingIds.size) {
+      return res.status(400).json({ error: 'Reorder payload must include every channel in the server', code: 'bad_request' });
+    }
+
+    const stmt = db.prepare('UPDATE channels SET position = ?, category_id = ? WHERE id = ? AND server_id = ?');
+    const tx = db.transaction(() => {
+      for (let i = 0; i < channels.length; i++) {
+        const row = channels[i];
+        const pos = typeof row.position === 'number' ? row.position : i;
+        stmt.run(pos, row.category_id ?? null, row.id, serverId);
+      }
+    });
+    tx();
+
+    auditLog(db, serverId, userId, 'CHANNELS_REORDER', 'channel', serverId, { count: channels.length });
+
+    const updated = db.prepare(
+      'SELECT * FROM channels WHERE server_id = ? ORDER BY position ASC, created_at ASC'
+    ).all(serverId);
+    res.json({ channels: updated });
+  } catch (err) {
+    console.error('Reorder channels error:', err);
+    res.status(500).json({ error: 'Failed to reorder channels', code: 'internal' });
   }
 });
 

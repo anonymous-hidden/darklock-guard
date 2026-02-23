@@ -10,6 +10,7 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
+import rateLimit from 'express-rate-limit';
 import { requireAuth } from '../middleware/auth.js';
 import { resolvePermissions, hasPermission, Permissions } from '../permissions.js';
 import { auditLog } from './audit.js';
@@ -18,6 +19,25 @@ export const invitesRouter = Router();
 
 function generateInviteToken() {
   return crypto.randomBytes(6).toString('base64url');
+}
+
+const invitePreviewLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many invite preview requests', code: 'rate_limited' },
+});
+
+function getInvitePreview(db, token) {
+  return db.prepare(`
+    SELECT si.*, s.name as server_name, s.icon as server_icon, s.banner_url as server_banner,
+           s.description as server_description,
+           (SELECT COUNT(*) FROM server_members WHERE server_id = si.server_id) as member_count
+    FROM server_invites si
+    JOIN servers s ON s.id = si.server_id
+    WHERE si.token = ?
+  `).get(token);
 }
 
 // ── POST /servers/:id/invites — create invite ────────────────────────────────
@@ -36,10 +56,20 @@ invitesRouter.post('/:id/invites', requireAuth, (req, res) => {
     const { expires_in, max_uses } = req.body;
     let expiresAt = null;
 
-    if (expires_in === '1h') expiresAt = new Date(Date.now() + 3600000).toISOString();
-    else if (expires_in === '24h') expiresAt = new Date(Date.now() + 86400000).toISOString();
-    else if (expires_in === '7d') expiresAt = new Date(Date.now() + 604800000).toISOString();
-    // else 'never' — null
+    if (expires_in) {
+      // Accept named durations OR numeric seconds (e.g. "3600" or 3600)
+      const secs = Number(expires_in);
+      if (!isNaN(secs) && secs > 0) {
+        expiresAt = new Date(Date.now() + secs * 1000).toISOString();
+      } else if (expires_in === '1h') {
+        expiresAt = new Date(Date.now() + 3600000).toISOString();
+      } else if (expires_in === '24h') {
+        expiresAt = new Date(Date.now() + 86400000).toISOString();
+      } else if (expires_in === '7d') {
+        expiresAt = new Date(Date.now() + 604800000).toISOString();
+      }
+      // else 'never' or '0' — null
+    }
 
     const inviteId = uuidv4();
     const token = generateInviteToken();
@@ -59,6 +89,7 @@ invitesRouter.post('/:id/invites', requireAuth, (req, res) => {
       max_uses: max_uses || 0,
       use_count: 0,
       created_by: userId,
+      created_at: new Date().toISOString(),
     });
   } catch (err) {
     console.error('Create invite error:', err);
@@ -120,13 +151,7 @@ invitesRouter.delete('/:id/invites/:invId', requireAuth, (req, res) => {
 invitesRouter.get('/:token', (req, res) => {
   try {
     const db = req.db;
-    const invite = db.prepare(`
-      SELECT si.*, s.name as server_name, s.icon as server_icon, s.description as server_description,
-             (SELECT COUNT(*) FROM server_members WHERE server_id = si.server_id) as member_count
-      FROM server_invites si
-      JOIN servers s ON s.id = si.server_id
-      WHERE si.token = ?
-    `).get(req.params.token);
+    const invite = getInvitePreview(db, req.params.token);
 
     if (!invite) return res.status(404).json({ error: 'Invite not found or expired', code: 'not_found' });
 
@@ -144,6 +169,8 @@ invitesRouter.get('/:token', (req, res) => {
       server_id: invite.server_id,
       server_name: invite.server_name,
       server_icon: invite.server_icon,
+      server_banner: invite.server_banner ?? null,
+      server_bio: invite.server_description ?? null,
       server_description: invite.server_description,
       member_count: invite.member_count,
       expires_at: invite.expires_at,
@@ -151,6 +178,35 @@ invitesRouter.get('/:token', (req, res) => {
   } catch (err) {
     console.error('Get invite error:', err);
     res.status(500).json({ error: 'Failed to get invite', code: 'internal' });
+  }
+});
+
+// ── GET /invites/:token/preview — public preview for invite cards ───────────
+invitesRouter.get('/:token/preview', invitePreviewLimiter, (req, res) => {
+  try {
+    const db = req.db;
+    const invite = getInvitePreview(db, req.params.token);
+    if (!invite) return res.status(404).json({ error: 'Invite not found', code: 'not_found' });
+    if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+      return res.status(410).json({ error: 'Invite expired', code: 'expired' });
+    }
+    if (invite.max_uses > 0 && invite.use_count >= invite.max_uses) {
+      return res.status(410).json({ error: 'Invite exhausted', code: 'exhausted' });
+    }
+    res.json({
+      token: invite.token,
+      server_id: invite.server_id,
+      server_name: invite.server_name,
+      server_icon: invite.server_icon ?? null,
+      server_banner: invite.server_banner ?? null,
+      server_bio: invite.server_description ?? null,
+      server_description: invite.server_description ?? null,
+      member_count: invite.member_count ?? 0,
+      expires_at: invite.expires_at ?? null,
+    });
+  } catch (err) {
+    console.error('Invite preview error:', err);
+    res.status(500).json({ error: 'Failed to load invite preview', code: 'internal' });
   }
 });
 

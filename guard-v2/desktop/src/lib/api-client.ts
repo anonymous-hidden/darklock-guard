@@ -2,18 +2,29 @@
  * Darklock Guard — API Client
  *
  * Centralized API configuration and request utilities.
- * Always connects to the hosted Darklock platform — no self-hosting.
+ * Automatically uses localhost in development, production URL in builds.
  */
-
-// Production backend URLs (Cloudflare Tunnel → Pi5)
-const PLATFORM_URL = 'https://platform.darklock.net';
 
 /**
  * Get the Darklock Platform API base URL.
- * Always points to the hosted backend.
+ * In dev: http://localhost:3002
+ * In production: https://darklock.net
  */
 export function getPlatformApiUrl(): string {
-  return PLATFORM_URL;
+  // In Tauri, we're always in "dev mode" for API purposes when running via tauri dev
+  // Check multiple conditions to detect development
+  const isTauriDev =
+    window.location.protocol === 'http:' || 
+    window.location.protocol === 'tauri:' ||
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname === 'tauri.localhost';
+  
+  if (isTauriDev) {
+    return 'http://localhost:3002';
+  }
+  
+  return 'https://darklock.net';
 }
 
 /**

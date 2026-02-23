@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchCapabilities, fetchEvents, fetchStatus } from '../ipc';
 import { CapabilityMap, EventEntry, ServiceStatus } from '../types';
 
@@ -61,9 +61,9 @@ export const ServiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  useEffect(() => { console.log('🔵 ServiceProvider: Mounted'); }, []);
+  console.log('🔵 ServiceProvider: Initializing');
 
-  const refresh = useCallback(async () => {
+  const refresh = async () => {
     console.log('🔵 ServiceProvider: Refreshing status');
     try {
       const st = await fetchStatus();
@@ -83,7 +83,7 @@ export const ServiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setError(e instanceof Error ? e.message : String(e));
     }
     setLoading(false);
-  }, []);  // stable reference — no deps change the logic
+  };
 
   useEffect(() => {
     void refresh();
@@ -165,7 +165,7 @@ export const ServiceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     serviceAvailable,
     loading,
     refresh,
-  }), [status, capabilities, events, serviceAvailable, loading, refresh]);
+  }), [status, capabilities, events, serviceAvailable, loading]);
 
   if (loading) {
     return (

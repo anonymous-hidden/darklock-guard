@@ -109,6 +109,7 @@ async function initializeAdminTables() {
         CREATE TABLE IF NOT EXISTS admins (
             id TEXT PRIMARY KEY,
             email TEXT UNIQUE NOT NULL,
+            username TEXT,
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL CHECK(role IN ('owner', 'admin')),
             created_at TEXT NOT NULL,
@@ -118,6 +119,12 @@ async function initializeAdminTables() {
             active INTEGER DEFAULT 1
         )
     `);
+
+    // Migration: add username column to existing tables
+    try {
+        await db.run(`ALTER TABLE admins ADD COLUMN username TEXT`);
+        console.log('[Admin Auth] \u2705 Migrated admins table: added username column');
+    } catch (_) { /* column already exists */ }
 
     // Audit log for all admin authentication events
     await db.run(`
@@ -133,8 +140,7 @@ async function initializeAdminTables() {
     `);
 
     // Indexes for performance
-    await db.run(`CREATE INDEX IF NOT EXISTS idx_admins_email ON admins(email)`);
-    await db.run(`CREATE INDEX IF NOT EXISTS idx_admin_audit_admin_id ON admin_audit_log(admin_id)`);
+    await db.run(`CREATE INDEX IF NOT EXISTS idx_admins_email ON admins(email)`);    await db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_admins_username ON admins(username) WHERE username IS NOT NULL`);    await db.run(`CREATE INDEX IF NOT EXISTS idx_admin_audit_admin_id ON admin_audit_log(admin_id)`);
     await db.run(`CREATE INDEX IF NOT EXISTS idx_admin_audit_created_at ON admin_audit_log(created_at)`);
 
     console.log('[Admin Auth] ✅ Admin tables initialized');
@@ -183,10 +189,14 @@ async function createAdmin(email, password, role = 'admin') {
 }
 
 /**
- * Get admin by email (case-insensitive)
+ * Get admin by email or username (case-insensitive)
  */
-async function getAdminByEmail(email) {
-    return db.get(`SELECT * FROM admins WHERE email = ? AND active = 1`, [email.toLowerCase()]);
+async function getAdminByEmail(identifier) {
+    const lower = identifier.toLowerCase();
+    return db.get(
+        `SELECT * FROM admins WHERE (email = ? OR username = ?) AND active = 1`,
+        [lower, lower]
+    );
 }
 
 /**

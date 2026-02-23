@@ -1,0 +1,41 @@
+[Unit]
+Description=Darklock RLY (Relay Service)
+After=network.target dl-ids.service
+Wants=network-online.target
+Documentation=https://github.com/darklock/secure-channel
+
+[Service]
+Type=simple
+User=darklock
+Group=darklock
+WorkingDirectory=/opt/darklock/secure-channel/services/rly
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/opt/darklock/secure-channel/services/rly/data
+ReadOnlyPaths=/opt/darklock/secure-channel/services/rly
+
+# Environment
+EnvironmentFile=-/etc/darklock/rly.env
+Environment=NODE_ENV=production
+Environment=PORT=4101
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dl-rly
+
+[Install]
+WantedBy=multi-user.target

@@ -73,28 +73,19 @@ class RankSystem {
     }
 
     /**
-     * Save rank data to JSON file (async to avoid blocking event loop)
+     * Save rank data to JSON file
      */
     saveData() {
-        // Debounce: skip if a save is already pending
-        if (this._savePending) return;
-        this._savePending = true;
-
-        setImmediate(() => {
-            this._savePending = false;
-            try {
-                const dir = path.dirname(this.dataPath);
-                if (!fs.existsSync(dir)) {
-                    fs.mkdirSync(dir, { recursive: true });
-                }
-                const data = JSON.stringify(this.data, null, 2);
-                fs.writeFile(this.dataPath, data, (err) => {
-                    if (err) console.error('[RankSystem] Error saving rank data:', err);
-                });
-            } catch (error) {
-                console.error('[RankSystem] Error saving rank data:', error);
+        try {
+            const dir = path.dirname(this.dataPath);
+            if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
             }
-        });
+            fs.writeFileSync(this.dataPath, JSON.stringify(this.data, null, 2));
+            console.log('[RankSystem] Data saved successfully');
+        } catch (error) {
+            console.error('[RankSystem] Error saving rank data:', error);
+        }
     }
 
     /**

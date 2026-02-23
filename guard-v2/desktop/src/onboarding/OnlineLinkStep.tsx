@@ -65,24 +65,12 @@ const OnlineLinkStep: React.FC<Props> = ({ state, onUpdate, onNext, onBack }) =>
     }
   }, []);
 
-  const extractError = (err: unknown): string => {
-    if (typeof err === 'string') return err;
-    if (err instanceof Error) return err.message;
-    return 'Device linking failed';
-  };
-
   const handleLink = async () => {
     setLinking(true);
     onUpdate({ error: null });
 
     try {
-      // Step 1: If a stale vault exists from a prior session, remove it first
-      const firstRun: any = await invoke('check_first_run');
-      if (!firstRun.needs_setup) {
-        await invoke('delete_vault');
-      }
-
-      // Step 2: Create vault locally (generates device keys)
+      // Step 1: Create vault locally (generates device keys)
       const vaultResult: any = await invoke('init_vault', {
         args: {
           password: state.authPassword,
@@ -95,8 +83,7 @@ const OnlineLinkStep: React.FC<Props> = ({ state, onUpdate, onNext, onBack }) =>
         deviceId: vaultResult.device_id,
       });
 
-      // Step 3: Register device with platform
-      const token = state.sessionToken || localStorage.getItem('darklock_auth_token');
+      // Step 2: Register device with platform  
       const res = await platformFetch(
         '/api/devices/register',
         {
@@ -105,10 +92,10 @@ const OnlineLinkStep: React.FC<Props> = ({ state, onUpdate, onNext, onBack }) =>
             device_id: vaultResult.device_id,
             public_key: vaultResult.public_key,
             name: deviceName,
-            platform: navigator.userAgent.includes('Windows') ? 'windows' : 'linux',
+            platform: 'linux',
           }),
         },
-        token,
+        state.sessionToken,
       );
 
       const data = await res.json();
@@ -116,9 +103,9 @@ const OnlineLinkStep: React.FC<Props> = ({ state, onUpdate, onNext, onBack }) =>
 
       setLinking(false);
       onNext();
-    } catch (err: unknown) {
+    } catch (err: any) {
       setLinking(false);
-      onUpdate({ error: extractError(err) });
+      onUpdate({ error: err.message || 'Device linking failed' });
     }
   };
 
@@ -129,7 +116,7 @@ const OnlineLinkStep: React.FC<Props> = ({ state, onUpdate, onNext, onBack }) =>
       <StepHeader
         title="Link This Device"
         subtitle="Register this device with your Darklock Cloud account. This creates your encryption vault and device identity."
-        step={{ current: 2, total: 2 }}
+        step={{ current: 2, total: 3 }}
       />
 
       {state.error && (

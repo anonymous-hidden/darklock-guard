@@ -6,7 +6,7 @@ import { open as openUrl } from '@tauri-apps/plugin-shell';
 import type { GuardSettings } from '../state/settings';
 import { Download, RotateCcw, RefreshCw, CheckCircle2, Package, ArrowUpCircle, Clock, Shield, AlertTriangle, Loader2, Radio, Info, ExternalLink } from 'lucide-react';
 
-const PLATFORM_URL = (import.meta.env.VITE_PLATFORM_URL as string) || 'https://platform.darklock.net';
+const PLATFORM_URL = (import.meta.env.VITE_PLATFORM_URL as string) || 'http://localhost:3002';
 
 type UpdateState = 'idle' | 'checking' | 'downloading' | 'installing' | 'done' | 'error';
 

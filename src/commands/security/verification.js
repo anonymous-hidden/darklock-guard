@@ -106,23 +106,37 @@ module.exports = {
                 
                 let instructionEmbed;
                 let verifyButton;
-                
-                // Get the dashboard URL for web verification
-                const dashboardUrl = process.env.DASHBOARD_URL || 'https://discord-security-bot-uyx6.onrender.com';
-                const verifyUrl = `${dashboardUrl}/verify/${guildId}`;
+
+                // Delete old verification bot messages in the channel to avoid stale buttons
+                try {
+                    const oldMessages = await channel.messages.fetch({ limit: 50 });
+                    const botMessages = oldMessages.filter(m =>
+                        m.author.id === interaction.client.user.id &&
+                        m.embeds.some(e => (e.title || '').includes('Verification'))
+                    );
+                    if (botMessages.size > 0) {
+                        await channel.bulkDelete(botMessages, true).catch(() => {
+                            // Fallback: delete individually (messages older than 14 days can't be bulk deleted)
+                            botMessages.forEach(m => m.delete().catch(() => {}));
+                        });
+                    }
+                } catch (cleanupErr) {
+                    bot.logger?.warn?.(`[verification] Failed to clean old messages: ${cleanupErr.message}`);
+                }
                 
                 if (method === 'web') {
-                    // Web portal verification
+                    // Web portal verification — use a regular button so each user
+                    // gets their own personal token-based link (ephemeral reply)
                     instructionEmbed = new EmbedBuilder()
                         .setTitle('🔐 Welcome to Server Verification')
                         .setDescription(`Before you can access the rest of the server, please complete verification to confirm you're a real person.
 
 **How to Verify:**
-Click the **Verify Now** button below to open our secure verification portal. Complete the quick verification process to gain access to the server.
+Click the **Verify via Web Portal** button below. You'll receive a personal link to our secure verification portal. Complete the quick verification process to gain access to the server.
 
 **What happens next:**
-✅ Open the verification portal
-✅ Complete the verification challenge
+✅ Click the button to get your personal verification link
+✅ Open the portal and complete the verification
 ✅ You'll receive the verified role automatically
 ✅ You'll gain access to all server channels
 
@@ -137,9 +151,9 @@ If you're having trouble verifying, please contact a staff member.
                     verifyButton = new ActionRowBuilder()
                         .addComponents(
                             new ButtonBuilder()
-                                .setLabel('🔗 Verify Now')
-                                .setStyle(ButtonStyle.Link)
-                                .setURL(verifyUrl)
+                                .setCustomId('verify_button')
+                                .setLabel('🔗 Verify via Web Portal')
+                                .setStyle(ButtonStyle.Primary)
                         );
                 } else if (method === 'button' || method === 'auto') {
                     // Simple button click verification
@@ -235,13 +249,13 @@ If you're having trouble verifying or didn't receive a DM, please contact a staf
                                 .setStyle(ButtonStyle.Primary)
                         );
                 } else {
-                    // Fallback to web portal for unknown methods
+                    // Fallback to button verification for unknown methods
                     instructionEmbed = new EmbedBuilder()
                         .setTitle('🔐 Welcome to Server Verification')
                         .setDescription(`Before you can access the rest of the server, please complete verification to confirm you're a real person.
 
 **How to Verify:**
-Click the **Verify Now** button below to complete the verification process.
+Click the **Verify** button below to complete the verification process.
 
 **Need Help?**
 If you're having trouble verifying, please contact a staff member.
@@ -254,9 +268,9 @@ If you're having trouble verifying, please contact a staff member.
                     verifyButton = new ActionRowBuilder()
                         .addComponents(
                             new ButtonBuilder()
-                                .setLabel('🔗 Verify Now')
-                                .setStyle(ButtonStyle.Link)
-                                .setURL(verifyUrl)
+                                .setCustomId('verify_button')
+                                .setLabel('✅ Verify')
+                                .setStyle(ButtonStyle.Success)
                         );
                 }
 

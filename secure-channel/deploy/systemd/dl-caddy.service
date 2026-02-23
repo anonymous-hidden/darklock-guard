@@ -1,0 +1,33 @@
+[Unit]
+Description=Darklock Caddy Reverse Proxy
+After=network.target
+Wants=dl-ids.service dl-rly.service
+
+[Service]
+Type=simple
+User=darklock
+Group=darklock
+ExecStart=/usr/bin/caddy run --config /opt/darklock/secure-channel/deploy/Caddyfile --adapter caddyfile
+ExecReload=/usr/bin/caddy reload --config /opt/darklock/secure-channel/deploy/Caddyfile --adapter caddyfile
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/darklock/caddy-data
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+# Environment
+Environment=XDG_DATA_HOME=/opt/darklock/caddy-data
+EnvironmentFile=-/etc/darklock/caddy.env
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dl-caddy
+
+[Install]
+WantedBy=multi-user.target

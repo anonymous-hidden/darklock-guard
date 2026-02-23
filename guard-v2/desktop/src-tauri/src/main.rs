@@ -299,7 +299,7 @@ async fn update_check(channel: Option<String>) -> Result<serde_json::Value, Stri
 
     let platform_url = std::env::var("VITE_PLATFORM_URL")
         .or_else(|_| std::env::var("DARKLOCK_PLATFORM_URL"))
-        .unwrap_or_else(|_| "https://platform.darklock.net".to_string());
+        .unwrap_or_else(|_| "http://localhost:3002".to_string());
 
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
@@ -376,7 +376,7 @@ async fn update_install(channel: Option<String>) -> Result<serde_json::Value, St
 
     let platform_url = std::env::var("VITE_PLATFORM_URL")
         .or_else(|_| std::env::var("DARKLOCK_PLATFORM_URL"))
-        .unwrap_or_else(|_| "https://platform.darklock.net".to_string());
+        .unwrap_or_else(|_| "http://localhost:3002".to_string());
 
     let platform = if cfg!(target_os = "windows") { "windows" }
                    else if cfg!(target_os = "macos") { "macos" }
@@ -469,7 +469,7 @@ async fn verify_baseline() -> Result<serde_json::Value, String> {
 #[tauri::command]
 async fn send_crash_report(report: serde_json::Value) -> Result<serde_json::Value, String> {
     let platform_url = std::env::var("DARKLOCK_PLATFORM_URL")
-        .unwrap_or_else(|_| "https://platform.darklock.net".to_string());
+        .unwrap_or_else(|_| "https://darklock.net".to_string());
     
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
@@ -550,24 +550,6 @@ async fn lock_vault(app_handle: tauri::AppHandle) -> Result<serde_json::Value, S
     Ok(serde_json::json!({"ok": true}))
 }
 
-#[tauri::command]
-async fn delete_vault() -> Result<serde_json::Value, String> {
-    let dir = data_dir().map_err(|e| format!("Failed to determine data dir: {e}"))?;
-    let removed: Vec<String> = ["vault.dlock", "vault.dat"]
-        .iter()
-        .filter_map(|name| {
-            let p = dir.join(name);
-            if p.exists() {
-                std::fs::remove_file(&p).ok()?;
-                Some(p.to_string_lossy().to_string())
-            } else {
-                None
-            }
-        })
-        .collect();
-    Ok(serde_json::json!({ "ok": true, "removed": removed }))
-}
-
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -587,7 +569,6 @@ fn main() {
             check_first_run,
             init_vault,
             lock_vault,
-            delete_vault,
             create_baseline,
             verify_baseline,
             send_crash_report

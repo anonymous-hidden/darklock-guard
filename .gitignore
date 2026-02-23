@@ -67,6 +67,11 @@ ainti-tampering-app/tauri-app/src-tauri/target/
 ainti-tampering-app/tauri-app/node_modules/
 guard-v2/target/
 guard-v2/desktop/target/
+secure-channel/target/
+secure-channel/apps/dl-secure-channel/src-tauri/target/
+secure-channel/apps/dl-secure-channel/src-tauri/gen/
+secure-channel/services/dl_ids/data/*.db
+secure-channel/services/dl_rly/data/*.db
 
 # Archives and large files
 *.tar.gz
