@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.npm
+
+# Build output
+dist/
+build/
+target/
+
+# Environment / secrets — .env.example IS committed; real .env files are NOT
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Dev scripts & internal docs
+*.sh
+*.py
+QUICKSTART.md
+REAL_WORLD_TEST_RESULTS.md
+docker-compose.dev.yml
+
+# Misc
+__pycache__/
+*.pyc
+.cache
+.parcel-cache
+
+# Tauri mobile gen build artifacts
+guard-v2/desktop/src-tauri/gen/android/
+guard-v2/desktop/src-tauri/gen/ios/
+guard-v2/desktop/src-tauri/gen/WixTools/
