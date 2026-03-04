@@ -163,4 +163,4 @@ Continue   Restore from vault + emit violation event
 
 ---
 
-**&copy; 2026 Darklock Security** — Released under the [MIT License](LICENSE). Part of the [Darklock](https://darklock.net) security platform.
+**&copy; 2026 Darklock Security** — Released under the Open Source License (DOSL). Part of the [Darklock](https://darklock.net) security platform.
