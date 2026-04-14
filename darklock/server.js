@@ -741,7 +741,7 @@ class DarklockPlatform {
         this.app.get('/platform/api/download/secure-channel-installer', (req, res) => {
             const format = (req.query.format || 'deb').toLowerCase();
             const fs = require('fs');
-            const version = '1.1.0';
+            const version = '1.2.0';
 
             console.log(`[SecureChannel] Download request for format: ${format} from IP: ${req.ip}`);
 
@@ -2494,7 +2494,7 @@ class DarklockPlatform {
         existingApp.get('/platform/api/download/secure-channel-installer', (req, res) => {
             const format = (req.query.format || 'deb').toLowerCase();
             const fs = require('fs');
-            const version = '1.1.0';
+            const version = '1.2.0';
 
             console.log(`[SecureChannel] (existingApp) Download request for format: ${format} from IP: ${req.ip}`);
 
