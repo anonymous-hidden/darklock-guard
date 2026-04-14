@@ -174,6 +174,7 @@ class DarklockPlatform {
                     'http://localhost:5173',   // Vite dev (tauri dev)
                     'http://localhost:5174',   // Vite dev alt port (tauri dev)
                     'http://localhost:1420',   // Tauri default dev port
+                    'http://localhost:1421',   // Electron/Vite dev port
                   ]
                 : [
                     'http://localhost:3000', 
@@ -183,6 +184,7 @@ class DarklockPlatform {
                     'http://localhost:5173',  // Vite dev server
                     'http://localhost:5174',  // Vite dev alt port
                     'http://localhost:1420',  // Tauri default dev port
+                    'http://localhost:1421',  // Electron/Vite dev port
                     'tauri://localhost',      // Tauri app
                     'http://tauri.localhost'  // Tauri alternative
                   ]);
