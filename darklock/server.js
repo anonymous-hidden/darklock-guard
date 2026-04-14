@@ -732,6 +732,28 @@ class DarklockPlatform {
             `);
         });
 
+        // Darklock Secure Channel - Version check API (for in-app updates)
+        this.app.get('/platform/api/secure-channel/version', (req, res) => {
+            res.json({
+                version: '1.2.1',
+                releaseDate: '2026-04-14',
+                downloadUrl: 'https://admin.darklock.net/platform/download/secure-channel',
+                changelog: [
+                    'Security audit: 25 findings identified, 19 fixes applied',
+                    'AEAD Associated Data fix for skipped-key decrypt',
+                    'Per-connection WebSocket rate limiting',
+                    'WebSocket Origin validation (CSWSH protection)',
+                    'Profile previews aligned to Settings gold standard',
+                    'Discord-style nameplates as full-width gradient strips',
+                    'Custom status UI in profile editor',
+                    'GIF embeds fixed (Tenor/Giphy)',
+                    'Reply message sync between sender/receiver',
+                    'Admin tag assignments sync via WebSocket',
+                    'Spell check context menu with suggestions',
+                ],
+            });
+        });
+
         // Darklock Secure Channel - Download page
         this.app.get('/platform/download/secure-channel', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/secure-channel-download.html'));
@@ -741,7 +763,7 @@ class DarklockPlatform {
         this.app.get('/platform/api/download/secure-channel-installer', (req, res) => {
             const format = (req.query.format || 'deb').toLowerCase();
             const fs = require('fs');
-            const version = '1.2.0';
+            const version = '1.2.1';
 
             console.log(`[SecureChannel] Download request for format: ${format} from IP: ${req.ip}`);
 
@@ -2270,6 +2292,28 @@ class DarklockPlatform {
             res.sendFile(path.join(__dirname, 'views/download-page.html'));
         });
 
+        // Darklock Secure Channel - Version check API (existingApp, for in-app updates)
+        existingApp.get('/platform/api/secure-channel/version', (req, res) => {
+            res.json({
+                version: '1.2.1',
+                releaseDate: '2026-04-14',
+                downloadUrl: 'https://admin.darklock.net/platform/download/secure-channel',
+                changelog: [
+                    'Security audit: 25 findings identified, 19 fixes applied',
+                    'AEAD Associated Data fix for skipped-key decrypt',
+                    'Per-connection WebSocket rate limiting',
+                    'WebSocket Origin validation (CSWSH protection)',
+                    'Profile previews aligned to Settings gold standard',
+                    'Discord-style nameplates as full-width gradient strips',
+                    'Custom status UI in profile editor',
+                    'GIF embeds fixed (Tenor/Giphy)',
+                    'Reply message sync between sender/receiver',
+                    'Admin tag assignments sync via WebSocket',
+                    'Spell check context menu with suggestions',
+                ],
+            });
+        });
+
         // Darklock Secure Channel - Download page (existingApp integration)
         existingApp.get('/platform/download/secure-channel', (req, res) => {
             const scPage = path.join(__dirname, 'views', 'secure-channel-download.html');
@@ -2494,7 +2538,7 @@ class DarklockPlatform {
         existingApp.get('/platform/api/download/secure-channel-installer', (req, res) => {
             const format = (req.query.format || 'deb').toLowerCase();
             const fs = require('fs');
-            const version = '1.2.0';
+            const version = '1.2.1';
 
             console.log(`[SecureChannel] (existingApp) Download request for format: ${format} from IP: ${req.ip}`);
 
