@@ -124,9 +124,9 @@ class EventEmitter {
             data: {
                 action: action, // 'ban', 'kick', 'warn', 'timeout'
                 targetId: target.id,
-                targetTag: target.tag || target.username,
+                targetTag: target.username || target.username,
                 moderatorId: moderator.id,
-                moderatorTag: moderator.tag || moderator.username,
+                moderatorTag: moderator.username || moderator.username,
                 reason: reason,
                 canUndo: canUndo,
                 timestamp: Date.now()

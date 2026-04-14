@@ -16,7 +16,7 @@ function getSecret(): string {
 
 export function signDeviceToken(deviceId: string, securityProfile: SecurityProfile): string {
   return jwt.sign({ sub: deviceId, role: 'device', securityProfile }, getSecret(), {
-    expiresIn: '12h',
+    expiresIn: '1h',
   });
 }
 
@@ -56,7 +56,7 @@ export function requireServerAuth(req: AuthenticatedRequest, res: Response, next
     req.auth = ctx;
     return next();
   } catch (err: any) {
-    return res.status(401).json({ error: 'unauthorized', details: err?.message });
+    return res.status(401).json({ error: 'unauthorized' });
   }
 }
 
@@ -69,6 +69,6 @@ export function requireDeviceAuth(req: AuthenticatedRequest, res: Response, next
     req.auth = ctx;
     return next();
   } catch (err: any) {
-    return res.status(401).json({ error: 'unauthorized', details: err?.message });
+    return res.status(401).json({ error: 'unauthorized' });
   }
 }

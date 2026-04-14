@@ -311,7 +311,7 @@ class BehaviorAnalysis {
         const embed = new EmbedBuilder()
             .setTitle('⚠️ Concerning Content Detected')
             .setColor(0xFF0000)
-            .setDescription(`**User:** ${message.author.tag} (${message.author.id})\n**Channel:** ${message.channel}`)
+            .setDescription(`**User:** ${message.author.username} (${message.author.id})\n**Channel:** ${message.channel}`)
             .addFields(
                 { name: 'Threat Categories', value: analysisResults.threats.join(', ') || 'None', inline: true },
                 { name: 'Max Score', value: `${(Math.max(...Object.values(analysisResults.scores)) * 100).toFixed(0)}%`, inline: true },

@@ -204,7 +204,7 @@ module.exports = {
         if (success) {
             const embed = new EmbedBuilder()
                 .setAuthor({ 
-                    name: interaction.user.tag, 
+                    name: interaction.user.username, 
                     iconURL: interaction.user.displayAvatarURL({ dynamic: true }) 
                 })
                 .setDescription(message)
@@ -276,7 +276,7 @@ module.exports = {
                 if (success) {
                     const embed = new EmbedBuilder()
                         .setAuthor({ 
-                            name: interaction.user.tag, 
+                            name: interaction.user.username, 
                             iconURL: interaction.user.displayAvatarURL({ dynamic: true }) 
                         })
                         .setDescription(snippet.content)

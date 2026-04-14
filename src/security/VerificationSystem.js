@@ -388,7 +388,7 @@ class VerificationSystem {
                 }
             }
             
-            console.log(`✅ Granted verified role to ${member.user.tag} in ${guild.name}`);
+            console.log(`✅ Granted verified role to ${member.user.username} in ${guild.name}`);
         } catch (error) {
             console.error('Failed to grant verified role:', error);
         }

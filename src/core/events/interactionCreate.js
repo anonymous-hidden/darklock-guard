@@ -229,7 +229,7 @@ async function handleSlashCommand(interaction, bot) {
         // Broadcast command execution to console
         try {
             const guildId = interaction.guild ? interaction.guild.id : null;
-            const who = interaction.user ? `${interaction.user.tag} (${interaction.user.id})` : String(interaction.user?.id || 'Unknown');
+            const who = interaction.user ? `${interaction.user.username} (${interaction.user.id})` : String(interaction.user?.id || 'Unknown');
             const cmd = command.data && command.data.name ? command.data.name : interaction.commandName;
             bot.broadcastConsole(guildId, `[COMMAND] ${who} -> /${cmd}`);
         } catch (e) {
@@ -248,7 +248,7 @@ async function handleSlashCommand(interaction, bot) {
             error,
             context: `command_${interaction.commandName}`,
             userId: interaction.user.id,
-            userTag: interaction.user.tag,
+            userTag: interaction.user.username,
             guildId: interaction.guild?.id,
             channelId: interaction.channel?.id
         });
@@ -275,7 +275,7 @@ async function handleSlashCommand(interaction, bot) {
         await bot.logger.logCommand({
             commandName: interaction.commandName,
             userId: interaction.user.id,
-            userTag: interaction.user.tag,
+            userTag: interaction.user.username,
             guildId: interaction.guild?.id,
             channelId: interaction.channel?.id,
             options: interaction.options?.data || {},
@@ -336,7 +336,7 @@ async function handleContextMenuCommand(interaction, bot) {
         // Broadcast command execution to console
         try {
             const guildId = interaction.guild ? interaction.guild.id : null;
-            const who = interaction.user ? `${interaction.user.tag} (${interaction.user.id})` : String(interaction.user?.id || 'Unknown');
+            const who = interaction.user ? `${interaction.user.username} (${interaction.user.id})` : String(interaction.user?.id || 'Unknown');
             const cmd = commandName;
             bot.broadcastConsole(guildId, `[CONTEXT MENU] ${who} -> ${cmd}`);
         } catch (e) {
@@ -355,7 +355,7 @@ async function handleContextMenuCommand(interaction, bot) {
             error,
             context: `context_menu_${interaction.commandName}`,
             userId: interaction.user.id,
-            userTag: interaction.user.tag,
+            userTag: interaction.user.username,
             guildId: interaction.guild?.id,
             channelId: interaction.channel?.id
         });
@@ -382,7 +382,7 @@ async function handleContextMenuCommand(interaction, bot) {
         await bot.logger.logCommand({
             commandName: interaction.commandName,
             userId: interaction.user.id,
-            userTag: interaction.user.tag,
+            userTag: interaction.user.username,
             guildId: interaction.guild?.id,
             channelId: interaction.channel?.id,
             type: 'context_menu',
@@ -468,11 +468,11 @@ async function handleButtonInteraction(interaction, bot) {
                         await welcomeChannel.send({ content: msg });
                     }
                     await interaction.message.edit({ components: [] });
-                    await interaction.editReply({ content: `Approved ${member.user.tag}.` });
+                    await interaction.editReply({ content: `Approved ${member.user.username}.` });
                 } else {
-                    await member.kick(`Verification denied by ${interaction.user.tag}`);
+                    await member.kick(`Verification denied by ${interaction.user.username}`);
                     await interaction.message.edit({ components: [] });
-                    await interaction.editReply({ content: `Denied and kicked ${member.user.tag}.` });
+                    await interaction.editReply({ content: `Denied and kicked ${member.user.username}.` });
                 }
                 return true;
             }
@@ -580,7 +580,7 @@ async function handleButtonInteraction(interaction, bot) {
                 error,
                 context: `button_${interaction.customId}`,
                 userId: interaction.user.id,
-                userTag: interaction.user.tag,
+                userTag: interaction.user.username,
                 guildId: interaction.guild?.id,
                 channelId: interaction.channel?.id
             });
@@ -592,7 +592,7 @@ async function handleButtonInteraction(interaction, bot) {
     await bot.logger.logButton({
         customId: interaction.customId,
         userId: interaction.user.id,
-        userTag: interaction.user.tag,
+        userTag: interaction.user.username,
         guildId: interaction.guild?.id,
         channelId: interaction.channel?.id,
         messageId: interaction.message?.id,
@@ -660,7 +660,7 @@ async function handleRiskActionButton(interaction, bot) {
                 `risk_${actionType}`,
                 targetId,
                 interaction.user.id,
-                JSON.stringify({ success, triggeredBy: interaction.user.tag, ...details })
+                JSON.stringify({ success, triggeredBy: interaction.user.username, ...details })
             ]);
         } catch (e) {
             bot.logger?.warn(`[RiskAction] Failed to log action: ${e.message}`);
@@ -681,19 +681,19 @@ async function handleRiskActionButton(interaction, bot) {
         await logAction('mark_safe', true, { newTrustScore: 80 });
         await interaction.message.edit({ components: [] });
         await interaction.editReply({ content: `✅ Marked user as safe (trust=80, manual_override=true). Future alerts suppressed until trust drops.` });
-        bot.logger?.info(`[RiskAction] ${interaction.user.tag} marked ${targetId} as safe in ${interaction.guild.id}`);
+        bot.logger?.info(`[RiskAction] ${interaction.user.username} marked ${targetId} as safe in ${interaction.guild.id}`);
         
     } else if (action === 'kick' && member) {
         try {
-            await member.kick(`Risk action by ${interaction.user.tag}`);
+            await member.kick(`Risk action by ${interaction.user.username}`);
             await logAction('kick', true);
             await interaction.message.edit({ components: [] });
-            await interaction.editReply({ content: `✅ Kicked ${member.user.tag}.` });
-            bot.logger?.info(`[RiskAction] ${interaction.user.tag} kicked ${member.user.tag} (${targetId}) in ${interaction.guild.id}`);
+            await interaction.editReply({ content: `✅ Kicked ${member.user.username}.` });
+            bot.logger?.info(`[RiskAction] ${interaction.user.username} kicked ${member.user.username} (${targetId}) in ${interaction.guild.id}`);
             
             // Broadcast to dashboard console
             if (typeof bot.broadcastConsole === 'function') {
-                bot.broadcastConsole(interaction.guild.id, `[KICK] ${member.user.tag} (${targetId}) by ${interaction.user.tag} (risk action)`);
+                bot.broadcastConsole(interaction.guild.id, `[KICK] ${member.user.username} (${targetId}) by ${interaction.user.username} (risk action)`);
             }
             // Log to forensics audit trail
             if (bot.forensicsManager) {
@@ -701,8 +701,8 @@ async function handleRiskActionButton(interaction, bot) {
                     guildId: interaction.guild.id,
                     eventType: 'kick',
                     eventCategory: 'moderation',
-                    executor: { id: interaction.user.id, tag: interaction.user.tag },
-                    target: { id: targetId, name: member.user.tag, type: 'user' },
+                    executor: { id: interaction.user.id, tag: interaction.user.username },
+                    target: { id: targetId, name: member.user.username, type: 'user' },
                     reason: 'Risk action kick',
                     canReplay: true
                 });
@@ -714,15 +714,15 @@ async function handleRiskActionButton(interaction, bot) {
         
     } else if (action === 'ban' && member) {
         try {
-            await member.ban({ reason: `Risk action by ${interaction.user.tag}`, deleteMessageSeconds: 0 });
+            await member.ban({ reason: `Risk action by ${interaction.user.username}`, deleteMessageSeconds: 0 });
             await logAction('ban', true);
             await interaction.message.edit({ components: [] });
-            await interaction.editReply({ content: `✅ Banned ${member.user.tag}.` });
-            bot.logger?.info(`[RiskAction] ${interaction.user.tag} banned ${member.user.tag} (${targetId}) in ${interaction.guild.id}`);
+            await interaction.editReply({ content: `✅ Banned ${member.user.username}.` });
+            bot.logger?.info(`[RiskAction] ${interaction.user.username} banned ${member.user.username} (${targetId}) in ${interaction.guild.id}`);
             
             // Broadcast to dashboard console
             if (typeof bot.broadcastConsole === 'function') {
-                bot.broadcastConsole(interaction.guild.id, `[BAN] ${member.user.tag} (${targetId}) by ${interaction.user.tag} (risk action)`);
+                bot.broadcastConsole(interaction.guild.id, `[BAN] ${member.user.username} (${targetId}) by ${interaction.user.username} (risk action)`);
             }
             // Log to forensics audit trail
             if (bot.forensicsManager) {
@@ -730,8 +730,8 @@ async function handleRiskActionButton(interaction, bot) {
                     guildId: interaction.guild.id,
                     eventType: 'ban',
                     eventCategory: 'moderation',
-                    executor: { id: interaction.user.id, tag: interaction.user.tag },
-                    target: { id: targetId, name: member.user.tag, type: 'user' },
+                    executor: { id: interaction.user.id, tag: interaction.user.username },
+                    target: { id: targetId, name: member.user.username, type: 'user' },
                     reason: 'Risk action ban',
                     canReplay: true
                 });
@@ -1414,7 +1414,7 @@ async function handleAppealButton(interaction, bot) {
         
         if (result.success) {
             await interaction.update({ 
-                content: `✅ Appeal #${appealId} approved by ${interaction.user.tag}`,
+                content: `✅ Appeal #${appealId} approved by ${interaction.user.username}`,
                 components: []
             });
         } else {
@@ -1435,7 +1435,7 @@ async function handleAppealButton(interaction, bot) {
         
         if (result.success) {
             await interaction.update({ 
-                content: `❌ Appeal #${appealId} denied by ${interaction.user.tag}`,
+                content: `❌ Appeal #${appealId} denied by ${interaction.user.username}`,
                 components: []
             });
         } else {
@@ -1499,7 +1499,7 @@ async function handleModMailButton(interaction, bot) {
         const claimed = await bot.modmail.claimTicket(ticketId, interaction.user.id);
         
         if (claimed) {
-            await interaction.reply(`✅ Ticket claimed by ${interaction.user.tag}`);
+            await interaction.reply(`✅ Ticket claimed by ${interaction.user.username}`);
         } else {
             await interaction.reply({ content: '❌ Could not claim ticket.', ephemeral: true });
         }
@@ -1534,7 +1534,7 @@ async function handleQuarantineButton(interaction, bot) {
 
         if (result.success) {
             await interaction.update({
-                content: `🔓 User <@${userId}> released by ${interaction.user.tag}`,
+                content: `🔓 User <@${userId}> released by ${interaction.user.username}`,
                 components: []
             });
         } else {
@@ -1558,7 +1558,7 @@ async function handleQuarantineButton(interaction, bot) {
             }
             
             await interaction.update({
-                content: `👢 User <@${userId}> kicked by ${interaction.user.tag}`,
+                content: `👢 User <@${userId}> kicked by ${interaction.user.username}`,
                 components: []
             });
         } catch (error) {
@@ -1579,7 +1579,7 @@ async function handleQuarantineButton(interaction, bot) {
             await interaction.guild.members.ban(userId, { reason: 'Banned from quarantine review', deleteMessageDays: 1 });
             
             await interaction.update({
-                content: `🔨 User <@${userId}> banned by ${interaction.user.tag}`,
+                content: `🔨 User <@${userId}> banned by ${interaction.user.username}`,
                 components: []
             });
         } catch (error) {

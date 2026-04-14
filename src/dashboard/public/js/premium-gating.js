@@ -384,11 +384,10 @@ function applyPremiumToSettingsCards() {
  * Handle click on locked feature
  */
 function handleLockedFeatureClick(event) {
-    if (this.dataset.premiumLocked === 'true') {
-        event.preventDefault();
-        event.stopPropagation();
-        showUpgradeModal();
-    }
+    event.preventDefault();
+    event.stopPropagation();
+    showUpgradeModal();
+    return false;
 }
 
 /**
@@ -551,15 +550,7 @@ async function startCheckout() {
  * Add premium badge to user info
  */
 function updatePremiumBadge() {
-    const userRoleElement = document.getElementById('userRole');
-    if (userRoleElement && userPremiumStatus.isPremium) {
-        if (!userRoleElement.querySelector('.premium-badge')) {
-            const badge = document.createElement('span');
-            badge.className = 'premium-badge';
-            badge.innerHTML = '<i class="fas fa-crown"></i> Premium';
-            userRoleElement.appendChild(badge);
-        }
-    }
+    // Badge display removed from bot dashboard
 }
 
 // Auto-initialize when DOM is ready

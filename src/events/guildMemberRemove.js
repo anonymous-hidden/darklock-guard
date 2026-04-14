@@ -11,7 +11,7 @@ module.exports = {
             const config = await bot.database.getGuildConfig(guildId);
             
             // Log the leave
-            bot.logger.info(`👋 Member left: ${member.user.tag} (${userId}) from ${member.guild.name}`);
+            bot.logger.info(`👋 Member left: ${member.user.username} (${userId}) from ${member.guild.name}`);
             
             // Update analytics
             const now = new Date();
@@ -37,7 +37,7 @@ module.exports = {
             }
 
         } catch (error) {
-            bot.logger.error(`Error processing member leave for ${member.user.tag}:`, error);
+            bot.logger.error(`Error processing member leave for ${member.user.username}:`, error);
             
             // Attempt to reconnect database if connection lost
             if (error.message.includes('database') || error.message.includes('SQLITE')) {
@@ -90,7 +90,7 @@ async function sendGoodbyeMessage(member, config, bot) {
             }
         }
 
-        bot.logger?.info(`[GOODBYE] Sent goodbye message for ${member.user.tag}`);
+        bot.logger?.info(`[GOODBYE] Sent goodbye message for ${member.user.username}`);
     } catch (e) {
         bot.logger?.warn('[GOODBYE] Failed to send goodbye message:', e.message);
     }

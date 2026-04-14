@@ -282,7 +282,7 @@ class StandardEmbedBuilder {
             .setTitle('🎫 New Support Ticket')
             .setDescription(`Ticket **#${ticketNumber}** has been created`)
             .addFields(
-                { name: '👤 User', value: `${user.tag} (${user.id})`, inline: true },
+                { name: '👤 User', value: `${user.username} (${user.id})`, inline: true },
                 { name: '📋 Subject', value: subject, inline: true }
             )
             .setTimestamp()

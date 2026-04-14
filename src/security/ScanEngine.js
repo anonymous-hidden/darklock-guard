@@ -231,7 +231,7 @@ class ScanEngine {
             channelId:   msg.channel.id,
             channelName: msg.channel.name,
             userId:      msg.author.id,
-            username:    msg.author.tag,
+            username:    msg.author.username,
             content:     msg.content?.substring(0, 300) ?? '',
             timestamp:   msg.createdAt.toISOString(),
             ...extra,

@@ -6,304 +6,192 @@
     <title>Download Darklock Guard</title>
     <link rel="stylesheet" href="/platform/static/css/main.css">
     <style>
-        * { box-sizing: border-box; }
-        body {
-            background: radial-gradient(circle at 20% 20%, rgba(124,77,255,0.08), transparent 30%),
-                        radial-gradient(circle at 80% 10%, rgba(0,212,255,0.06), transparent 25%),
-                        #0b0f1a;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-            color: #f8fafc;
-            padding: 32px 16px;
-            margin: 0;
+        *{box-sizing:border-box}
+        body{
+            background:radial-gradient(circle at 20% 20%,rgba(124,77,255,.08),transparent 30%),
+                        radial-gradient(circle at 80% 10%,rgba(0,212,255,.06),transparent 25%),#0b0f1a;
+            min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+            font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:#f8fafc;padding:32px 16px;margin:0;
         }
-        .download-container {
-            width: min(820px, 100%);
-            padding: 40px 36px;
-            background: linear-gradient(180deg, rgba(17,24,39,0.95) 0%, rgba(10,14,26,0.98) 100%);
-            border: 1px solid rgba(124,77,255,0.35);
-            border-radius: 18px;
-            box-shadow: 0 28px 90px rgba(0,0,0,0.6);
-            text-align: center;
-        }
-        .logo { margin-bottom: 20px; }
-        .logo img {
-            width: 80px; height: 80px;
-            filter: drop-shadow(0 0 20px rgba(124,77,255,0.45));
-        }
-        h1 {
-            font-size: 34px; margin: 0 0 8px;
-            background: linear-gradient(135deg, #7c4dff, #00d4ff);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .version-row {
-            display: flex; align-items: center; justify-content: center;
-            gap: 10px; margin-bottom: 20px;
-        }
-        .version-badge {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 4px 12px;
-            background: rgba(124,77,255,0.15);
-            border: 1px solid rgba(124,77,255,0.35);
-            border-radius: 20px;
-            font-size: 13px; font-weight: 600; color: #a78bfa;
-        }
-        .new-badge {
-            padding: 3px 10px;
-            background: rgba(34,197,94,0.15);
-            border: 1px solid rgba(34,197,94,0.35);
-            border-radius: 20px;
-            font-size: 11px; font-weight: 700; color: #4ade80;
-            letter-spacing: 0.5px;
-        }
-        .description {
-            color: #a8b2d1; line-height: 1.7;
-            margin-bottom: 24px; font-size: 15px;
-        }
-        .features-grid {
-            display: grid; grid-template-columns: 1fr 1fr;
-            gap: 10px; margin: 20px 0 28px; text-align: left;
-        }
-        .feature-item {
-            display: flex; align-items: flex-start; gap: 10px;
-            padding: 12px 14px;
-            background: rgba(124,77,255,0.06);
-            border: 1px solid rgba(124,77,255,0.15);
-            border-radius: 10px;
-        }
-        .feature-icon {
-            flex-shrink: 0; width: 18px; height: 18px;
-            color: #4ade80; margin-top: 1px;
-        }
-        .feature-text { font-size: 13px; color: #e2e8f0; line-height: 1.4; }
-        .feature-text strong { color: #fff; display: block; font-size: 13px; }
-        .section-title {
-            font-size: 13px; font-weight: 700; letter-spacing: 1px;
-            color: #6b7280; text-transform: uppercase; margin: 28px 0 16px;
-        }
-        .download-options {
-            display: grid; grid-template-columns: 1fr 1fr;
-            gap: 16px; margin-top: 8px;
-        }
-        .download-card {
-            background: rgba(255,255,255,0.025);
-            border: 1px solid rgba(124,77,255,0.25);
-            border-radius: 14px; padding: 24px;
-            text-align: center;
-            transition: all 0.25s ease;
-            position: relative;
-        }
-        .download-card:hover {
-            border-color: rgba(124,77,255,0.55);
-            transform: translateY(-3px);
-            box-shadow: 0 10px 28px rgba(124,77,255,0.18);
-        }
-        .download-card.recommended {
-            border-color: rgba(124,77,255,0.55);
-            background: rgba(124,77,255,0.06);
-        }
-        .recommended-badge {
-            position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
-            padding: 3px 14px;
-            background: linear-gradient(135deg, #7c4dff, #00d4ff);
-            border-radius: 20px; font-size: 11px; font-weight: 700;
-            color: #fff; letter-spacing: 0.5px; white-space: nowrap;
-        }
-        .platform-icon {
-            width: 44px; height: 44px;
-            margin: 0 auto 14px; color: #7c4dff;
-        }
-        .platform-name {
-            font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 4px;
-        }
-        .platform-desc {
-            font-size: 12px; color: #64748b; margin-bottom: 18px;
-        }
-        .installer-options {
-            display: flex; flex-direction: column; gap: 9px;
-        }
-        .installer-btn {
-            display: block; padding: 11px 16px;
-            background: linear-gradient(135deg, #7c4dff, #00d4ff);
-            border: none; border-radius: 9px;
-            color: #fff; font-size: 14px; font-weight: 600;
-            text-decoration: none; cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        .installer-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(124,77,255,0.45);
-            filter: brightness(1.08);
-        }
-        .installer-btn.secondary {
-            background: rgba(124,77,255,0.12);
-            border: 1px solid rgba(124,77,255,0.35);
-        }
-        .installer-btn.secondary:hover {
-            background: rgba(124,77,255,0.22);
-        }
-        .installer-btn.coming-soon {
-            background: rgba(255,152,0,0.06);
-            border: 1px solid rgba(255,152,0,0.25);
-            color: #92400e; opacity: 0.6; pointer-events: none;
-        }
-        .installer-meta {
-            font-size: 11px; opacity: 0.7; margin-top: 4px; font-weight: 400;
-        }
-        .install-snippet {
-            margin-top: 14px; padding: 12px;
-            background: rgba(0,0,0,0.35);
-            border: 1px solid rgba(124,77,255,0.12);
-            border-radius: 8px; text-align: left;
-        }
-        .install-snippet-title {
-            font-size: 11px; font-weight: 700; color: #7c4dff;
-            margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
-        }
-        .install-snippet code {
-            display: block; font-size: 11px; color: #94a3b8;
-            line-height: 1.7; font-family: 'JetBrains Mono', 'Fira Code', monospace;
-            white-space: pre;
-        }
-        .sysreq {
-            margin-top: 28px; padding: 18px 20px;
-            background: rgba(10,14,26,0.7);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 10px; text-align: left;
-            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
-        }
-        .sysreq-item { font-size: 12px; color: #64748b; }
-        .sysreq-item strong { color: #a78bfa; display: block; font-size: 11px; margin-bottom: 3px; }
-        .links-row {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-top: 24px; padding-top: 20px;
-            border-top: 1px solid rgba(124,77,255,0.15);
-        }
-        .back-link {
-            color: #7c4dff; text-decoration: none; font-size: 14px;
-            display: flex; align-items: center; gap: 6px;
-        }
-        .back-link:hover { text-decoration: underline; }
-        .changelog-link {
-            color: #64748b; text-decoration: none; font-size: 13px;
-        }
-        .changelog-link:hover { color: #a78bfa; }
-        @media (max-width: 600px) {
-            .download-options { grid-template-columns: 1fr; }
-            .features-grid { grid-template-columns: 1fr; }
-            .sysreq { grid-template-columns: 1fr; }
+        .dl-container{width:min(900px,100%);padding:44px 40px;
+            background:linear-gradient(180deg,rgba(17,24,39,.95),rgba(10,14,26,.98));
+            border:1px solid rgba(124,77,255,.3);border-radius:20px;
+            box-shadow:0 28px 90px rgba(0,0,0,.55);text-align:center;}
+        .app-icon{width:88px;height:88px;border-radius:20px;margin-bottom:18px;
+            filter:drop-shadow(0 0 24px rgba(124,77,255,.4));object-fit:cover;}
+        h1{font-size:36px;margin:0 0 10px;
+            background:linear-gradient(135deg,#7c4dff,#00d4ff);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+        .badges{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+        .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 14px;border-radius:20px;font-size:13px;font-weight:600}
+        .badge-ver{background:rgba(124,77,255,.12);border:1px solid rgba(124,77,255,.3);color:#a78bfa}
+        .badge-date{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#4ade80;font-size:11px;font-weight:700;letter-spacing:.4px}
+        .desc{color:#94a3b8;line-height:1.7;margin-bottom:24px;font-size:15px;max-width:680px;margin-left:auto;margin-right:auto}
+        .features{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 32px;text-align:left}
+        .feat{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;
+            background:rgba(124,77,255,.04);border:1px solid rgba(124,77,255,.12);border-radius:10px}
+        .feat-check{flex-shrink:0;width:18px;height:18px;color:#4ade80;margin-top:1px}
+        .feat-text{font-size:13px;color:#e2e8f0;line-height:1.4}
+        .feat-text strong{color:#fff;display:block;font-size:13px}
+        .section-label{font-size:12px;font-weight:700;letter-spacing:1.2px;color:#4b5563;text-transform:uppercase;margin:0 0 18px}
+        .platforms{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:32px}
+        .plat-card{background:rgba(255,255,255,.02);border:1px solid rgba(124,77,255,.2);border-radius:16px;
+            padding:28px 22px 24px;text-align:center;transition:all .25s;position:relative}
+        .plat-card:hover{border-color:rgba(124,77,255,.5);transform:translateY(-3px);box-shadow:0 12px 32px rgba(124,77,255,.15)}
+        .plat-card.active{border-color:rgba(124,77,255,.5);background:rgba(124,77,255,.04)}
+        .plat-card.active::before{content:'YOUR PLATFORM';position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+            padding:3px 14px;background:linear-gradient(135deg,#7c4dff,#00d4ff);border-radius:20px;
+            font-size:10px;font-weight:700;color:#fff;letter-spacing:.5px;white-space:nowrap}
+        .plat-icon{width:48px;height:48px;margin:0 auto 14px;color:#7c4dff}
+        .plat-name{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px}
+        .plat-desc{font-size:12px;color:#64748b;margin-bottom:20px}
+        .dl-btns{display:flex;flex-direction:column;gap:9px}
+        .dl-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;
+            border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;
+            transition:all .2s;cursor:pointer;border:none;color:#fff}
+        .dl-btn svg{width:16px;height:16px;flex-shrink:0}
+        .dl-btn.primary{background:linear-gradient(135deg,#7c4dff,#00d4ff);box-shadow:0 4px 18px rgba(124,77,255,.25)}
+        .dl-btn.primary:hover{box-shadow:0 6px 24px rgba(124,77,255,.4);filter:brightness(1.08);transform:translateY(-1px)}
+        .dl-btn.secondary{background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.3);color:#a78bfa}
+        .dl-btn.secondary:hover{background:rgba(124,77,255,.18)}
+        .dl-btn.ios-btn{background:linear-gradient(135deg,#1c1c1e,#2c2c2e);border:1px solid rgba(255,255,255,.12)}
+        .dl-btn.ios-btn:hover{background:linear-gradient(135deg,#2c2c2e,#3a3a3c);box-shadow:0 6px 16px rgba(0,0,0,.4)}
+        .dl-btn.disabled{background:rgba(100,116,139,.06);border:1px solid rgba(100,116,139,.15);color:#475569;pointer-events:none;cursor:default}
+        .dl-meta{font-size:11px;opacity:.65;margin-top:3px;font-weight:400}
+        .snippet{margin-top:14px;padding:12px;background:rgba(0,0,0,.3);border:1px solid rgba(124,77,255,.1);border-radius:8px;text-align:left}
+        .snippet-title{font-size:10px;font-weight:700;color:#7c4dff;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+        .snippet code{display:block;font-size:11px;color:#94a3b8;line-height:1.7;font-family:'JetBrains Mono','Fira Code',monospace;white-space:pre}
+        .sysreq{padding:18px 20px;background:rgba(10,14,26,.6);border:1px solid rgba(255,255,255,.04);
+            border-radius:12px;text-align:left;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:28px}
+        .sysreq-item{font-size:12px;color:#64748b;line-height:1.6}
+        .sysreq-item strong{color:#a78bfa;display:block;font-size:11px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+        .footer-row{display:flex;justify-content:space-between;align-items:center;padding-top:20px;border-top:1px solid rgba(124,77,255,.12)}
+        .back-link{color:#7c4dff;text-decoration:none;font-size:14px;display:flex;align-items:center;gap:6px}
+        .back-link:hover{text-decoration:underline}
+        .hist-link{color:#64748b;text-decoration:none;font-size:13px}
+        .hist-link:hover{color:#a78bfa}
+        @media(max-width:700px){
+            .platforms{grid-template-columns:1fr}.features{grid-template-columns:1fr}
+            .sysreq{grid-template-columns:1fr}.dl-container{padding:28px 20px}
         }
     </style>
 </head>
 <body>
-    <div class="download-container">
+    <div class="dl-container">
 
-        <div class="logo">
-            <img src="/platform/static/icons/darklock-guard.png" alt="Darklock Guard" loading="lazy" onerror="this.style.display='none'" />
-        </div>
+        <img class="app-icon" src="/platform/static/icons/darklock-guard.png" alt="Darklock Guard"
+             onerror="this.style.display='none'">
 
         <h1>Darklock Guard</h1>
 
-        <div class="version-row">
-            <span class="version-badge">
+        <div class="badges">
+            <span class="badge badge-ver">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 v2.0.0-beta.3
             </span>
-            <span class="new-badge">UPDATED FEB 21 2026</span>
+            <span class="badge badge-date">UPDATED FEB 21 2026</span>
         </div>
 
-        <p class="description">
+        <p class="desc">
             Tamper-proof file integrity protection with cryptographic verification.
             The Guard Service (Rust daemon) and Desktop App (Tauri + React) work together
             to protect your files with Ed25519-signed baselines and real-time BLAKE3 scanning.
         </p>
 
-        <div class="features-grid">
-            <div class="feature-item">
-                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feature-text"><strong>BLAKE3 File Integrity</strong>Ed25519-signed baselines, real-time scanning</div>
+        <div class="features">
+            <div class="feat">
+                <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <div class="feat-text"><strong>BLAKE3 File Integrity</strong>Ed25519-signed baselines, real-time scanning</div>
             </div>
-            <div class="feature-item">
-                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feature-text"><strong>Encrypted Vault</strong>DLOCK02 format, Argon2id KDF, AES-256-GCM</div>
+            <div class="feat">
+                <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <div class="feat-text"><strong>Encrypted Vault</strong>DLOCK02 format, Argon2id KDF, AES-256-GCM</div>
             </div>
-            <div class="feature-item">
-                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feature-text"><strong>Hash-Chained Audit Log</strong>Tamper-evident log with chain verification</div>
+            <div class="feat">
+                <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <div class="feat-text"><strong>Hash-Chained Audit Log</strong>Tamper-evident log with chain verification</div>
             </div>
-            <div class="feature-item">
-                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feature-text"><strong>Strict Security Mode</strong>Password-locked mode with IPC auth</div>
+            <div class="feat">
+                <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <div class="feat-text"><strong>Strict Security Mode</strong>Password-locked mode with IPC auth</div>
             </div>
-            <div class="feature-item">
-                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feature-text"><strong>Real-time Monitoring</strong>Background daemon, file watch & alerts</div>
+            <div class="feat">
+                <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <div class="feat-text"><strong>Real-time Monitoring</strong>Background daemon, file watch &amp; alerts</div>
             </div>
-            <div class="feature-item">
-                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feature-text"><strong>Web Dashboard Integration</strong>Multi-device management & remote monitor</div>
+            <div class="feat">
+                <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <div class="feat-text"><strong>Web Dashboard Integration</strong>Multi-device management &amp; remote monitor</div>
             </div>
         </div>
 
-        <div class="section-title">Choose Your Platform</div>
+        <div class="section-label">Choose Your Platform</div>
 
-        <div class="download-options">
+        <div class="platforms">
 
             <!-- Linux -->
-            <div class="download-card recommended">
-                <div class="recommended-badge">⭐ Recommended</div>
-                <svg class="platform-icon" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.84-.41 1.738-.41 2.655 0 .87.527 2.23 1.065 2.877.521.623 1.303.952 2.145.952.84 0 1.608-.329 2.131-.952.539-.647 1.064-2.006 1.064-2.877 0-.917-.132-1.815-.41-2.655-.589-1.771-1.831-3.47-2.715-4.521-.75-1.067-.975-1.928-1.05-3.02-.066-1.491 1.055-5.965-3.17-6.298-.165-.013-.325-.021-.48-.021zm-2.658 16.156c-1.108 0-1.95.701-1.95 1.699 0 .998.842 1.7 1.95 1.7 1.109 0 1.952-.702 1.952-1.7 0-.998-.843-1.699-1.952-1.699zm5.171 0c-1.108 0-1.95.701-1.95 1.699 0 .998.842 1.7 1.95 1.7 1.109 0 1.952-.702 1.952-1.7 0-.998-.843-1.699-1.952-1.699z"/>
-                </svg>
-                <div class="platform-name">Linux</div>
-                <div class="platform-desc">Ubuntu 20.04+ / Debian 11+ · x86_64</div>
-                <div class="installer-options">
-                    <a href="/platform/api/download/darklock-guard-installer?format=deb" class="installer-btn">
-                        Download .deb Package
-                        <div class="installer-meta">Recommended · installs system-wide</div>
+            <div class="plat-card" data-platform="linux">
+                <svg class="plat-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.84-.41 1.738-.41 2.655 0 .87.527 2.23 1.065 2.877.521.623 1.303.952 2.145.952.84 0 1.608-.329 2.131-.952.539-.647 1.064-2.006 1.064-2.877 0-.917-.132-1.815-.41-2.655-.589-1.771-1.831-3.47-2.715-4.521-.75-1.067-.975-1.928-1.05-3.02-.066-1.491 1.055-5.965-3.17-6.298-.165-.013-.325-.021-.48-.021z"/></svg>
+                <div class="plat-name">Linux</div>
+                <div class="plat-desc">Ubuntu 20.04+ / Debian 11+ · x86_64</div>
+                <div class="dl-btns">
+                    <a href="/platform/api/download/darklock-guard-installer?format=deb" class="dl-btn primary">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                        Download .deb
+                        <div class="dl-meta">Recommended · system-wide install</div>
                     </a>
-                    <a href="/platform/api/download/darklock-guard-installer?format=appimage" class="installer-btn secondary">
+                    <a href="/platform/api/download/darklock-guard-installer?format=appimage" class="dl-btn secondary">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                         Download AppImage
-                        <div class="installer-meta">Portable · no installation needed</div>
-                    </a>
-                    <a href="/platform/api/download/darklock-guard-installer?format=tar" class="installer-btn secondary">
-                        Download .tar.gz
-                        <div class="installer-meta">Manual extract · no root required</div>
+                        <div class="dl-meta">Portable · no installation needed</div>
                     </a>
                 </div>
-                <div class="install-snippet">
-                    <div class="install-snippet-title">Quick Install (.deb)</div>
-                    <code>sudo apt install ./darklock-guard_2.0.0-beta.3_amd64.deb
-darklock-guard</code>
+                <div class="snippet">
+                    <div class="snippet-title">Quick Install</div>
+                    <code>sudo apt install ./darklock-guard_2.0.0-beta.3_amd64.deb</code>
                 </div>
             </div>
 
             <!-- Windows -->
-            <div class="download-card">
-                <svg class="platform-icon" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
-                </svg>
-                <div class="platform-name">Windows</div>
-                <div class="platform-desc">Windows 10 / 11 · x86_64</div>
-                <div class="installer-options">
-                    <a href="/platform/api/download/darklock-guard-installer?format=exe" class="installer-btn secondary">
-                        Setup Installer (.exe)
-                        <div class="installer-meta">NSIS installer · recommended</div>
+            <div class="plat-card" data-platform="windows">
+                <svg class="plat-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                <div class="plat-name">Windows</div>
+                <div class="plat-desc">Windows 10 / 11 · x86_64</div>
+                <div class="dl-btns">
+                    <a href="/platform/api/download/darklock-guard-installer?format=exe" class="dl-btn primary">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                        Download .exe Installer
+                        <div class="dl-meta">NSIS installer · recommended</div>
                     </a>
-                    <a href="/platform/api/download/darklock-guard-installer?format=msi" class="installer-btn secondary">
-                        MSI Package (.msi)
-                        <div class="installer-meta">Windows Installer · for enterprise</div>
+                    <a href="/platform/api/download/darklock-guard-installer?format=msi" class="dl-btn secondary">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                        Download .msi Package
+                        <div class="dl-meta">Windows Installer · enterprise</div>
                     </a>
                 </div>
-                <div class="install-snippet">
-                    <div class="install-snippet-title">After install</div>
-                    <code>WebView2 Runtime is auto-installed
-if not already present on your system.</code>
+                <div class="snippet">
+                    <div class="snippet-title">Note</div>
+                    <code>WebView2 Runtime auto-installed if needed.</code>
+                </div>
+            </div>
+
+            <!-- iOS -->
+            <div class="plat-card" data-platform="ios">
+                <svg class="plat-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                <div class="plat-name">iOS</div>
+                <div class="plat-desc">iPhone · iPad · Safari</div>
+                <div class="dl-btns">
+                    <a href="/platform/monitor/darklock-guard" class="dl-btn ios-btn" target="_blank" rel="noopener">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                        Open Web Monitor
+                        <div class="dl-meta">Safari · add to Home Screen</div>
+                    </a>
+                </div>
+                <div class="snippet">
+                    <div class="snippet-title">Install to Home Screen</div>
+                    <code>1. Open link above in Safari
+2. Tap Share button (□↑)
+3. Tap "Add to Home Screen"</code>
                 </div>
             </div>
 
@@ -323,21 +211,39 @@ if not already present on your system.</code>
                 ~100 MB disk
             </div>
             <div class="sysreq-item">
-                <strong>Included</strong>
-                Guard Service daemon<br>
-                Desktop management UI<br>
-                First-run setup wizard
+                <strong>iOS / Web</strong>
+                iOS 16+ · Safari 16+<br>
+                iPhone 8+ · All iPads<br>
+                Web-based · no install needed
             </div>
         </div>
 
-        <div class="links-row">
+        <div class="footer-row">
             <a href="/platform" class="back-link">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
                 Back to Platform
             </a>
-            <a href="/platform/updates" class="changelog-link">View release history →</a>
+            <a href="/platform/changelog" class="hist-link">View release history →</a>
         </div>
 
     </div>
+
+    <script>
+    (function(){
+        var ua=navigator.userAgent.toLowerCase(),p=null;
+        if(/iphone|ipad|ipod/.test(ua))p='ios';
+        else if(/win/.test(ua))p='windows';
+        else if(/linux/.test(ua))p='linux';
+        if(!p)return;
+        var cards=document.querySelectorAll('.plat-card[data-platform]');
+        for(var i=0;i<cards.length;i++){
+            if(cards[i].getAttribute('data-platform')===p){
+                cards[i].classList.add('active');
+                cards[i].parentNode.insertBefore(cards[i],cards[i].parentNode.firstChild);
+                break;
+            }
+        }
+    })();
+    </script>
 </body>
 </html>

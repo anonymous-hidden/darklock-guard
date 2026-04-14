@@ -538,7 +538,7 @@ class StrikeSystem {
             .setTitle('⚠️ Strike Added')
             .setColor(0xFFA500)
             .addFields(
-                { name: 'User', value: user ? `${user.tag}\n${user.id}` : userId, inline: true },
+                { name: 'User', value: user ? `${user.username}\n${user.id}` : userId, inline: true },
                 { name: 'Moderator', value: `<@${moderatorId}>`, inline: true },
                 { name: 'Points', value: `+${points} (Total: ${totalPoints})`, inline: true },
                 { name: 'Reason', value: reason || 'No reason provided', inline: false }

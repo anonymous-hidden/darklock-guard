@@ -71,7 +71,7 @@ module.exports = {
 
             // Broadcast to dashboard console
             if (typeof bot?.broadcastConsole === 'function') {
-                bot.broadcastConsole(interaction.guild.id, `[TIMEOUT] ${target.tag} (${target.id}) by ${interaction.user.tag} for ${duration}`);
+                bot.broadcastConsole(interaction.guild.id, `[TIMEOUT] ${target.username} (${target.id}) by ${interaction.user.username} for ${duration}`);
             }
 
             // Log to bot_logs for dashboard Logs & Audit Trail page
@@ -80,9 +80,9 @@ module.exports = {
                     eventType: 'timeout',
                     guildId: interaction.guild.id,
                     moderatorId: interaction.user.id,
-                    moderatorTag: interaction.user.tag,
+                    moderatorTag: interaction.user.username,
                     targetId: target.id,
-                    targetTag: target.tag,
+                    targetTag: target.username,
                     reason: reason,
                     details: { duration: duration, durationMs: timeoutDuration }
                 });
@@ -94,8 +94,8 @@ module.exports = {
                     guildId: interaction.guild.id,
                     eventType: 'timeout',
                     eventCategory: 'moderation',
-                    executor: { id: interaction.user.id, tag: interaction.user.tag },
-                    target: { id: target.id, name: target.tag, type: 'user' },
+                    executor: { id: interaction.user.id, tag: interaction.user.username },
+                    target: { id: target.id, name: target.username, type: 'user' },
                     reason: reason,
                     changes: { duration: duration },
                     canReplay: true
@@ -124,9 +124,9 @@ module.exports = {
                     actionType: 'timeout',
                     actionCategory: 'moderation',
                     targetUserId: target.id,
-                    targetUsername: target.tag,
+                    targetUsername: target.username,
                     moderatorId: interaction.user.id,
-                    moderatorUsername: interaction.user.tag,
+                    moderatorUsername: interaction.user.username,
                     reason: reason,
                     duration: duration,
                     details: {
@@ -146,8 +146,8 @@ module.exports = {
                             id: actionId,
                             type: 'timeout',
                             category: 'moderation',
-                            target: { id: target.id, tag: target.tag, avatar: target.displayAvatarURL() },
-                            moderator: { id: interaction.user.id, tag: interaction.user.tag },
+                            target: { id: target.id, tag: target.username, avatar: target.displayAvatarURL() },
+                            moderator: { id: interaction.user.id, tag: interaction.user.username },
                             reason: reason,
                             duration: duration,
                             canUndo: true,
@@ -161,8 +161,8 @@ module.exports = {
                     await bot.eventEmitter.emitModerationAction(
                         interaction.guild.id,
                         'timeout',
-                        { id: target.id, tag: target.tag },
-                        { id: interaction.user.id, tag: interaction.user.tag },
+                        { id: target.id, tag: target.username },
+                        { id: interaction.user.id, tag: interaction.user.username },
                         reason,
                         true
                     );
@@ -172,11 +172,11 @@ module.exports = {
             // Success embed
             const successEmbed = new EmbedBuilder()
                 .setTitle('✅ Member Timed Out')
-                .setDescription(`**${target.tag}** has been timed out.`)
+                .setDescription(`**${target.username}** has been timed out.`)
                 .addFields(
                     { name: 'Duration', value: duration, inline: true },
                     { name: 'Reason', value: reason, inline: false },
-                    { name: 'Moderator', value: interaction.user.tag, inline: true }
+                    { name: 'Moderator', value: interaction.user.username, inline: true }
                 )
                 .setColor('#ffa502')
                 .setTimestamp();
@@ -192,8 +192,8 @@ module.exports = {
                 const logEmbed = new EmbedBuilder()
                     .setTitle('🔇 Member Timed Out')
                     .addFields(
-                        { name: 'User', value: `${target.tag} (${target.id})`, inline: true },
-                        { name: 'Moderator', value: interaction.user.tag, inline: true },
+                        { name: 'User', value: `${target.username} (${target.id})`, inline: true },
+                        { name: 'Moderator', value: interaction.user.username, inline: true },
                         { name: 'Duration', value: duration, inline: true },
                         { name: 'Reason', value: reason, inline: false }
                     )

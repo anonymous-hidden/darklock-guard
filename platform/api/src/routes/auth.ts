@@ -43,6 +43,10 @@ router.post('/register', async (req: Request, res: Response) => {
     if (typeof password !== 'string' || password.length < 10) {
       return res.status(400).json({ error: 'Password must be at least 10 characters' });
     }
+    // Enforce password complexity: uppercase, lowercase, number, and special character
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      return res.status(400).json({ error: 'Password must contain uppercase, lowercase, number, and special character' });
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
@@ -204,6 +208,9 @@ router.put('/password', requireUser as any, async (req: AuthedRequest, res: Resp
     }
     if (new_password.length < 10) {
       return res.status(400).json({ error: 'New password must be at least 10 characters' });
+    }
+    if (!/[A-Z]/.test(new_password) || !/[a-z]/.test(new_password) || !/[0-9]/.test(new_password) || !/[^A-Za-z0-9]/.test(new_password)) {
+      return res.status(400).json({ error: 'New password must contain uppercase, lowercase, number, and special character' });
     }
 
     const valid = await argon2.verify(req.user!.password_hash, current_password);

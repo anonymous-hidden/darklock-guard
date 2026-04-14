@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In | Darklock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
+    <style>
+        :root {
+            --bg: #ffffff;
+            --bg-alt: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --text-dim: #475569;
+            --text-muted: #94a3b8;
+            --accent: #4f46e5;
+            --accent-light: #818cf8;
+            --accent-bg: #eef2ff;
+            --accent-glow: rgba(79,70,229,0.12);
+            --danger: #ef4444;
+            --success: #10b981;
+            --font: 'Inter', system-ui, sans-serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font); background: var(--bg-alt); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; -webkit-font-smoothing: antialiased; }
+
+        .wrapper { width: 100%; max-width: 420px; padding: 1.5rem; }
+
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+
+        .brand { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 2rem; text-decoration: none; color: var(--text); }
+        .brand img { width: 32px; height: 32px; border-radius: 8px; }
+        .brand span { font-weight: 700; font-size: 1.2rem; }
+
+        h1 { font-size: 1.4rem; font-weight: 700; text-align: center; margin-bottom: 0.35rem; }
+        .subtitle { text-align: center; color: var(--text-dim); font-size: 0.9rem; margin-bottom: 2rem; }
+
+        .alert { padding: 0.7rem 1rem; border-radius: 10px; font-size: 0.85rem; margin-bottom: 1rem; display: none; }
+        .alert.error { display: block; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+        .alert.success { display: block; background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+
+        .field { margin-bottom: 1.15rem; }
+        .field label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-dim); margin-bottom: 0.4rem; }
+        .field input { width: 100%; padding: 0.7rem 0.9rem; background: var(--bg); border: 1px solid var(--border); border-radius: 9px; color: var(--text); font-size: 0.95rem; font-family: var(--font); transition: all 0.15s; outline: none; }
+        .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+        .field input::placeholder { color: var(--text-muted); }
+
+        .field-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+        .field-row label { font-size: 0.85rem; color: var(--text-dim); display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+        .field-row input[type="checkbox"] { accent-color: var(--accent); }
+        .field-row a { font-size: 0.85rem; color: var(--accent); text-decoration: none; font-weight: 500; }
+        .field-row a:hover { text-decoration: underline; }
+
+        .btn-submit { width: 100%; padding: 0.75rem; background: var(--accent); border: none; border-radius: 9px; color: white; font-size: 0.95rem; font-weight: 600; font-family: var(--font); cursor: pointer; transition: all 0.15s; }
+        .btn-submit:hover { background: #4338ca; }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .divider { display: flex; align-items: center; gap: 0.75rem; margin: 1.5rem 0; color: var(--text-muted); font-size: 0.8rem; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+        .oauth-btn { width: 100%; padding: 0.7rem; background: var(--bg); border: 1px solid var(--border); border-radius: 9px; color: var(--text); font-size: 0.9rem; font-weight: 500; font-family: var(--font); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .oauth-btn:hover { background: var(--bg-alt); border-color: #cbd5e1; }
+        .oauth-btn svg { width: 18px; height: 18px; }
+
+        .footer-text { text-align: center; margin-top: 1.5rem; font-size: 0.88rem; color: var(--text-dim); }
+        .footer-text a { color: var(--accent); text-decoration: none; font-weight: 600; }
+        .footer-text a:hover { text-decoration: underline; }
+        .back-link { display: block; text-align: center; margin-top: 1rem; color: var(--text-muted); font-size: 0.85rem; text-decoration: none; }
+        .back-link:hover { color: var(--text-dim); }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <div class="card">
+        <a href="/platform" class="brand">
+            <img src="/platform/static/icons/darklock-logo.png" alt="" onerror="this.style.display='none'">
+            <span>Darklock</span>
+        </a>
+        <h1>Welcome back</h1>
+        <p class="subtitle">Sign in to your account to continue</p>
+
+        <div class="alert" id="alert"></div>
+
+        <form id="loginForm" autocomplete="on">
+            <div class="field">
+                <label for="email">Email address</label>
+                <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
+            </div>
+            <div class="field">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            <div class="field-row">
+                <label><input type="checkbox" name="remember"> Remember me</label>
+                <a href="/platform/auth/forgot-password">Forgot password?</a>
+            </div>
+            <button type="submit" class="btn-submit" id="submitBtn">Sign In</button>
+        </form>
+
+        <div class="divider">or continue with</div>
+
+        <button class="oauth-btn" id="discordBtn">
+            <svg viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286z"/></svg>
+            Continue with Discord
+        </button>
+
+        <p class="footer-text">Don't have an account? <a href="/platform/auth/signup">Create one</a></p>
+    </div>
+    <a href="/platform" class="back-link">← Back to home</a>
+</div>
+
+<script>
+    const form = document.getElementById('loginForm');
+    const alertEl = document.getElementById('alert');
+    const btn = document.getElementById('submitBtn');
+
+    function showAlert(msg, type = 'error') {
+        alertEl.textContent = msg;
+        alertEl.className = 'alert ' + type;
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        btn.disabled = true;
+        btn.textContent = 'Signing in...';
+        alertEl.className = 'alert';
+        try {
+            const res = await fetch('/platform/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showAlert('Login successful! Redirecting...', 'success');
+                setTimeout(() => window.location.href = data.redirect || '/platform/dashboard', 500);
+            } else {
+                showAlert(data.error || 'Login failed');
+            }
+        } catch {
+            showAlert('Network error. Please try again.');
+        }
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+    });
+
+    document.getElementById('discordBtn').addEventListener('click', () => {
+        window.location.href = '/platform/auth/discord';
+    });
+</script>
+</body>
+</html>

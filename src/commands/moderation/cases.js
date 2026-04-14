@@ -47,13 +47,13 @@ module.exports = {
 
                 if (cases.length === 0) {
                     return await interaction.reply({
-                        content: `No moderation cases found for ${user.tag}`,
+                        content: `No moderation cases found for ${user.username}`,
                         ephemeral: true
                     });
                 }
 
                 const embed = new EmbedBuilder()
-                    .setTitle(`📋 Moderation Cases for ${user.tag}`)
+                    .setTitle(`📋 Moderation Cases for ${user.username}`)
                     .setColor('#FF6B6B')
                     .setThumbnail(user.displayAvatarURL())
                     .setDescription(`Total cases: **${cases.length}**`)
@@ -63,7 +63,7 @@ module.exports = {
                     const moderator = await interaction.client.users.fetch(c.moderator_id).catch(() => null);
                     embed.addFields({
                         name: `Case #${c.id} - ${c.action.toUpperCase()}`,
-                        value: `**Moderator:** ${moderator?.tag || 'Unknown'}\n**Reason:** ${c.reason}\n**Date:** ${new Date(c.created_at).toLocaleDateString()}`,
+                        value: `**Moderator:** ${moderator?.username || 'Unknown'}\n**Reason:** ${c.reason}\n**Date:** ${new Date(c.created_at).toLocaleDateString()}`,
                         inline: false
                     });
                 }
@@ -104,7 +104,7 @@ module.exports = {
                     const moderator = await interaction.client.users.fetch(c.moderator_id).catch(() => null);
                     embed.addFields({
                         name: `Case #${c.id} - ${c.action.toUpperCase()}`,
-                        value: `**User:** ${user?.tag || 'Unknown'}\n**Moderator:** ${moderator?.tag || 'Unknown'}\n**Reason:** ${c.reason}\n**Date:** ${new Date(c.created_at).toLocaleDateString()}`,
+                        value: `**User:** ${user?.username || 'Unknown'}\n**Moderator:** ${moderator?.username || 'Unknown'}\n**Reason:** ${c.reason}\n**Date:** ${new Date(c.created_at).toLocaleDateString()}`,
                         inline: false
                     });
                 }
@@ -140,8 +140,8 @@ module.exports = {
                     .setColor('#FF6B6B')
                     .addFields(
                         { name: 'Action', value: c.action.toUpperCase(), inline: true },
-                        { name: 'User', value: user?.tag || 'Unknown', inline: true },
-                        { name: 'Moderator', value: moderator?.tag || 'Unknown', inline: true },
+                        { name: 'User', value: user?.username || 'Unknown', inline: true },
+                        { name: 'Moderator', value: moderator?.username || 'Unknown', inline: true },
                         { name: 'Reason', value: c.reason || 'No reason provided', inline: false },
                         { name: 'Date', value: new Date(c.created_at).toLocaleString(), inline: false }
                     )

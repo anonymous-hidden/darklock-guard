@@ -23,7 +23,7 @@ module.exports = {
 
         // Basic user info
         userEmbed.addFields(
-            { name: 'Username', value: target.tag, inline: true },
+            { name: 'Username', value: target.username, inline: true },
             { name: 'User ID', value: target.id, inline: true },
             { name: 'Account Created', value: `<t:${Math.floor(target.createdTimestamp / 1000)}:F>`, inline: false }
         );

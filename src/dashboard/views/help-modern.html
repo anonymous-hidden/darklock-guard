@@ -32,6 +32,7 @@
     <script src="/js/global-theme.js"></script>
     <script src="/js/theme-effects.js"></script>
     <script src="/js/settings-panel.js"></script>
+    <script src="/js/premium-gating.js"></script>
     <link rel="stylesheet" href="/css/darklock-fx.css">
     <script src="/js/darklock-fx.js" defer></script>
 </head>
@@ -144,7 +145,6 @@
                     <a href="/setup/notifications" class="nav-item">
                         <i class="fas fa-bell"></i>
                         <span>Notifications & Logs</span>
-                        <i class="fas fa-crown premium-badge" style="color: #ffc107; font-size: 10px; margin-left: auto;" title="Premium features available"></i>
                     </a>
                 </div>
 
@@ -154,15 +154,15 @@
                         <i class="fas fa-book"></i>
                         <span>Help & Commands</span>
                     </a>
-                    <a href="/dashboard/console" class="nav-item">
+                    <a href="/dashboard/console" class="nav-item" data-premium-required="true">
                         <i class="fas fa-terminal"></i>
                         <span>Bot Console</span>
                     </a>
-                    <a href="/access-generator" class="nav-item">
+                    <a href="/access-generator" class="nav-item" data-premium-required="true">
                         <i class="fas fa-key"></i>
                         <span>Access Generator</span>
                     </a>
-                    <a href="/access-share" class="nav-item">
+                    <a href="/access-share" class="nav-item" data-premium-required="true">
                         <i class="fas fa-share-alt"></i>
                         <span>Access Share</span>
                     </a>

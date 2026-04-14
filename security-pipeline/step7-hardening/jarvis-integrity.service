@@ -1,0 +1,6 @@
+[Unit]
+Description=Jarvis File Integrity Check
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /home/cayden/discord bot/discord bot/security-pipeline/step7-hardening/integrity-check.sh --halt

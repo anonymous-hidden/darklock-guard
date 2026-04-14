@@ -132,7 +132,7 @@ module.exports = {
             .setTitle('🔒 User Quarantined')
             .setColor(0xFF6600)
             .addFields(
-                { name: 'User', value: `${user.tag} (${user.id})`, inline: true },
+                { name: 'User', value: `${user.username} (${user.id})`, inline: true },
                 { name: 'Reason', value: reason || 'No reason provided', inline: false }
             )
             .setTimestamp();
@@ -163,7 +163,7 @@ module.exports = {
             .setTitle('🔓 User Released')
             .setColor(0x00FF00)
             .addFields(
-                { name: 'User', value: `${user.tag} (${user.id})`, inline: true }
+                { name: 'User', value: `${user.username} (${user.id})`, inline: true }
             )
             .setTimestamp();
 
@@ -182,7 +182,7 @@ module.exports = {
         const status = await quarantine.getQuarantineStatus(interaction.guildId, user.id);
 
         const embed = new EmbedBuilder()
-            .setTitle(`🔍 Quarantine Status: ${user.tag}`)
+            .setTitle(`🔍 Quarantine Status: ${user.username}`)
             .setThumbnail(user.displayAvatarURL())
             .setTimestamp();
 
@@ -230,7 +230,7 @@ module.exports = {
         } else {
             const list = await Promise.all(users.slice(0, 20).map(async (entry, i) => {
                 const user = await interaction.client.users.fetch(entry.user_id).catch(() => null);
-                const name = user ? user.tag : `Unknown (${entry.user_id})`;
+                const name = user ? user.username : `Unknown (${entry.user_id})`;
                 const time = `<t:${Math.floor(new Date(entry.created_at).getTime() / 1000)}:R>`;
                 return `**${i + 1}.** ${name}\n↳ ${entry.reason || entry.auto_reason || 'No reason'} • ${time}`;
             }));
@@ -250,7 +250,7 @@ module.exports = {
         const history = await quarantine.getUserHistory(interaction.guildId, user.id);
 
         const embed = new EmbedBuilder()
-            .setTitle(`📋 Quarantine History: ${user.tag}`)
+            .setTitle(`📋 Quarantine History: ${user.username}`)
             .setThumbnail(user.displayAvatarURL())
             .setColor(0x5865F2)
             .setTimestamp();

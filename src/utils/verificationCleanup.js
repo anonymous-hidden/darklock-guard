@@ -130,7 +130,7 @@ module.exports = {
                                 const member = await guild.members.fetch(record.user_id).catch(() => null);
                                 if (member) {
                                     await bot.verificationActions.kickUser(guildId, record.user_id, 'system', 'auto_timeout');
-                                    bot.logger?.info(`[VerificationCleanup] Auto-kicked ${member.user.tag} (${record.user_id}) from ${guildId}`);
+                                    bot.logger?.info(`[VerificationCleanup] Auto-kicked ${member.user.username} (${record.user_id}) from ${guildId}`);
                                 }
                             }
 

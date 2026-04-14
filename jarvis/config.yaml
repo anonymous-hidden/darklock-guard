@@ -1,0 +1,146 @@
+# ============================================================
+# Nova — Master Configuration
+# ============================================================
+# SECURITY: Do NOT allow the AI to modify this file.
+# ============================================================
+
+server:
+  host: "0.0.0.0"
+  port: 8950
+
+ai:
+  # ── Dual model support ──
+  # "fast" model for quick responses, "deep" model for complex reasoning
+  model: "qwen2.5:32b"             # deep model (default)
+  model_fast: "llama3.1:8b"        # fast model for simple queries
+  auto_route: true                  # automatically pick model based on complexity
+  ollama_url: "http://127.0.0.1:11434"
+  temperature: 0.7
+  max_tokens: 2048
+  max_history: 50
+  num_ctx: 2048
+  num_gpu: 14              # 8GB VRAM: 14 layers on GPU (~4GB), rest on CPU/RAM
+  # Per-model overrides
+  deep:
+    num_ctx: 2048
+    num_gpu: 14
+    temperature: 0.7
+    max_tokens: 2048
+  fast:
+    num_ctx: 4096
+    num_gpu: 99            # 8b fits entirely in 8GB VRAM
+    temperature: 0.7
+    max_tokens: 2048
+
+vision:
+  model: "llava:13b"
+  enabled: true
+  max_tokens: 1024
+
+voice:
+  enabled: false
+  stt_model: "base.en"               # faster-whisper model size
+  tts_model: "en_US-lessac-medium"    # Piper voice
+  hotword: "nova"
+
+security:
+  allowed_dirs:
+    - "~"
+  command_timeout: 30       # seconds
+  max_memory_mb: 512
+  process_watch_interval: 5    # seconds
+  integrity_check_interval: 60 # seconds
+
+personality:
+  name: "Nova"
+  tone: "casual"      # formal | casual | concise
+  greeting: "Hey Cayden! What are we working on?"
+  owner: "Cayden"
+
+# ── Project Indexer ────────────────────────────────
+indexer:
+  workspace: "~/discord bot/discord bot"   # auto-indexed at startup
+  max_file_size_kb: 200
+  max_lines_per_file: 150
+
+# ── File Watcher ───────────────────────────────────
+watcher:
+  directories:
+    - "~/discord bot/discord bot"
+  interval: 5   # seconds between polls
+
+# ── Anomaly Detection ─────────────────────────────
+anomaly:
+  check_interval: 10   # seconds between periodic checks
+
+# ── Health Monitor ─────────────────────────────────
+health:
+  check_interval: 30   # seconds between health checks
+
+# ── Self-Recovery ──────────────────────────────────
+recovery:
+  check_interval: 30   # seconds between recovery scans
+  max_retries: 3
+  cooldown: 60          # seconds between attempts per service
+
+# ── Task Scheduler ─────────────────────────────────
+scheduler:
+  check_interval: 10   # seconds between scheduler ticks
+  timezone: "America/Chicago"
+
+# ── Guardian ───────────────────────────────────────
+guardian:
+  log_all_decisions: true
+# ── Smart Home / Govee Lights ─────────────────────────
+# Get your API key at: https://developer.govee.com/
+# Set GOVEE_API_KEY in your environment (don't paste it here)
+govee:
+  enabled: true
+
+# ── Location & Weather ────────────────────────────
+# Get your free API key at: https://openweathermap.org/api
+# Set OPENWEATHER_API_KEY in .env
+location:
+  owner: "Cayden"
+  city: "Dallas"
+  state: "Texas"
+  state_abbr: "TX"
+  country: "US"
+  timezone: "America/Chicago"
+  lat: 32.7767
+  lon: -96.7970
+  home_network: "192.168.50.0/24"   # LAN subnet (no sensitive info)
+
+weather:
+  city: "Dallas"
+  country: "US"
+
+# ── Google Integration ─────────────────────────────
+# 1. Create project at https://console.cloud.google.com
+# 2. Enable Calendar API + Docs API
+# 3. Create OAuth 2.0 Client ID (Desktop app)
+# 4. Download JSON → save as data/google_credentials.json
+# 5. Run: cd jarvis && python -m integrations.google_auth
+google:
+  enabled: true
+
+# ── Darklock Integration ─────────────────────────────────
+# Nova monitors Darklock servers, reads bug reports, and can
+# restart services on the Pi5 via SSH.
+# Set DARKLOCK_ADMIN_TOKEN in .env for bug report access.
+darklock:
+  enabled: true
+  api_url: "http://192.168.50.151:3002"  # Darklock platform on Pi5
+  pi5_host: "192.168.50.151"          # Raspberry Pi 5 IP (eth0)
+  pi5_user: "darklock"                # SSH username
+  pi5_ssh_port: 22
+  pi5_ssh_key: ~/.ssh/id_ed25519        # SSH key (preferred over password)
+
+# ── Google Docs Typing ─────────────────────────────
+# When Jarvis writes to a Google Doc, it types word-by-word
+# instead of bulk-inserting the entire text at once.
+# NOTE: Google Docs API allows max 60 writes/min per user.
+google_docs:
+  typing_delay: 0.15          # seconds between each batch (faster typing)
+  chunk_size: 12              # words per API call (12 words appear together each batch)
+  max_tokens: 2048            # max tokens for AI-generated content (~1200 words)

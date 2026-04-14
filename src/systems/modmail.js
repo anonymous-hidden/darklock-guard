@@ -290,7 +290,7 @@ class ModMail {
                 name: channelName,
                 type: ChannelType.GuildText,
                 parent: category?.id,
-                topic: `ModMail ticket for ${message.author.tag} (${message.author.id})`,
+                topic: `ModMail ticket for ${message.author.username} (${message.author.id})`,
                 permissionOverwrites: [
                     {
                         id: guild.id,
@@ -323,7 +323,7 @@ class ModMail {
                 .setColor(0x5865F2)
                 .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
                 .addFields(
-                    { name: 'User', value: `${message.author.tag}\n${message.author.id}`, inline: true },
+                    { name: 'User', value: `${message.author.username}\n${message.author.id}`, inline: true },
                     { name: 'Account Age', value: `${Math.floor((Date.now() - message.author.createdTimestamp) / (1000 * 60 * 60 * 24))} days`, inline: true },
                     { name: 'Ticket ID', value: `#${ticketId}`, inline: true }
                 )
@@ -401,7 +401,7 @@ class ModMail {
 
             const embed = new EmbedBuilder()
                 .setAuthor({ 
-                    name: message.author.tag, 
+                    name: message.author.username, 
                     iconURL: message.author.displayAvatarURL({ dynamic: true }) 
                 })
                 .setDescription(message.content || '*No content*')
@@ -447,7 +447,7 @@ class ModMail {
 
             const embed = new EmbedBuilder()
                 .setAuthor({ 
-                    name: config?.anonymous_staff ? 'Staff' : message.author.tag, 
+                    name: config?.anonymous_staff ? 'Staff' : message.author.username, 
                     iconURL: config?.anonymous_staff ? guild?.iconURL() : message.author.displayAvatarURL({ dynamic: true }) 
                 })
                 .setDescription(message.content || '*No content*')

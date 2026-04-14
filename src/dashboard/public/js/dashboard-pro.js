@@ -110,9 +110,9 @@
     const moderator = notification.querySelector('.notification-moderator');
 
     title.textContent = action.type.charAt(0).toUpperCase() + action.type.slice(1).replace('_', ' ');
-    message.textContent = `${action.target.tag} - ${action.reason}`;
+    message.textContent = `${action.target.username} - ${action.reason}`;
     time.textContent = new Date(action.timestamp).toLocaleTimeString();
-    moderator.textContent = `By ${action.moderator.tag}`;
+    moderator.textContent = `By ${action.moderator.username}`;
 
     const undoBtn = notification.querySelector('.btn-undo');
     const dismissBtn = notification.querySelector('.btn-dismiss');

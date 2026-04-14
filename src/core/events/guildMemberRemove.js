@@ -10,7 +10,7 @@ module.exports = {
         try {
             // Broadcast to console
             try {
-                bot.broadcastConsole(member.guild.id, `[LEAVE] ${member.user.tag} (${member.id}) left ${member.guild.name}`);
+                bot.broadcastConsole(member.guild.id, `[LEAVE] ${member.user.username} (${member.id}) left ${member.guild.name}`);
             } catch (_) {}
 
             if (bot.database) {
@@ -41,8 +41,8 @@ module.exports = {
                     guildId: member.guild.id,
                     eventType: 'member_leave',
                     eventCategory: 'member',
-                    executor: { id: member.id, tag: member.user.tag },
-                    target: { id: member.id, name: member.user.tag, type: 'user' },
+                    executor: { id: member.id, tag: member.user.username },
+                    target: { id: member.id, name: member.user.username, type: 'user' },
                     canReplay: false
                 });
             }
@@ -59,7 +59,7 @@ module.exports = {
                                 member
                             );
                             await channel.send(goodbyeMessage);
-                            bot.logger.info(`👋 Sent goodbye message for ${member.user.tag} in ${member.guild.name}`);
+                            bot.logger.info(`👋 Sent goodbye message for ${member.user.username} in ${member.guild.name}`);
                         }
                     }
                 } catch (error) {

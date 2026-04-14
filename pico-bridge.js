@@ -92,12 +92,24 @@ function readBotStatus() {
 function resolveState(status) {
   if (!status) return 'FAIL';
 
-  const online   = status.online  === true || status.status === 'online';
-  const starting = status.status  === 'starting' || status.status === 'restarting';
+  // Stale status file (>60 s old) means bot process is hung or crashed
+  if (status.timestamp) {
+    const ageMs = Date.now() - new Date(status.timestamp).getTime();
+    if (ageMs > 60000) return 'DEGRADED';
+  }
 
+  const online     = status.online === true;
+  const starting   = status.status === 'starting' || status.status === 'restarting';
+  const guildCount = typeof status.guild_count === 'number' ? status.guild_count : -1;
+  const pingMs     = typeof status.ping        === 'number' ? status.ping        : 0;
+  const errorLevel = (status.error_level || '').toLowerCase();
+
+  if (errorLevel === 'fail' || errorLevel === 'error') return 'FAIL';
   if (starting) return 'CHECKING';
-  if (online)   return 'OK';
-  return 'FAIL';
+  if (!online)  return 'FAIL';
+  // Warn: no guilds, very high ping, or explicit warn flag
+  if (errorLevel === 'warn' || guildCount === 0 || pingMs > 500) return 'DEGRADED';
+  return 'OK';
 }
 
 // ─── Watchdog — mirrors state.py logic ───────────────────────────────────────
@@ -126,16 +138,17 @@ function updateWatchdog(healthy) {
 // ─── Main check loop ──────────────────────────────────────────────────────────
 
 function runCheck() {
-  const status  = readBotStatus();
-  const raw     = resolveState(status);
-  const healthy = raw === 'OK' || raw === 'CHECKING';
-  const { state, changed } = updateWatchdog(healthy);
+  // PING every cycle so the Pico watchdog never fires due to an unchanged state
+  send('PING');
 
-  // Always send if just connected, otherwise only on change
-  if (changed || !connected) {
+  const status = readBotStatus();
+  const state  = resolveState(status);
+
+  if (state !== lastState || !connected) {
     connected = true;
-    log(`State: ${state}`);
+    log(`State: ${lastState || 'none'} → ${state}`);
     send(state);
+    lastState = state;
   }
 }
 

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initialize Account | Darklock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --bg-card: #111118;
+            --border: #1e1e2e;
+            --text: #e4e4ef;
+            --text-dim: #8888a0;
+            --text-muted: #55556a;
+            --neon: #00ffaa;
+            --neon-glow: rgba(0,255,170,0.12);
+            --neon-glow-strong: rgba(0,255,170,0.25);
+            --danger: #ff4444;
+            --font: 'Inter', system-ui, sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; -webkit-font-smoothing: antialiased; overflow: hidden; }
+
+        .bg-grid { position: fixed; inset: 0; z-index: 0; background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px); background-size: 60px 60px; opacity: 0.12; pointer-events: none; }
+        .bg-glow { position: fixed; width: 500px; height: 500px; border-radius: 50%; background: radial-gradient(circle, var(--neon-glow-strong), transparent 70%); top: -15%; right: -5%; z-index: 0; pointer-events: none; }
+
+        .wrapper { position: relative; z-index: 2; width: 100%; max-width: 440px; padding: 1.5rem; }
+
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 2.5rem; position: relative; overflow: hidden; }
+        .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--neon), transparent); }
+
+        .brand { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 2rem; text-decoration: none; color: var(--neon); font-family: var(--mono); font-weight: 700; font-size: 1.1rem; letter-spacing: 0.04em; text-transform: uppercase; }
+        .brand img { width: 30px; height: 30px; border-radius: 4px; filter: drop-shadow(0 0 6px var(--neon-glow-strong)); }
+
+        .terminal-tag { font-family: var(--mono); font-size: 0.72rem; color: var(--text-muted); text-align: center; margin-bottom: 1.5rem; }
+        .terminal-tag span { color: var(--neon); }
+
+        h1 { font-size: 1.4rem; font-weight: 700; text-align: center; margin-bottom: 0.35rem; }
+        .subtitle { text-align: center; color: var(--text-dim); font-size: 0.88rem; margin-bottom: 2rem; }
+
+        .alert { padding: 0.7rem 1rem; border-radius: 4px; font-size: 0.82rem; margin-bottom: 1rem; display: none; font-family: var(--mono); }
+        .alert.error { display: block; background: rgba(255,68,68,0.1); border: 1px solid rgba(255,68,68,0.2); color: #ff6b6b; }
+        .alert.success { display: block; background: var(--neon-glow); border: 1px solid rgba(0,255,170,0.2); color: var(--neon); }
+
+        .field { margin-bottom: 1.15rem; }
+        .field label { display: block; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--mono); }
+        .field input { width: 100%; padding: 0.75rem 0.9rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.92rem; font-family: var(--mono); transition: all 0.2s; outline: none; }
+        .field input:focus { border-color: var(--neon); box-shadow: 0 0 0 2px var(--neon-glow), 0 0 15px var(--neon-glow); }
+        .field input::placeholder { color: var(--text-muted); }
+
+        .password-strength { height: 3px; border-radius: 2px; background: rgba(255,255,255,0.05); margin-top: 0.5rem; overflow: hidden; }
+        .password-strength-bar { height: 100%; width: 0%; border-radius: 2px; transition: all 0.3s; }
+
+        .field-row { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 1.5rem; }
+        .field-row input[type="checkbox"] { margin-top: 3px; accent-color: var(--neon); }
+        .field-row label { font-size: 0.82rem; color: var(--text-dim); cursor: pointer; line-height: 1.4; }
+        .field-row a { color: var(--neon); text-decoration: none; }
+        .field-row a:hover { text-decoration: underline; }
+
+        .btn-submit { width: 100%; padding: 0.8rem; background: var(--neon); color: var(--bg); font-size: 0.88rem; font-weight: 700; border: none; border-radius: 4px; cursor: pointer; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; transition: all 0.25s; }
+        .btn-submit:hover { box-shadow: 0 0 25px var(--neon-glow-strong); }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+
+        .divider { display: flex; align-items: center; gap: 0.75rem; margin: 1.5rem 0; color: var(--text-muted); font-size: 0.72rem; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+        .oauth-btn { width: 100%; padding: 0.7rem; background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.85rem; font-weight: 500; font-family: var(--mono); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .oauth-btn:hover { border-color: #5865F2; background: rgba(88,101,242,0.1); }
+        .oauth-btn svg { width: 18px; height: 18px; }
+
+        .footer-text { text-align: center; margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-dim); }
+        .footer-text a { color: var(--neon); text-decoration: none; font-weight: 600; }
+        .footer-text a:hover { text-decoration: underline; }
+        .back-link { display: block; text-align: center; margin-top: 1rem; color: var(--text-muted); font-size: 0.82rem; text-decoration: none; font-family: var(--mono); }
+        .back-link:hover { color: var(--text-dim); }
+    </style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<div class="wrapper">
+    <div class="card">
+        <a href="/platform" class="brand">
+            <img src="/platform/static/icons/darklock-logo.png" alt="" onerror="this.style.display='none'">
+            Darklock
+        </a>
+        <div class="terminal-tag"><span>$</span> auth --mode register</div>
+        <h1>Initialize Account</h1>
+        <p class="subtitle">Create your operator credentials</p>
+
+        <div class="alert" id="alert"></div>
+
+        <form id="signupForm" autocomplete="on">
+            <div class="field">
+                <label for="username">Callsign</label>
+                <input type="text" id="username" name="username" placeholder="Choose identifier" required autocomplete="username" minlength="3" maxlength="32">
+            </div>
+            <div class="field">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="operator@darklock.io" required autocomplete="email">
+            </div>
+            <div class="field">
+                <label for="password">Passphrase</label>
+                <input type="password" id="password" name="password" placeholder="Min 8 characters" required autocomplete="new-password" minlength="8">
+                <div class="password-strength"><div class="password-strength-bar" id="strengthBar"></div></div>
+            </div>
+            <div class="field">
+                <label for="confirmPassword">Confirm passphrase</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Re-enter passphrase" required autocomplete="new-password">
+            </div>
+            <div class="field-row">
+                <input type="checkbox" id="terms" required>
+                <label for="terms">I accept the <a href="/platform/terms">Terms</a> and <a href="/platform/privacy">Privacy Protocol</a></label>
+            </div>
+            <button type="submit" class="btn-submit" id="submitBtn">Initialize</button>
+        </form>
+
+        <div class="divider">alt-protocol</div>
+
+        <button class="oauth-btn" id="discordBtn">
+            <svg viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286z"/></svg>
+            Discord OAuth
+        </button>
+
+        <p class="footer-text">Existing operator? <a href="/platform/auth/login">Access portal</a></p>
+    </div>
+    <a href="/platform" class="back-link">← return://home</a>
+</div>
+
+<script>
+    const form = document.getElementById('signupForm');
+    const alertEl = document.getElementById('alert');
+    const btn = document.getElementById('submitBtn');
+    const passInput = document.getElementById('password');
+    const bar = document.getElementById('strengthBar');
+
+    function showAlert(msg, type = 'error') {
+        alertEl.textContent = msg;
+        alertEl.className = 'alert ' + type;
+    }
+
+    passInput.addEventListener('input', () => {
+        const v = passInput.value;
+        let s = 0;
+        if (v.length >= 8) s++;
+        if (/[A-Z]/.test(v)) s++;
+        if (/[0-9]/.test(v)) s++;
+        if (/[^A-Za-z0-9]/.test(v)) s++;
+        const colors = ['#ff4444','#ff8800','#ffcc00','#00ffaa'];
+        bar.style.width = (s * 25) + '%';
+        bar.style.background = colors[s - 1] || '#ff4444';
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const password = passInput.value;
+        const confirm = document.getElementById('confirmPassword').value;
+        if (password !== confirm) { showAlert('[ERR] Passphrases do not match'); return; }
+
+        btn.disabled = true;
+        btn.textContent = 'INITIALIZING...';
+        alertEl.className = 'alert';
+        try {
+            const res = await fetch('/platform/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    username: document.getElementById('username').value,
+                    email: document.getElementById('email').value,
+                    password
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showAlert('[OK] Account initialized. Redirecting...', 'success');
+                setTimeout(() => window.location.href = data.redirect || '/platform/auth/login', 500);
+            } else {
+                showAlert('[ERR] ' + (data.error || 'Initialization failed'));
+            }
+        } catch {
+            showAlert('[ERR] Network failure. Retry.');
+        }
+        btn.disabled = false;
+        btn.textContent = 'INITIALIZE';
+    });
+
+    document.getElementById('discordBtn').addEventListener('click', () => {
+        window.location.href = '/platform/auth/discord';
+    });
+</script>
+</body>
+</html>

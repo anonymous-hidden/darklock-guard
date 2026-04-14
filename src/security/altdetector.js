@@ -435,7 +435,7 @@ class AltDetector {
             .setColor(confidence >= 0.7 ? 0xFF0000 : confidence >= 0.5 ? 0xFFA500 : 0xFFFF00)
             .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
             .addFields(
-                { name: 'User', value: `${member.user.tag}\n${member.user.id}`, inline: true },
+                { name: 'User', value: `${member.user.username}\n${member.user.id}`, inline: true },
                 { name: 'Confidence', value: `${Math.round(confidence * 100)}%`, inline: true },
                 { name: 'Action Taken', value: action.charAt(0).toUpperCase() + action.slice(1), inline: true },
                 { name: 'Account Age', value: `${Math.floor((Date.now() - member.user.createdTimestamp) / (1000 * 60 * 60 * 24))} days`, inline: true },

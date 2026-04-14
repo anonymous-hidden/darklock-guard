@@ -150,13 +150,25 @@ class MigrationRunner {
         }
     }
 
+    // SECURITY: Validate SQL identifiers to prevent injection
+    // Only allows alphanumeric characters and underscores
+    static validateIdentifier(name) {
+        if (typeof name !== 'string' || !/^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/.test(name)) {
+            throw new Error(`Invalid SQL identifier: ${name}`);
+        }
+        return name;
+    }
+
     /**
      * Check if column exists in table
      */
     async columnExists(tableName, columnName) {
+        MigrationRunner.validateIdentifier(tableName);
+        MigrationRunner.validateIdentifier(columnName);
         try {
-            // SQLite
-            const columns = await this.all(`PRAGMA table_info(${tableName})`);
+            // SQLite - PRAGMA doesn't support parameterized table names,
+            // so we validate the identifier strictly above
+            const columns = await this.all(`PRAGMA table_info("${tableName}")`);
             return columns.some(col => col.name === columnName);
         } catch (e) {
             // MySQL fallback
@@ -176,11 +188,18 @@ class MigrationRunner {
      * Safely add column if not exists
      */
     async safeAddColumn(table, column, definition) {
+        MigrationRunner.validateIdentifier(table);
+        MigrationRunner.validateIdentifier(column);
+        // Validate definition only allows safe SQL type keywords
+        if (typeof definition !== 'string' || !/^[A-Z ]+(\([0-9,]+\))?( DEFAULT .+)?$/i.test(definition.trim())) {
+            throw new Error(`Invalid column definition: ${definition}`);
+        }
+
         if (await this.columnExists(table, column)) {
             return { added: false, reason: 'already_exists' };
         }
 
-        await this.execSQL(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+        await this.execSQL(`ALTER TABLE "${table}" ADD COLUMN "${column}" ${definition}`);
         return { added: true };
     }
 

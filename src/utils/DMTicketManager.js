@@ -86,7 +86,7 @@ class DMTicketManager {
 
             // Add initial message to ticket
             const user = await this.bot.users.fetch(userId).catch(() => null);
-            const username = user ? user.tag : 'Unknown User';
+            const username = user ? user.username : 'Unknown User';
 
             await this.bot.database.run(`
                 INSERT INTO dm_ticket_messages 
@@ -183,7 +183,7 @@ class DMTicketManager {
         const openTicket = await this.getUserOpenTicket(userId);
         if (openTicket) {
             // Add message to existing ticket
-            await this.addMessage(openTicket.id, userId, message.author.tag, content, false);
+            await this.addMessage(openTicket.id, userId, message.author.username, content, false);
             
             const embed = new EmbedBuilder()
                 .setTitle('💬 Message Added to Ticket')
@@ -497,7 +497,7 @@ To close this ticket, type: **close ticket**
             if (!logChannel) return;
 
             const user = await this.bot.users.fetch(userId).catch(() => null);
-            const username = user ? user.tag : 'Unknown User';
+            const username = user ? user.username : 'Unknown User';
 
             const embed = new EmbedBuilder()
                 .setTitle('🎫 New Support Ticket')

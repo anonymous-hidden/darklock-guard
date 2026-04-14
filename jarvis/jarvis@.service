@@ -1,0 +1,15 @@
+[Unit]
+Description=JARVIS-Lite AI Assistant
+After=network.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/home/%i/jarvis
+ExecStart=/home/%i/jarvis/.venv/bin/python /home/%i/jarvis/main.py
+Restart=on-failure
+RestartSec=5
+Environment=HOME=/home/%i
+
+[Install]
+WantedBy=multi-user.target

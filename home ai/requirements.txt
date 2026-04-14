@@ -1,0 +1,28 @@
+# Home AI Assistant - Python Dependencies
+
+# Core
+# Ollama runs locally — no extra SDK needed, we call its REST API via httpx
+pyyaml>=6.0                # Configuration parsing
+python-dotenv>=1.0.0       # Environment variable loading
+
+# Web server
+fastapi>=0.115.0           # REST API framework
+uvicorn[standard]>=0.30.0  # ASGI server
+pydantic>=2.9.0            # Request/response validation
+
+# System monitoring
+psutil>=6.0.0              # CPU, memory, disk metrics
+
+# SSH
+asyncssh>=2.17.0           # Async SSH client
+
+# HTTP client (for backup & watchdog health checks)
+httpx>=0.27.0              # Modern HTTP client
+
+# Voice (optional — install if you want voice support)
+# openai-whisper>=20231117  # Speech-to-text (large download)
+# pyttsx3>=2.90             # Text-to-speech
+
+# Development
+# pytest>=8.0               # Testing
+# pytest-asyncio>=0.24      # Async test support

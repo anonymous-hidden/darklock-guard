@@ -204,35 +204,59 @@ async function deleteAdmin(adminId) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  APP UPDATES
+//  APP UPDATES (multi-app: secure-guard, secure-channel, secure-notes)
 // ═══════════════════════════════════════════════════════════════════════════════
-async function getAppUpdates({ limit = 50, offset = 0, channel } = {}) {
-  if (channel && channel !== 'all') {
-    return db.all(`SELECT * FROM app_updates WHERE channel = ? ORDER BY published_at DESC LIMIT ? OFFSET ?`, [channel, limit, offset]);
-  }
-  return db.all(`SELECT * FROM app_updates ORDER BY published_at DESC LIMIT ? OFFSET ?`, [limit, offset]);
+const VALID_APPS = ['secure-guard', 'secure-channel', 'secure-notes'];
+
+async function getAppUpdates({ limit = 50, offset = 0, channel, app } = {}) {
+  let where = [];
+  let params = [];
+  if (channel && channel !== 'all') { where.push('channel = ?'); params.push(channel); }
+  if (app && VALID_APPS.includes(app)) { where.push('app = ?'); params.push(app); }
+  const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+  return db.all(`SELECT * FROM app_updates ${whereClause} ORDER BY published_at DESC LIMIT ? OFFSET ?`, [...params, limit, offset]);
 }
 
 async function getAppUpdateById(id) {
   return db.get(`SELECT * FROM app_updates WHERE id = ?`, [id]);
 }
 
-async function getLatestAppUpdate(channel = 'stable') {
+async function getLatestAppUpdate(channel = 'stable', app = 'secure-guard') {
+  const validApp = VALID_APPS.includes(app) ? app : 'secure-guard';
   if (channel === 'beta') {
-    // beta gets the absolute latest regardless of channel
-    return db.get(`SELECT * FROM app_updates ORDER BY published_at DESC LIMIT 1`);
+    // Return latest beta build, fall back to latest stable if no beta exists
+    const beta = await db.get(`SELECT * FROM app_updates WHERE app = ? AND channel = 'beta' ORDER BY published_at DESC LIMIT 1`, [validApp]);
+    return beta || db.get(`SELECT * FROM app_updates WHERE app = ? AND channel = 'stable' ORDER BY published_at DESC LIMIT 1`, [validApp]);
   }
-  // stable: prefer stable-channel entry, fallback to any latest
-  const stable = await db.get(`SELECT * FROM app_updates WHERE channel = 'stable' ORDER BY published_at DESC LIMIT 1`);
-  return stable || db.get(`SELECT * FROM app_updates ORDER BY published_at DESC LIMIT 1`);
+  const stable = await db.get(`SELECT * FROM app_updates WHERE app = ? AND channel = 'stable' ORDER BY published_at DESC LIMIT 1`, [validApp]);
+  return stable || db.get(`SELECT * FROM app_updates WHERE app = ? ORDER BY published_at DESC LIMIT 1`, [validApp]);
 }
 
-async function createAppUpdate({ id, version, title, changelog, download_url, force_update, min_version, channel, published_by }) {
+async function getAllLatestUpdates(channel = 'stable') {
+  const results = {};
+  for (const app of VALID_APPS) {
+    if (channel === 'beta') {
+      const beta = await db.get(`SELECT * FROM app_updates WHERE app = ? AND channel = 'beta' ORDER BY published_at DESC LIMIT 1`, [app]);
+      results[app] = beta || await db.get(`SELECT * FROM app_updates WHERE app = ? AND channel = 'stable' ORDER BY published_at DESC LIMIT 1`, [app]);
+    } else {
+      results[app] = await db.get(`SELECT * FROM app_updates WHERE app = ? AND channel = 'stable' ORDER BY published_at DESC LIMIT 1`, [app]);
+    }
+  }
+  return results;
+}
+
+async function getAppUpdateHistory(app, limit = 20) {
+  const validApp = VALID_APPS.includes(app) ? app : 'secure-guard';
+  return db.all(`SELECT * FROM app_updates WHERE app = ? ORDER BY published_at DESC LIMIT ?`, [validApp, limit]);
+}
+
+async function createAppUpdate({ id, app, version, title, changelog, download_url, force_update, min_version, channel, platform, file_size, published_by }) {
   const ch = (channel === 'beta') ? 'beta' : 'stable';
+  const validApp = VALID_APPS.includes(app) ? app : 'secure-guard';
   await db.run(`
-    INSERT INTO app_updates (id, version, title, changelog, download_url, force_update, min_version, channel, published_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [id, version, title, changelog, download_url || null, force_update ? 1 : 0, min_version || null, ch, published_by]);
+    INSERT INTO app_updates (id, app, version, title, changelog, download_url, force_update, min_version, channel, platform, file_size, published_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [id, validApp, version, title, changelog, download_url || null, force_update ? 1 : 0, min_version || null, ch, platform || null, file_size || null, published_by]);
   return getAppUpdateById(id);
 }
 
@@ -358,7 +382,7 @@ module.exports = {
   // roles
   getAdminUsers, getAdminById, getRoles, getRolePermissions, setRolePermission, updateAdminRole, deleteAdmin,
   // app updates
-  getAppUpdates, getAppUpdateById, getLatestAppUpdate, createAppUpdate, deleteAppUpdate,
+  getAppUpdates, getAppUpdateById, getLatestAppUpdate, getAllLatestUpdates, getAppUpdateHistory, createAppUpdate, deleteAppUpdate,
   // bug reports
   getBugReports, getBugReportById, createBugReport, updateBugReport, deleteBugReport,
   // audit

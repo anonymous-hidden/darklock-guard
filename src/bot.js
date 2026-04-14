@@ -54,6 +54,7 @@ const AntiRaid = require('./security/antiraid');
 const AntiSpam = require('./security/antispam');
 const AntiNuke = require('./security/antinuke');
 const AntiNukeManager = require('./security/AntiNukeManager');
+const antiNukeHandlers = require('./core/interactions/antiNukeHandlers');
 const AntiMaliciousLinks = require('./security/antilinks');
 const AntiPhishing = require('./security/antiphishing');
 const LinkAnalyzer = require('./security/LinkAnalyzer');
@@ -235,6 +236,11 @@ class SecurityBot {
             // Initialize logger with database reference
             this.logger = new Logger(this);
             await this.logger.initialize();
+            
+            // Start log rotation / auto-cleanup
+            const LogRotation = require('./utils/log-rotation');
+            this.logRotation = new LogRotation(this);
+            this.logRotation.start();
             
             console.log('🤖 Initializing Discord Security Bot...');
             await this.logger.logInternal({
@@ -687,7 +693,7 @@ class SecurityBot {
                                         key: settingKey,
                                         value: newValue,
                                         userId: userId,
-                                        userTag: user?.user?.tag || 'Unknown',
+                                        userTag: user?.user?.username || 'Unknown',
                                         timestamp: Date.now()
                                     });
                                 }
@@ -705,7 +711,7 @@ class SecurityBot {
                                     const payload = {
                                         guildId: String(guildId),
                                         userId: userId ? String(userId) : null,
-                                        userTag: user?.user?.tag || 'Unknown',
+                                        userTag: user?.user?.username || 'Unknown',
                                         setting: settingKey,
                                         value: newValue,
                                         timestamp: Date.now()
@@ -921,7 +927,7 @@ class SecurityBot {
     async setupEventHandlers() {
         // Ready event (clientReady to avoid deprecation warning)
         this.client.once('clientReady', async () => {
-            this.logger.info(`🚀 Bot is online as ${this.client.user.tag}`);
+            this.logger.info(`🚀 Bot is online as ${this.client.user.username}`);
             this.logger.info(`📊 Serving ${this.client.guilds.cache.size} guilds`);
             
             // Set bot presence
@@ -1057,7 +1063,7 @@ class SecurityBot {
                     // Broadcast command execution to console
                     try {
                         const guildId = interaction.guild ? interaction.guild.id : null;
-                        const who = interaction.user ? `${interaction.user.tag} (${interaction.user.id})` : String(interaction.user?.id || 'Unknown');
+                        const who = interaction.user ? `${interaction.user.username} (${interaction.user.id})` : String(interaction.user?.id || 'Unknown');
                         const cmd = command.data && command.data.name ? command.data.name : interaction.commandName;
                         this.broadcastConsole(guildId, `[COMMAND] ${who} -> /${cmd}`);
                     } catch (e) {
@@ -1076,7 +1082,7 @@ class SecurityBot {
                         error,
                         context: `command_${interaction.commandName}`,
                         userId: interaction.user.id,
-                        userTag: interaction.user.tag,
+                        userTag: interaction.user.username,
                         guildId: interaction.guild?.id,
                         channelId: interaction.channel?.id
                     });
@@ -1103,7 +1109,7 @@ class SecurityBot {
                     await this.logger.logCommand({
                         commandName: interaction.commandName,
                         userId: interaction.user.id,
-                        userTag: interaction.user.tag,
+                        userTag: interaction.user.username,
                         guildId: interaction.guild?.id,
                         channelId: interaction.channel?.id,
                         options: interaction.options?.data || {},
@@ -1163,11 +1169,11 @@ class SecurityBot {
                                     await welcomeChannel.send({ content: msg });
                                 }
                                 await interaction.message.edit({ components: [] });
-                                await interaction.editReply({ content: `Approved ${member.user.tag}.` });
+                                await interaction.editReply({ content: `Approved ${member.user.username}.` });
                             } else {
-                                await member.kick(`Verification denied by ${interaction.user.tag}`);
+                                await member.kick(`Verification denied by ${interaction.user.username}`);
                                 await interaction.message.edit({ components: [] });
-                                await interaction.editReply({ content: `Denied and kicked ${member.user.tag}.` });
+                                await interaction.editReply({ content: `Denied and kicked ${member.user.username}.` });
                             }
                             return true;
                         }
@@ -1218,7 +1224,7 @@ class SecurityBot {
                             error,
                             context: `button_${interaction.customId}`,
                             userId: interaction.user.id,
-                            userTag: interaction.user.tag,
+                            userTag: interaction.user.username,
                             guildId: interaction.guild?.id,
                             channelId: interaction.channel?.id
                         });
@@ -1230,7 +1236,7 @@ class SecurityBot {
                 await this.logger.logButton({
                     customId: interaction.customId,
                     userId: interaction.user.id,
-                    userTag: interaction.user.tag,
+                    userTag: interaction.user.username,
                     guildId: interaction.guild?.id,
                     channelId: interaction.channel?.id,
                     messageId: interaction.message?.id,
@@ -1373,7 +1379,7 @@ class SecurityBot {
                     try {
                         const filterResult = await this.wordFilter.checkMessage(message);
                         if (filterResult?.blocked) {
-                            this.logger.debug(`Word filter blocked message from ${message.author.tag}: ${filterResult.term}`);
+                            this.logger.debug(`Word filter blocked message from ${message.author.username}: ${filterResult.term}`);
                             return;
                         }
                     } catch (e) {
@@ -1463,6 +1469,19 @@ class SecurityBot {
                                 levelUpEmbed.addFields({ name: 'Messages', value: userData.totalMessages.toString(), inline: true });
                             }
 
+                            // Check for role rewards and add to embed
+                            if (result.roleReward) {
+                                try {
+                                    const role = message.guild.roles.cache.get(result.roleReward);
+                                    if (role) {
+                                        await message.member.roles.add(role);
+                                        levelUpEmbed.addFields({ name: '🏆 Role Earned', value: `${role}`, inline: true });
+                                    }
+                                } catch (e) {
+                                    this.logger.warn('Failed to assign role reward:', e.message);
+                                }
+                            }
+
                             try {
                                 // Check for custom level-up channel
                                 const levelUpChannelId = config?.xp_levelup_channel;
@@ -1478,19 +1497,7 @@ class SecurityBot {
                             } catch (e) {
                                 // Couldn't send level up message (permissions)
                             }
-                            
-                            // Check for role rewards
-                            if (result.roleReward) {
-                                try {
-                                    const role = message.guild.roles.cache.get(result.roleReward);
-                                    if (role) {
-                                        await message.member.roles.add(role);
-                                        await message.channel.send(`🏆 ${message.author} earned the **${role.name}** role!`);
-                                    }
-                                } catch (e) {
-                                    console.error('Failed to assign role reward:', e);
-                                }
-                            }
+
                         }
                     }
                 }
@@ -1532,7 +1539,7 @@ class SecurityBot {
             try {
                 // Broadcast to console
                 try {
-                    this.broadcastConsole(member.guild.id, `[JOIN] ${member.user.tag} (${member.id}) joined ${member.guild.name}`);
+                    this.broadcastConsole(member.guild.id, `[JOIN] ${member.user.username} (${member.id}) joined ${member.guild.name}`);
                 } catch (_) {}
 
                 // Lockdown check - handle first
@@ -1587,8 +1594,8 @@ class SecurityBot {
                         guildId: member.guild.id,
                         eventType: 'member_join',
                         eventCategory: 'member',
-                        executor: { id: member.id, tag: member.user.tag },
-                        target: { id: member.id, name: member.user.tag, type: 'user' },
+                        executor: { id: member.id, tag: member.user.username },
+                        target: { id: member.id, name: member.user.username, type: 'user' },
                         changes: { accountAgeMs: Date.now() - member.user.createdTimestamp },
                         canReplay: false
                     });
@@ -1600,16 +1607,23 @@ class SecurityBot {
                 // Welcome message
                 if (this.database) {
                     const config = await this.database.getGuildConfig(member.guild.id);
-                    if (config.welcome_enabled && (config.welcome_channel || config.welcome_channel_id)) {
+                    if (config && config.welcome_enabled && (config.welcome_channel || config.welcome_channel_id)) {
                         try {
-                            const channel = member.guild.channels.cache.get(config.welcome_channel_id || config.welcome_channel);
-                            if (channel && channel.permissionsFor(member.guild.members.me).has('SendMessages')) {
+                            const channelId = config.welcome_channel_id || config.welcome_channel;
+                            let channel = member.guild.channels.cache.get(channelId);
+                            // Fallback: fetch channel if not in cache
+                            if (!channel) {
+                                try { channel = await member.guild.channels.fetch(channelId); } catch (_) {}
+                            }
+                            if (channel && channel.permissionsFor(member.guild.members.me)?.has('SendMessages')) {
                                 const welcomeMessage = this.formatWelcomeMessage(
                                     config.welcome_message || 'Welcome {user} to **{server}**! You are member #{memberCount}! 🎉',
                                     member
                                 );
                                 await channel.send(welcomeMessage);
-                                this.logger.info(`📩 Sent welcome message to ${member.user.tag} in ${member.guild.name}`);
+                                this.logger.info(`📩 Sent welcome message for ${member.user.username} in ${member.guild.name}`);
+                            } else {
+                                this.logger.warn(`[Welcome] Channel ${channelId} not found or no perms in ${member.guild.name}`);
                             }
                         } catch (error) {
                             this.logger.error('Error sending welcome message:', error);
@@ -1647,7 +1661,7 @@ class SecurityBot {
 
                     await owner.send({ embeds: [welcomeDM] });
 
-                    this.logger.info(`📧 Sent welcome DM to ${owner.user.tag}`);
+                    this.logger.info(`📧 Sent welcome DM to ${owner.user.username}`);
                 } catch (dmError) {
                     this.logger.error('Could not send DM to server owner:', dmError);
                     // Fallback: send basic message in server
@@ -1712,7 +1726,7 @@ I'm performing an initial security scan to check for threats. **This scan is rep
             try {
                 // Broadcast to console
                 try {
-                    this.broadcastConsole(member.guild.id, `[LEAVE] ${member.user.tag} (${member.id}) left ${member.guild.name}`);
+                    this.broadcastConsole(member.guild.id, `[LEAVE] ${member.user.username} (${member.id}) left ${member.guild.name}`);
                 } catch (_) {}
 
                 if (this.database) {
@@ -1737,15 +1751,22 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                     const config = await this.database.getGuildConfig(member.guild.id).catch(() => ({}));
                     if (config?.goodbye_enabled && (config.goodbye_channel_id || config.goodbye_channel)) {
                         try {
-                            const ch = member.guild.channels.cache.get(config.goodbye_channel_id || config.goodbye_channel);
+                            const channelId = config.goodbye_channel_id || config.goodbye_channel;
+                            let ch = member.guild.channels.cache.get(channelId);
+                            if (!ch) {
+                                try { ch = await member.guild.channels.fetch(channelId); } catch (_) {}
+                            }
                             if (ch && ch.permissionsFor(member.guild.members.me)?.has('SendMessages')) {
                                 const msg = this.formatWelcomeMessage(
                                     config.goodbye_message || 'Goodbye **{username}**! We will miss you. 👋',
                                     member
                                 );
                                 await ch.send(msg);
+                                this.logger.info(`👋 Sent goodbye message for ${member.user.username} in ${member.guild.name}`);
                             }
-                        } catch (_) {}
+                        } catch (err) {
+                            this.logger.warn('Error sending goodbye message:', err.message);
+                        }
                     }
                 }
 
@@ -1754,8 +1775,8 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                         guildId: member.guild.id,
                         eventType: 'member_leave',
                         eventCategory: 'member',
-                        executor: { id: member.id, tag: member.user.tag },
-                        target: { id: member.id, name: member.user.tag, type: 'user' },
+                        executor: { id: member.id, tag: member.user.username },
+                        target: { id: member.id, name: member.user.username, type: 'user' },
                         canReplay: false
                     });
                 }
@@ -1772,7 +1793,7 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                 if (cfg?.verified_role_id && cfg?.unverified_role_id) {
                     if (newMember.roles.cache.has(cfg.verified_role_id) && newMember.roles.cache.has(cfg.unverified_role_id)) {
                         await newMember.roles.remove(cfg.unverified_role_id).catch(() => {});
-                        this.logger?.info && this.logger.info(`[RoleConflict] Removed Unverified from ${newMember.user.tag} (has Verified)`);
+                        this.logger?.info && this.logger.info(`[RoleConflict] Removed Unverified from ${newMember.user.username} (has Verified)`);
                     }
                 }
 
@@ -1785,7 +1806,7 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                 
                 // User was just timed out
                 if (!wasTimedOut && isTimedOut) {
-                    this.logger.info(`🔇 Timeout detected: ${newMember.user.tag} in ${newMember.guild.name}`);
+                    this.logger.info(`🔇 Timeout detected: ${newMember.user.username} in ${newMember.guild.name}`);
                     
                     const timeoutUntil = new Date(isTimedOut);
                     const duration = Math.round((timeoutUntil - Date.now()) / 1000 / 60); // minutes
@@ -1810,9 +1831,9 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                     if (logChannel && logChannel.isTextBased()) {
                         const timeoutEmbed = new EmbedBuilder()
                             .setTitle('🔇 Member Timed Out')
-                            .setDescription(`**${newMember.user.tag}** has been timed out`)
+                            .setDescription(`**${newMember.user.username}** has been timed out`)
                             .addFields(
-                                { name: '👤 User', value: `${newMember.user.tag}\n<@${newMember.user.id}>\n\`${newMember.user.id}\``, inline: true },
+                                { name: '👤 User', value: `${newMember.user.username}\n<@${newMember.user.id}>\n\`${newMember.user.id}\``, inline: true },
                                 { name: '⏰ Duration', value: `${duration} minutes`, inline: true },
                                 { name: '🕐 Until', value: `<t:${Math.floor(timeoutUntil.getTime() / 1000)}:F>`, inline: true }
                             )
@@ -1835,7 +1856,7 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                             data: {
                                 type: 'TIMEOUT',
                                 userId: newMember.user.id,
-                                userTag: newMember.user.tag,
+                                userTag: newMember.user.username,
                                 userAvatar: newMember.user.displayAvatarURL({ dynamic: true }),
                                 guildId: newMember.guild.id,
                                 guildName: newMember.guild.name,
@@ -1857,7 +1878,7 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                             moderatorId: null,
                             moderatorTag: null,
                             targetId: newMember.user.id,
-                            targetTag: newMember.user.tag,
+                            targetTag: newMember.user.username,
                             reason: `Timed out for ${duration} minutes`,
                             details: {
                                 duration: duration,
@@ -1872,7 +1893,7 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                 
                 // User timeout was removed
                 if (wasTimedOut && !isTimedOut) {
-                    this.logger.info(`✅ Timeout removed: ${newMember.user.tag} in ${newMember.guild.name}`);
+                    this.logger.info(`✅ Timeout removed: ${newMember.user.username} in ${newMember.guild.name}`);
                 }
                 
             } catch (error) {
@@ -1961,6 +1982,45 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                 await this.handleWebhookUpdate(channel);
             } catch (error) {
                 this.logger.error('Error handling webhookUpdate:', error);
+            }
+        });
+
+        // Role Update (permission escalation detection)
+        this.client.on('roleUpdate', async (oldRole, newRole) => {
+            try {
+                await this.handleRoleUpdate(oldRole, newRole);
+                if (this.discordLogger && newRole.guild) await this.discordLogger.logRoleEvent(newRole, 'update', oldRole).catch(() => {});
+            } catch (error) {
+                this.logger.error('Error handling roleUpdate:', error);
+            }
+        });
+
+        // Channel Update (snapshot maintenance)
+        this.client.on('channelUpdate', async (oldChannel, newChannel) => {
+            try {
+                await this.handleChannelUpdate(oldChannel, newChannel);
+            } catch (error) {
+                this.logger.error('Error handling channelUpdate:', error);
+            }
+        });
+
+        // Bot addition detection
+        this.client.on('guildMemberAdd', async (member) => {
+            try {
+                if (member.user.bot) {
+                    await this.handleBotAdd(member);
+                }
+            } catch (error) {
+                this.logger.error('Error handling guildMemberAdd (antinuke):', error);
+            }
+        });
+
+        // Kick detection
+        this.client.on('guildMemberRemove', async (member) => {
+            try {
+                await this.handleMemberRemove(member);
+            } catch (error) {
+                this.logger.error('Error handling guildMemberRemove (antinuke):', error);
             }
         });
 
@@ -2171,7 +2231,7 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                 case 'remove':
                     // Remove timeout (from spam_remove_timeout_userId)
                     if (targetMember.communicationDisabledUntil) {
-                        await targetMember.timeout(null, `Timeout removed by ${member.user.tag}`);
+                        await targetMember.timeout(null, `Timeout removed by ${member.user.username}`);
                         
                         // Log the action
                         await this.database.run(`
@@ -2187,11 +2247,11 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                         ]);
 
                         await interaction.editReply({
-                            content: `✅ Removed timeout from ${targetUser.tag}`
+                            content: `✅ Removed timeout from ${targetUser.username}`
                         });
                     } else {
                         await interaction.editReply({
-                            content: `ℹ️ ${targetUser.tag} is not currently timed out.`
+                            content: `ℹ️ ${targetUser.username} is not currently timed out.`
                         });
                     }
                     break;
@@ -2226,7 +2286,7 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                                 description: `You received an additional warning in **${guild.name}** from a moderator.`,
                                 fields: [
                                     { name: 'Total Warnings', value: `${newWarningCount}`, inline: true },
-                                    { name: 'Moderator', value: member.user.tag, inline: true }
+                                    { name: 'Moderator', value: member.user.username, inline: true }
                                 ],
                                 color: 0xffa500,
                                 timestamp: new Date().toISOString()
@@ -2237,7 +2297,7 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                     }
 
                     await interaction.editReply({
-                        content: `✅ Added warning to ${targetUser.tag} (Total: ${newWarningCount})`
+                        content: `✅ Added warning to ${targetUser.username} (Total: ${newWarningCount})`
                     });
                     break;
 
@@ -2248,7 +2308,7 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                         });
                     }
 
-                    await targetMember.kick(`Kicked by ${member.user.tag} after spam detection`);
+                    await targetMember.kick(`Kicked by ${member.user.username} after spam detection`);
 
                     await this.database.run(`
                         INSERT INTO mod_actions 
@@ -2263,7 +2323,7 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                     ]);
 
                     await interaction.editReply({
-                        content: `✅ Kicked ${targetUser.tag} from the server`
+                        content: `✅ Kicked ${targetUser.username} from the server`
                     });
                     break;
 
@@ -2275,7 +2335,7 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                     }
 
                     await guild.members.ban(targetUserId, { 
-                        reason: `Banned by ${member.user.tag} after spam detection`,
+                        reason: `Banned by ${member.user.username} after spam detection`,
                         deleteMessageSeconds: 86400 // Delete messages from last 24 hours
                     });
 
@@ -2292,7 +2352,7 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                     ]);
 
                     await interaction.editReply({
-                        content: `✅ Banned ${targetUser.tag} from the server`
+                        content: `✅ Banned ${targetUser.username} from the server`
                     });
                     break;
 
@@ -2310,7 +2370,7 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                         .setColor(0x00ff00)
                         .addFields({
                             name: '✅ Action Taken',
-                            value: `${member.user.tag} used: **${action.toUpperCase()}**`,
+                            value: `${member.user.username} used: **${action.toUpperCase()}**`,
                             inline: false
                         });
 
@@ -2557,23 +2617,11 @@ I'm performing an initial security scan to check for threats. **This scan is rep
     }
 
     async hasProFeatures(guildId) {
-        try {
-            const sub = await this.getGuildPlan(guildId);
-            return sub.effectivePlan === 'pro' || sub.effectivePlan === 'enterprise';
-        } catch (err) {
-            this.logger?.warn(`[Paywall] Failed to check pro features for ${guildId}:`, err.message);
-            return false; // fail-closed: deny access when subscription state unknown
-        }
+        return true; // all features unlocked
     }
 
     async hasEnterpriseFeatures(guildId) {
-        try {
-            const sub = await this.getGuildPlan(guildId);
-            return sub.effectivePlan === 'enterprise';
-        } catch (err) {
-            this.logger?.warn(`[Paywall] Failed to check enterprise features for ${guildId}:`, err.message);
-            return false; // fail-closed: deny access when subscription state unknown
-        }
+        return true; // all features unlocked
     }
 
     async applySubscriptionUpdate({ guildId, userId = null, plan = 'free', status = 'inactive', currentPeriodEnd = undefined, stripeCustomerId = null, stripeSubscriptionId = null }) {
@@ -2650,6 +2698,11 @@ I'm performing an initial security scan to check for threats. **This scan is rep
     async shutdown() {
         this.logger.info('🔄 Shutting down bot...');
         
+        // Stop log rotation timer
+        if (this.logRotation) {
+            this.logRotation.stop();
+        }
+        
         if (this.dashboard && this.dashboard.server) {
             try {
                 this.dashboard.server.close(() => {
@@ -2671,6 +2724,10 @@ I'm performing an initial security scan to check for threats. **This scan is rep
     formatWelcomeMessage(messageTemplate, member) {
         const { EmbedBuilder } = require('discord.js');
         
+        if (!messageTemplate) {
+            return { content: `Welcome ${member.user} to **${member.guild.name}**!` };
+        }
+
         // Try to parse as JSON for custom embeds
         let customization;
         try {
@@ -2680,12 +2737,15 @@ I'm performing an initial security scan to check for threats. **This scan is rep
             customization = { message: messageTemplate };
         }
 
+        // Ensure message exists
+        const rawMessage = customization.message || messageTemplate || 'Welcome {user} to **{server}**!';
+
         // Replace placeholders
-        const message = customization.message
-            .replace(/{user}/g, member.user.toString())
-            .replace(/{username}/g, member.user.username)
-            .replace(/{server}/g, member.guild.name)
-            .replace(/{memberCount}/g, member.guild.memberCount.toString());
+        const message = rawMessage
+            .replace(/{user}/g, member.user?.toString() || 'Unknown')
+            .replace(/{username}/g, member.user?.username || 'Unknown')
+            .replace(/{server}/g, member.guild?.name || 'Server')
+            .replace(/{memberCount}/g, (member.guild?.memberCount || 0).toString());
 
         // Check if embed customization exists
         if (customization.embedTitle || customization.embedColor || customization.imageUrl) {
@@ -2704,324 +2764,53 @@ I'm performing an initial security scan to check for threats. **This scan is rep
         return { content: message };
     }
 
-    // Anti-Nuke Event Handlers
+    // Anti-Nuke Event Handlers v3.0
+    // All logic is in antiNukeHandlers.js which properly checks antinuke_enabled,
+    // uses rapid in-memory detection, and handles comprehensive recovery.
     async handleRoleCreate(role) {
-        if (!this.antiNuke) return;
-        
-        const guild = role.guild;
-        this.logger.debug(`Role created: ${role.name} in ${guild.name}`);
-        
-        // Get audit log to find who created the role
-        const auditLogs = await guild.fetchAuditLogs({
-            type: 30, // ROLE_CREATE
-            limit: 1
-        }).catch(() => null);
-        
-        if (!auditLogs) return;
-        
-        const entry = auditLogs.entries.first();
-        if (!entry || !entry.executor) return;
-        
-        const userId = entry.executor.id;
-        if (userId === this.client.user.id) return; // Ignore bot's own actions
-        
-        // Track the action
-        const result = await this.antiNuke.trackAction(guild, userId, 'roleCreate', {
-            roleId: role.id,
-            roleName: role.name,
-            permissions: role.permissions.bitfield.toString()
-        });
-        
-        if (result.violated) {
-            await this.antiNuke.handleViolation(guild, userId, result);
-        }
-
-        if (this.forensicsManager) {
-            await this.forensicsManager.logAuditEvent({
-                guildId: guild.id,
-                eventType: 'role_create',
-                eventCategory: 'role',
-                executor: entry.executor,
-                target: { id: role.id, name: role.name, type: 'role' },
-                changes: { permissions: role.permissions.bitfield.toString() },
-                afterState: { name: role.name, permissions: role.permissions.bitfield.toString() },
-                canReplay: true
-            });
-        }
-
-        if (this.antiNukeManager) {
-            const tracked = this.antiNukeManager.track(guild.id, userId, 'role_create', { id: role.id });
-            if (tracked?.triggered) {
-                await this.antiNukeManager.mitigate(guild, userId);
-            }
-        }
+        return antiNukeHandlers.handleRoleCreate(role, this);
     }
 
     async handleRoleDelete(role) {
-        if (!this.antiNuke) return;
-        
-        const guild = role.guild;
-        this.logger.debug(`Role deleted: ${role.name} in ${guild.name}`);
-        
-        const auditLogs = await guild.fetchAuditLogs({
-            type: 32, // ROLE_DELETE
-            limit: 1
-        }).catch(() => null);
-        
-        if (!auditLogs) return;
-        
-        const entry = auditLogs.entries.first();
-        if (!entry || !entry.executor) return;
-        
-        const userId = entry.executor.id;
-        if (userId === this.client.user.id) return;
-        
-        const result = await this.antiNuke.trackAction(guild, userId, 'roleDelete', {
-            roleId: role.id,
-            roleName: role.name
-        });
-        
-        if (result.violated) {
-            await this.antiNuke.handleViolation(guild, userId, result);
-        }
+        return antiNukeHandlers.handleRoleDelete(role, this);
+    }
 
-        if (this.forensicsManager) {
-            await this.forensicsManager.logAuditEvent({
-                guildId: guild.id,
-                eventType: 'role_delete',
-                eventCategory: 'role',
-                executor: entry.executor,
-                target: { id: role.id, name: role.name, type: 'role' },
-                beforeState: { name: role.name },
-                reason: result?.violated ? 'anti-nuke violation tracked' : null,
-                canReplay: true
-            });
-        }
-
-        if (this.antiNukeManager) {
-            const tracked = this.antiNukeManager.track(guild.id, userId, 'role_delete', { id: role.id });
-            if (tracked?.triggered) {
-                await this.antiNukeManager.mitigate(guild, userId);
-            }
-        }
+    async handleRoleUpdate(oldRole, newRole) {
+        return antiNukeHandlers.handleRoleUpdate(oldRole, newRole, this);
     }
 
     async handleChannelCreate(channel) {
-        if (!this.antiNuke) {
-            this.logger.warn('⚠️ Anti-nuke module not initialized');
-            return;
-        }
-        if (!channel.guild) return; // DM channels
-        
-        const guild = channel.guild;
-        this.logger.info(`🔔 Channel created: ${channel.name} (${channel.id}) in ${guild.name}`);
-        
-        const auditLogs = await guild.fetchAuditLogs({
-            type: 10, // CHANNEL_CREATE
-            limit: 1
-        }).catch(err => {
-            this.logger.error('❌ Failed to fetch audit logs:', err.message);
-            return null;
-        });
-        
-        if (!auditLogs) {
-            this.logger.warn('⚠️ No audit logs available for channel creation');
-            return;
-        }
-        
-        const entry = auditLogs.entries.first();
-        if (!entry) {
-            this.logger.warn('⚠️ No audit log entry found');
-            return;
-        }
-        if (!entry.executor) {
-            this.logger.warn('⚠️ No executor in audit log entry');
-            return;
-        }
-        
-        const userId = entry.executor.id;
-        this.logger.info(`👤 Channel creator: ${entry.executor.tag} (${userId})`);
-        
-        if (userId === this.client.user.id) {
-            this.logger.debug('ℹ️ Ignoring own action');
-            return;
-        }
-        
-        this.logger.info(`🔍 Tracking channel creation by ${entry.executor.tag}`);
-        const result = await this.antiNuke.trackAction(guild, userId, 'channelCreate', {
-            channelId: channel.id,
-            channelName: channel.name,
-            channelType: channel.type
-        });
-        
-        this.logger.info(`📊 Anti-nuke result:`, {
-            violated: result.violated,
-            counts: result.counts,
-            limits: result.limits
-        });
-        
-        if (result.violated) {
-            this.logger.warn(`🚨 VIOLATION DETECTED! Taking action against ${entry.executor.tag}`);
-            await this.antiNuke.handleViolation(guild, userId, result);
-        }
-        if (this.forensicsManager) {
-            await this.forensicsManager.logAuditEvent({
-                guildId: guild.id,
-                eventType: 'channel_create',
-                eventCategory: 'channel',
-                executor: entry.executor,
-                target: { id: channel.id, name: channel.name, type: 'channel' },
-                changes: { channelType: channel.type },
-                afterState: { name: channel.name, type: channel.type },
-                canReplay: true
-            });
-        }
-
-        if (this.antiNukeManager) {
-            const tracked = this.antiNukeManager.track(guild.id, userId, 'channel_create', { id: channel.id });
-            if (tracked?.triggered) {
-                await this.antiNukeManager.mitigate(guild, userId);
-            }
-        }
+        return antiNukeHandlers.handleChannelCreate(channel, this);
     }
 
     async handleChannelDelete(channel) {
-        if (!this.antiNuke) return;
-        if (!channel.guild) return;
-        
-        const guild = channel.guild;
-        this.logger.debug(`Channel deleted: ${channel.name} in ${guild.name}`);
-        
-        const auditLogs = await guild.fetchAuditLogs({
-            type: 12, // CHANNEL_DELETE
-            limit: 1
-        }).catch(() => null);
-        
-        if (!auditLogs) return;
-        
-        const entry = auditLogs.entries.first();
-        if (!entry || !entry.executor) return;
-        
-        const userId = entry.executor.id;
-        if (userId === this.client.user.id) return;
-        
-        const result = await this.antiNuke.trackAction(guild, userId, 'channelDelete', {
-            channelId: channel.id,
-            channelName: channel.name
-        });
-        
-        if (result.violated) {
-            await this.antiNuke.handleViolation(guild, userId, result);
-        }
-        if (this.forensicsManager) {
-            await this.forensicsManager.logAuditEvent({
-                guildId: guild.id,
-                eventType: 'channel_delete',
-                eventCategory: 'channel',
-                executor: entry.executor,
-                target: { id: channel.id, name: channel.name, type: 'channel' },
-                beforeState: { name: channel.name, type: channel.type },
-                canReplay: true
-            });
-        }
+        return antiNukeHandlers.handleChannelDelete(channel, this);
+    }
 
-        if (this.antiNukeManager) {
-            const tracked = this.antiNukeManager.track(guild.id, userId, 'channel_delete', { id: channel.id });
-            if (tracked?.triggered) {
-                await this.antiNukeManager.mitigate(guild, userId);
-            }
-        }
+    async handleChannelUpdate(oldChannel, newChannel) {
+        return antiNukeHandlers.handleChannelUpdate(oldChannel, newChannel, this);
     }
 
     async handleBanAdd(ban) {
-        if (!this.antiNuke) return;
-        
-        const guild = ban.guild;
-        this.logger.debug(`Ban added: ${ban.user.tag} in ${guild.name}`);
-        
-        const auditLogs = await guild.fetchAuditLogs({
-            type: 22, // MEMBER_BAN_ADD
-            limit: 1
-        }).catch(() => null);
-        
-        if (!auditLogs) return;
-        
-        const entry = auditLogs.entries.first();
-        if (!entry || !entry.executor) return;
-        
-        const userId = entry.executor.id;
-        if (userId === this.client.user.id) return;
-        
-        const result = await this.antiNuke.trackAction(guild, userId, 'banAdd', {
-            targetId: ban.user.id,
-            targetTag: ban.user.tag
-        });
-        
-        if (result.violated) {
-            await this.antiNuke.handleViolation(guild, userId, result);
-        }
-        if (this.forensicsManager) {
-            await this.forensicsManager.logAuditEvent({
-                guildId: guild.id,
-                eventType: 'ban_add',
-                eventCategory: 'moderation',
-                executor: entry.executor,
-                target: { id: ban.user.id, name: ban.user.tag, type: 'user' },
-                reason: entry.reason || null,
-                changes: { action: 'ban' }
-            });
-        }
-
+        await antiNukeHandlers.handleBanAdd(ban, this);
         // Appeal system — send DM to banned user
         if (this.appealSystem) {
-            try {
-                await this.appealSystem.handleBan(ban);
-            } catch (e) {
+            try { await this.appealSystem.handleBan(ban); } catch (e) {
                 this.logger.debug('Appeal DM failed:', e.message);
             }
         }
     }
 
     async handleWebhookUpdate(channel) {
-        if (!this.antiNuke) return;
-        if (!channel.guild) return;
-        
-        const guild = channel.guild;
-        
-        const auditLogs = await guild.fetchAuditLogs({
-            type: 50, // WEBHOOK_CREATE
-            limit: 1
-        }).catch(() => null);
-        
-        if (!auditLogs) return;
-        
-        const entry = auditLogs.entries.first();
-        if (!entry || !entry.executor) return;
-        if (Date.now() - entry.createdTimestamp > 5000) return; // Only recent webhooks
-        
-        const userId = entry.executor.id;
-        if (userId === this.client.user.id) return;
-        
-        const result = await this.antiNuke.trackAction(guild, userId, 'webhookCreate', {
-            webhookId: entry.target?.id,
-            channelId: channel.id,
-            channelName: channel.name
-        });
-        
-        if (result.violated) {
-            await this.antiNuke.handleViolation(guild, userId, result);
-        }
-        if (this.forensicsManager) {
-            await this.forensicsManager.logAuditEvent({
-                guildId: guild.id,
-                eventType: 'webhook_create',
-                eventCategory: 'integration',
-                executor: entry.executor,
-                target: { id: entry.target?.id || channel.id, name: channel.name, type: 'webhook' },
-                changes: { channelId: channel.id },
-                canReplay: true
-            });
-        }
+        return antiNukeHandlers.handleWebhookUpdate(channel, this);
+    }
+
+    async handleMemberRemove(member) {
+        return antiNukeHandlers.handleMemberRemove(member, this);
+    }
+
+    async handleBotAdd(member) {
+        return antiNukeHandlers.handleBotAdd(member, this);
     }
 
     // Handle channel-based ticket creation
@@ -3071,7 +2860,7 @@ I'm performing an initial security scan to check for threats. **This scan is rep
                 name: channelName,
                 type: ChannelType.GuildText,
                 parent: config.ticket_category_id || null,
-                topic: `Support ticket for ${user.tag} | User ID: ${user.id}`,
+                topic: `Support ticket for ${user.username} | User ID: ${user.id}`,
                 permissionOverwrites: [
                     {
                         id: guild.roles.everyone,
@@ -3421,7 +3210,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
 
                 await interaction.user.send({ embeds: [dmEmbed] });
             } catch (dmError) {
-                this.logger.warn(`Could not send DM to ${interaction.user.tag}:`, dmError.message);
+                this.logger.warn(`Could not send DM to ${interaction.user.username}:`, dmError.message);
             }
 
             // Reply to interaction
@@ -3599,12 +3388,6 @@ Our support team will reach out shortly. Please check the ticket channel for upd
                     commands: ['setup', 'config', 'backup', 'logs'],
                     description: 'Configure and manage bot settings'
                 },
-                'Economy': {
-                    emoji: '💰',
-                    color: '#ff922b',
-                    commands: ['balance', 'daily', 'work', 'pay', 'deposit', 'withdraw'],
-                    description: 'Economy system with coins, shops, and trading'
-                },
                 'Leveling': {
                     emoji: '📈',
                     color: '#a78bfa',
@@ -3662,7 +3445,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
                     new ButtonBuilder()
                         .setLabel('Admin Panel')
                         .setStyle(ButtonStyle.Link)
-                        .setURL(process.env.DASHBOARD_URL || 'https://discord-security-bot-uyxf.onrender.com/dashboard')
+                        .setURL(process.env.DASHBOARD_URL || 'https://admin.darklock.net/dashboard')
                         .setEmoji('📊'),
                     new ButtonBuilder()
                         .setLabel('Support Server')
@@ -3753,7 +3536,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
                         .setTitle(`🆘 New Support Ticket: ${ticketId}`)
                         .setColor('#ff9900')
                         .addFields(
-                            { name: 'User', value: `${interaction.user.tag} (${interaction.user.id})`, inline: false },
+                            { name: 'User', value: `${interaction.user.username} (${interaction.user.id})`, inline: false },
                             { name: 'Category', value: `${this.helpTicketSystem.getCategoryEmoji(category)} ${this.helpTicketSystem.getCategoryLabel(category)}`, inline: true },
                             { name: 'Status', value: '🔄 Open', inline: true },
                             { name: 'Subject', value: subject, inline: false },
@@ -3774,7 +3557,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
                                 .setLabel('Mark In Progress')
                                 .setStyle(ButtonStyle.Warning),
                             new ButtonBuilder()
-                                .setURL(process.env.DASHBOARD_URL || 'https://discord-security-bot-uyxf.onrender.com/admin')
+                                .setURL(process.env.DASHBOARD_URL || 'https://admin.darklock.net/admin')
                                 .setLabel('View Dashboard')
                                 .setStyle(ButtonStyle.Link)
                         );

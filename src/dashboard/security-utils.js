@@ -33,8 +33,39 @@ function generateCSRFToken() {
     return crypto.randomBytes(32).toString('hex');
 }
 
-// Session Store (in-memory for now, use Redis in production)
+// Session Store (bounded Map with automatic cleanup to prevent memory leaks)
 const sessionStore = new Map();
+const SESSION_MAX_SIZE = 10000;
+const SESSION_TTL = 60 * 60 * 1000; // 1 hour
+
+function setSession(key, value) {
+    // Evict oldest entries if store is full
+    if (sessionStore.size >= SESSION_MAX_SIZE) {
+        const oldest = sessionStore.keys().next().value;
+        sessionStore.delete(oldest);
+    }
+    sessionStore.set(key, { value, createdAt: Date.now() });
+}
+
+function getSession(key) {
+    const entry = sessionStore.get(key);
+    if (!entry) return undefined;
+    if (Date.now() - entry.createdAt > SESSION_TTL) {
+        sessionStore.delete(key);
+        return undefined;
+    }
+    return entry.value;
+}
+
+// Clean up expired sessions every 15 minutes
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of sessionStore.entries()) {
+        if (now - entry.createdAt > SESSION_TTL) {
+            sessionStore.delete(key);
+        }
+    }
+}, 15 * 60 * 1000);
 
 // Brute Force Protection
 const loginAttempts = new Map();
@@ -129,6 +160,8 @@ function parseOS(userAgent) {
 module.exports = {
     generateCSRFToken,
     sessionStore,
+    setSession,
+    getSession,
     checkBruteForce,
     recordFailedLogin,
     resetLoginAttempts,

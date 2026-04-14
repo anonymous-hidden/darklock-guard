@@ -1,0 +1,90 @@
+{
+  "nova_desktop": {
+    "enabled": true,
+    "url": "http://localhost:8950"
+  },
+  "nova": {
+    "name": "Nova",
+    "check_interval": 30,
+    "max_restart_attempts": 3,
+    "restart_cooldown": 120,
+    "escalate_after_failures": 3,
+    "log_file": "/var/log/nova-monitor.log",
+    "state_file": "/tmp/nova-monitor-state.json",
+    "integrity_check_interval": 300
+  },
+  "claude": {
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 1024,
+    "temperature": 0.3
+  },
+  "alerts": {
+    "discord_webhook_url": "",
+    "email_to": "anonymous-hide-me-pls@proton.me",
+    "email_from": "Darklock Nova <guardianbotsystem@gmail.com>",
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "smtp_user": "guardianbotsystem@gmail.com",
+    "smtp_pass": "",
+    "alert_cooldown": 300,
+    "daily_report_hour": 8
+  },
+  "services": {
+    "darklock-platform": {
+      "systemd_unit": "darklock-bot.service",
+      "health_url": "http://localhost:3001/health",
+      "port": 3001,
+      "critical": true,
+      "description": "Darklock Discord Bot + Platform Server"
+    },
+    "darklock-website": {
+      "systemd_unit": "darklock-platform.service",
+      "health_url": "http://localhost:3002/platform",
+      "port": 3002,
+      "critical": true,
+      "description": "Darklock Platform Website (port 3002)"
+    },
+    "darklock-ids": {
+      "systemd_unit": "darklock-ids.service",
+      "health_url": "http://localhost:4100/health",
+      "port": 4100,
+      "critical": true,
+      "description": "Secure Channel Identity Service"
+    },
+    "darklock-relay": {
+      "systemd_unit": "darklock-relay.service",
+      "health_url": "http://localhost:4101/health",
+      "port": 4101,
+      "critical": true,
+      "description": "Secure Channel Message Relay"
+    },
+    "darklock-notes": {
+      "systemd_unit": "darklock-notes.service",
+      "health_url": "http://localhost:3003/health",
+      "port": 3003,
+      "critical": true,
+      "description": "Darklock Secure Notes Server"
+    },
+    "cloudflared": {
+      "systemd_unit": "cloudflared.service",
+      "health_url": null,
+      "port": null,
+      "critical": true,
+      "description": "Cloudflare Tunnel"
+    }
+  },
+  "integrity": {
+    "watch_paths": [
+      "/mnt/nvme/discord-bot/.env",
+      "/mnt/nvme/discord-bot/darklock/server.js",
+      "/mnt/nvme/discord-bot/src/bot.js",
+      "/mnt/nvme/discord-bot/darklock/middleware/",
+      "/mnt/nvme/discord-bot/darklock/utils/",
+      "/etc/systemd/system/darklock-*.service",
+      "/etc/systemd/system/cloudflared.service",
+      "/etc/cloudflared/config.yml"
+    ],
+    "alert_on_change": true,
+    "block_on_unauthorized": false
+  }
+}

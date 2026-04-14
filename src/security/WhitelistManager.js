@@ -161,7 +161,7 @@ class WhitelistManager {
      */
     async whitelistUser(guild, userId, addedBy, reason = 'Trusted user') {
         const member = await guild.members.fetch(userId).catch(() => null);
-        const userName = member ? member.user.tag : userId;
+        const userName = member ? member.user.username : userId;
 
         return await this.addToWhitelist(
             guild.id,
@@ -205,7 +205,7 @@ class WhitelistManager {
             guild.id,
             'bot',
             botId,
-            bot.user.tag,
+            bot.user.username,
             addedBy,
             reason
         );

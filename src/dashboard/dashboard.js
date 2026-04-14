@@ -56,7 +56,7 @@ class SecurityDashboard {
             // Apply CSP with dynamic WebSocket URL
             const cspDirectives = {
                 'default-src': ["'self'"],
-                'script-src': ["'self'", "'unsafe-inline'", "https://js.stripe.com", "https://cdn.jsdelivr.net", "https://static.cloudflareinsights.com", "'unsafe-hashes'"],
+                'script-src': ["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'", "https://js.stripe.com", "https://cdn.jsdelivr.net", "https://static.cloudflareinsights.com", "'unsafe-hashes'"],
                 'script-src-attr': ["'unsafe-inline'"],
                 'frame-src': ["https://js.stripe.com", "https://hooks.stripe.com", "https://accounts.google.com"],
                 'connect-src': ["'self'", "https://api.stripe.com", "https://cdn.jsdelivr.net", "https://accounts.google.com", "https://oauth2.googleapis.com", "https://www.googleapis.com", wsUrl],
@@ -671,19 +671,21 @@ The GuardianBot Team`
         this.app.get('/favicon.ico', (req, res) => res.status(204).end());
         // Serve console static assets
         this.app.use('/console', express.static(path.join(__dirname, 'public')));
-        // Direct route to payment page
-        this.app.get('/payment', (req, res) => {
+        // Direct route to payment page (handle both /payment and /payment.html)
+        const paymentHandler = (req, res) => {
             try {
                 const fs = require('fs');
                 const htmlPath = path.join(__dirname, 'public', 'payment.html');
                 let html = fs.readFileSync(htmlPath, 'utf8');
                 // Inject Stripe publishable key
-                html = html.replace('{{ STRIPE_PUBLISHABLE_KEY }}', process.env.STRIPE_PUBLISHABLE || '');
+                html = html.replace('{{ STRIPE_PUBLISHABLE_KEY }}', process.env.STRIPE_PUBLISHABLE_KEY || '');
                 res.send(html);
             } catch (e) {
                 res.status(404).send('Payment page not found');
             }
-        });
+        };
+        this.app.get('/payment', paymentHandler);
+        this.app.get('/payment.html', paymentHandler);
         // Payment success page
         this.app.get('/payment-success.html', (req, res) => {
             try {
@@ -1555,7 +1557,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             if (req.path === '/current-theme' || req.path === '/csrf-token' ||
                 req.path === '/v4/admin/theme/css' ||
                 req.path === '/bug-report' ||             // legacy public submit
-                req.path === '/v4/admin/bug-reports/submit') { // new public submit
+                req.path === '/v4/admin/bug-reports/submit' || // new public submit
+                req.path.startsWith('/notes/')) { // Notes API has its own JWT auth
                 return next();
             }
             this.authenticateToken(req, res, next);
@@ -1568,7 +1571,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             if (!['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) return next();
             // Skip CSRF for login endpoints (no token yet) and webhooks
             if (req.path === '/login' || req.path === '/v4/admin/login' ||
-                req.path.startsWith('/v3/') || req.path.startsWith('/webhooks/')) return next();
+                req.path.startsWith('/v3/') || req.path.startsWith('/webhooks/') ||
+                req.path.startsWith('/notes/')) return next(); // Notes API has its own auth (JWT session cookie)
             // Skip for admin role (username/password login, not OAuth)
             if (req.user && req.user.role === 'admin' && req.user.userId === 'admin') return next();
             const headerToken = req.headers['x-csrf-token'];
@@ -1705,6 +1709,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         this.app.get('/api/security-stats', this.getSecurityStats.bind(this)); // Alias
         this.app.get('/api/actions', this.getModerationActions.bind(this)); // Alias
         this.app.get('/api/security/events', this.getSecurityEvents.bind(this));
+        this.app.get('/api/events/recent', this.authenticateToken.bind(this), this.getRecentEvents.bind(this));
         
         // Lockdown endpoints (authenticated + admin check)
         this.app.get('/api/lockdown/status', this.getLockdownStatus.bind(this));
@@ -3013,6 +3018,11 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             return next();
         }
 
+        // Notes API has its own JWT auth - skip dashboard auth
+        if (req.url.startsWith('/notes/')) {
+            return next();
+        }
+
         // Check for token in cookies first, then Authorization header
         let token = req.cookies?.dashboardToken;
         
@@ -3129,7 +3139,12 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
     sanitizeString(str, maxLength = 2000) {
         if (typeof str !== 'string') return '';
-        return str.slice(0, maxLength).replace(/[<>]/g, '');
+        return str.slice(0, maxLength)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     safeJsonParse(str, fallback = null) {
@@ -6428,7 +6443,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 actionType: 'undo_timeout',
                 actionCategory: 'moderation',
                 targetUserId: userId,
-                targetUsername: member.user.tag,
+                targetUsername: member.user.username,
                 moderatorId,
                 moderatorUsername: req.user?.username || 'Dashboard User',
                 reason: reason || 'Timeout removed from dashboard',
@@ -6474,7 +6489,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     actionType: 'warn',
                     actionCategory: 'moderation',
                     targetUserId: userId,
-                    targetUsername: member.user.tag,
+                    targetUsername: member.user.username,
                     moderatorId,
                     moderatorUsername: req.user?.username || 'Dashboard User',
                     reason: reason || 'Warned from dashboard',
@@ -6539,7 +6554,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 actionType: 'kick',
                 actionCategory: 'moderation',
                 targetUserId: userId,
-                targetUsername: member.user.tag,
+                targetUsername: member.user.username,
                 moderatorId,
                 moderatorUsername: req.user?.username || 'Dashboard User',
                 reason: reason || 'Kicked from dashboard',
@@ -6589,7 +6604,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 actionType: 'ban',
                 actionCategory: 'moderation',
                 targetUserId: userId,
-                targetUsername: member.user.tag,
+                targetUsername: member.user.username,
                 moderatorId,
                 moderatorUsername: req.user?.username || 'Dashboard User',
                 reason: reason || 'Banned from dashboard',
@@ -6734,7 +6749,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                         t.user_id,
                         t.status,
                         t.priority,
-                        t.tag,
+                        t.username,
                         t.subject,
                         t.description,
                         t.created_at,
@@ -6773,7 +6788,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                         priority: ticket.priority || 'normal',
                         created: this.formatTimeAgo(ticket.created_at),
                         lastResponse: ticket.closed_at ? this.formatTimeAgo(ticket.closed_at) : 'No response',
-                        category: ticket.tag || 'General'
+                        category: ticket.username || 'General'
                     };
                 }));
 
@@ -6956,7 +6971,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     userAvatar: userAvatar,
                     status: ticket.status || 'open',
                     priority: ticket.priority || 'normal',
-                    category: ticket.tag || 'General',
+                    category: ticket.username || 'General',
                     subject: ticket.subject || 'Support Ticket',
                     description: ticket.description || 'No description provided',
                     created: this.formatTimeAgo(new Date(ticket.created_at)),
@@ -7064,9 +7079,9 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             res.json({
                 id: ticket.id || ticket.ticket_id || ticketId,
                 userId: ticket.user_id,
-                username: user ? user.tag : (ticket.user || 'Unknown User'),
+                username: user ? user.username : (ticket.user || 'Unknown User'),
                 userAvatar: user ? user.displayAvatarURL({ dynamic: true }) : '/images/default-avatar.png',
-                category: ticket.category || ticket.tag || 'General',
+                category: ticket.category || ticket.username || 'General',
                 subject: ticket.subject || ticket.problem || 'Support Ticket',
                 description: ticket.description || ticket.details || 'No description provided',
                 status: ticket.status || 'open',
@@ -7594,45 +7609,311 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
     async getSecurityEvents(req, res) {
         try {
-            const limit = parseInt(req.query.limit) || 10;
-            let events = [];
+            const limit = parseInt(req.query.limit) || 50;
+            const guildId = req.query.guildId || this.getDefaultGuildId();
+            const allEvents = [];
 
             if (this.bot.database) {
-                try {
-                    const dbEvents = await this.bot.database.all(`
-                        SELECT 
-                            id,
-                            incident_type,
-                            description,
-                            severity,
-                            user_id,
-                            created_at
-                        FROM security_logs 
-                        ORDER BY created_at DESC 
-                        LIMIT ?
-                    `, [limit]);
+                // Query all event tables and merge
+                const queries = [
+                    // security_logs
+                    this.bot.database.all(`
+                        SELECT id, event_type, incident_type, description, severity,
+                               user_id, created_at, 'security_logs' as source
+                        FROM security_logs
+                        ${guildId ? 'WHERE guild_id = ?' : ''}
+                        ORDER BY created_at DESC LIMIT ?
+                    `, guildId ? [guildId, limit] : [limit]).then(rows =>
+                        (rows || []).map(e => ({
+                            id: `sl-${e.id}`,
+                            source: 'security_logs',
+                            type: e.event_type || e.incident_type || 'Security Event',
+                            description: e.description || `Security: ${e.event_type || e.incident_type}`,
+                            severity: e.severity || 'medium',
+                            user_id: e.user_id,
+                            timestamp: e.created_at,
+                            message: e.description || `Security: ${e.event_type || e.incident_type}`
+                        }))
+                    ).catch(() => []),
 
-                    events = dbEvents.map(event => ({
-                        id: event.id,
-                        type: event.incident_type,
-                        description: event.description,
-                        severity: event.severity || 'medium',
-                        user_id: event.user_id,
-                        timestamp: event.created_at,
-                        message: event.description || `Security event: ${event.incident_type}`
-                    }));
-                } catch (dbError) {
-                    this.bot.logger.warn('Database query failed, using fallback events:', dbError);
-                    events = this.getFallbackSecurityEvents();
-                }
-            } else {
-                events = this.getFallbackSecurityEvents();
+                    // security_incidents (nuke events go here)
+                    this.bot.database.all(`
+                        SELECT id, incident_type, severity, user_id,
+                               description, data, created_at
+                        FROM security_incidents
+                        ${guildId ? 'WHERE guild_id = ?' : ''}
+                        ORDER BY created_at DESC LIMIT ?
+                    `, guildId ? [guildId, limit] : [limit]).then(rows =>
+                        (rows || []).map(e => {
+                            let meta = {};
+                            try { meta = JSON.parse(e.data || '{}'); } catch (_) {}
+                            return {
+                                id: `si-${e.id}`,
+                                source: 'security_incidents',
+                                type: e.incident_type || 'Security Incident',
+                                description: e.description ||
+                                    (meta.violation ? `${meta.violation.count} ${meta.violation.actionType} actions` : 'Security incident'),
+                                severity: (e.severity || 'critical').toLowerCase(),
+                                user_id: e.user_id,
+                                timestamp: e.created_at,
+                                message: e.description || 'Security incident'
+                            };
+                        })
+                    ).catch(() => []),
+
+                    // action_logs (bans/kicks/mutes from logEvent)
+                    this.bot.database.all(`
+                        SELECT id, action_type, target_user_id, moderator_id,
+                               reason, details, created_at
+                        FROM action_logs
+                        ${guildId ? 'WHERE guild_id = ?' : ''}
+                        ORDER BY created_at DESC LIMIT ?
+                    `, guildId ? [guildId, limit] : [limit]).then(rows =>
+                        (rows || []).map(e => {
+                            const t = (e.action_type || '').toLowerCase();
+                            let severity = 'low';
+                            if (t.includes('ban') || t.includes('nuke')) severity = 'critical';
+                            else if (t.includes('kick') || t.includes('mute') || t.includes('timeout')) severity = 'high';
+                            else if (t.includes('warn') || t.includes('leave')) severity = 'medium';
+                            return {
+                                id: `al-${e.id}`,
+                                source: 'action_logs',
+                                type: e.action_type || 'Action',
+                                description: e.reason || e.details ||
+                                    (e.target_user_id ? `${e.action_type} on ${e.target_user_id}` : e.action_type),
+                                severity,
+                                user_id: e.target_user_id || e.moderator_id,
+                                timestamp: e.created_at,
+                                message: e.reason || e.details || e.action_type
+                            };
+                        })
+                    ).catch(() => []),
+
+                    // raid_detection
+                    this.bot.database.all(`
+                        SELECT id, trigger_type, severity, user_count,
+                               details, created_at
+                        FROM raid_detection
+                        ${guildId ? 'WHERE guild_id = ?' : ''}
+                        ORDER BY created_at DESC LIMIT ?
+                    `, guildId ? [guildId, limit] : [limit]).then(rows =>
+                        (rows || []).map(e => ({
+                            id: `rd-${e.id}`,
+                            source: 'raid_detection',
+                            type: e.trigger_type || 'RAID_DETECTED',
+                            description: e.details || `Raid detected — ${e.user_count || 'multiple'} users`,
+                            severity: (e.severity || 'high').toLowerCase(),
+                            user_id: null,
+                            timestamp: e.created_at,
+                            message: e.details || 'Raid detected'
+                        }))
+                    ).catch(() => []),
+
+                    // antinuke_incidents (nuke attack records with full detail)
+                    this.bot.database.all(`
+                        SELECT id, incident_id, attacker_id, violation_type,
+                               violation_count, actions_performed, detected_at
+                        FROM antinuke_incidents
+                        ${guildId ? 'WHERE guild_id = ?' : ''}
+                        ORDER BY detected_at DESC LIMIT ?
+                    `, guildId ? [guildId, limit] : [limit]).then(rows =>
+                        (rows || []).map(e => {
+                            let actions = [];
+                            try { actions = JSON.parse(e.actions_performed || '[]'); } catch (_) {}
+                            return {
+                                id: `ni-${e.id}`,
+                                source: 'antinuke_incidents',
+                                type: 'ANTI_NUKE_BLOCKED',
+                                description: `Nuke blocked: ${e.violation_count} ${e.violation_type || 'actions'} by ${e.attacker_id || 'unknown'}` +
+                                    (actions.length ? ` — ${actions.slice(0,2).join(', ')}` : ''),
+                                severity: 'critical',
+                                user_id: e.attacker_id,
+                                timestamp: e.detected_at,
+                                message: `Anti-nuke blocked ${e.violation_count} ${e.violation_type} actions`
+                            };
+                        })
+                    ).catch(() => [])
+                ];
+
+                const results = await Promise.all(queries);
+                for (const batch of results) allEvents.push(...batch);
             }
 
-            res.json(events);
+            if (allEvents.length === 0) {
+                return res.json(this.getFallbackSecurityEvents());
+            }
+
+            allEvents.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            res.json(allEvents.slice(0, limit));
         } catch (error) {
             this.bot.logger.error('Error getting security events:', error);
             res.status(500).json({ error: 'Failed to load security events' });
+        }
+    }
+
+    /**
+     * GET /api/events/recent
+     * Returns a unified feed of all recent events across every event table.
+     * Query params: guildId, limit (default 100), filter (all|security|moderation|members)
+     */
+    async getRecentEvents(req, res) {
+        try {
+            const guildId = req.query.guildId || this.getDefaultGuildId();
+            const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+            const filter = req.query.filter || 'all';
+
+            if (!guildId || !this.bot.database) {
+                return res.json({ success: true, events: [], total: 0 });
+            }
+
+            const allEvents = [];
+
+            // Helper to safely query and push results
+            const safeQuery = async (sql, params, mapper) => {
+                try {
+                    const rows = await this.bot.database.all(sql, params) || [];
+                    for (const row of rows) allEvents.push(mapper(row));
+                } catch (_) {}
+            };
+
+            if (filter === 'all' || filter === 'security') {
+                // security_logs
+                await safeQuery(
+                    `SELECT id, event_type, incident_type, description, severity, user_id, created_at, details FROM security_logs WHERE guild_id = ? ORDER BY created_at DESC LIMIT 100`,
+                    [guildId],
+                    e => ({ id: `sl-${e.id}`, source: 'security_logs', category: 'security',
+                        type: e.event_type || e.incident_type || 'Security Event',
+                        description: e.description || e.details || 'Security log entry',
+                        severity: e.severity || 'medium', user_id: e.user_id, timestamp: e.created_at })
+                );
+
+                // security_incidents (anti-nuke)
+                await safeQuery(
+                    `SELECT id, incident_type, severity, user_id, description, data, created_at, resolved FROM security_incidents WHERE guild_id = ? ORDER BY created_at DESC LIMIT 100`,
+                    [guildId],
+                    e => {
+                        let meta = {}; try { meta = JSON.parse(e.data || '{}'); } catch (_) {}
+                        return { id: `si-${e.id}`, source: 'security_incidents', category: 'security',
+                            type: e.incident_type || 'Security Incident',
+                            description: e.description || (meta.violation ? `${meta.violation.count} ${meta.violation.actionType} actions detected` : 'Security incident'),
+                            severity: (e.severity || 'critical').toLowerCase(),
+                            user_id: e.user_id, resolved: !!e.resolved, timestamp: e.created_at };
+                    }
+                );
+
+                // antinuke_incidents
+                await safeQuery(
+                    `SELECT id, incident_id, attacker_id, violation_type, violation_count, actions_performed, detected_at FROM antinuke_incidents WHERE guild_id = ? ORDER BY detected_at DESC LIMIT 100`,
+                    [guildId],
+                    e => {
+                        let actions = []; try { actions = JSON.parse(e.actions_performed || '[]'); } catch (_) {}
+                        return { id: `ni-${e.id}`, source: 'antinuke_incidents', category: 'security',
+                            type: 'ANTI_NUKE_BLOCKED',
+                            description: `Nuke blocked: ${e.violation_count} ${e.violation_type || 'actions'} by ${e.attacker_id || 'unknown'}` + (actions.length ? ` — ${actions.slice(0,2).join(', ')}` : ''),
+                            severity: 'critical', user_id: e.attacker_id, timestamp: e.detected_at };
+                    }
+                );
+
+                // security_events
+                await safeQuery(
+                    `SELECT id, event_type, event_action, executor_id, target_id, details, created_at FROM security_events WHERE guild_id = ? ORDER BY created_at DESC LIMIT 50`,
+                    [guildId],
+                    e => ({ id: `se-${e.id}`, source: 'security_events', category: 'security',
+                        type: e.event_type || e.event_action || 'Security Event',
+                        description: e.details || `${e.event_type}${e.event_action ? ` — ${e.event_action}` : ''}`,
+                        severity: 'medium', user_id: e.executor_id || e.target_id, timestamp: e.created_at })
+                );
+
+                // raid_detection
+                await safeQuery(
+                    `SELECT id, trigger_type, severity, user_count, details, created_at FROM raid_detection WHERE guild_id = ? ORDER BY created_at DESC LIMIT 50`,
+                    [guildId],
+                    e => ({ id: `rd-${e.id}`, source: 'raid_detection', category: 'security',
+                        type: e.trigger_type || 'RAID_DETECTED',
+                        description: e.details || `Raid detected — ${e.user_count || 'multiple'} users`,
+                        severity: (e.severity || 'high').toLowerCase(), user_id: null, timestamp: e.created_at })
+                );
+            }
+
+            if (filter === 'all' || filter === 'moderation') {
+                // action_logs (logEvent — bans, kicks, mutes)
+                await safeQuery(
+                    `SELECT id, action_type, target_user_id, moderator_id, reason, details, created_at FROM action_logs WHERE guild_id = ? ORDER BY created_at DESC LIMIT 100`,
+                    [guildId],
+                    e => {
+                        const t = (e.action_type || '').toLowerCase();
+                        let severity = 'low';
+                        if (t.includes('ban') || t.includes('nuke')) severity = 'critical';
+                        else if (t.includes('kick') || t.includes('mute') || t.includes('timeout')) severity = 'high';
+                        else if (t.includes('warn') || t.includes('leave')) severity = 'medium';
+                        return { id: `al-${e.id}`, source: 'action_logs', category: 'moderation',
+                            type: e.action_type || 'Action',
+                            description: e.reason || e.details || (e.target_user_id ? `${e.action_type} on ${e.target_user_id}` : e.action_type),
+                            severity, user_id: e.target_user_id || e.moderator_id, timestamp: e.created_at };
+                    }
+                );
+
+                // mod_actions
+                await safeQuery(
+                    `SELECT id, action_type, target_user_id, moderator_id, reason, created_at FROM mod_actions WHERE guild_id = ? ORDER BY created_at DESC LIMIT 100`,
+                    [guildId],
+                    e => {
+                        const t = (e.action_type || '').toLowerCase();
+                        let severity = 'low';
+                        if (t === 'ban') severity = 'high';
+                        else if (t === 'kick' || t === 'mute') severity = 'medium';
+                        return { id: `ma-${e.id}`, source: 'mod_actions', category: 'moderation',
+                            type: e.action_type || 'Mod Action',
+                            description: e.reason || `${e.action_type} on ${e.target_user_id || 'user'}`,
+                            severity, user_id: e.target_user_id || e.moderator_id, timestamp: e.created_at };
+                    }
+                );
+
+                // audit_log (channel/role changes)
+                await safeQuery(
+                    `SELECT id, action_type, moderator_id, target_id, target_type, reason, details, created_at FROM audit_log WHERE guild_id = ? ORDER BY created_at DESC LIMIT 100`,
+                    [guildId],
+                    e => {
+                        const t = (e.action_type || '').toUpperCase();
+                        let severity = 'low';
+                        if (['BAN', 'KICK', 'CHANNEL_DELETE', 'ROLE_DELETE'].includes(t)) severity = 'high';
+                        return { id: `aul-${e.id}`, source: 'audit_log', category: 'moderation',
+                            type: e.action_type || 'Audit',
+                            description: e.reason || e.details || `${e.action_type}${e.target_id ? ` on ${e.target_type || 'user'} ${e.target_id}` : ''}`,
+                            severity, user_id: e.moderator_id || e.target_id, timestamp: e.created_at };
+                    }
+                );
+            }
+
+            if (filter === 'all' || filter === 'members') {
+                // join_analytics
+                await safeQuery(
+                    `SELECT id, user_id, invited_by, created_at FROM join_analytics WHERE guild_id = ? ORDER BY created_at DESC LIMIT 50`,
+                    [guildId],
+                    e => ({ id: `ja-${e.id}`, source: 'join_analytics', category: 'members',
+                        type: 'MEMBER_JOIN',
+                        description: `Member joined${e.invited_by ? ` (invited by ${e.invited_by})` : ''}`,
+                        severity: 'info', user_id: e.user_id, timestamp: e.created_at })
+                );
+
+                // leave_analytics
+                await safeQuery(
+                    `SELECT id, user_id, created_at FROM leave_analytics WHERE guild_id = ? ORDER BY created_at DESC LIMIT 50`,
+                    [guildId],
+                    e => ({ id: `la-${e.id}`, source: 'leave_analytics', category: 'members',
+                        type: 'MEMBER_LEAVE',
+                        description: 'Member left the server',
+                        severity: 'info', user_id: e.user_id, timestamp: e.created_at })
+                );
+            }
+
+            allEvents.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            const events = allEvents.slice(0, limit);
+
+            res.json({ success: true, events, total: events.length, filter, guildId });
+        } catch (error) {
+            this.bot.logger.error('Error getting recent events:', error);
+            res.status(500).json({ error: 'Failed to load recent events' });
         }
     }
 
@@ -7834,7 +8115,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 moderationTrend: [],
                 hourlyActivity: [],
                 topCommands: [],
-                securityEvents: []
+                securityEvents: [],
+                recentEvents: []
             };
 
             // Generate date range so charts always have data points
@@ -8045,25 +8327,196 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             }
 
             try {
-                // 6. Security Events
-                const secEvents = await this.bot.database.all(`
-                    SELECT id, event_type, incident_type, description, severity, 
-                           created_at
-                    FROM security_logs 
-                    WHERE guild_id = ? 
-                    ORDER BY created_at DESC
-                    LIMIT 20
-                `, [guildId]) || [];
+                // 6. Security Events — merged from ALL relevant tables so nuke,
+                //    ban, raid, automod and other events all appear on the dashboard
 
-                analytics.securityEvents = secEvents.map(e => ({
-                    id: e.id,
-                    event_type: e.event_type || e.incident_type || 'Unknown',
-                    type: e.event_type || e.incident_type,
-                    description: e.description || 'No description',
-                    severity: e.severity || 'medium',
-                    timestamp: e.created_at,
-                    created_at: e.created_at
-                }));
+                const allEvents = [];
+
+                // 6a. security_logs (automod, spam, phishing, etc.)
+                try {
+                    const secLogs = await this.bot.database.all(`
+                        SELECT id, event_type, incident_type, description,
+                               severity, created_at, user_id, target_id,
+                               action, details
+                        FROM security_logs
+                        WHERE guild_id = ?
+                        ORDER BY created_at DESC LIMIT 50
+                    `, [guildId]) || [];
+                    for (const e of secLogs) {
+                        allEvents.push({
+                            id: `sl-${e.id}`,
+                            source: 'security_logs',
+                            event_type: e.event_type || e.incident_type || 'Security Event',
+                            type: e.event_type || e.incident_type || 'Security Event',
+                            description: e.description || e.details || 'Security log entry',
+                            severity: e.severity || 'medium',
+                            user_id: e.user_id || e.target_id,
+                            timestamp: e.created_at
+                        });
+                    }
+                } catch (_) {}
+
+                // 6b. security_incidents (anti-nuke violations, critical events)
+                try {
+                    const incidents = await this.bot.database.all(`
+                        SELECT id, incident_type, severity, user_id,
+                               description, data, created_at, resolved
+                        FROM security_incidents
+                        WHERE guild_id = ?
+                        ORDER BY created_at DESC LIMIT 50
+                    `, [guildId]) || [];
+                    for (const e of incidents) {
+                        let meta = {};
+                        try { meta = JSON.parse(e.data || '{}'); } catch (_) {}
+                        allEvents.push({
+                            id: `si-${e.id}`,
+                            source: 'security_incidents',
+                            event_type: e.incident_type || 'Security Incident',
+                            type: e.incident_type || 'Security Incident',
+                            description: e.description ||
+                                (meta.violation ? `${meta.violation.count} ${meta.violation.actionType} actions detected` : 'Security incident'),
+                            severity: (e.severity || 'CRITICAL').toLowerCase(),
+                            user_id: e.user_id,
+                            resolved: !!e.resolved,
+                            timestamp: e.created_at
+                        });
+                    }
+                } catch (_) {}
+
+                // 6c. action_logs (member bans, kicks, mutes logged via logEvent)
+                try {
+                    const actionLogs = await this.bot.database.all(`
+                        SELECT id, action_type, action_category, target_user_id,
+                               moderator_id, reason, details, created_at
+                        FROM action_logs
+                        WHERE guild_id = ?
+                        ORDER BY created_at DESC LIMIT 50
+                    `, [guildId]) || [];
+                    for (const e of actionLogs) {
+                        const actionType = (e.action_type || '').toLowerCase();
+                        let severity = 'low';
+                        if (actionType.includes('ban') || actionType.includes('nuke')) severity = 'critical';
+                        else if (actionType.includes('kick') || actionType.includes('mute') || actionType.includes('timeout')) severity = 'high';
+                        else if (actionType.includes('warn') || actionType.includes('leave')) severity = 'medium';
+                        allEvents.push({
+                            id: `al-${e.id}`,
+                            source: 'action_logs',
+                            event_type: e.action_type || 'Action',
+                            type: e.action_type,
+                            description: e.reason || e.details ||
+                                (e.target_user_id ? `${e.action_type} on user ${e.target_user_id}` : e.action_type),
+                            severity,
+                            user_id: e.target_user_id || e.moderator_id,
+                            timestamp: e.created_at
+                        });
+                    }
+                } catch (_) {}
+
+                // 6d. raid_detection events
+                try {
+                    const raidRows = await this.bot.database.all(`
+                        SELECT id, trigger_type, severity, user_count,
+                               details, created_at
+                        FROM raid_detection
+                        WHERE guild_id = ?
+                        ORDER BY created_at DESC LIMIT 20
+                    `, [guildId]) || [];
+                    for (const e of raidRows) {
+                        allEvents.push({
+                            id: `rd-${e.id}`,
+                            source: 'raid_detection',
+                            event_type: e.trigger_type || 'RAID_DETECTED',
+                            type: e.trigger_type || 'RAID_DETECTED',
+                            description: e.details || `Raid detected — ${e.user_count || 'multiple'} users`,
+                            severity: (e.severity || 'high').toLowerCase(),
+                            user_id: null,
+                            timestamp: e.created_at
+                        });
+                    }
+                } catch (_) {}
+
+                // 6e. security_events table (misc bot security events)
+                try {
+                    const secEvts = await this.bot.database.all(`
+                        SELECT id, event_type, event_action, executor_id,
+                               target_id, details, created_at
+                        FROM security_events
+                        WHERE guild_id = ?
+                        ORDER BY created_at DESC LIMIT 50
+                    `, [guildId]) || [];
+                    for (const e of secEvts) {
+                        allEvents.push({
+                            id: `se-${e.id}`,
+                            source: 'security_events',
+                            event_type: e.event_type || e.event_action || 'Security Event',
+                            type: e.event_type || e.event_action,
+                            description: e.details || `${e.event_type}${e.event_action ? ` — ${e.event_action}` : ''}`,
+                            severity: 'medium',
+                            user_id: e.executor_id || e.target_id,
+                            timestamp: e.created_at
+                        });
+                    }
+                } catch (_) {}
+
+                // 6f. audit_log table (role/channel/member changes via auditlogviewer)
+                try {
+                    const auditRows = await this.bot.database.all(`
+                        SELECT id, action_type, moderator_id, target_id,
+                               target_type, reason, details, created_at
+                        FROM audit_log
+                        WHERE guild_id = ?
+                        ORDER BY created_at DESC LIMIT 50
+                    `, [guildId]) || [];
+                    for (const e of auditRows) {
+                        const t = (e.action_type || '').toUpperCase();
+                        let severity = 'low';
+                        if (['BAN', 'KICK', 'CHANNEL_DELETE', 'ROLE_DELETE', 'MASS_BAN'].includes(t)) severity = 'high';
+                        allEvents.push({
+                            id: `aul-${e.id}`,
+                            source: 'audit_log',
+                            event_type: e.action_type || 'Audit',
+                            type: e.action_type,
+                            description: e.reason || e.details ||
+                                `${e.action_type}${e.target_id ? ` on ${e.target_type || 'user'} ${e.target_id}` : ''}`,
+                            severity,
+                            user_id: e.moderator_id || e.target_id,
+                            timestamp: e.created_at
+                        });
+                    }
+                } catch (_) {}
+
+                // 6g. antinuke_incidents (detailed nuke attack records)
+                try {
+                    const nukeRows = await this.bot.database.all(`
+                        SELECT id, incident_id, attacker_id, violation_type,
+                               violation_count, actions_performed, detected_at
+                        FROM antinuke_incidents
+                        WHERE guild_id = ?
+                        ORDER BY detected_at DESC LIMIT 50
+                    `, [guildId]) || [];
+                    for (const e of nukeRows) {
+                        let actions = [];
+                        try { actions = JSON.parse(e.actions_performed || '[]'); } catch (_) {}
+                        allEvents.push({
+                            id: `ni-${e.id}`,
+                            source: 'antinuke_incidents',
+                            event_type: 'ANTI_NUKE_BLOCKED',
+                            type: 'ANTI_NUKE_BLOCKED',
+                            description: `Nuke blocked: ${e.violation_count} ${e.violation_type || 'actions'} by attacker ${e.attacker_id || 'unknown'}` +
+                                (actions.length ? ` — ${actions.slice(0,2).join(', ')}` : ''),
+                            severity: 'critical',
+                            user_id: e.attacker_id,
+                            timestamp: e.detected_at
+                        });
+                    }
+                } catch (_) {}
+
+                // Sort all events newest-first and cap at 100
+                allEvents.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                const unifiedEvents = allEvents.slice(0, 100);
+
+                analytics.securityEvents = unifiedEvents;
+                analytics.recentEvents = unifiedEvents; // alias used by some widgets
 
             } catch (e) {
                 this.bot.logger.warn('Security events query failed:', e.message);
@@ -8674,7 +9127,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     userAvatar: userAvatar,
                     status: ticket.status || 'open',
                     priority: ticket.priority || 'normal',
-                    category: ticket.tag || 'General',
+                    category: ticket.username || 'General',
                     created: this.formatTimeAgo(new Date(ticket.created_at)),
                     lastResponse: ticket.last_message_at ? this.formatTimeAgo(new Date(ticket.last_message_at)) : 'No response yet'
                 };
@@ -9073,9 +9526,23 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 await this.bot.database.run(`UPDATE guild_configs SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`, vals);
             }
 
-            // Invalidate config cache
+            // Invalidate ALL config caches (database cache + configService cache)
             try {
-                if (this.bot.configService?.cache) this.bot.configService.cache.delete(guild.id);
+                // Primary: invalidate the database's own config cache
+                if (typeof this.bot.database?.invalidateConfigCache === 'function') {
+                    this.bot.database.invalidateConfigCache(guild.id);
+                }
+                // Secondary: invalidate configService cache if it exists
+                if (this.bot.configService?.cache) {
+                    this.bot.configService.cache.delete(guild.id);
+                }
+            } catch (e) { /* ignore */ }
+
+            // Live-update the AntiNuke module so it picks up the new enabled state immediately
+            try {
+                if (this.bot.antiNuke && typeof this.bot.antiNuke.onSettingsChanged === 'function') {
+                    this.bot.antiNuke.onSettingsChanged(guild.id, validUpdates);
+                }
             } catch (e) { /* ignore */ }
 
             this.bot.logger?.info(`Anti-nuke settings updated for guild ${guild.id}`);
@@ -11230,7 +11697,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             // Fallback: send message directly as before
             const { EmbedBuilder } = require('discord.js');
             const replyEmbed = new EmbedBuilder()
-                .setAuthor({ name: sender.user.tag, iconURL: sender.user.displayAvatarURL() })
+                .setAuthor({ name: sender.user.username, iconURL: sender.user.displayAvatarURL() })
                 .setDescription(message)
                 .setColor('#00d4ff')
                 .setTimestamp();
@@ -11242,7 +11709,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 const dmEmbed = new EmbedBuilder()
                     .setTitle(`Ã°Å¸â€™Â¬ Reply to Ticket #${ticket.ticket_id}`)
                     .setDescription(message)
-                    .setFooter({ text: `From: ${sender.user.tag}` })
+                    .setFooter({ text: `From: ${sender.user.username}` })
                     .setColor('#00d4ff')
                     .setTimestamp();
 

@@ -228,7 +228,7 @@ module.exports = {
             .setColor(0x00FF00)
             .addFields(
                 { name: 'User ID', value: userId, inline: true },
-                { name: 'Scheduled By', value: interaction.user.tag, inline: true },
+                { name: 'Scheduled By', value: interaction.user.username, inline: true },
                 { name: 'Execute At', value: `<t:${Math.floor(executeAt.getTime() / 1000)}:F>`, inline: false },
                 { name: 'Action ID', value: `#${action.id}`, inline: true }
             )
@@ -264,7 +264,7 @@ module.exports = {
             .setTitle('⏰ Unmute Scheduled')
             .setColor(0x00FF00)
             .addFields(
-                { name: 'User', value: `${user.tag} (${user.id})`, inline: true },
+                { name: 'User', value: `${user.username} (${user.id})`, inline: true },
                 { name: 'Execute At', value: `<t:${Math.floor(executeAt.getTime() / 1000)}:F>`, inline: true },
                 { name: 'Action ID', value: `#${action.id}`, inline: true }
             )
@@ -303,7 +303,7 @@ module.exports = {
             .setTitle(`⏰ Role ${action === 'add' ? 'Addition' : 'Removal'} Scheduled`)
             .setColor(0x00FF00)
             .addFields(
-                { name: 'User', value: `${user.tag}`, inline: true },
+                { name: 'User', value: `${user.username}`, inline: true },
                 { name: 'Role', value: `${role}`, inline: true },
                 { name: 'Action', value: action === 'add' ? 'Add' : 'Remove', inline: true },
                 { name: 'Execute At', value: `<t:${Math.floor(executeAt.getTime() / 1000)}:F>`, inline: true },
@@ -391,7 +391,7 @@ module.exports = {
             targetId: mention?.id || interaction.user.id,
             channelId: channel.id,
             message,
-            metadata: { scheduled_by_tag: interaction.user.tag },
+            metadata: { scheduled_by_tag: interaction.user.username },
             scheduledBy: interaction.user.id,
             executeAt
         });

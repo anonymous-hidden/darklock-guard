@@ -93,9 +93,19 @@ module.exports = {
 
         if (subcommand === 'enable') {
             try {
+                // Use upsert so it works even if guild_configs row doesn't exist yet
                 await bot.database.run(`
-                    UPDATE guild_configs SET antinuke_enabled = 1 WHERE guild_id = ?
+                    INSERT INTO guild_configs (guild_id, antinuke_enabled)
+                    VALUES (?, 1)
+                    ON CONFLICT(guild_id) DO UPDATE SET antinuke_enabled = 1
                 `, [interaction.guild.id]);
+
+                // Invalidate enabled cache so detection responds immediately
+                const { invalidateEnabledCache } = require('../../core/interactions/antiNukeHandlers');
+                if (typeof invalidateEnabledCache === 'function') invalidateEnabledCache(interaction.guild.id);
+
+                // Also clear bot-level config cache
+                if (bot.database?.invalidateConfigCache) bot.database.invalidateConfigCache(interaction.guild.id);
 
                 // Initialize snapshots immediately
                 if (bot.antiNuke && bot.antiNuke.initializeGuild) {
@@ -135,8 +145,15 @@ module.exports = {
         } else if (subcommand === 'disable') {
             try {
                 await bot.database.run(`
-                    UPDATE guild_configs SET antinuke_enabled = 0 WHERE guild_id = ?
+                    INSERT INTO guild_configs (guild_id, antinuke_enabled)
+                    VALUES (?, 0)
+                    ON CONFLICT(guild_id) DO UPDATE SET antinuke_enabled = 0
                 `, [interaction.guild.id]);
+
+                // Invalidate cache so detection stops immediately
+                const { invalidateEnabledCache } = require('../../core/interactions/antiNukeHandlers');
+                if (typeof invalidateEnabledCache === 'function') invalidateEnabledCache(interaction.guild.id);
+                if (bot.database?.invalidateConfigCache) bot.database.invalidateConfigCache(interaction.guild.id);
 
                 if (typeof bot.emitSettingChange === 'function') {
                     await bot.emitSettingChange(interaction.guild.id, interaction.user.id, 'antinuke_enabled', 0, null, 'security');

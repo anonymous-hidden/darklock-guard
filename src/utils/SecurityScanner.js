@@ -131,7 +131,7 @@ class SecurityScanner {
                     channelId: message.channel.id,
                     channelName: message.channel.name,
                     userId: message.author.id,
-                    username: message.author.tag,
+                    username: message.author.username,
                     content: message.content.substring(0, 200),
                     timestamp: message.createdAt,
                     url: linkCheck.url,
@@ -150,7 +150,7 @@ class SecurityScanner {
                     channelId: message.channel.id,
                     channelName: message.channel.name,
                     userId: message.author.id,
-                    username: message.author.tag,
+                    username: message.author.username,
                     content: message.content.substring(0, 200),
                     timestamp: message.createdAt
                 });
@@ -167,7 +167,7 @@ class SecurityScanner {
                     channelId: message.channel.id,
                     channelName: message.channel.name,
                     userId: message.author.id,
-                    username: message.author.tag,
+                    username: message.author.username,
                     content: message.content.substring(0, 200),
                     timestamp: message.createdAt
                 });
@@ -184,7 +184,7 @@ class SecurityScanner {
                     channelId: message.channel.id,
                     channelName: message.channel.name,
                     userId: message.author.id,
-                    username: message.author.tag,
+                    username: message.author.username,
                     content: message.content.substring(0, 200),
                     timestamp: message.createdAt,
                     toxicityScore: toxicCheck.score
@@ -196,7 +196,7 @@ class SecurityScanner {
         if (threats.length > 0 && config.autoDelete) {
             try {
                 await message.delete();
-                this.bot.logger.info(`🗑️ Auto-deleted flagged message from ${message.author.tag}`);
+                this.bot.logger.info(`🗑️ Auto-deleted flagged message from ${message.author.username}`);
             } catch (error) {
                 this.bot.logger.error('Error deleting message:', error);
             }

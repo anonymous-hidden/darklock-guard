@@ -564,7 +564,7 @@ The channel will be deleted in 10 seconds...
             messages.reverse().forEach(msg => {
                 if (!msg.author.bot || msg.embeds.length > 0) {
                     transcript.push({
-                        author: msg.author.tag,
+                        author: msg.author.username,
                         content: msg.content,
                         timestamp: msg.createdAt.toISOString(),
                         embeds: msg.embeds.length,

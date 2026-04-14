@@ -481,7 +481,7 @@ class ScheduledActions {
                 actionType: 'kick',
                 actionCategory: 'moderation',
                 targetUserId: action.target_id,
-                targetUsername: member.user.tag,
+                targetUsername: member.user.username,
                 moderatorId: action.scheduled_by,
                 moderatorUsername: metadata.scheduled_by_tag || 'System',
                 reason: reason,
@@ -571,7 +571,7 @@ class ScheduledActions {
                 actionType: 'timeout',
                 actionCategory: 'moderation',
                 targetUserId: action.target_id,
-                targetUsername: member.user.tag,
+                targetUsername: member.user.username,
                 moderatorId: action.scheduled_by,
                 moderatorUsername: metadata.scheduled_by_tag || 'System',
                 reason: reason,
@@ -597,7 +597,7 @@ class ScheduledActions {
 
             // Try to fetch the member
             const member = await guild.members.fetch(action.target_id).catch(() => null);
-            const targetTag = member?.user?.tag || metadata.target_tag || action.target_id;
+            const targetTag = member?.user?.username || metadata.target_tag || action.target_id;
 
             // Add warning to database
             await this.bot.database.addWarning(

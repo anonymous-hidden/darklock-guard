@@ -59,15 +59,17 @@ class SevenSegmentDisplay:
         print("[Pico] 7-Segment initialized (common-cathode)")
 
     def clear_all(self):
-        for p in self.digit_pins.values(): p.value(0)
+        for p in self.digit_pins.values(): p.value(1)  # HIGH = digit OFF (common-cathode)
         for p in self.segment_pins.values(): p.value(0)
 
     def display_digit(self, pos, value):
-        self.clear_all()
-        if 0 <= value <= 9:
+        # Disable ALL digits first — prevents ghosting on common-cathode displays
+        for p in self.digit_pins.values(): p.value(1)
+        for p in self.segment_pins.values(): p.value(0)
+        if value is not None and 0 <= value <= 9:
             for seg in DIGIT_PATTERNS[value]:
                 self.segment_pins[seg].value(1)
-            self.digit_pins[pos].value(1)
+            self.digit_pins[pos].value(0)  # LOW = enable this digit (common-cathode)
 
     def run(self):
         """
@@ -105,14 +107,25 @@ class SevenSegmentDisplay:
             utime.sleep_us(2000)  # 2 ms per digit → ~125 Hz refresh
 
     def _digits(self):
-        """Split current_number into 4 digits (thousands … units)."""
+        """Split current_number into 4 positions; leading zeros are returned as None (blank)."""
         n = self.current_number
-        return [
+        raw = [
             (n // 1000) % 10,
             (n // 100)  % 10,
             (n // 10)   % 10,
             n % 10,
         ]
+        result = []
+        blank = True
+        for i, v in enumerate(raw):
+            if i == 3:  # ones position always shown
+                blank = False
+            if blank and v == 0:
+                result.append(None)
+            else:
+                blank = False
+                result.append(v)
+        return result
 
 
 if __name__ == "__main__":

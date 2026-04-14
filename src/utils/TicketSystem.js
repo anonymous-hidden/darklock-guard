@@ -134,6 +134,20 @@ class TicketSystem {
             });
         }
 
+        // Check ticket blacklist before showing modal
+        try {
+            const blacklisted = await this.bot.database.get(
+                `SELECT reason FROM ticket_blacklist WHERE guild_id = ? AND user_id = ?`,
+                [interaction.guild.id, interaction.user.id]
+            );
+            if (blacklisted) {
+                return interaction.reply({
+                    content: `🚫 You are blacklisted from creating tickets.${blacklisted.reason ? `\n**Reason:** ${blacklisted.reason}` : ''}`,
+                    ephemeral: true
+                });
+            }
+        } catch (_) { /* table may not exist yet */ }
+
         const modal = new ModalBuilder()
             .setCustomId('ticket_create_modal')
             .setTitle('Create a Support Ticket');
@@ -183,6 +197,21 @@ class TicketSystem {
                     ephemeral: true
                 });
             }
+        }
+
+        // Check ticket blacklist
+        try {
+            const blacklisted = await this.bot.database.get(
+                `SELECT reason FROM ticket_blacklist WHERE guild_id = ? AND user_id = ?`,
+                [interaction.guild.id, interaction.user.id]
+            );
+            if (blacklisted) {
+                return interaction.editReply({
+                    content: `🚫 You are blacklisted from creating tickets.${blacklisted.reason ? `\n**Reason:** ${blacklisted.reason}` : ''}`
+                });
+            }
+        } catch (_) {
+            // Table may not exist yet — skip check
         }
 
         const config = await this.getConfig(interaction.guild.id);
@@ -246,7 +275,7 @@ class TicketSystem {
             ticketId,
             channelId: channel.id,
             userId: interaction.user.id,
-            username: interaction.user.tag,
+            username: interaction.user.username,
             staff: null,
             status: 'open',
             title,
@@ -301,7 +330,7 @@ class TicketSystem {
                     name: channelName.slice(0, 90),
                     type: ChannelType.GuildText,
                     parent: resolvedParent,
-                    topic: `Ticket #${ticketId} | ${requester.username ?? requester.tag}`,
+                    topic: `Ticket #${ticketId} | ${requester.username ?? requester.username}`,
                     permissionOverwrites: overwrites
                 });
             } catch (permErr) {
@@ -312,7 +341,7 @@ class TicketSystem {
                         name: channelName.slice(0, 90),
                         type: ChannelType.GuildText,
                         parent: resolvedParent,
-                        topic: `Ticket #${ticketId} | ${requester.username ?? requester.tag}`,
+                        topic: `Ticket #${ticketId} | ${requester.username ?? requester.username}`,
                         permissionOverwrites: minimalOverwrites
                     });
                     // Try to add role overwrites individually after channel creation
@@ -435,7 +464,7 @@ class TicketSystem {
             [interaction.user.id, interaction.channel.id]
         );
 
-        await interaction.channel.setTopic(`Ticket #${ticketId} | Assigned to ${interaction.user.tag}`).catch(() => {});
+        await interaction.channel.setTopic(`Ticket #${ticketId} | Assigned to ${interaction.user.username}`).catch(() => {});
 
         const embed = new EmbedBuilder()
             .setTitle('📌 Ticket Claimed')
@@ -575,7 +604,7 @@ class TicketSystem {
                 ticket.id,
                 message.id,
                 message.author.id,
-                message.author.tag,
+                message.author.username,
                 avatar,
                 message.content || '[no content]',
                 JSON.stringify(attachments)
@@ -587,7 +616,7 @@ class TicketSystem {
             ticketId: ticket.ticket_id || ticket.id,
             channelId: message.channel.id,
             userId: message.author.id,
-            username: message.author.tag,
+            username: message.author.username,
             content: message.content,
             attachments
         });
@@ -667,7 +696,7 @@ class TicketSystem {
 
         const sorted = Array.from(messages.values()).sort((a, b) => a.createdTimestamp - b.createdTimestamp);
         const logs = sorted.map(msg => ({
-            author: msg.author?.tag || 'Unknown',
+            author: msg.author?.username || 'Unknown',
             authorId: msg.author?.id,
             timestamp: msg.createdAt?.toISOString(),
             content: msg.content,
@@ -850,7 +879,7 @@ class TicketSystem {
 
             const { EmbedBuilder } = require('discord.js');
             const replyEmbed = new EmbedBuilder()
-                .setAuthor({ name: sender ? sender.user.tag : 'Staff', iconURL: sender ? sender.user.displayAvatarURL() : null })
+                .setAuthor({ name: sender ? sender.user.username : 'Staff', iconURL: sender ? sender.user.displayAvatarURL() : null })
                 .setDescription(messageContent)
                 .setColor('#00d4ff')
                 .setTimestamp();
@@ -866,7 +895,7 @@ class TicketSystem {
                     const dmEmbed = new EmbedBuilder()
                         .setTitle(`💬 Reply to Ticket #${ticket.ticket_id || ticket.id}`)
                         .setDescription(messageContent)
-                        .setFooter({ text: `From: ${sender ? sender.user.tag : 'Staff'}` })
+                        .setFooter({ text: `From: ${sender ? sender.user.username : 'Staff'}` })
                         .setColor('#00d4ff')
                         .setTimestamp();
                     await ticketOwner.send({ embeds: [dmEmbed] }).catch(() => {});
@@ -878,12 +907,12 @@ class TicketSystem {
                 await this.bot.database.run(
                     `INSERT INTO ticket_messages (ticket_id, message_id, user_id, username, avatar_url, content, attachments)
                      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                    [ticket.id, null, senderId, sender ? sender.user.tag : 'Staff', sender ? sender.user.displayAvatarURL() : null, messageContent, JSON.stringify([])]
+                    [ticket.id, null, senderId, sender ? sender.user.username : 'Staff', sender ? sender.user.displayAvatarURL() : null, messageContent, JSON.stringify([])]
                 );
             } catch (e) { }
 
             // Emit website event for updates
-            await this.emitWebsite('ticketMessage', { guildId: guild.id, ticketId: ticket.ticket_id || ticket.id, channelId: ticket.channel_id, userId: senderId, username: sender ? sender.user.tag : 'Staff', content: messageContent, attachments: [] });
+            await this.emitWebsite('ticketMessage', { guildId: guild.id, ticketId: ticket.ticket_id || ticket.id, channelId: ticket.channel_id, userId: senderId, username: sender ? sender.user.username : 'Staff', content: messageContent, attachments: [] });
 
             return { ok: true };
         } catch (error) {

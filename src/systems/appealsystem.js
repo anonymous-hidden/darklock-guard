@@ -269,7 +269,7 @@ class AppealSystem {
             .setColor(0xFFA500)
             .setThumbnail(user?.displayAvatarURL({ dynamic: true }) || null)
             .addFields(
-                { name: 'User', value: user ? `${user.tag}\n${user.id}` : odod, inline: true },
+                { name: 'User', value: user ? `${user.username}\n${user.id}` : odod, inline: true },
                 { name: 'Appeal ID', value: `#${appealId}`, inline: true },
                 { name: 'Account Age', value: user ? `${Math.floor((Date.now() - user.createdTimestamp) / (1000 * 60 * 60 * 24))} days` : 'Unknown', inline: true },
                 { name: 'Ban Reason', value: data.banReason || 'Not specified', inline: false },

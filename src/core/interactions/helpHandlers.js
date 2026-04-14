@@ -180,7 +180,7 @@ async function handleHelpTicketModal(interaction, bot) {
                             .setTitle(`🆘 New Support Request`)
                             .setColor('#ff9900')
                             .addFields(
-                                { name: 'User', value: `${interaction.user.tag} (${interaction.user.id})`, inline: false },
+                                { name: 'User', value: `${interaction.user.username} (${interaction.user.id})`, inline: false },
                                 { name: 'Category', value: getCategoryLabel(category), inline: true },
                                 { name: 'Subject', value: subject, inline: false },
                                 { name: 'Description', value: description.slice(0, 800) + (description.length > 800 ? '...' : ''), inline: false },

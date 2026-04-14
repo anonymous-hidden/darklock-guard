@@ -3,165 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Changelog | Darklock Platform</title>
+    <title>Changelog | Darklock</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/platform/static/css/main.css">
+    <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
     <style>
-        .changelog-container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 2rem;
-            min-height: calc(100vh - 200px);
-        }
-
-        .changelog-header {
-            text-align: center;
-            padding: 4rem 0 3rem;
-        }
-
-        .changelog-header h1 {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, #7c4dff 0%, #00bcd4 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .changelog-header p {
-            font-size: 1.25rem;
-            color: var(--text-secondary);
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .version-section {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .version-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .version-number {
-            font-size: 1.75rem;
-            font-weight: 600;
-        }
-
-        .version-date {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-
-        .version-badge {
-            background: linear-gradient(135deg, #7c4dff 0%, #00bcd4 100%);
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .changelog-category {
-            margin-bottom: 1.5rem;
-        }
-
-        .changelog-category h3 {
-            font-size: 1.25rem;
-            margin-bottom: 0.75rem;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .changelog-category ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .changelog-category li {
-            padding: 0.5rem 0 0.5rem 1.5rem;
-            position: relative;
-            color: var(--text-secondary);
-            line-height: 1.6;
-        }
-
-        .changelog-category li:before {
-            content: "•";
-            position: absolute;
-            left: 0;
-            color: var(--primary);
-            font-weight: bold;
-        }
-
-        .coming-soon {
-            background: linear-gradient(135deg, rgba(124, 77, 255, 0.1) 0%, rgba(0, 188, 212, 0.1) 100%);
-            border: 1px solid rgba(124, 77, 255, 0.3);
-            border-radius: 12px;
-            padding: 2rem;
-            text-align: center;
-        }
-
-        .coming-soon h2 {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-        }
-
-        .coming-soon ul {
-            list-style: none;
-            padding: 0;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 1rem;
-            margin-top: 1.5rem;
-        }
-
-        .coming-soon li {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            font-weight: 500;
-        }
+        .changelog-container { max-width: 760px; margin: 0 auto; padding: 120px 24px 80px; }
+        .changelog-hero { margin-bottom: 3rem; }
+        .changelog-hero h1 { font-size: 2.25rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.5rem; }
+        .changelog-hero p { color: var(--text-secondary, #8b8fa3); font-size: 1.0625rem; line-height: 1.7; }
+        .release { margin-bottom: 3.5rem; }
+        .release-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .release-header h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+        .release-badge { font-size: 0.625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 10px; border-radius: 6px; }
+        .release-badge.latest { background: rgba(34,197,94,0.1); color: #6ee7b7; border: 1px solid rgba(34,197,94,0.2); }
+        .release-date { font-size: 0.8125rem; color: var(--text-muted, #5c5f73); }
+        .release-category { margin-bottom: 1.5rem; }
+        .release-category h3 { font-size: 1rem; font-weight: 600; color: var(--text, #f0f2f5); margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .release-category ul { list-style: none; padding-left: 0; }
+        .release-category li { position: relative; padding-left: 1.25rem; margin-bottom: 0.5rem; font-size: 0.9375rem; color: var(--text-secondary, #8b8fa3); line-height: 1.65; }
+        .release-category li::before { content: ''; position: absolute; left: 0; top: 0.55em; width: 6px; height: 6px; border-radius: 50%; background: rgba(99,102,241,0.5); }
+        .changelog-footer { text-align: center; padding: 3rem 24px; border-top: 1px solid rgba(255,255,255,0.06); color: var(--text-muted, #5c5f73); font-size: 0.8125rem; }
+        @media (max-width: 640px) { .changelog-hero h1 { font-size: 1.75rem; } }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="nav">
         <div class="nav-container">
             <a href="/platform" class="nav-brand">
-                <svg class="brand-icon" width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <linearGradient id="changelogGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:#60A5FA" />
-                            <stop offset="50%" style="stop-color:#6366F1" />
-                            <stop offset="100%" style="stop-color:#7C3AED" />
-                        </linearGradient>
-                        <linearGradient id="changelogShine" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:#a5b4fc" />
-                            <stop offset="100%" style="stop-color:#6366F1" />
-                        </linearGradient>
-                    </defs>
-                    <path d="M20 15 L20 85 L50 85 C75 85 90 70 90 50 C90 30 75 15 50 15 L20 15 Z" fill="url(#changelogGrad)" />
-                    <path d="M35 30 L35 70 L50 70 C65 70 75 62 75 50 C75 38 65 30 50 30 L35 30 Z" fill="#0a0a0f" />
-                    <path d="M42 42 L58 50 L42 58 L42 52 L52 50 L42 48 Z" fill="url(#changelogShine)" />
-                    <path d="M20 75 L35 85 L20 85 Z" fill="#4338ca" opacity="0.7" />
-                </svg>
+                <img src="/platform/static/icons/darklock-logo.png" alt="Darklock" width="26" height="26" style="border-radius:6px;">
                 <span class="brand-text">Darklock</span>
             </a>
             <div class="nav-links">
@@ -174,107 +46,86 @@
     </nav>
 
     <div class="changelog-container">
-        <div class="changelog-header">
-            <h1>📋 Changelog</h1>
-            <p>Stay updated with the latest features and improvements</p>
+        <div class="changelog-hero">
+            <h1>Changelog</h1>
+            <p>A record of every release, what changed, and what was fixed.</p>
         </div>
 
-        <!-- Version 1.0.0 -->
-        <div class="version-section">
-            <div class="version-header">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-                        <span class="version-number">Version 1.0.0</span>
-                        <span class="version-badge">Latest</span>
-                    </div>
-                    <span class="version-date">Released January 2026</span>
-                </div>
+        <!-- v1.0.0 -->
+        <div class="release">
+            <div class="release-header">
+                <h2>v1.0.0</h2>
+                <span class="release-badge latest">Latest</span>
+                <span class="release-date">January 2026</span>
             </div>
 
-            <div class="changelog-category">
-                <h3>🎉 Initial Platform Release</h3>
+            <div class="release-category">
+                <h3>Platform</h3>
                 <ul>
-                    <li>Complete platform launch with full authentication system</li>
-                    <li>User registration and login with secure JWT-based authentication</li>
-                    <li>Persistent database storage with SQLite for reliable data management</li>
+                    <li>User registration and authentication with JWT sessions</li>
+                    <li>SQLite database with WAL mode for concurrent reads</li>
+                    <li>Dashboard with real-time service monitoring</li>
+                    <li>Settings management, activity logs, and profile editing</li>
+                    <li>RESTful API with documented endpoints</li>
                 </ul>
             </div>
 
-            <div class="changelog-category">
-                <h3>🛡️ Security Features</h3>
+            <div class="release-category">
+                <h3>Security</h3>
                 <ul>
-                    <li>Industry-standard password hashing with bcrypt</li>
-                    <li>HttpOnly cookie implementation for secure session management</li>
-                    <li>Rate limiting to prevent abuse and brute-force attacks</li>
-                    <li>Comprehensive security headers for enhanced protection</li>
-                    <li>HTTPS enforcement in production environments</li>
+                    <li>Passwords hashed with bcrypt</li>
+                    <li>HTTP-only cookies with SameSite=strict</li>
+                    <li>Rate limiting on authentication endpoints</li>
+                    <li>CSRF token validation on state-changing requests</li>
+                    <li>Content Security Policy headers</li>
+                    <li>HTTPS enforcement</li>
                 </ul>
             </div>
 
-            <div class="changelog-category">
-                <h3>💻 Darklock Guard Desktop Application</h3>
+            <div class="release-category">
+                <h3>Discord Bot</h3>
                 <ul>
-                    <li>Real-time file integrity monitoring system</li>
-                    <li>Tamper detection and alerting capabilities</li>
-                    <li>Cross-platform support (Windows, macOS, Linux)</li>
-                    <li>Automatic backup and restoration features</li>
-                    <li>Integration with platform API for centralized management</li>
+                    <li>Anti-raid protection with configurable join thresholds</li>
+                    <li>Anti-spam engine with seven independent detection checks</li>
+                    <li>Anti-phishing with malicious link database</li>
+                    <li>Adaptive verification system with risk scoring</li>
+                    <li>Full moderation toolkit with escalation and offense decay</li>
+                    <li>Audit logging with exportable records</li>
                 </ul>
             </div>
 
-            <div class="changelog-category">
-                <h3>📊 Dashboard Interface</h3>
+            <div class="release-category">
+                <h3>Darklock Guard</h3>
                 <ul>
-                    <li>Intuitive web-based dashboard for platform management</li>
-                    <li>User profile and account settings management</li>
-                    <li>Real-time security status monitoring</li>
-                    <li>Activity logs and audit trails</li>
-                    <li>Responsive design for desktop and mobile devices</li>
+                    <li>Real-time file integrity monitoring with SHA-256</li>
+                    <li>Tamper detection and alerting</li>
+                    <li>Hardware key support for device authentication</li>
+                    <li>Windows and Linux builds</li>
                 </ul>
             </div>
 
-            <div class="changelog-category">
-                <h3>📚 API & Documentation</h3>
+            <div class="release-category">
+                <h3>Secure Channel</h3>
                 <ul>
-                    <li>RESTful API with comprehensive endpoint coverage</li>
-                    <li>Complete API documentation with examples</li>
-                    <li>Authentication endpoints for user management</li>
-                    <li>Download endpoints for Darklock Guard installer</li>
-                    <li>System status and health check endpoints</li>
+                    <li>End-to-end encrypted direct and group messaging</li>
+                    <li>Zero-knowledge relay server</li>
+                    <li>Voice and video calling</li>
+                    <li>File sharing</li>
                 </ul>
             </div>
 
-            <div class="changelog-category">
-                <h3>⚙️ Infrastructure</h3>
+            <div class="release-category">
+                <h3>Secure Notes</h3>
                 <ul>
-                    <li>Persistent database storage on disk (no in-memory limitations)</li>
-                    <li>Automated backup system for data protection</li>
-                    <li>Performance optimization for high-traffic scenarios</li>
-                    <li>Error logging and monitoring capabilities</li>
-                    <li>Production-ready deployment configuration</li>
+                    <li>Client-side encrypted note storage</li>
+                    <li>Offline support</li>
+                    <li>Cross-device sync</li>
+                    <li>Web and desktop builds</li>
                 </ul>
             </div>
-        </div>
-
-        <!-- Coming Soon -->
-        <div class="coming-soon">
-            <h2>🚀 Coming Soon</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
-                We're constantly working on new features to make Darklock even better
-            </p>
-            <ul>
-                <li>🔐 Two-Factor Authentication (2FA)</li>
-                <li>📱 Mobile Applications (iOS & Android)</li>
-                <li>📈 Advanced Monitoring & Analytics</li>
-                <li>🔌 Enhanced API Capabilities</li>
-                <li>🌐 Multi-language Support</li>
-                <li>🤝 Team Collaboration Features</li>
-            </ul>
         </div>
     </div>
 
-    <footer style="text-align: center; padding: 2rem; color: var(--text-secondary); border-top: 1px solid var(--border-color);">
-        <p>&copy; 2026 Darklock. All rights reserved.</p>
-    </footer>
+    <footer class="changelog-footer">&copy; 2026 Darklock. All rights reserved.</footer>
 </body>
 </html>

@@ -44,10 +44,10 @@ module.exports = function setupAuditWatcher(client, bot = null) {
 
             // Broadcast to dashboard console
             if (bot && typeof bot.broadcastConsole === 'function') {
-                bot.broadcastConsole(guild.id, `[CHANNEL DELETE] #${channel.name} by ${executor.tag} (${executor.id})`);
+                bot.broadcastConsole(guild.id, `[CHANNEL DELETE] #${channel.name} by ${executor.username} (${executor.id})`);
             }
 
-            console.log(`[AuditWatcher] Channel deleted by: ${executor.tag} (${executor.id})`);
+            console.log(`[AuditWatcher] Channel deleted by: ${executor.username} (${executor.id})`);
 
         } catch (err) {
             console.error('[AuditWatcher] Error:', err);

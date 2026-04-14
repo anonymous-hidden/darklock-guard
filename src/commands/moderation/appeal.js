@@ -230,7 +230,7 @@ module.exports = {
             .setColor(appeal.status === 'approved' ? 0x00FF00 : appeal.status === 'denied' ? 0xFF0000 : 0xFFA500)
             .setThumbnail(user?.displayAvatarURL({ dynamic: true }) || null)
             .addFields(
-                { name: 'User', value: user ? `${user.tag}\n${user.id}` : appeal.user_id, inline: true },
+                { name: 'User', value: user ? `${user.username}\n${user.id}` : appeal.user_id, inline: true },
                 { name: 'Status', value: appeal.status, inline: true },
                 { name: 'Submitted', value: `<t:${Math.floor(new Date(appeal.created_at).getTime() / 1000)}:R>`, inline: true },
                 { name: 'Ban Reason', value: appeal.ban_reason || 'Not specified', inline: false },

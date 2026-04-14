@@ -233,7 +233,7 @@ async function handleAvatar(interaction) {
     const user = interaction.options.getUser('user') || interaction.user;
     
     const embed = new EmbedBuilder()
-        .setTitle(`${user.tag}'s Avatar`)
+        .setTitle(`${user.username}'s Avatar`)
         .setColor('#5865F2')
         .setImage(user.displayAvatarURL({ dynamic: true, size: 1024 }))
         .setDescription(`[Download](${user.displayAvatarURL({ dynamic: true, size: 1024 })})`)
@@ -246,23 +246,28 @@ async function handleMeme(interaction) {
     await interaction.deferReply();
 
     try {
-        const fetch = require('node-fetch');
         const subreddits = ['memes', 'dankmemes', 'me_irl', 'wholesomememes', 'funny'];
         const subreddit = subreddits[Math.floor(Math.random() * subreddits.length)];
         
-        const response = await fetch(`https://www.reddit.com/r/${subreddit}/random.json`);
-        const [data] = await response.json();
+        const response = await fetch(`https://www.reddit.com/r/${subreddit}/top.json?limit=50&t=day`, {
+            headers: { 'User-Agent': 'DarkLock-Bot/1.0' }
+        });
+        const data = await response.json();
         
-        if (!data || !data.data || !data.data.children || data.data.children.length === 0) {
+        if (!data?.data?.children?.length) {
             throw new Error('No meme found');
         }
 
-        const post = data.data.children[0].data;
-        
-        // Skip videos and galleries
-        if (post.is_video || post.is_gallery) {
-            return handleMeme(interaction); // Try again
+        // Filter to image posts only
+        const imagePosts = data.data.children
+            .map(c => c.data)
+            .filter(p => !p.is_video && !p.is_gallery && !p.over_18 && (p.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) || p.url?.includes('i.redd.it')));
+
+        if (imagePosts.length === 0) {
+            throw new Error('No image memes found');
         }
+
+        const post = imagePosts[Math.floor(Math.random() * imagePosts.length)];
 
         const embed = new EmbedBuilder()
             .setTitle(post.title.length > 256 ? post.title.substring(0, 253) + '...' : post.title)
@@ -282,7 +287,6 @@ async function handleJoke(interaction) {
     await interaction.deferReply();
 
     try {
-        const fetch = require('node-fetch');
         const response = await fetch('https://official-joke-api.appspot.com/random_joke');
         const joke = await response.json();
 

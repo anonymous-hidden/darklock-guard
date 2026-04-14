@@ -1,0 +1,22 @@
+[Unit]
+Description=Jarvis Heartbeat Watchdog
+After=jarvis-hardened.service
+BindsTo=jarvis-hardened.service
+
+[Service]
+Type=simple
+User=jarvis
+Group=jarvis
+WorkingDirectory=/home/cayden/discord bot/discord bot/security-pipeline/step7-hardening
+ExecStart=/usr/bin/python3 heartbeat.py watchdog
+Restart=always
+RestartSec=10
+
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/run/security-pipeline /var/log/security-pipeline
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

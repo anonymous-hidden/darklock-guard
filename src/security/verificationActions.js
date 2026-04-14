@@ -109,8 +109,8 @@ class VerificationActions {
     const userId = member.id;
     const cfg = await this.getGuildConfig(guildId);
 
-    this.bot.logger?.info(`👤 New member joined: ${member.user.tag} (${userId}) in ${member.guild.name}`);
-    this.notify(guildId, 'USER_JOINED', { event: 'USER_JOINED', userId, username: member.user.tag, group: 'verification', source: 'system' });
+    this.bot.logger?.info(`👤 New member joined: ${member.user.username} (${userId}) in ${member.guild.name}`);
+    this.notify(guildId, 'USER_JOINED', { event: 'USER_JOINED', userId, username: member.user.username, group: 'verification', source: 'system' });
 
     // Create/Update basic record
     await this.bot.database.createOrUpdateUserRecord(guildId, userId, {
@@ -404,7 +404,7 @@ class VerificationActions {
         await channel.send({ content: message });
       }
 
-      this.bot.logger?.info(`[WELCOME] Sent deferred welcome for ${member.user.tag} after verification`);
+      this.bot.logger?.info(`[WELCOME] Sent deferred welcome for ${member.user.username} after verification`);
     } catch (e) {
       this.bot.logger?.warn('[WELCOME] sendDeferredWelcome error:', e.message);
     }

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Downloads | Darklock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/platform/static/css/main.css">
+    <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
+    <style>
+        .dl-container { max-width: 900px; margin: 0 auto; padding: 120px 24px 80px; }
+        .dl-hero { margin-bottom: 3rem; }
+        .dl-hero h1 { font-size: 2.25rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.5rem; }
+        .dl-hero p { color: var(--text-secondary, #8b8fa3); font-size: 1.0625rem; line-height: 1.7; }
+
+        /* App Cards */
+        .app-grid { display: grid; grid-template-columns: 1fr; gap: 1.25rem; margin-bottom: 3.5rem; }
+        .app-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 1.75rem; display: grid; grid-template-columns: 56px 1fr auto; gap: 1.25rem; align-items: start; transition: border-color 0.2s; }
+        .app-card:hover { border-color: rgba(99,102,241,0.2); }
+        .app-icon { width: 56px; height: 56px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+        .app-icon.guard { background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15)); color: #a78bfa; }
+        .app-icon.channel { background: linear-gradient(135deg, rgba(6,182,212,0.15), rgba(34,197,94,0.15)); color: #6ee7b7; }
+        .app-icon.notes { background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(239,68,68,0.15)); color: #fbbf24; }
+        .app-info h3 { font-size: 1.125rem; font-weight: 700; margin-bottom: 0.35rem; }
+        .app-info p { font-size: 0.875rem; color: var(--text-secondary, #8b8fa3); line-height: 1.65; margin-bottom: 0.75rem; }
+        .app-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+        .app-tag { font-size: 0.6875rem; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: rgba(255,255,255,0.04); color: var(--text-secondary, #8b8fa3); }
+        .app-actions { display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end; }
+        .app-btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.8125rem; font-weight: 600; text-decoration: none; white-space: nowrap; transition: all 0.15s; }
+        .app-btn-primary { background: var(--accent, #6366f1); color: #fff; }
+        .app-btn-primary:hover { background: #5558e6; }
+        .app-btn-ghost { background: rgba(255,255,255,0.04); color: var(--text-secondary, #8b8fa3); border: 1px solid rgba(255,255,255,0.08); }
+        .app-btn-ghost:hover { color: var(--text, #f0f2f5); border-color: rgba(255,255,255,0.15); }
+
+        /* Source Code */
+        .section-title { font-size: 1.375rem; font-weight: 700; margin-bottom: 1rem; }
+        .section-desc { color: var(--text-secondary, #8b8fa3); font-size: 0.9375rem; margin-bottom: 1.25rem; line-height: 1.7; }
+        .source-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0.75rem; margin-bottom: 3.5rem; }
+        .source-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 1.25rem; display: flex; align-items: center; gap: 1rem; text-decoration: none; transition: border-color 0.2s; }
+        .source-card:hover { border-color: rgba(255,255,255,0.15); }
+        .source-card svg { width: 24px; height: 24px; fill: var(--text-secondary, #8b8fa3); flex-shrink: 0; }
+        .source-card h4 { font-size: 0.9375rem; font-weight: 600; color: var(--text, #f0f2f5); margin-bottom: 0.15rem; }
+        .source-card p { font-size: 0.8125rem; color: var(--text-secondary, #8b8fa3); margin: 0; }
+
+        /* Updates */
+        .update-card { background: rgba(99,102,241,0.04); border: 1px solid rgba(99,102,241,0.1); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+        .update-card h4 { font-size: 1rem; font-weight: 600; margin-bottom: 0.4rem; }
+        .update-card p { font-size: 0.875rem; color: var(--text-secondary, #8b8fa3); line-height: 1.65; margin-bottom: 1rem; }
+        .update-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+        .dl-footer { text-align: center; padding: 3rem 24px; border-top: 1px solid rgba(255,255,255,0.06); color: var(--text-muted, #5c5f73); font-size: 0.8125rem; }
+
+        @media (max-width: 640px) {
+            .app-card { grid-template-columns: 1fr; }
+            .app-actions { flex-direction: row; align-items: center; }
+            .dl-hero h1 { font-size: 1.75rem; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="/platform" class="nav-brand">
+                <img src="/platform/static/icons/darklock-logo.png" alt="Darklock" width="26" height="26" style="border-radius:6px;">
+                <span class="brand-text">Darklock</span>
+            </a>
+            <div class="nav-links">
+                <a href="/platform" class="nav-link">Home</a>
+                <a href="/platform/docs" class="nav-link">Documentation</a>
+                <a href="/platform/status" class="nav-link">Status</a>
+                <a href="/platform/auth/login" class="btn btn-primary btn-sm">Sign In</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dl-container">
+        <div class="dl-hero">
+            <h1>Downloads</h1>
+            <p>Desktop and mobile apps for the Darklock ecosystem. All apps are free.</p>
+        </div>
+
+        <!-- App Cards -->
+        <div class="app-grid">
+            <div class="app-card">
+                <div class="app-icon guard">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <div class="app-info">
+                    <h3>Darklock Guard</h3>
+                    <p>Real-time file integrity monitoring. Watches your files for unauthorized changes and alerts you immediately if something is tampered with. Supports SHA-256 hashing and automatic detection.</p>
+                    <div class="app-tags">
+                        <span class="app-tag">Windows</span>
+                        <span class="app-tag">Linux</span>
+                        <span class="app-tag">~5 MB</span>
+                    </div>
+                </div>
+                <div class="app-actions">
+                    <a href="/platform/download/darklock-guard" class="app-btn app-btn-primary">Download</a>
+                    <a href="https://github.com/anonymous-hidden" target="_blank" class="app-btn app-btn-ghost">Source Code</a>
+                </div>
+            </div>
+
+            <div class="app-card">
+                <div class="app-icon channel">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                </div>
+                <div class="app-info">
+                    <h3>Secure Channel</h3>
+                    <p>End-to-end encrypted messaging with a zero-knowledge relay. The server never sees your plaintext messages. Supports direct messages, group chats, voice calls, video calls, and file sharing.</p>
+                    <div class="app-tags">
+                        <span class="app-tag">Windows</span>
+                        <span class="app-tag">Linux</span>
+                        <span class="app-tag">macOS</span>
+                    </div>
+                </div>
+                <div class="app-actions">
+                    <a href="/platform/download/secure-channel" class="app-btn app-btn-primary">Download</a>
+                    <a href="https://github.com/anonymous-hidden" target="_blank" class="app-btn app-btn-ghost">Source Code</a>
+                </div>
+            </div>
+
+            <div class="app-card">
+                <div class="app-icon notes">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </div>
+                <div class="app-info">
+                    <h3>Secure Notes</h3>
+                    <p>Encrypted note-taking that works offline. Your notes are encrypted on your device before syncing, so only you can read them. Available as a web app and desktop app.</p>
+                    <div class="app-tags">
+                        <span class="app-tag">Web</span>
+                        <span class="app-tag">Linux</span>
+                        <span class="app-tag">iOS</span>
+                    </div>
+                </div>
+                <div class="app-actions">
+                    <a href="/platform/download/darklock-notes" class="app-btn app-btn-primary">Download</a>
+                    <a href="https://github.com/anonymous-hidden" target="_blank" class="app-btn app-btn-ghost">Source Code</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Source Code -->
+        <h2 class="section-title">Source Code</h2>
+        <p class="section-desc">All Darklock projects are available on GitHub.</p>
+        <div class="source-grid">
+            <a href="https://github.com/anonymous-hidden" target="_blank" class="source-card">
+                <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                <div>
+                    <h4>GitHub Repositories</h4>
+                    <p>Browse all Darklock projects</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- Updates -->
+        <h2 class="section-title">Updates</h2>
+        <p class="section-desc">Darklock apps support push updates. When a new version is available, you'll be notified inside the app. You can also download updates manually below.</p>
+
+        <div class="update-card">
+            <h4>Darklock Guard</h4>
+            <p>If auto-update doesn't work or you prefer a manual install, download the latest version directly.</p>
+            <div class="update-btns">
+                <a href="/platform/download/darklock-guard-app?format=windows" class="app-btn app-btn-primary">Windows (.exe)</a>
+                <a href="/platform/download/darklock-guard-app?format=linux" class="app-btn app-btn-ghost">Linux (.AppImage)</a>
+            </div>
+        </div>
+
+        <div class="update-card">
+            <h4>Secure Notes</h4>
+            <p>Download the latest Secure Notes installer for your platform.</p>
+            <div class="update-btns">
+                <a href="/platform/api/download/darklock-notes-installer?format=deb" class="app-btn app-btn-primary">Linux (.deb)</a>
+                <a href="/platform/api/download/darklock-notes-installer?format=appimage" class="app-btn app-btn-ghost">Linux (.AppImage)</a>
+            </div>
+        </div>
+    </div>
+
+    <footer class="dl-footer">&copy; 2026 Darklock. All rights reserved.</footer>
+</body>
+</html>

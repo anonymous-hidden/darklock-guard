@@ -122,7 +122,7 @@ class DiscordLogger {
             .setColor('#e74c3c')
             .setTitle('🗑️ Message Deleted')
             .addFields(
-                { name: '👤 Author', value: message.author ? `${message.author.tag}\n<@${message.author.id}>\n\`${message.author.id}\`` : '*Unknown*', inline: true },
+                { name: '👤 Author', value: message.author ? `${message.author.username}\n<@${message.author.id}>\n\`${message.author.id}\`` : '*Unknown*', inline: true },
                 { name: '📍 Channel', value: `<#${message.channelId}>\n\`${message.channelId}\``, inline: true },
                 { name: '📝 Content', value: content }
             )
@@ -156,7 +156,7 @@ class DiscordLogger {
             .setColor('#f39c12')
             .setTitle('✏️ Message Edited')
             .addFields(
-                { name: '👤 Author', value: `${newMessage.author.tag}\n<@${newMessage.author.id}>`, inline: true },
+                { name: '👤 Author', value: `${newMessage.author.username}\n<@${newMessage.author.id}>`, inline: true },
                 { name: '📍 Channel', value: `<#${newMessage.channelId}>`, inline: true },
                 { name: '🔗 Jump to Message', value: `[Click here](${newMessage.url})`, inline: true },
                 { name: '📝 Before', value: oldContent },
@@ -184,7 +184,7 @@ class DiscordLogger {
             .setColor(isNew ? '#e74c3c' : '#2ecc71')
             .setTitle(`📥 Member Joined${isNew ? ' ⚠️ New Account' : ''}`)
             .addFields(
-                { name: '👤 User', value: `${member.user.tag}\n<@${member.id}>\n\`${member.id}\``, inline: true },
+                { name: '👤 User', value: `${member.user.username}\n<@${member.id}>\n\`${member.id}\``, inline: true },
                 { name: '🏠 Member Count', value: `${member.guild.memberCount}`, inline: true },
                 { name: '📅 Account Created', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true }
             )
@@ -218,7 +218,7 @@ class DiscordLogger {
             .setColor('#7f8c8d')
             .setTitle('📤 Member Left')
             .addFields(
-                { name: '👤 User', value: `${member.user.tag}\n<@${member.id}>\n\`${member.id}\``, inline: true },
+                { name: '👤 User', value: `${member.user.username}\n<@${member.id}>\n\`${member.id}\``, inline: true },
                 { name: '🏠 Remaining', value: `${member.guild.memberCount}`, inline: true },
                 { name: '📅 Joined At', value: joinedAt, inline: true },
                 { name: '🏷️ Roles', value: roles.substring(0, 1024) }
@@ -254,8 +254,8 @@ class DiscordLogger {
             .setColor(colors[actionStr] || '#5865F2')
             .setTitle(`${icons[actionStr] || '⚖️'} Moderation: ${action?.toUpperCase() || 'ACTION'}`)
             .addFields(
-                { name: '👤 Target', value: target ? `${target.tag || target.username || target.id}\n<@${target.id}>` : '*Unknown*', inline: true },
-                { name: '🛡️ Moderator', value: moderator ? `${moderator.tag || moderator.username}\n<@${moderator.id}>` : '*Automatic*', inline: true },
+                { name: '👤 Target', value: target ? `${target.username || target.username || target.id}\n<@${target.id}>` : '*Unknown*', inline: true },
+                { name: '🛡️ Moderator', value: moderator ? `${moderator.username || moderator.username}\n<@${moderator.id}>` : '*Automatic*', inline: true },
                 { name: '📋 Reason', value: reason || '*No reason provided*', inline: false }
             )
             .setTimestamp();

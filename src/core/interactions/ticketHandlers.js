@@ -93,7 +93,7 @@ async function handleTicketCreate(interaction, bot) {
             name: channelName,
             type: ChannelType.GuildText,
             parent: config.ticket_category_id || null,
-            topic: `Support ticket for ${user.tag} | User ID: ${user.id}`,
+            topic: `Support ticket for ${user.username} | User ID: ${user.id}`,
             permissionOverwrites: [
                 {
                     id: guild.roles.everyone,
@@ -445,7 +445,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
 
             await interaction.user.send({ embeds: [dmEmbed] });
         } catch (dmError) {
-            bot.logger.warn(`Could not send DM to ${interaction.user.tag}:`, dmError.message);
+            bot.logger.warn(`Could not send DM to ${interaction.user.username}:`, dmError.message);
         }
 
         // Reply to interaction

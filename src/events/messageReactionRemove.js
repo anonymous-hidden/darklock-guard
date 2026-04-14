@@ -49,7 +49,7 @@ module.exports = {
             // Remove the role
             if (member.roles.cache.has(role.id)) {
                 await member.roles.remove(role);
-                console.log(`Removed role ${role.name} from ${user.tag} via reaction roles`);
+                console.log(`Removed role ${role.name} from ${user.username} via reaction roles`);
                 
                 // Try to DM the user
                 try {

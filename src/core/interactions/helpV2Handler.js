@@ -279,7 +279,7 @@ async function notifyStaff(interaction, bot, ticketId, category, subject, descri
         .setTitle(`🆘 New Support Ticket: ${ticketId}`)
         .setColor(0xff9900)
         .addFields(
-            { name: 'User', value: `${interaction.user.tag} (${interaction.user.id})`, inline: false },
+            { name: 'User', value: `${interaction.user.username} (${interaction.user.id})`, inline: false },
             { name: 'Category', value: `${cat.emoji} ${category}`, inline: true },
             { name: 'Status', value: '🔄 Open', inline: true },
             { name: 'Subject', value: subject, inline: false },

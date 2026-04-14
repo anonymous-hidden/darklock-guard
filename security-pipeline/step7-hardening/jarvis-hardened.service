@@ -1,0 +1,66 @@
+[Unit]
+Description=Jarvis AI Security Runtime (Hardened)
+After=network.target redis-security.service ollama.service
+Wants=redis-security.service ollama.service
+
+[Service]
+Type=simple
+User=jarvis
+Group=jarvis
+
+# Working directory
+WorkingDirectory=/home/cayden/discord bot/discord bot/jarvis
+
+# Start Jarvis
+ExecStart=/usr/bin/python3 main.py
+
+# Auto-restart on failure
+Restart=always
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=120
+
+# Environment
+EnvironmentFile=-/etc/security-pipeline/jarvis.env
+EnvironmentFile=-/etc/security-pipeline/redis.env
+
+# === READ-ONLY RUNTIME ===
+# Mount the app directory as read-only
+ProtectSystem=strict
+ReadOnlyPaths=/home/cayden/discord bot/discord bot/jarvis
+
+# WRITABLE: only logs and security_events.db
+ReadWritePaths=/home/cayden/discord bot/discord bot/jarvis/logs
+ReadWritePaths=/home/cayden/discord bot/discord bot/jarvis/data
+ReadWritePaths=/home/cayden/discord bot/discord bot/security-pipeline/step5-jarvis-security/data
+ReadWritePaths=/var/log/security-pipeline
+
+# === SECURITY HARDENING ===
+ProtectHome=read-only
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+MemoryDenyWriteExecute=false  # Python needs this
+
+# Restrict capabilities
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Restrict address families
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+
+# System call filter
+SystemCallFilter=@system-service
+SystemCallFilter=~@mount @reboot @swap @clock @debug @module @raw-io
+
+# Resource limits
+MemoryMax=4G
+CPUQuota=80%
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

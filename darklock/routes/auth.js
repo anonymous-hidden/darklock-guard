@@ -212,7 +212,8 @@ router.get('/login', async (req, res) => {
         }
         res.clearCookie('darklock_token');
     }
-    res.sendFile(path.join(__dirname, '../views/login.html'));
+    const { resolveView } = require('../utils/theme-resolver');
+    res.sendFile(resolveView('login.html'));
 });
 
 /**
@@ -228,7 +229,8 @@ router.get('/signup', async (req, res) => {
         }
         res.clearCookie('darklock_token');
     }
-    res.sendFile(path.join(__dirname, '../views/signup.html'));
+    const { resolveView } = require('../utils/theme-resolver');
+    res.sendFile(resolveView('signup.html'));
 });
 
 /**
@@ -288,21 +290,12 @@ router.post('/signup', rateLimitMiddleware('signup'), async (req, res) => {
         
         // Check for existing username (case-insensitive)
         const existingUsername = await db.getUserByUsername(username);
-        if (existingUsername) {
-            req.recordAttempt(false);
-            return res.status(400).json({
-                success: false,
-                error: 'Username is already taken'
-            });
-        }
-        
-        // Check for existing email (case-insensitive)
         const existingEmail = await db.getUserByEmail(email);
-        if (existingEmail) {
+        if (existingUsername || existingEmail) {
             req.recordAttempt(false);
             return res.status(400).json({
                 success: false,
-                error: 'Email is already registered'
+                error: 'Account creation failed. An account with this email or username may already exist.'
             });
         }
         
@@ -529,12 +522,28 @@ router.post('/api/login', rateLimitMiddleware('login'), async (req, res) => {
             });
         }
         
-        // Check if 2FA is enabled
+        // Check if 2FA is enabled — require TOTP code for desktop app login
         if (user.twoFactorEnabled) {
-            return res.status(403).json({
-                success: false,
-                error: '2FA not supported in desktop app yet. Please disable 2FA on web first.'
+            const { totpCode } = req.body;
+            if (!totpCode) {
+                return res.status(403).json({
+                    success: false,
+                    requires2FA: true,
+                    error: '2FA verification required. Please provide your authenticator code.'
+                });
+            }
+            const verified = speakeasy.totp.verify({
+                secret: user.twoFactorSecret || user.two_factor_secret,
+                encoding: 'base32',
+                token: totpCode.toString().replace(/\s/g, ''),
+                window: 1
             });
+            if (!verified) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'Invalid 2FA code'
+                });
+            }
         }
         
         // Generate JWT with jti
@@ -550,10 +559,16 @@ router.post('/api/login', rateLimitMiddleware('login'), async (req, res) => {
         
         console.log(`[Darklock Auth] Desktop app login: ${user.username}`);
         
-        // Return token in response
+        // Set token as httpOnly cookie instead of exposing in response body
+        res.cookie('darklock_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+
         res.json({
             success: true,
-            token,
             user: {
                 username: user.username,
                 email: user.email,

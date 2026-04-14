@@ -27,7 +27,7 @@ module.exports = {
 
         // Feature toggle enforcement - skip if verification is disabled
         if (!cfg || !cfg.verification_enabled) {
-            bot.logger?.debug(`[VERIFICATION] Skipping verification for ${member.user.tag} in ${guild.name} - feature disabled`);
+            bot.logger?.debug(`[VERIFICATION] Skipping verification for ${member.user.username} in ${guild.name} - feature disabled`);
             return;
         }
 
@@ -96,11 +96,11 @@ module.exports.handleVerificationButtons = async function handleVerificationButt
             await bot.verificationActions.approveUser(guild.id, member.id, actorId, 'staff-button');
             await sendWelcomeMessage(member, guild, cfg);
             await updateLogMessage(interaction, member, 'Approved & Verified', '#00FF00');
-            await interaction.editReply({ content: `Approved ${member.user.tag} and marked verified.` });
+            await interaction.editReply({ content: `Approved ${member.user.username} and marked verified.` });
         } else {
             await bot.verificationActions.kickUser(guild.id, member.id, actorId, 'staff-button');
             await updateLogMessage(interaction, member, 'Denied & Kicked', '#FF0000');
-            await interaction.editReply({ content: `Denied and kicked ${member.user.tag}.` });
+            await interaction.editReply({ content: `Denied and kicked ${member.user.username}.` });
         }
     } catch (err) {
         bot?.logger?.error('[VERIFICATION] Button handler error:', err);
@@ -312,9 +312,9 @@ async function postStaffLog(member, guild, roles, cfg, bot) {
 
         const logEmbed = new EmbedBuilder()
             .setTitle('dY` New Member Joined')
-            .setDescription(`**${member.user.tag}** joined and is awaiting verification.`)
+            .setDescription(`**${member.user.username}** joined and is awaiting verification.`)
             .addFields(
-                { name: 'User', value: `${member.user.tag} (\`${member.id}\`)`, inline: true },
+                { name: 'User', value: `${member.user.username} (\`${member.id}\`)`, inline: true },
                 { name: 'Account Created', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
                 { name: 'Joined', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: true },
                 { name: 'Status', value: '⏳ Awaiting Verification', inline: false }
@@ -342,8 +342,8 @@ async function postStaffLog(member, guild, roles, cfg, bot) {
 
 async function updateLogMessage(interaction, member, statusText, color) {
     const base = interaction.message.embeds?.[0];
-    const updatedEmbed = base ? EmbedBuilder.from(base) : new EmbedBuilder().setDescription(`${member.user.tag}`);
-    updatedEmbed.setColor(color).addFields({ name: 'Action', value: `${statusText} by ${interaction.user.tag}` });
+    const updatedEmbed = base ? EmbedBuilder.from(base) : new EmbedBuilder().setDescription(`${member.user.username}`);
+    updatedEmbed.setColor(color).addFields({ name: 'Action', value: `${statusText} by ${interaction.user.username}` });
 
     await interaction.message.edit({ embeds: [updatedEmbed], components: [] });
 }
@@ -356,7 +356,7 @@ function scheduleAutoKick(member, unverifiedRoleId, cfg, bot) {
             const stillUnverified = unverifiedRoleId && fresh.roles.cache.has(unverifiedRoleId);
             if (stillUnverified) {
                 await fresh.kick('Verification timeout');
-                bot?.logger?.info(`[VERIFICATION] Auto-kicked ${fresh.user.tag} for not verifying`);
+                bot?.logger?.info(`[VERIFICATION] Auto-kicked ${fresh.user.username} for not verifying`);
             }
         } catch (error) {
             bot?.logger?.warn('[VERIFICATION] Auto-kick failed:', error.message);
@@ -372,7 +372,7 @@ async function sendWelcomeMessage(member, guild, cfg) {
 
         const welcomeEmbed = new EmbedBuilder()
             .setTitle('dYZ% Welcome!')
-            .setDescription(`Everyone welcome **${member.user.tag}** to the server!`)
+            .setDescription(`Everyone welcome **${member.user.username}** to the server!`)
             .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
             .setColor('#00FF00')
             .setTimestamp();

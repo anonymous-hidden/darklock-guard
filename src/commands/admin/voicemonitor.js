@@ -316,7 +316,7 @@ module.exports = {
         const stats = await voiceMonitor.getUserStats(interaction.guildId, user.id);
 
         const embed = new EmbedBuilder()
-            .setTitle(`🎤 Voice Stats for ${user.tag}`)
+            .setTitle(`🎤 Voice Stats for ${user.username}`)
             .setColor(0x00BFFF)
             .setThumbnail(user.displayAvatarURL())
             .addFields(

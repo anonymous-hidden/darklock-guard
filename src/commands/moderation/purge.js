@@ -55,7 +55,7 @@ module.exports = {
 
             // Broadcast to dashboard console
             if (typeof bot?.broadcastConsole === 'function') {
-                bot.broadcastConsole(interaction.guild.id, `[PURGE] ${validMessages.size} messages by ${interaction.user.tag} in #${interaction.channel.name}`);
+                bot.broadcastConsole(interaction.guild.id, `[PURGE] ${validMessages.size} messages by ${interaction.user.username} in #${interaction.channel.name}`);
             }
 
             // Log to bot_logs for dashboard Logs & Audit Trail page
@@ -65,7 +65,7 @@ module.exports = {
                     guildId: interaction.guild.id,
                     channelId: interaction.channel.id,
                     moderatorId: interaction.user.id,
-                    moderatorTag: interaction.user.tag,
+                    moderatorTag: interaction.user.username,
                     reason: reason,
                     details: { messagesDeleted: validMessages.size, channelName: interaction.channel.name, targetUserId: target?.id }
                 });
@@ -77,7 +77,7 @@ module.exports = {
                     guildId: interaction.guild.id,
                     eventType: 'purge',
                     eventCategory: 'moderation',
-                    executor: { id: interaction.user.id, tag: interaction.user.tag },
+                    executor: { id: interaction.user.id, tag: interaction.user.username },
                     target: { id: interaction.channel.id, name: interaction.channel.name, type: 'channel' },
                     reason: reason,
                     changes: { messageCount: validMessages.size, targetUserId: target?.id },
@@ -105,21 +105,21 @@ module.exports = {
                 .setDescription(`Successfully deleted **${validMessages.size}** messages.`)
                 .addFields(
                     { name: 'Channel', value: interaction.channel.toString(), inline: true },
-                    { name: 'Moderator', value: interaction.user.tag, inline: true },
+                    { name: 'Moderator', value: interaction.user.username, inline: true },
                     { name: 'Reason', value: reason, inline: false }
                 )
                 .setColor('#2ed573')
                 .setTimestamp();
 
             if (target) {
-                successEmbed.addFields({ name: 'Target User', value: target.tag, inline: true });
+                successEmbed.addFields({ name: 'Target User', value: target.username, inline: true });
             }
 
             await interaction.editReply({ embeds: [successEmbed] });
 
             // Send confirmation message that will auto-delete
             const confirmMsg = await interaction.channel.send({
-                content: `🗑️ **${validMessages.size}** messages were deleted by ${interaction.user.tag}${target ? ` from ${target.tag}` : ''}.`
+                content: `🗑️ **${validMessages.size}** messages were deleted by ${interaction.user.username}${target ? ` from ${target.username}` : ''}.`
             });
 
             // Auto-delete confirmation after 5 seconds
@@ -137,7 +137,7 @@ module.exports = {
                     .setTitle('🗑️ Messages Purged')
                     .addFields(
                         { name: 'Channel', value: interaction.channel.toString(), inline: true },
-                        { name: 'Moderator', value: interaction.user.tag, inline: true },
+                        { name: 'Moderator', value: interaction.user.username, inline: true },
                         { name: 'Messages Deleted', value: `${validMessages.size}`, inline: true },
                         { name: 'Reason', value: reason, inline: false }
                     )
@@ -145,7 +145,7 @@ module.exports = {
                     .setTimestamp();
 
                 if (target) {
-                    logEmbed.addFields({ name: 'Target User', value: `${target.tag} (${target.id})`, inline: true });
+                    logEmbed.addFields({ name: 'Target User', value: `${target.username} (${target.id})`, inline: true });
                 }
 
                 await logChannel.send({ embeds: [logEmbed] });

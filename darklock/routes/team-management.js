@@ -329,9 +329,20 @@ router.put('/permissions', requireAdminAuth, canManageTeam, async (req, res) => 
         }
 
         // Get existing permissions
-        const existing = await db.get('SELECT * FROM team_role_permissions WHERE role = ?', [role]);
+        const existing = await db.get('SELECT * FROM role_permissions WHERE role = ?', [role]);
         if (!existing) {
             return res.status(404).json({ error: 'Role permissions not found' });
+        }
+
+        // Validate permission key against allowed values to prevent prototype pollution
+        const ALLOWED_PERMISSIONS = new Set([
+            'read', 'write', 'delete', 'manage', 'admin',
+            'view_members', 'manage_members', 'view_tickets', 'manage_tickets',
+            'view_settings', 'manage_settings', 'view_security', 'manage_security',
+            'view_analytics', 'manage_billing'
+        ]);
+        if (!ALLOWED_PERMISSIONS.has(permission)) {
+            return res.status(400).json({ error: 'Invalid permission key' });
         }
 
         const permissions = JSON.parse(existing.permissions);
@@ -341,7 +352,7 @@ router.put('/permissions', requireAdminAuth, canManageTeam, async (req, res) => 
         const userEmail = req.admin?.email || req.userEmail || 'admin';
         
         await db.run(
-            'UPDATE team_role_permissions SET permissions = ?, updated_by = ?, updated_at = ? WHERE role = ?',
+            'UPDATE role_permissions SET permissions = ?, updated_by = ?, updated_at = ? WHERE role = ?',
             [JSON.stringify(permissions), userEmail, now, role]
         );
 

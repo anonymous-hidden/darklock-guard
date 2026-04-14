@@ -425,7 +425,7 @@ class LockdownManager {
                         eventType: 'LOCKDOWN_AUTO_TIMEOUT',
                         guildId: member.guild.id,
                         targetId: member.user.id,
-                        targetTag: member.user.tag,
+                        targetTag: member.user.username,
                         reason: `New account (${hoursSinceCreated.toFixed(1)}h old) joined during lockdown`,
                         details: { accountAge: hoursSinceCreated }
                     });

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darklock | Security Platform</title>
+    <meta name="description" content="Darklock — Enterprise security platform protecting digital infrastructure.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
+    <style>
+        :root {
+            --bg: #030014;
+            --surface: rgba(255,255,255,0.03);
+            --glass: rgba(255,255,255,0.05);
+            --glass-border: rgba(255,255,255,0.08);
+            --glass-hover: rgba(255,255,255,0.1);
+            --text: #f1f5f9;
+            --text-dim: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #7c3aed;
+            --accent-light: #a78bfa;
+            --accent-glow: rgba(124,58,237,0.4);
+            --success: #10b981;
+            --font: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+
+        /* === Animated background === */
+        .bg-scene { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+        .bg-orb { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.4; animation: float 20s ease-in-out infinite; }
+        .bg-orb-1 { width: 600px; height: 600px; background: var(--accent); top: -15%; left: -10%; }
+        .bg-orb-2 { width: 500px; height: 500px; background: #06b6d4; bottom: -10%; right: -10%; animation-delay: -7s; }
+        .bg-orb-3 { width: 300px; height: 300px; background: #ec4899; top: 50%; left: 50%; animation-delay: -14s; }
+        @keyframes float { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(30px, -30px) scale(1.05); } 66% { transform: translate(-20px, 20px) scale(0.95); } }
+        .bg-noise { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.02; background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+        .content { position: relative; z-index: 2; }
+
+        /* === Nav === */
+        nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 1rem 2rem; transition: all 0.3s; }
+        nav.scrolled { background: rgba(3,0,20,0.8); backdrop-filter: blur(20px) saturate(1.5); border-bottom: 1px solid var(--glass-border); }
+        .nav-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+        .nav-brand { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--text); font-weight: 700; font-size: 1.25rem; }
+        .nav-brand img { width: 32px; height: 32px; border-radius: 8px; }
+        .nav-links { display: flex; align-items: center; gap: 0.25rem; }
+        .nav-links a { padding: 0.5rem 1rem; color: var(--text-dim); text-decoration: none; font-size: 0.875rem; font-weight: 500; border-radius: 8px; transition: all 0.2s; }
+        .nav-links a:hover { color: var(--text); background: var(--glass); }
+        .btn-glass { padding: 0.5rem 1.25rem; background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(10px); border-radius: 10px; color: var(--text); font-weight: 600; font-size: 0.875rem; text-decoration: none; transition: all 0.25s; }
+        .btn-glass:hover { background: var(--glass-hover); border-color: var(--accent-light); box-shadow: 0 0 20px var(--accent-glow); }
+        .btn-accent { padding: 0.55rem 1.5rem; background: linear-gradient(135deg, var(--accent), #9333ea); border: none; border-radius: 10px; color: white; font-weight: 600; font-size: 0.875rem; text-decoration: none; transition: all 0.25s; cursor: pointer; }
+        .btn-accent:hover { transform: translateY(-1px); box-shadow: 0 8px 30px var(--accent-glow); }
+
+        /* === Hero === */
+        .hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 6rem 2rem 4rem; }
+        .hero-content { max-width: 800px; }
+        .hero-badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 1rem; background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(10px); border-radius: 100px; font-size: 0.8rem; color: var(--accent-light); font-weight: 500; margin-bottom: 2rem; }
+        .hero-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 2s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .hero h1 { font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 800; line-height: 1.05; letter-spacing: -0.03em; margin-bottom: 1.5rem; }
+        .hero h1 .gradient { background: linear-gradient(135deg, var(--accent-light), #06b6d4, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .hero p { font-size: 1.2rem; color: var(--text-dim); line-height: 1.7; max-width: 600px; margin: 0 auto 2.5rem; }
+        .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+        .hero-actions .btn-accent { padding: 0.85rem 2rem; font-size: 1rem; }
+        .hero-actions .btn-glass { padding: 0.85rem 2rem; font-size: 1rem; }
+
+        /* === Stats === */
+        .stats { display: flex; gap: 3rem; justify-content: center; margin-top: 4rem; }
+        .stat { text-align: center; }
+        .stat .val { font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, var(--text), var(--accent-light)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat .lbl { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.25rem; }
+
+        /* === Features === */
+        .section { padding: 6rem 2rem; max-width: 1200px; margin: 0 auto; }
+        .section-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-light); font-weight: 600; margin-bottom: 0.75rem; }
+        .section-title { font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; letter-spacing: -0.02em; }
+        .section-sub { color: var(--text-dim); font-size: 1.1rem; max-width: 600px; margin-bottom: 3rem; }
+
+        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; }
+        .feature-card { padding: 2rem; background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(10px); border-radius: 16px; transition: all 0.3s; }
+        .feature-card:hover { border-color: rgba(124,58,237,0.3); transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+        .feature-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; margin-bottom: 1.25rem; background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(6,182,212,0.1)); border: 1px solid rgba(124,58,237,0.15); }
+        .feature-card h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .feature-card p { color: var(--text-dim); font-size: 0.9rem; line-height: 1.6; }
+
+        /* === Apps Grid === */
+        .apps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; }
+        .app-card { padding: 1.75rem; background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(10px); border-radius: 14px; display: flex; align-items: flex-start; gap: 1rem; transition: all 0.3s; text-decoration: none; color: inherit; }
+        .app-card:hover { border-color: rgba(124,58,237,0.3); transform: translateY(-2px); }
+        .app-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+        .app-icon.purple { background: linear-gradient(135deg, #7c3aed, #9333ea); }
+        .app-icon.blue { background: linear-gradient(135deg, #3b82f6, #06b6d4); }
+        .app-icon.green { background: linear-gradient(135deg, #10b981, #34d399); }
+        .app-icon.orange { background: linear-gradient(135deg, #f97316, #fb923c); }
+        .app-card h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.25rem; }
+        .app-card span { font-size: 0.8rem; color: var(--text-muted); }
+
+        /* === Footer === */
+        footer { border-top: 1px solid var(--glass-border); padding: 3rem 2rem; margin-top: 4rem; }
+        .footer-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+        .footer-inner p { color: var(--text-muted); font-size: 0.85rem; }
+        .footer-links { display: flex; gap: 1.5rem; }
+        .footer-links a { color: var(--text-dim); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
+        .footer-links a:hover { color: var(--accent-light); }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .stats { gap: 1.5rem; }
+            .hero h1 { font-size: 2.2rem; }
+            .footer-inner { flex-direction: column; gap: 1rem; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+<div class="bg-scene">
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+</div>
+<div class="bg-noise"></div>
+
+<div class="content">
+    <!-- Nav -->
+    <nav id="nav">
+        <div class="nav-inner">
+            <a href="/platform" class="nav-brand">
+                <img src="/platform/static/icons/darklock-logo.png" alt="Darklock" onerror="this.style.display='none'">
+                <span>Darklock</span>
+            </a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#apps">Applications</a>
+                <a href="/platform/update">Updates</a>
+                <a href="/platform/auth/login" class="btn-glass" id="navLogin">Sign In</a>
+                <a href="/platform/auth/signup" class="btn-accent" id="navSignup">Get Started</a>
+                <a href="/platform/dashboard" class="btn-accent" id="navDash" style="display:none">Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge"><div class="dot"></div> Enterprise Security Platform</div>
+            <h1>Defend Your Digital<br><span class="gradient">Infrastructure</span></h1>
+            <p>Darklock delivers comprehensive security for Discord servers, web applications, and digital infrastructure. Built for teams that take protection seriously.</p>
+            <div class="hero-actions">
+                <a href="/platform/auth/signup" class="btn-accent">Start Protecting Now →</a>
+                <a href="#apps" class="btn-glass">View Applications</a>
+            </div>
+            <div class="stats">
+                <div class="stat"><div class="val">24/7</div><div class="lbl">Monitoring</div></div>
+                <div class="stat"><div class="val">&lt;100ms</div><div class="lbl">Response Time</div></div>
+                <div class="stat"><div class="val">99.9%</div><div class="lbl">Uptime</div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="section" id="features">
+        <div class="section-label">Security Suite</div>
+        <h2 class="section-title">Complete Protection</h2>
+        <p class="section-sub">Multiple layers of defense working together to protect your digital presence.</p>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🛡️</div>
+                <h3>Anti-Raid Protection</h3>
+                <p>Real-time detection and automatic lockdown when coordinated attacks target your server. Configurable thresholds and intelligent response.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔗</div>
+                <h3>Link Analysis</h3>
+                <p>Deep scanning with Google Safe Browsing, URL unshortening, and domain reputation checks. Quarantine suspicious content automatically.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎣</div>
+                <h3>Anti-Phishing</h3>
+                <p>AI-powered similarity detection for usernames and messages. Protects against impersonation and social engineering attacks.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📁</div>
+                <h3>File Integrity</h3>
+                <p>Tamper detection with hardware-backed integrity monitoring. Cryptographic hashing and real-time change alerts.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔐</div>
+                <h3>Two-Factor Auth</h3>
+                <p>TOTP-based 2FA with encrypted backup codes and hardware RFID support. Enterprise-grade identity verification.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Audit Logging</h3>
+                <p>Comprehensive logging of all security events, admin actions, and configuration changes with 30-day retention.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Apps -->
+    <section class="section" id="apps">
+        <div class="section-label">Ecosystem</div>
+        <h2 class="section-title">Applications</h2>
+        <p class="section-sub">Purpose-built tools for every aspect of your security infrastructure.</p>
+        <div class="apps-grid">
+            <a href="/site/" class="app-card">
+                <div class="app-icon purple">🤖</div>
+                <div><h4>Discord Security Bot</h4><span>Anti-raid, anti-spam, moderation</span></div>
+            </a>
+            <a href="/platform/dashboard" class="app-card">
+                <div class="app-icon blue">📋</div>
+                <div><h4>Security Dashboard</h4><span>Monitor and manage your security</span></div>
+            </a>
+            <a href="/platform/update" class="app-card">
+                <div class="app-icon green">🖥️</div>
+                <div><h4>Darklock Guard</h4><span>Desktop file integrity monitor</span></div>
+            </a>
+            <a href="#" class="app-card">
+                <div class="app-icon orange">🔒</div>
+                <div><h4>Secure Notes</h4><span>Encrypted note sharing</span></div>
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-inner">
+            <p>&copy; 2026 Darklock. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="/platform/privacy">Privacy</a>
+                <a href="/platform/terms">Terms</a>
+                <a href="/platform/status">Status</a>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<script>
+    // Nav scroll effect
+    window.addEventListener('scroll', () => {
+        document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 20);
+    });
+
+    // Auth state
+    (async () => {
+        try {
+            const res = await fetch('/platform/auth/me', { credentials: 'same-origin' });
+            if (res.ok) {
+                document.getElementById('navLogin').style.display = 'none';
+                document.getElementById('navSignup').style.display = 'none';
+                document.getElementById('navDash').style.display = '';
+            }
+        } catch {}
+    })();
+</script>
+</body>
+</html>

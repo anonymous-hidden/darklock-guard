@@ -172,7 +172,10 @@ const sensitiveActionLimiter = rateLimit({
 // Double-submit cookie pattern: a signed csrf_token cookie is set on login/GET /shell,
 // and must be echoed back in the X-CSRF-Token header for all state-changing requests.
 
-const CSRF_SECRET = process.env.ADMIN_JWT_SECRET || 'csrf-fallback-secret';
+const CSRF_SECRET = process.env.ADMIN_JWT_SECRET;
+if (!CSRF_SECRET) {
+  throw new Error('FATAL: ADMIN_JWT_SECRET is required for CSRF protection. Set it in .env');
+}
 
 function generateCSRFToken(adminId) {
   const payload = `${adminId}:${Date.now()}`;
@@ -189,6 +192,9 @@ function validateCSRFToken(token, adminId) {
 
   // Token must match the authenticated admin
   if (tokenAdminId !== String(adminId)) return false;
+
+  // Validate timestamp is strictly numeric
+  if (!/^\d+$/.test(timestamp)) return false;
 
   // Token must not be older than 12 hours
   const age = Date.now() - parseInt(timestamp, 10);

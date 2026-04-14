@@ -80,7 +80,7 @@ class AntiPhishing {
             return false;
             
         } catch (error) {
-            this.bot.logger.error(`Anti-phishing check failed for new member ${member.user.tag}:`, error);
+            this.bot.logger.error(`Anti-phishing check failed for new member ${member.user.username}:`, error);
             return false;
         }
     }
@@ -396,7 +396,7 @@ class AntiPhishing {
             // Notify moderators
             await this.notifyModerators(member, detectedIssues, source, message);
             
-            this.bot.logger.security(`🎣 Phishing detected: ${member.user.tag} - ${detectedIssues.map(i => i.type).join(', ')}`);
+            this.bot.logger.security(`🎣 Phishing detected: ${member.user.username} - ${detectedIssues.map(i => i.type).join(', ')}`);
             
         } catch (error) {
             this.bot.logger.error(`Failed to handle phishing detection:`, error);
@@ -464,7 +464,7 @@ class AntiPhishing {
                             this.bot.client.user.id,
                             `Auto-ban: ${reason}`
                         ]);
-                        this.bot.logger?.info(`[AntiPhishing] Banned ${member.user.tag} for phishing`);
+                        this.bot.logger?.info(`[AntiPhishing] Banned ${member.user.username} for phishing`);
                     } catch (error) {
                         this.bot.logger.error(`Failed to ban phishing user:`, error);
                     }
@@ -484,7 +484,7 @@ class AntiPhishing {
                             this.bot.client.user.id,
                             `Auto-kick: ${reason}`
                         ]);
-                        this.bot.logger?.info(`[AntiPhishing] Kicked ${member.user.tag} for phishing`);
+                        this.bot.logger?.info(`[AntiPhishing] Kicked ${member.user.username} for phishing`);
                     } catch (error) {
                         this.bot.logger.error(`Failed to kick phishing user:`, error);
                     }
@@ -508,7 +508,7 @@ class AntiPhishing {
                             duration,
                             new Date(Date.now() + duration).toISOString()
                         ]);
-                        this.bot.logger?.info(`[AntiPhishing] Timed out ${member.user.tag} for phishing (24h)`);
+                        this.bot.logger?.info(`[AntiPhishing] Timed out ${member.user.username} for phishing (24h)`);
                     } catch (error) {
                         this.bot.logger.error(`Failed to timeout phishing user:`, error);
                     }
@@ -527,7 +527,7 @@ class AntiPhishing {
                         this.bot.client.user.id,
                         `Auto-warn: ${reason}`
                     ]);
-                    this.bot.logger?.info(`[AntiPhishing] Warned ${member.user.tag} for phishing`);
+                    this.bot.logger?.info(`[AntiPhishing] Warned ${member.user.username} for phishing`);
                     break;
                     
                 case 'delete':
@@ -544,7 +544,7 @@ class AntiPhishing {
                         JSON.stringify({ issues: detectedIssues, severity, confidence, action: 'delete_only' }),
                         severity
                     ]);
-                    this.bot.logger?.info(`[AntiPhishing] Deleted message from ${member.user.tag} for phishing (delete only)`);
+                    this.bot.logger?.info(`[AntiPhishing] Deleted message from ${member.user.username} for phishing (delete only)`);
                     break;
             }
             
@@ -600,7 +600,7 @@ class AntiPhishing {
             if (logChannel) {
                 const alertEmbed = {
                     title: '🎣 Phishing Detection Alert',
-                    description: `**${member.user.tag}** flagged for potential phishing`,
+                    description: `**${member.user.username}** flagged for potential phishing`,
                     fields: [
                         {
                             name: 'User',

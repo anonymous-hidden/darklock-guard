@@ -45,7 +45,7 @@ module.exports = {
             .setTitle('📢 ' + title)
             .setDescription(message)
             .setColor(color)
-            .setFooter({ text: `Announced by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
+            .setFooter({ text: `Announced by ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() })
             .setTimestamp();
 
         try {

@@ -24,14 +24,14 @@ module.exports = {
         }
 
         try {
-            const baseline = await bot.tamperProtection.regenerateBaseline(interaction.user.tag || interaction.user.id);
+            const baseline = await bot.tamperProtection.regenerateBaseline(interaction.user.username || interaction.user.id);
 
             if (bot.forensicsManager && typeof bot.forensicsManager.logAuditEvent === 'function') {
                 await bot.forensicsManager.logAuditEvent({
                     guildId: interaction.guild?.id || null,
                     eventType: 'baseline_update',
                     eventCategory: 'tamper_protection',
-                    executor: { id: interaction.user.id, tag: interaction.user.tag },
+                    executor: { id: interaction.user.id, tag: interaction.user.username },
                     target: { type: 'baseline', id: 'tamper_protection_baseline', name: 'baseline.json' },
                     changes: { fileCount: baseline?.fileCount || 0, generated: baseline?.generated || null },
                     canReplay: false,

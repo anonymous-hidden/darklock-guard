@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darklock — Advanced Discord Security & Protection</title>
+    <meta name="description" content="Protect your Discord server with enterprise-level security. Real-time threat detection, automated moderation, and comprehensive analytics.">
+    <link rel="stylesheet" href="css/style.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="">
+    <script src="js/global-theme.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="icon" type="image/png" href="images/darklock-logo.png">
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="site-nav" id="siteNav">
+    <div class="site-nav-inner">
+        <a href="/site/" class="site-nav-brand">
+            <img src="images/darklock-logo.png" alt="Darklock">
+            <span>Darklock</span>
+            <span class="site-nav-tag">Bot</span>
+        </a>
+        <div class="site-nav-links" id="siteNavLinks">
+            <a href="#features">Features</a>
+            <a href="#security">Security</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#desktop-app">Desktop App</a>
+            <a href="/site/docs.html">Docs</a>
+            <a href="/site/status.html">Status</a>
+            <a href="/platform">Platform</a>
+            <a href="https://admin.darklock.net/dashboard" class="site-nav-cta" style="background:rgba(255,255,255,0.06)!important;color:var(--text-primary)!important;box-shadow:none!important;border:1px solid var(--border)!important">
+                <i class="fas fa-rocket"></i> Dashboard
+            </a>
+            <a href="#" class="site-nav-cta" id="inviteBtn">
+                <i class="fab fa-discord"></i> Add to Discord
+            </a>
+        </div>
+        <button class="site-nav-toggle" id="siteNavToggle" aria-label="Toggle menu">
+            <i class="fas fa-bars"></i>
+        </button>
+    </div>
+</nav>
+
+<!-- Hero -->
+<section class="site-hero">
+    <div class="site-hero-bg">
+        <div class="site-hero-orb site-hero-orb-1"></div>
+        <div class="site-hero-orb site-hero-orb-2"></div>
+        <div class="site-hero-grid"></div>
+    </div>
+    <div class="site-container">
+        <div class="site-hero-inner">
+            <div class="site-hero-content">
+                <div class="site-hero-badge">
+                    <span class="site-live-dot"></span>
+                    <span>Protecting <strong id="serverCount">—</strong> servers</span>
+                </div>
+                <h1 class="site-hero-title">
+                    Next-Gen Discord<br><span class="site-grad">Security Bot</span>
+                </h1>
+                <p class="site-hero-sub">
+                    Enterprise-grade protection for your Discord community. Anti-raid, anti-nuke, smart verification, real-time threat detection, and advanced analytics — all in one bot.
+                </p>
+                <div class="site-hero-actions">
+                    <a href="#" class="site-btn site-btn-primary" id="heroInvite">
+                        <i class="fab fa-discord"></i> Add to Server
+                    </a>
+                    <a href="https://admin.darklock.net/dashboard" class="site-btn site-btn-ghost">
+                        <i class="fas fa-external-link"></i> Open Dashboard
+                    </a>
+                </div>
+                <div class="site-hero-stats">
+                    <div class="site-hero-stat">
+                        <div class="site-hero-stat-val" id="statServers">—</div>
+                        <div class="site-hero-stat-lbl">Servers</div>
+                    </div>
+                    <div class="site-hero-stat">
+                        <div class="site-hero-stat-val" id="statUsers">—</div>
+                        <div class="site-hero-stat-lbl">Users Protected</div>
+                    </div>
+                    <div class="site-hero-stat">
+                        <div class="site-hero-stat-val" id="statUptime">99.9%</div>
+                        <div class="site-hero-stat-lbl">Uptime</div>
+                    </div>
+                    <div class="site-hero-stat">
+                        <div class="site-hero-stat-val">&lt;50ms</div>
+                        <div class="site-hero-stat-lbl">Response</div>
+                    </div>
+                </div>
+            </div>
+            <div class="site-hero-visual">
+                <div class="site-dashboard-mock">
+                    <div class="site-mock-header">
+                        <div class="site-mock-dots">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <span class="site-mock-title">Darklock Dashboard</span>
+                    </div>
+                    <div class="site-mock-body">
+                        <div class="site-mock-row">
+                            <div class="site-mock-card site-mock-card-accent">
+                                <i class="fas fa-shield-halved"></i>
+                                <div>
+                                    <div class="site-mock-val">Active</div>
+                                    <div class="site-mock-lbl">Protection Status</div>
+                                </div>
+                            </div>
+                            <div class="site-mock-card">
+                                <i class="fas fa-ban"></i>
+                                <div>
+                                    <div class="site-mock-val" id="mockThreats">247</div>
+                                    <div class="site-mock-lbl">Threats Blocked</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="site-mock-chart">
+                            <div class="site-mock-chart-label">Threat Activity (7 days)</div>
+                            <div class="site-mock-bars">
+                                <div class="site-mock-bar" style="height:40%"></div>
+                                <div class="site-mock-bar" style="height:65%"></div>
+                                <div class="site-mock-bar" style="height:35%"></div>
+                                <div class="site-mock-bar" style="height:80%"></div>
+                                <div class="site-mock-bar" style="height:55%"></div>
+                                <div class="site-mock-bar" style="height:45%"></div>
+                                <div class="site-mock-bar site-mock-bar-active" style="height:30%"></div>
+                            </div>
+                        </div>
+                        <div class="site-mock-log">
+                            <div class="site-mock-log-item"><span class="site-mock-log-dot green"></span> Raid attempt blocked <span class="site-mock-log-time">2m ago</span></div>
+                            <div class="site-mock-log-item"><span class="site-mock-log-dot blue"></span> Verification passed <span class="site-mock-log-time">5m ago</span></div>
+                            <div class="site-mock-log-item"><span class="site-mock-log-dot orange"></span> Suspicious link removed <span class="site-mock-log-time">8m ago</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Trusted By -->
+<section class="site-trusted">
+    <div class="site-container">
+        <p class="site-trusted-label">Protecting communities of all sizes</p>
+        <div class="site-trusted-grid">
+            <div class="site-trusted-item">
+                <i class="fas fa-gamepad"></i>
+                <span>Gaming</span>
+            </div>
+            <div class="site-trusted-item">
+                <i class="fas fa-code"></i>
+                <span>Development</span>
+            </div>
+            <div class="site-trusted-item">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Education</span>
+            </div>
+            <div class="site-trusted-item">
+                <i class="fas fa-building"></i>
+                <span>Business</span>
+            </div>
+            <div class="site-trusted-item">
+                <i class="fas fa-palette"></i>
+                <span>Creative</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section id="features" class="site-features">
+    <div class="site-container">
+        <div class="site-sect-head site-reveal">
+            <span class="site-sect-badge">Core Features</span>
+            <h2 class="site-sect-title">Everything Your Server Needs</h2>
+            <p class="site-sect-sub">Six powerful modules working together to keep your community safe around the clock.</p>
+        </div>
+        <div class="site-feat-grid">
+            <div class="site-feat-card site-reveal site-reveal-d1">
+                <div class="site-feat-icon" style="background:rgba(239,68,68,0.08);color:#ef4444"><i class="fas fa-shield-halved"></i></div>
+                <h3>Anti-Raid Protection</h3>
+                <p>Automatically detects and neutralizes mass-join raids, bot attacks, and coordinated spam floods in real time.</p>
+            </div>
+            <div class="site-feat-card site-reveal site-reveal-d2">
+                <div class="site-feat-icon" style="background:rgba(245,158,11,0.08);color:#f59e0b"><i class="fas fa-filter"></i></div>
+                <h3>Anti-Spam Engine</h3>
+                <p>Smart pattern recognition identifies and removes spam, repeated messages, invite flooding, and mention abuse.</p>
+            </div>
+            <div class="site-feat-card site-reveal site-reveal-d3">
+                <div class="site-feat-icon" style="background:rgba(6,182,212,0.08);color:#06b6d4"><i class="fas fa-link-slash"></i></div>
+                <h3>Anti-Phishing</h3>
+                <p>Blocks malicious links, phishing attempts, and scam URLs before users can click them. Updated in real time.</p>
+            </div>
+            <div class="site-feat-card site-reveal site-reveal-d1">
+                <div class="site-feat-icon" style="background:rgba(99,102,241,0.08);color:#818cf8"><i class="fas fa-chart-mixed"></i></div>
+                <h3>Smart Analytics</h3>
+                <p>Detailed insights into server activity, member growth, threat patterns, and moderation statistics.</p>
+            </div>
+            <div class="site-feat-card site-reveal site-reveal-d2">
+                <div class="site-feat-icon" style="background:rgba(139,92,246,0.08);color:#a78bfa"><i class="fas fa-gavel"></i></div>
+                <h3>Auto-Moderation</h3>
+                <p>Configurable rule engine for automatic warnings, mutes, kicks, and bans. Fair, consistent, and transparent.</p>
+            </div>
+            <div class="site-feat-card site-reveal site-reveal-d3">
+                <div class="site-feat-icon" style="background:rgba(34,197,94,0.08);color:#22c55e"><i class="fas fa-scroll"></i></div>
+                <h3>Audit Logging</h3>
+                <p>Full audit trail of every moderation action, config change, and security event. Exportable and searchable.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Security Section -->
+<section id="security" class="site-security">
+    <div class="site-container">
+        <div class="site-security-inner site-reveal">
+            <div class="site-security-content">
+                <span class="site-sect-badge">Built Secure</span>
+                <h2 class="site-sect-title" style="text-align:left">Security at Every Layer</h2>
+                <p class="site-security-desc">Darklock is built for teams that refuse to compromise on security. Every component is designed with defense-in-depth principles.</p>
+                <div class="site-security-checks">
+                    <div class="site-check"><i class="fas fa-check-circle"></i> End-to-end encrypted configuration</div>
+                    <div class="site-check"><i class="fas fa-check-circle"></i> Zero data collection — your server stays private</div>
+                    <div class="site-check"><i class="fas fa-check-circle"></i> HMAC-signed file integrity protection</div>
+                    <div class="site-check"><i class="fas fa-check-circle"></i> Role-based access control on all dashboards</div>
+                    <div class="site-check"><i class="fas fa-check-circle"></i> Real-time threat database updates</div>
+                    <div class="site-check"><i class="fas fa-check-circle"></i> Self-hosted infrastructure — no third-party dependencies</div>
+                </div>
+            </div>
+            <div class="site-security-visual">
+                <div class="site-sec-card">
+                    <div class="site-sec-shield">
+                        <img src="images/darklock-logo.png" alt="Darklock Security">
+                    </div>
+                    <div class="site-sec-ring"></div>
+                    <div class="site-sec-ring site-sec-ring-2"></div>
+                    <div class="site-sec-badge-float site-sec-float-1"><i class="fas fa-lock"></i></div>
+                    <div class="site-sec-badge-float site-sec-float-2"><i class="fas fa-key"></i></div>
+                    <div class="site-sec-badge-float site-sec-float-3"><i class="fas fa-fingerprint"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Pricing -->
+<section id="pricing" class="site-pricing">
+    <div class="site-container">
+        <div class="site-sect-head site-reveal">
+            <span class="site-sect-badge">Pricing</span>
+            <h2 class="site-sect-title">Simple, Transparent Pricing</h2>
+            <p class="site-sect-sub">Start protecting your server for free. Upgrade when you need more.</p>
+        </div>
+        <div class="site-pricing-grid">
+            <div class="site-price-card site-reveal site-reveal-d1">
+                <div class="site-price-header">
+                    <h3>Free</h3>
+                    <div class="site-price-amount"><span class="site-price-currency">$</span>0<span class="site-price-period">/month</span></div>
+                    <p>Perfect for small communities</p>
+                </div>
+                <ul class="site-price-features">
+                    <li><i class="fas fa-check"></i> Anti-raid protection</li>
+                    <li><i class="fas fa-check"></i> Basic auto-moderation</li>
+                    <li><i class="fas fa-check"></i> Anti-phishing links</li>
+                    <li><i class="fas fa-check"></i> Audit logging (7 days)</li>
+                    <li><i class="fas fa-check"></i> Community support</li>
+                </ul>
+                <a href="#" class="site-btn site-btn-ghost site-btn-full" id="priceFreeBtn">
+                    <i class="fab fa-discord"></i> Add to Server
+                </a>
+            </div>
+            <div class="site-price-card site-price-card-featured site-reveal site-reveal-d2">
+                <div class="site-price-popular">Most Popular</div>
+                <div class="site-price-header">
+                    <h3>Pro</h3>
+                    <div class="site-price-amount"><span class="site-price-currency">$</span>5<span class="site-price-period">/month</span></div>
+                    <p>For serious server admins</p>
+                </div>
+                <ul class="site-price-features">
+                    <li><i class="fas fa-check"></i> Everything in Free</li>
+                    <li><i class="fas fa-check"></i> Advanced threat intelligence</li>
+                    <li><i class="fas fa-check"></i> Custom rule engine</li>
+                    <li><i class="fas fa-check"></i> Analytics dashboard</li>
+                    <li><i class="fas fa-check"></i> Unlimited audit logging</li>
+                    <li><i class="fas fa-check"></i> Priority support</li>
+                    <li><i class="fas fa-check"></i> Webhook integrations</li>
+                </ul>
+                <a href="#" class="site-btn site-btn-primary site-btn-full" id="priceProBtn">
+                    <i class="fas fa-rocket"></i> Coming Soon
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Desktop App -->
+<section id="desktop-app" class="site-desktop">
+    <div class="site-container">
+        <div class="site-desktop-inner site-reveal">
+            <div class="site-desktop-visual">
+                <div class="site-dashboard-mock" style="max-width:380px">
+                    <div class="site-mock-header">
+                        <div class="site-mock-dots">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <span class="site-mock-title">Darklock Guard</span>
+                    </div>
+                    <div class="site-mock-body" style="text-align:center;padding:2rem 1rem">
+                        <div style="margin-bottom:1rem">
+                            <i class="fas fa-shield-halved" style="font-size:2.5rem;color:var(--accent-light)"></i>
+                        </div>
+                        <div style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.4rem 0.8rem;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);border-radius:100px;font-size:0.8rem;color:var(--success);font-weight:600;margin-bottom:0.75rem">
+                            <span style="width:6px;height:6px;background:var(--success);border-radius:50%;display:inline-block"></span>
+                            All Files Protected
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:1rem">
+                            <div class="site-mock-card" style="flex-direction:column;text-align:center;gap:0.3rem">
+                                <div class="site-mock-val">128</div>
+                                <div class="site-mock-lbl">Files Monitored</div>
+                            </div>
+                            <div class="site-mock-card" style="flex-direction:column;text-align:center;gap:0.3rem">
+                                <div class="site-mock-val">0</div>
+                                <div class="site-mock-lbl">Threats Found</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="site-desktop-content">
+                <span class="site-sect-badge">Desktop Protection</span>
+                <h2 class="site-sect-title" style="text-align:left">Darklock Guard Desktop App</h2>
+                <p class="site-desktop-desc">Monitor and protect your critical files with our desktop application. Get instant alerts on unauthorized changes and automatic backup restoration.</p>
+                <div class="site-desktop-features">
+                    <div class="site-check"><i class="fas fa-eye"></i> Real-time file monitoring</div>
+                    <div class="site-check"><i class="fas fa-bell"></i> Instant tamper alerts</div>
+                    <div class="site-check"><i class="fas fa-history"></i> Auto-restore backups</div>
+                    <div class="site-check"><i class="fas fa-lock"></i> HMAC-signed integrity checks</div>
+                </div>
+                <div class="site-desktop-platforms" style="margin-top:1.5rem">
+                    <a href="/platform/download/darklock-guard-app?format=windows" class="site-btn site-btn-primary">
+                        <i class="fab fa-windows"></i> Download for Windows
+                    </a>
+                    <a href="/platform/download/darklock-guard-app?format=linux" class="site-btn site-btn-ghost">
+                        <i class="fab fa-linux"></i> Download for Linux
+                    </a>
+                </div>
+                <p class="site-desktop-note" style="margin-top:0.75rem">Version 1.0.0 · ~5MB · Windows 10+ & Linux</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="site-cta">
+    <div class="site-container">
+        <div class="site-cta-inner site-reveal">
+            <h2>Ready to Protect Your Server?</h2>
+            <p>Join thousands of Discord communities using Darklock to keep their members safe.</p>
+            <div class="site-cta-btns">
+                <a href="#" class="site-btn site-btn-primary site-btn-lg" id="ctaInvite">
+                    <i class="fab fa-discord"></i> Add Darklock to Discord
+                </a>
+                <a href="https://discord.gg/Vsq9PUTrgb" target="_blank" class="site-btn site-btn-ghost site-btn-lg">
+                    <i class="fab fa-discord"></i> Join Support Server
+                </a>
+                <a href="/platform" class="site-btn site-btn-ghost site-btn-lg">
+                    <i class="fas fa-arrow-right"></i> View Platform
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="site-footer">
+    <div class="site-container">
+        <div class="site-footer-grid">
+            <div class="site-footer-brand">
+                <div class="site-footer-logo">
+                    <img src="images/darklock-logo.png" alt="Darklock">
+                    <span>Darklock</span>
+                </div>
+                <p class="site-footer-tagline">Enterprise Discord security for communities that care about protection.</p>
+            </div>
+            <div class="site-footer-col">
+                <h4>Product</h4>
+                <a href="#features">Features</a>
+                <a href="#security">Security</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#desktop-app">Desktop App</a>
+                <a href="#" id="footerInvite">Add Bot</a>
+            </div>
+            <div class="site-footer-col">
+                <h4>Resources</h4>
+                <a href="/platform">Platform</a>
+                <a href="https://admin.darklock.net/dashboard">Bot Dashboard</a>
+                <a href="/site/docs.html">Documentation</a>
+                <a href="/site/status.html">Status</a>
+                <a href="/site/bug-reports" style="color:#f97316"><i class="fas fa-bug" style="margin-right:4px;font-size:.7rem"></i>Bug Reports</a>
+            </div>
+            <div class="site-footer-col">
+                <h4>Community</h4>
+                <a href="https://discord.gg/Vsq9PUTrgb" target="_blank"><i class="fab fa-discord" style="margin-right:4px"></i>Support Server</a>
+                <a href="https://github.com/anonymous-hidden?tab=repositories" target="_blank"><i class="fab fa-github" style="margin-right:4px"></i>GitHub</a>
+            </div>
+        </div>
+        <div class="site-footer-bottom">
+            <p>&copy; 2026 Darklock. All rights reserved.</p>
+            <div class="site-footer-social">
+                <a href="https://discord.gg/Vsq9PUTrgb" aria-label="Discord"><i class="fab fa-discord"></i></a>
+                <a href="https://github.com/anonymous-hidden?tab=repositories" target="_blank" aria-label="GitHub"><i class="fab fa-github"></i></a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="js/main.js?v=4"></script>
+<script src="js/global-theme.js"></script>
+<script>
+(function() {
+    'use strict';
+
+    // Nav scroll
+    var nav = document.getElementById('siteNav');
+    window.addEventListener('scroll', function() {
+        nav.classList.toggle('scrolled', window.scrollY > 40);
+    });
+
+    // Smooth reveal
+    var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(e) { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.site-reveal').forEach(function(el) { observer.observe(el); });
+
+    // Card spotlight effect
+    document.querySelectorAll('.site-feat-card, .site-price-card').forEach(function(card) {
+        card.addEventListener('mousemove', function(e) {
+            var rect = card.getBoundingClientRect();
+            card.style.setProperty('--mx', (e.clientX - rect.left) + 'px');
+            card.style.setProperty('--my', (e.clientY - rect.top) + 'px');
+        });
+    });
+
+    // Fetch live stats
+    function loadStats() {
+        fetch('/api/stats').then(function(r) { return r.json(); }).then(function(d) {
+            if (d.servers) {
+                document.getElementById('serverCount').textContent = d.servers;
+                document.getElementById('statServers').textContent = d.servers;
+            }
+            if (d.users) document.getElementById('statUsers').textContent = formatNum(d.users);
+            if (d.uptime) document.getElementById('statUptime').textContent = d.uptime;
+        }).catch(function() {});
+    }
+    function formatNum(n) {
+        if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+        if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+        return n.toString();
+    }
+    loadStats();
+    setInterval(loadStats, 60000);
+
+    // Invite link
+    var inviteUrl = 'https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands';
+    var inviteBtns = ['inviteBtn', 'heroInvite', 'priceFreeBtn', 'ctaInvite', 'footerInvite'];
+    inviteBtns.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('click', function(e) { e.preventDefault(); window.open(inviteUrl, '_blank'); });
+    });
+
+    // Pro pricing button — coming soon notice
+    var priceProBtn = document.getElementById('priceProBtn');
+    if (priceProBtn) {
+        priceProBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            alert('Pro plan is coming soon! For now, all features are free.');
+        });
+    }
+
+    // Mobile toggle
+    var toggle = document.getElementById('siteNavToggle');
+    var links = document.getElementById('siteNavLinks');
+    if (toggle) {
+        toggle.addEventListener('click', function() {
+            var shown = links.style.display === 'flex';
+            links.style.display = shown ? '' : 'flex';
+            links.style.flexDirection = shown ? '' : 'column';
+            links.style.position = shown ? '' : 'absolute';
+            links.style.top = shown ? '' : '100%';
+            links.style.left = shown ? '' : '0';
+            links.style.right = shown ? '' : '0';
+            links.style.background = shown ? '' : 'rgba(6,6,11,0.96)';
+            links.style.padding = shown ? '' : '1rem 1.5rem';
+            links.style.gap = shown ? '' : '0.75rem';
+            links.style.borderBottom = shown ? '' : '1px solid rgba(255,255,255,0.06)';
+        });
+    }
+})();
+</script>
+
+</body>
+</html>

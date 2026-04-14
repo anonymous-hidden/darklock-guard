@@ -117,7 +117,7 @@ class VerificationService {
         const config = await this.bot.database?.getGuildConfig(guildId);
         if (!config?.verification_enabled) return;
 
-        this.bot.logger?.info(`[VerificationService] Processing join: ${member.user.tag} in ${member.guild.name}`);
+        this.bot.logger?.info(`[VerificationService] Processing join: ${member.user.username} in ${member.guild.name}`);
 
         // Check for existing pending session (restart recovery). If found, drop it and start fresh so the member gets a fresh DM.
         const existing = await this.getPendingSession(guildId, userId);
@@ -182,7 +182,7 @@ class VerificationService {
         const configuredMethod = (config.verification_method || 'button').toLowerCase();
 
         if (profile === 'ultra') {
-            return 'web'; // Ultra always requires web + staff approval
+            return 'captcha'; // Ultra uses captcha + staff approval
         }
 
         if (profile === 'high') {
@@ -192,6 +192,11 @@ class VerificationService {
         // Standard profile - use configured method
         if (configuredMethod === 'auto') {
             return riskScore >= 60 ? 'captcha' : 'button';
+        }
+
+        // Block legacy 'web' method - fall back to captcha
+        if (configuredMethod === 'web') {
+            return 'captcha';
         }
 
         return configuredMethod;
@@ -551,11 +556,130 @@ class VerificationService {
                 }
             }
 
+            if (method === 'reaction' || method === 'emoji') {
+                // Emoji challenge verification
+                const emojis = ['🍎', '🍊', '🍋', '🍇', '🍒', '🌟', '🎯', '🔵', '🟢', '🔴', '🟡', '🟣'];
+                // Pick 4 random emojis
+                const shuffled = emojis.sort(() => 0.5 - Math.random());
+                const choices = shuffled.slice(0, 4);
+                const correctEmoji = choices[Math.floor(Math.random() * choices.length)];
+
+                // Store the correct answer in the session
+                const hashedAnswer = crypto.createHash('sha256').update(correctEmoji).digest('hex');
+                if (session) {
+                    await this.bot.database?.run(
+                        `UPDATE verification_sessions SET code_hash = ? WHERE id = ?`,
+                        [hashedAnswer, session.id]
+                    );
+                } else {
+                    await this.createSession(effectiveGuildId, userId, 'reaction', 0);
+                    const newSession = await this.getPendingSession(effectiveGuildId, userId);
+                    if (newSession) {
+                        await this.bot.database?.run(
+                            `UPDATE verification_sessions SET code_hash = ? WHERE id = ?`,
+                            [hashedAnswer, newSession.id]
+                        );
+                    }
+                }
+
+                const emojiButtons = new ActionRowBuilder().addComponents(
+                    ...choices.map(emoji =>
+                        new ButtonBuilder()
+                            .setCustomId(`verify_emoji_${effectiveGuildId}_${emoji}`)
+                            .setLabel(emoji)
+                            .setStyle(ButtonStyle.Secondary)
+                    )
+                );
+
+                try {
+                    const flags = [MessageFlags.Ephemeral];
+                    if (interaction.replied || interaction.deferred) {
+                        return interaction.followUp({
+                            content: `🎯 **Emoji Verification**\n\nClick the **${correctEmoji}** emoji below to verify!`,
+                            components: [emojiButtons],
+                            flags
+                        });
+                    }
+                    return interaction.reply({
+                        content: `🎯 **Emoji Verification**\n\nClick the **${correctEmoji}** emoji below to verify!`,
+                        components: [emojiButtons],
+                        flags
+                    });
+                } catch (err) {
+                    this.bot.logger?.warn(`[VerificationService] Emoji reply failed: ${err.message}`);
+                    return safeReply('❌ Failed to show emoji challenge. Please try again.');
+                }
+            }
+
             // Fallback
             return safeReply('❌ Unknown verification method. Please contact staff.');
         } catch (err) {
             this.bot.logger?.error(`[VerificationService] handleVerifyButton error: ${err.message}`);
             return safeReply('❌ An error occurred. Please try again or contact staff.');
+        }
+    }
+
+    /**
+     * Handle emoji verification button click
+     */
+    async handleEmojiVerify(interaction) {
+        const userId = interaction.user.id;
+        const customId = interaction.customId; // verify_emoji_{guildId}_{emoji}
+        const parts = customId.split('_');
+        // parts: ['verify', 'emoji', guildId, emoji]
+        const guildId = parts[2];
+        const selectedEmoji = parts.slice(3).join('_'); // emoji may contain underscores
+
+        const safeReply = async (content, ephemeral = true) => {
+            try {
+                const flags = ephemeral ? [MessageFlags.Ephemeral] : [];
+                if (interaction.replied || interaction.deferred) {
+                    return interaction.followUp({ content, flags });
+                }
+                return interaction.reply({ content, flags });
+            } catch (err) {
+                this.bot.logger?.warn(`[VerificationService] Emoji reply failed: ${err.message}`);
+            }
+        };
+
+        if (this.isRateLimited(userId)) {
+            return safeReply('⏰ Please wait a few seconds before trying again.');
+        }
+        this.recordAttempt(userId);
+
+        try {
+            const session = await this.getPendingSession(guildId, userId);
+            if (!session) {
+                return safeReply('❌ No pending verification found. Please click the main verify button to start over.');
+            }
+
+            // Check if correct emoji
+            const hashedSelection = crypto.createHash('sha256').update(selectedEmoji).digest('hex');
+            if (hashedSelection === session.code_hash) {
+                // Correct!
+                await this.completeVerification(guildId, userId, 'emoji');
+                return safeReply('✅ **Verification Complete!**\n\nYou now have access to the rest of the server. Welcome!');
+            } else {
+                // Wrong emoji
+                const attempts = (session.attempts || 0) + 1;
+                await this.bot.database?.run(
+                    `UPDATE verification_sessions SET attempts = ? WHERE id = ?`,
+                    [attempts, session.id]
+                );
+
+                if (attempts >= this.maxAttempts) {
+                    await this.bot.database?.run(
+                        `UPDATE verification_sessions SET status = 'failed' WHERE id = ?`,
+                        [session.id]
+                    );
+                    return safeReply('❌ **Verification Failed**\n\nToo many incorrect attempts. Please click the main verify button to try again.');
+                }
+
+                return safeReply(`❌ Wrong emoji! You have **${this.maxAttempts - attempts}** attempts remaining. Click the main verify button to get a new challenge.`);
+            }
+        } catch (err) {
+            this.bot.logger?.error(`[VerificationService] Emoji verify error: ${err.message}`);
+            return safeReply('❌ An error occurred. Please try again.');
         }
     }
 
@@ -761,7 +885,7 @@ class VerificationService {
                 .setTitle('🔔 Verification Pending (Staff Review)')
                 .setDescription(`${member} requires manual verification.`)
                 .addFields(
-                    { name: 'User', value: `${member.user.tag} (${member.id})`, inline: true },
+                    { name: 'User', value: `${member.user.username} (${member.id})`, inline: true },
                     { name: 'Risk Score', value: `${session.riskScore}/100`, inline: true },
                     { name: 'Method', value: session.method, inline: true }
                 )
@@ -805,16 +929,16 @@ class VerificationService {
         if (approve) {
             await this.completeVerification(interaction.guild.id, targetId, 'staff_approval', interaction.user.id);
             await interaction.message.edit({ components: [] });
-            return interaction.editReply({ content: `✅ Approved ${member.user.tag}.` });
+            return interaction.editReply({ content: `✅ Approved ${member.user.username}.` });
         } else {
-            await member.kick(`Verification denied by ${interaction.user.tag}`);
+            await member.kick(`Verification denied by ${interaction.user.username}`);
             await this.bot.database?.run(
                 `UPDATE verification_sessions SET status = 'rejected', completed_by = ? 
                  WHERE guild_id = ? AND user_id = ? AND status = 'pending'`,
                 [interaction.user.id, interaction.guild.id, targetId]
             );
             await interaction.message.edit({ components: [] });
-            return interaction.editReply({ content: `❌ Denied and kicked ${member.user.tag}.` });
+            return interaction.editReply({ content: `❌ Denied and kicked ${member.user.username}.` });
         }
     }
 

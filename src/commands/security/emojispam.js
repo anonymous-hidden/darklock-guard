@@ -313,7 +313,7 @@ module.exports = {
 
         if (user) {
             incidents = await emojiSpam.getUserIncidents(interaction.guildId, user.id, 10);
-            title = `🎭 Incidents for ${user.tag}`;
+            title = `🎭 Incidents for ${user.username}`;
         } else {
             incidents = await emojiSpam.getRecentIncidents(interaction.guildId, 15);
             title = '🎭 Recent Emoji Spam Incidents';

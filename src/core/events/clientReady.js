@@ -9,7 +9,7 @@ module.exports = {
     name: 'clientReady',
     once: true,
     async execute(client, bot) {
-        bot.logger.info(`🚀 Bot is online as ${client.user.tag}`);
+        bot.logger.info(`🚀 Bot is online as ${client.user.username}`);
         bot.logger.info(`📊 Serving ${client.guilds.cache.size} guilds`);
         
         // Initialize StandardEmbedBuilder with client instance
@@ -29,7 +29,7 @@ module.exports = {
             for (const [guildId, guild] of client.guilds.cache) {
                 try {
                     const config = await bot.database.getGuildConfig(guildId);
-                    if (config?.antinuke_enabled) {
+                    if (true || config?.antinuke_enabled) { // Always snapshot — needed for recovery even when disabled
                         await bot.antiNuke.initializeGuild(guild);
                         initialized++;
                     }

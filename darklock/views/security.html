@@ -3,190 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security | Darklock Platform</title>
+    <title>Security | Darklock</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/platform/static/css/main.css">
+    <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
     <style>
-        .security-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-            min-height: calc(100vh - 200px);
-        }
-
-        .security-header {
-            text-align: center;
-            padding: 4rem 0 3rem;
-        }
-
-        .security-header h1 {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, #7c4dff 0%, #00bcd4 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .security-header p {
-            font-size: 1.25rem;
-            color: var(--text-secondary);
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .security-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 2rem;
-            margin-bottom: 4rem;
-        }
-
-        .security-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 2rem;
-        }
-
-        .security-card-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, #7c4dff 0%, #00bcd4 100%);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .security-card-icon svg {
-            width: 24px;
-            height: 24px;
-            color: white;
-        }
-
-        .security-card h3 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .security-card ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .security-card li {
-            color: var(--text-secondary);
-            padding: 0.5rem 0;
-            padding-left: 1.5rem;
-            position: relative;
-        }
-
-        .security-card li:before {
-            content: "✓";
-            position: absolute;
-            left: 0;
-            color: var(--primary);
-            font-weight: bold;
-        }
-
-        .security-section {
-            margin-bottom: 4rem;
-        }
-
-        .security-section h2 {
-            font-size: 2rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .security-section p {
-            color: var(--text-secondary);
-            line-height: 1.6;
-            margin-bottom: 1rem;
-        }
-
-        .reporting-card {
-            background: linear-gradient(135deg, #7c4dff 0%, #00bcd4 100%);
-            border-radius: 12px;
-            padding: 3rem;
-            text-align: center;
-            color: white;
-        }
-
-        .reporting-card h3 {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-        }
-
-        .reporting-card p {
-            color: rgba(255, 255, 255, 0.9);
-            margin-bottom: 2rem;
-        }
-
-        .reporting-email {
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 1rem 2rem;
-            border-radius: 8px;
-            font-size: 1.125rem;
-            font-weight: 500;
-            display: inline-block;
-        }
-
-        .compliance-badges {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            flex-wrap: wrap;
-            margin-top: 2rem;
-        }
-
-        .badge {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1rem 2rem;
-            font-weight: 600;
-        }
-
-        .code-block {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1.5rem;
-            overflow-x: auto;
-            margin: 1rem 0;
-            font-family: 'Courier New', monospace;
+        .security-container { max-width: 760px; margin: 0 auto; padding: 120px 24px 80px; }
+        .security-hero { margin-bottom: 3rem; }
+        .security-hero h1 { font-size: 2.25rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.5rem; }
+        .security-hero p { color: var(--text-secondary, #8b8fa3); font-size: 1.0625rem; line-height: 1.7; }
+        .security-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 3.5rem; }
+        .security-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 1.5rem; }
+        .security-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .security-card h3 .icon { width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; }
+        .security-card p, .security-card li { font-size: 0.875rem; color: var(--text-secondary, #8b8fa3); line-height: 1.7; }
+        .security-card ul { list-style: none; padding-left: 0; margin-top: 0.5rem; }
+        .security-card li { position: relative; padding-left: 1rem; margin-bottom: 0.3rem; }
+        .security-card li::before { content: ''; position: absolute; left: 0; top: 0.55em; width: 5px; height: 5px; border-radius: 50%; background: rgba(99,102,241,0.4); }
+        .disclosure { background: rgba(99,102,241,0.05); border: 1px solid rgba(99,102,241,0.12); border-radius: 12px; padding: 2rem; margin-bottom: 2.5rem; }
+        .disclosure h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; }
+        .disclosure p { font-size: 0.9375rem; color: var(--text-secondary, #8b8fa3); line-height: 1.75; }
+        .disclosure a { color: var(--accent, #6366f1); }
+        .security-footer { text-align: center; padding: 3rem 24px; border-top: 1px solid rgba(255,255,255,0.06); color: var(--text-muted, #5c5f73); font-size: 0.8125rem; }
+        @media (max-width: 640px) {
+            .security-grid { grid-template-columns: 1fr; }
+            .security-hero h1 { font-size: 1.75rem; }
         }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="nav">
         <div class="nav-container">
             <a href="/platform" class="nav-brand">
-                <svg class="brand-icon" width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <linearGradient id="securityGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:#60A5FA" />
-                            <stop offset="50%" style="stop-color:#6366F1" />
-                            <stop offset="100%" style="stop-color:#7C3AED" />
-                        </linearGradient>
-                        <linearGradient id="securityShine" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:#a5b4fc" />
-                            <stop offset="100%" style="stop-color:#6366F1" />
-                        </linearGradient>
-                    </defs>
-                    <path d="M20 15 L20 85 L50 85 C75 85 90 70 90 50 C90 30 75 15 50 15 L20 15 Z" fill="url(#securityGrad)" />
-                    <path d="M35 30 L35 70 L50 70 C65 70 75 62 75 50 C75 38 65 30 50 30 L35 30 Z" fill="#0a0a0f" />
-                    <path d="M42 42 L58 50 L42 58 L42 52 L52 50 L42 48 Z" fill="url(#securityShine)" />
-                    <path d="M20 75 L35 85 L20 85 Z" fill="#4338ca" opacity="0.7" />
-                </svg>
+                <img src="/platform/static/icons/darklock-logo.png" alt="Darklock" width="26" height="26" style="border-radius:6px;">
                 <span class="brand-text">Darklock</span>
             </a>
             <div class="nav-links">
@@ -199,207 +50,82 @@
     </nav>
 
     <div class="security-container">
-        <div class="security-header">
-            <h1>🛡️ Security</h1>
-            <p>Our commitment to protecting your data and maintaining the highest security standards</p>
+        <div class="security-hero">
+            <h1>Security</h1>
+            <p>How we protect your data and keep the platform safe.</p>
         </div>
 
-        <!-- Security Features Grid -->
         <div class="security-grid">
             <div class="security-card">
-                <div class="security-card-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                    </svg>
-                </div>
-                <h3>Authentication & Access</h3>
+                <h3>Authentication</h3>
                 <ul>
-                    <li>JWT-based authentication</li>
-                    <li>Secure password hashing (bcrypt)</li>
-                    <li>httpOnly & secure cookies</li>
-                    <li>Session management</li>
-                    <li>Rate limiting on auth endpoints</li>
+                    <li>Passwords hashed with bcrypt</li>
+                    <li>JWT-based session tokens</li>
+                    <li>HTTP-only, secure, SameSite=strict cookies</li>
+                    <li>Rate limiting on login and registration</li>
+                    <li>Account lockout after repeated failures</li>
                 </ul>
             </div>
 
             <div class="security-card">
-                <div class="security-card-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    </svg>
-                </div>
                 <h3>Data Protection</h3>
                 <ul>
-                    <li>End-to-end HTTPS encryption</li>
-                    <li>Encrypted password storage</li>
-                    <li>Secure database persistence</li>
-                    <li>HMAC-signed integrity checks</li>
-                    <li>Automatic data backups</li>
+                    <li>HTTPS enforced on all connections</li>
+                    <li>Database backups with integrity checks</li>
+                    <li>No plaintext secrets in source control</li>
+                    <li>Minimal data collection policy</li>
                 </ul>
             </div>
 
             <div class="security-card">
-                <div class="security-card-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                        <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
-                    </svg>
-                </div>
                 <h3>Application Security</h3>
                 <ul>
-                    <li>Content Security Policy (CSP)</li>
-                    <li>XSS protection headers</li>
-                    <li>CSRF token validation</li>
-                    <li>SQL injection prevention</li>
-                    <li>Input sanitization</li>
+                    <li>CSRF token validation on all forms</li>
+                    <li>Content Security Policy headers</li>
+                    <li>Input sanitization and validation</li>
+                    <li>Parameterized database queries</li>
+                    <li>Strict CORS configuration</li>
                 </ul>
             </div>
 
             <div class="security-card">
-                <div class="security-card-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M12 6v6l4 2"/>
-                    </svg>
-                </div>
-                <h3>Monitoring & Logging</h3>
+                <h3>Monitoring</h3>
                 <ul>
-                    <li>Real-time security monitoring</li>
-                    <li>Audit trail logging</li>
-                    <li>Failed login tracking</li>
-                    <li>Suspicious activity detection</li>
-                    <li>Tamper detection alerts</li>
+                    <li>Automated health checks every 30 seconds</li>
+                    <li>Failed login attempt tracking</li>
+                    <li>Real-time status dashboard</li>
+                    <li>Audit logging for administrative actions</li>
                 </ul>
             </div>
 
             <div class="security-card">
-                <div class="security-card-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <line x1="16" y1="13" x2="8" y2="13"/>
-                        <line x1="16" y1="17" x2="8" y2="17"/>
-                        <polyline points="10 9 9 9 8 9"/>
-                    </svg>
-                </div>
-                <h3>Compliance</h3>
-                <ul>
-                    <li>GDPR compliant data handling</li>
-                    <li>Privacy-by-design architecture</li>
-                    <li>Regular security audits</li>
-                    <li>Penetration testing</li>
-                    <li>Security documentation</li>
-                </ul>
-            </div>
-
-            <div class="security-card">
-                <div class="security-card-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                    </svg>
-                </div>
                 <h3>Infrastructure</h3>
                 <ul>
-                    <li>Isolated database storage</li>
-                    <li>Secure deployment pipeline</li>
-                    <li>Environment variable protection</li>
-                    <li>Regular software updates</li>
-                    <li>99.9% uptime SLA</li>
+                    <li>Reverse proxy with SSL termination</li>
+                    <li>Firewall rules restricted to required ports</li>
+                    <li>Isolated service architecture</li>
+                    <li>Automated deployment pipeline</li>
+                </ul>
+            </div>
+
+            <div class="security-card">
+                <h3>End-to-End Encryption</h3>
+                <ul>
+                    <li>Secure Channel uses client-side encryption</li>
+                    <li>Secure Notes encrypted before leaving your device</li>
+                    <li>Server never has access to plaintext content</li>
+                    <li>Keys managed on your device only</li>
                 </ul>
             </div>
         </div>
 
-        <!-- Security Practices -->
-        <div class="security-section">
-            <h2>Security Best Practices</h2>
-            
-            <h3>For Users</h3>
-            <p>
-                • Use strong, unique passwords (minimum 12 characters)<br>
-                • Never share your credentials with anyone<br>
-                • Enable two-factor authentication when available<br>
-                • Review your account activity regularly<br>
-                • Report suspicious activity immediately
-            </p>
-
-            <h3>For Developers</h3>
-            <p>
-                • Store API keys in environment variables, never in code<br>
-                • Use HTTPS for all API requests<br>
-                • Validate and sanitize all user inputs<br>
-                • Implement proper error handling<br>
-                • Follow the principle of least privilege
-            </p>
-        </div>
-
-        <!-- Vulnerability Reporting -->
-        <div class="security-section">
+        <div class="disclosure">
             <h2>Responsible Disclosure</h2>
-            <p>
-                We take security seriously. If you've discovered a security vulnerability in Darklock, 
-                we appreciate your help in disclosing it to us responsibly.
-            </p>
-
-            <div class="reporting-card">
-                <h3>Report a Security Vulnerability</h3>
-                <p>
-                    Please send details of any security issues to our security team. 
-                    We'll respond within 24 hours.
-                </p>
-                <div class="reporting-email">security@darklock.platform</div>
-                <p style="margin-top: 2rem; font-size: 0.875rem;">
-                    Please include: Description of the vulnerability, steps to reproduce, 
-                    potential impact, and any suggested fixes.
-                </p>
-            </div>
-        </div>
-
-        <!-- Security Standards -->
-        <div class="security-section">
-            <h2>Security Standards & Compliance</h2>
-            <p>
-                Darklock is built following industry-standard security practices and frameworks:
-            </p>
-
-            <div class="compliance-badges">
-                <div class="badge">🔒 HTTPS/TLS 1.3</div>
-                <div class="badge">🛡️ OWASP Top 10</div>
-                <div class="badge">🔐 bcrypt Hashing</div>
-                <div class="badge">📊 Security Logging</div>
-                <div class="badge">⚡ Rate Limiting</div>
-            </div>
-        </div>
-
-        <!-- Security Headers -->
-        <div class="security-section">
-            <h2>Security Headers</h2>
-            <p>All Darklock pages include comprehensive security headers to protect against common web vulnerabilities including XSS, clickjacking, MIME-type sniffing, and more. Our security headers enforce HTTPS, control resource loading, and implement strict security policies.</p>
-        </div>
-
-        <!-- Incident Response -->
-        <div class="security-section">
-            <h2>Security Incident Response</h2>
-            <p>
-                In the event of a security incident:
-            </p>
-            <ul style="color: var(--text-secondary); line-height: 2;">
-                <li>We'll investigate and contain the issue within 1 hour</li>
-                <li>Affected users will be notified within 24 hours</li>
-                <li>A detailed incident report will be published</li>
-                <li>Preventive measures will be implemented immediately</li>
-                <li>All security incidents are tracked and reviewed</li>
-            </ul>
+            <p>If you find a security vulnerability in Darklock, please let us know privately before disclosing it publicly. We take every report seriously and will work to patch issues quickly.</p>
+            <p style="margin-top:0.75rem;">Email us at <a href="mailto:guardianbotsystem@gmail.com">guardianbotsystem@gmail.com</a> with details of the vulnerability, steps to reproduce, and any relevant screenshots or logs. We will acknowledge your report within 48 hours.</p>
         </div>
     </div>
 
-    <footer style="text-align: center; padding: 2rem; color: var(--text-secondary); border-top: 1px solid var(--border-color);">
-        <p>&copy; 2026 Darklock. All rights reserved.</p>
-        <p style="margin-top: 0.5rem;">
-            <a href="/platform" style="color: var(--primary); margin: 0 1rem;">Home</a>
-            <a href="/platform/privacy" style="color: var(--primary); margin: 0 1rem;">Privacy</a>
-            <a href="/platform/terms" style="color: var(--primary); margin: 0 1rem;">Terms</a>
-        </p>
-    </footer>
+    <footer class="security-footer">&copy; 2026 Darklock. All rights reserved.</footer>
 </body>
 </html>

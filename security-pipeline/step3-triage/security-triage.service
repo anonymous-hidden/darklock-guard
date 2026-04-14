@@ -1,0 +1,43 @@
+[Unit]
+Description=Security Triage Service (8B Model)
+Documentation=file:///home/cayden/discord bot/discord bot/security-pipeline/step3-triage/
+After=network.target redis.service ollama.service
+Wants=redis.service ollama.service
+
+[Service]
+Type=simple
+User=jarvis
+Group=jarvis
+WorkingDirectory=/home/cayden/discord bot/discord bot/security-pipeline/step3-triage
+ExecStart=/usr/bin/python3 triage_service.py
+Restart=always
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# Environment
+Environment=OLLAMA_URL=http://127.0.0.1:11434
+Environment=TRIAGE_MODEL=llama3.1:8b
+Environment=REDIS_SOCKET=/var/run/redis/redis.sock
+Environment=BATCH_INTERVAL=3
+Environment=LOG_LEVEL=INFO
+EnvironmentFile=-/etc/security-pipeline/triage.env
+
+# Security hardening
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+MemoryDenyWriteExecute=true
+
+# Resource limits
+MemoryMax=512M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

@@ -134,7 +134,7 @@ class ActionExecutor {
         // Log the action
         await this._log(interaction.guild, {
             action:    'DELETE',
-            adminTag:  interaction.user.tag,
+            adminTag:  interaction.user.username,
             adminId:   interaction.user.id,
             deleted,
             skipped,
@@ -143,7 +143,7 @@ class ActionExecutor {
         });
 
         // Disable buttons on the original report message
-        await this._disableReportButtons(interaction, entry, `✅ Deleted by ${interaction.user.tag}`);
+        await this._disableReportButtons(interaction, entry, `✅ Deleted by ${interaction.user.username}`);
 
         await interaction.editReply({
             content: [
@@ -159,12 +159,12 @@ class ActionExecutor {
     async _executeIgnore(interaction, entry) {
         await this._log(interaction.guild, {
             action:   'IGNORE',
-            adminTag: interaction.user.tag,
+            adminTag: interaction.user.username,
             adminId:  interaction.user.id,
             total:    entry.report.flaggedItems.length,
         });
 
-        await this._disableReportButtons(interaction, entry, `⚠️ Ignored by ${interaction.user.tag}`);
+        await this._disableReportButtons(interaction, entry, `⚠️ Ignored by ${interaction.user.username}`);
 
         await interaction.editReply({
             content: `⚠️ All ${entry.report.flaggedItems.length} flagged items marked as ignored. No content was deleted.`,
@@ -178,7 +178,7 @@ class ActionExecutor {
         this._reviewData = this._reviewData ?? new Map();
         this._reviewData.set(interaction.guild.id, entry.report);
 
-        await this._disableReportButtons(interaction, entry, `🔍 Review started by ${interaction.user.tag}`);
+        await this._disableReportButtons(interaction, entry, `🔍 Review started by ${interaction.user.username}`);
         await this._sendReviewPage(interaction, interaction.guild.id, 0, entry.report);
     }
 
@@ -242,7 +242,7 @@ class ActionExecutor {
     // ── Cancel ────────────────────────────────────────────────────────────────
 
     async _executeCancel(interaction, entry) {
-        await this._disableReportButtons(interaction, entry, `❌ Cancelled by ${interaction.user.tag}`);
+        await this._disableReportButtons(interaction, entry, `❌ Cancelled by ${interaction.user.username}`);
         await interaction.editReply({ content: '❌ Action cancelled. No changes were made.' });
     }
 

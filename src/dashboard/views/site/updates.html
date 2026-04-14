@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>html,body{background:#0a0a0f!important;color-scheme:dark}</style>
+    <meta name="color-scheme" content="dark">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Downloads & Updates - DarkLock</title>
+    <meta name="description" content="Download the latest versions of Darklock Secure Guard, Secure Channel, and Secure Notes.">
+    <link rel="stylesheet" href="/site/css/style.css">
+    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v4/admin/theme/css">
+    <script src="/js/global-theme.js"></script>
+    <script src="/js/theme-effects.js"></script>
+    <link rel="stylesheet" href="/css/darklock-fx.css">
+    <script src="/js/darklock-fx.js" defer></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .updates-content { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+
+        /* App Cards Grid */
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        .app-card {
+            background: var(--bg-card, #161622);
+            border: 1px solid var(--border, rgba(255,255,255,0.06));
+            border-radius: 16px;
+            padding: 2rem;
+            transition: transform 0.2s, border-color 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+        .app-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255,255,255,0.12);
+        }
+        .app-card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+        .app-icon {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+        .app-icon.guard   { background: rgba(99,102,241,0.12); color: #818cf8; }
+        .app-icon.channel  { background: rgba(6,182,212,0.12);  color: #06b6d4; }
+        .app-icon.notes    { background: rgba(34,197,94,0.12);  color: #22c55e; }
+        .app-card-title { font-size: 1.15rem; font-weight: 700; color: var(--text-primary, #f0f2f5); }
+        .app-card-desc {
+            font-size: 0.88rem;
+            color: var(--text-secondary, #8b8fa3);
+            line-height: 1.55;
+            margin-bottom: 1.25rem;
+            flex: 1;
+        }
+        .app-card-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+            flex-wrap: wrap;
+        }
+        .app-version-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .app-version-badge.guard   { background: rgba(99,102,241,0.12); color: #818cf8; }
+        .app-version-badge.channel { background: rgba(6,182,212,0.12);  color: #06b6d4; }
+        .app-version-badge.notes   { background: rgba(34,197,94,0.12);  color: #22c55e; }
+        .app-meta-item {
+            font-size: 0.8rem;
+            color: var(--text-muted, #5c5f73);
+        }
+        .app-meta-item i { margin-right: 0.3rem; }
+        .app-card-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .dl-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.3rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        .dl-btn-primary {
+            background: #6366f1;
+            color: #fff;
+        }
+        .dl-btn-primary:hover { background: #5558e6; color: #fff; transform: translateY(-1px); }
+        .dl-btn-ghost {
+            background: rgba(255,255,255,0.04);
+            color: var(--text-secondary, #8b8fa3);
+            border: 1px solid var(--border, rgba(255,255,255,0.06));
+        }
+        .dl-btn-ghost:hover { background: rgba(255,255,255,0.08); color: var(--text-primary, #f0f2f5); }
+        .dl-btn:disabled, .dl-btn.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        /* No update state */
+        .app-card-empty {
+            color: var(--text-muted, #5c5f73);
+            font-size: 0.88rem;
+            padding: 1rem 0;
+        }
+
+        /* History Section */
+        .history-section {
+            background: var(--bg-card, #161622);
+            border: 1px solid var(--border, rgba(255,255,255,0.06));
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .history-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary, #f0f2f5);
+        }
+        .history-tabs {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .history-tab {
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border, rgba(255,255,255,0.06));
+            background: transparent;
+            color: var(--text-secondary, #8b8fa3);
+            transition: all 0.2s;
+        }
+        .history-tab:hover { background: rgba(255,255,255,0.04); }
+        .history-tab.active {
+            background: rgba(99,102,241,0.12);
+            color: #818cf8;
+            border-color: rgba(99,102,241,0.25);
+        }
+        .history-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .history-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border, rgba(255,255,255,0.06));
+            border-radius: 10px;
+            transition: border-color 0.2s;
+        }
+        .history-item:hover { border-color: rgba(255,255,255,0.1); }
+        .history-ver {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #818cf8;
+            white-space: nowrap;
+            min-width: 60px;
+        }
+        .history-info { flex: 1; min-width: 0; }
+        .history-info-title {
+            font-weight: 600;
+            font-size: 0.92rem;
+            color: var(--text-primary, #f0f2f5);
+            margin-bottom: 0.3rem;
+        }
+        .history-info-log {
+            font-size: 0.82rem;
+            color: var(--text-secondary, #8b8fa3);
+            line-height: 1.5;
+            white-space: pre-line;
+        }
+        .history-date {
+            font-size: 0.78rem;
+            color: var(--text-muted, #5c5f73);
+            white-space: nowrap;
+        }
+        .history-empty {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted, #5c5f73);
+            font-size: 0.9rem;
+        }
+
+        /* Loading state */
+        .loading-spinner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: var(--text-muted, #5c5f73);
+            font-size: 0.9rem;
+            gap: 0.6rem;
+        }
+        .loading-spinner i { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 700px) {
+            .app-grid { grid-template-columns: 1fr; }
+            .history-item { flex-direction: column; gap: 0.5rem; }
+            .history-date { align-self: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/site/" class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <span class="brand-text">DarkLock</span>
+            </a>
+            
+            <div class="nav-menu" id="navMenu">
+                <a href="/site/features" class="nav-link">Features</a>
+                <a href="/site/security" class="nav-link">Security</a>
+                <a href="/site/pricing" class="nav-link">Pricing</a>
+                <a href="/site/documentation" class="nav-link">Docs</a>
+                <a href="/site/status" class="nav-link">Status</a>
+                <a href="/site/updates" class="nav-link active">Updates</a>
+                <a href="/platform" class="nav-link">Platform</a>
+            </div>
+            
+            <div class="nav-actions">
+                <a href="https://admin.darklock.net/dashboard" class="btn btn-ghost">
+                    <i class="fas fa-rocket"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    <span>Add to Discord</span>
+                </a>
+            </div>
+            
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="page-header" style="padding: calc(100px + var(--space-3xl, 3rem)) 0 var(--space-2xl, 2rem);">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-badge"><i class="fas fa-download"></i> Downloads</span>
+                <h1 class="section-title">Downloads & Updates</h1>
+                <p class="section-subtitle">Get the latest versions of all Darklock applications</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- App Cards -->
+    <section style="padding: 0 0 2rem;">
+        <div class="updates-content">
+            <div class="app-grid" id="appGrid">
+                <div class="loading-spinner"><i class="fas fa-spinner"></i> Loading updates...</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Version History -->
+    <section style="padding: 0 0 4rem;">
+        <div class="updates-content">
+            <div class="history-section">
+                <div class="history-header">
+                    <div class="history-title"><i class="fas fa-clock-rotate-left" style="margin-right:0.5rem;opacity:0.6"></i>Version History</div>
+                    <div class="history-tabs">
+                        <button class="history-tab active" data-app="secure-guard">Secure Guard</button>
+                        <button class="history-tab" data-app="secure-channel">Secure Channel</button>
+                        <button class="history-tab" data-app="secure-notes">Secure Notes</button>
+                    </div>
+                </div>
+                <div class="history-list" id="historyList">
+                    <div class="loading-spinner"><i class="fas fa-spinner"></i> Loading history...</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="/site/" class="brand-link">
+                        <div class="brand-icon">
+                            <i class="fas fa-shield-halved"></i>
+                        </div>
+                        <span>DarkLock</span>
+                    </a>
+                    <p>Enterprise-grade security for Discord communities of all sizes.</p>
+                    <div class="social-links">
+                        <a href="https://discord.gg/Vsq9PUTrgb" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="/site/features">Features</a></li>
+                        <li><a href="/site/pricing">Pricing</a></li>
+                        <li><a href="https://admin.darklock.net/dashboard">Dashboard</a></li>
+                        <li><a href="/site/add-bot">Add Bot</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="/site/documentation">Documentation</a></li>
+                        <li><a href="/site/status">Status</a></li>
+                        <li><a href="/site/updates">Updates</a></li>
+                        <li><a href="/site/support">Support</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="/site/privacy">Privacy Policy</a></li>
+                        <li><a href="/site/terms">Terms of Service</a></li>
+                        <li><a href="/site/security">Security</a></li>
+                        <li><a href="/site/sitemap">Sitemap</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2026 DarkLock. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Nav toggle
+        document.getElementById('navToggle').addEventListener('click', function() {
+            document.getElementById('navMenu').classList.toggle('active');
+            this.classList.toggle('active');
+        });
+
+        const APP_META = {
+            'secure-guard': {
+                label: 'Secure Guard',
+                desc: 'Desktop security guard & system monitoring application. Real-time protection, threat detection, and system hardening.',
+                icon: 'fa-shield-halved',
+                cls: 'guard',
+            },
+            'secure-channel': {
+                label: 'Secure Channel',
+                desc: 'Encrypted communication channel for secure messaging and file transfers between trusted devices.',
+                icon: 'fa-lock',
+                cls: 'channel',
+            },
+            'secure-notes': {
+                label: 'Secure Notes',
+                desc: 'End-to-end encrypted note-taking application with local-first storage and optional cloud sync.',
+                icon: 'fa-note-sticky',
+                cls: 'notes',
+            },
+        };
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        function formatDate(iso) {
+            if (!iso) return '—';
+            const d = new Date(iso);
+            return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function renderAppCard(appKey, data) {
+            const meta = APP_META[appKey];
+            if (!data) {
+                return `
+                    <div class="app-card">
+                        <div class="app-card-header">
+                            <div class="app-icon ${meta.cls}"><i class="fas ${meta.icon}"></i></div>
+                            <div class="app-card-title">${meta.label}</div>
+                        </div>
+                        <div class="app-card-desc">${meta.desc}</div>
+                        <div class="app-card-empty"><i class="fas fa-info-circle"></i> No release available yet</div>
+                    </div>`;
+            }
+            const sizeStr = data.fileSize ? `<span class="app-meta-item"><i class="fas fa-hard-drive"></i>${escapeHtml(data.fileSize)}</span>` : '';
+            const platformStr = data.platform ? `<span class="app-meta-item"><i class="fas fa-desktop"></i>${escapeHtml(data.platform)}</span>` : '';
+            const dlDisabled = data.downloadUrl ? '' : 'disabled';
+            const dlHref = data.downloadUrl ? `href="${encodeURI(data.downloadUrl)}"` : '';
+            return `
+                <div class="app-card">
+                    <div class="app-card-header">
+                        <div class="app-icon ${meta.cls}"><i class="fas ${meta.icon}"></i></div>
+                        <div class="app-card-title">${meta.label}</div>
+                    </div>
+                    <div class="app-card-desc">${meta.desc}</div>
+                    <div class="app-card-meta">
+                        <span class="app-version-badge ${meta.cls}">v${escapeHtml(data.version)}</span>
+                        ${platformStr}
+                        ${sizeStr}
+                        <span class="app-meta-item"><i class="fas fa-calendar"></i>${formatDate(data.publishedAt)}</span>
+                    </div>
+                    <div class="app-card-actions">
+                        <a ${dlHref} class="dl-btn dl-btn-primary ${dlDisabled}" ${data.downloadUrl ? '' : 'tabindex="-1"'}>
+                            <i class="fas fa-download"></i> Download v${escapeHtml(data.version)}
+                        </a>
+                        <button class="dl-btn dl-btn-ghost" onclick="showChangelog('${appKey}', '${escapeHtml(data.version)}', this)" title="View changelog">
+                            <i class="fas fa-list"></i> Changelog
+                        </button>
+                    </div>
+                </div>`;
+        }
+
+        function showChangelog(appKey, version, btn) {
+            const card = btn.closest('.app-card');
+            let existing = card.querySelector('.changelog-expand');
+            if (existing) { existing.remove(); return; }
+            const expand = document.createElement('div');
+            expand.className = 'changelog-expand';
+            expand.style.cssText = 'margin-top:1rem;padding:1rem;background:rgba(255,255,255,0.02);border:1px solid var(--border,rgba(255,255,255,0.06));border-radius:10px;font-size:0.85rem;color:var(--text-secondary,#8b8fa3);line-height:1.6;white-space:pre-line;';
+            expand.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+            card.appendChild(expand);
+            fetch('/api/v4/admin/app/update-history/' + encodeURIComponent(appKey) + '?limit=1')
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success && d.updates.length) {
+                        expand.textContent = d.updates[0].changelog || 'No changelog provided.';
+                    } else {
+                        expand.textContent = 'No changelog available.';
+                    }
+                })
+                .catch(() => { expand.textContent = 'Failed to load changelog.'; });
+        }
+
+        // Load app cards
+        async function loadApps() {
+            const grid = document.getElementById('appGrid');
+            try {
+                const res = await fetch('/api/v4/admin/app/all-updates');
+                const data = await res.json();
+                if (!data.success) throw new Error('API error');
+                const apps = data.apps || {};
+                grid.innerHTML = ['secure-guard', 'secure-channel', 'secure-notes']
+                    .map(k => renderAppCard(k, apps[k]))
+                    .join('');
+            } catch (e) {
+                grid.innerHTML = ['secure-guard', 'secure-channel', 'secure-notes']
+                    .map(k => renderAppCard(k, null))
+                    .join('');
+            }
+        }
+
+        // History tabs
+        let activeHistoryApp = 'secure-guard';
+
+        document.querySelectorAll('.history-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.history-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                activeHistoryApp = tab.dataset.app;
+                loadHistory(activeHistoryApp);
+            });
+        });
+
+        async function loadHistory(appKey) {
+            const list = document.getElementById('historyList');
+            list.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner"></i> Loading history...</div>';
+            try {
+                const res = await fetch('/api/v4/admin/app/update-history/' + encodeURIComponent(appKey) + '?limit=20');
+                const data = await res.json();
+                if (!data.success || !data.updates.length) {
+                    list.innerHTML = '<div class="history-empty"><i class="fas fa-inbox" style="font-size:1.5rem;display:block;margin-bottom:0.5rem;opacity:0.4"></i>No version history for ' + escapeHtml(APP_META[appKey].label) + '</div>';
+                    return;
+                }
+                list.innerHTML = data.updates.map(u => `
+                    <div class="history-item">
+                        <div class="history-ver">v${escapeHtml(u.version)}</div>
+                        <div class="history-info">
+                            <div class="history-info-title">${escapeHtml(u.title || 'Update ' + u.version)}</div>
+                            <div class="history-info-log">${escapeHtml(u.changelog || 'No release notes.')}</div>
+                        </div>
+                        <div class="history-date">${formatDate(u.publishedAt)}</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                list.innerHTML = '<div class="history-empty">Failed to load history.</div>';
+            }
+        }
+
+        // Init
+        loadApps();
+        loadHistory('secure-guard');
+    </script>
+</body>
+</html>

@@ -64,14 +64,17 @@ module.exports = {
 
             if (bot.database) {
                 try {
-                    // Try to get recent incidents if database method exists
-                    threatsBlocked = Math.floor(Math.random() * 25); // Mock data for now
+                    const row = await bot.database.get(
+                        `SELECT COUNT(*) as count FROM security_events WHERE guild_id = ? AND timestamp > datetime('now', '-1 day')`,
+                        [guild.id]
+                    );
+                    threatsBlocked = row?.count || 0;
                     if (threatsBlocked > 0) {
                         securityScore += Math.min(threatsBlocked * 2, 15);
                         strengths.push(`✅ Blocked ${threatsBlocked} threats in last 24h`);
                     }
-                } catch (error) {
-                    console.log('Database unavailable for security status');
+                } catch (_) {
+                    // Table may not exist yet - that's fine
                 }
             }
 

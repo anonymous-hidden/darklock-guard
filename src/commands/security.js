@@ -722,7 +722,7 @@ module.exports = {
                         .setColor('#ff9900')
                         .setTitle('⚠️ User Quarantined')
                         .addFields(
-                            { name: 'User', value: `${user.tag} (${user.id})`, inline: true },
+                            { name: 'User', value: `${user.username} (${user.id})`, inline: true },
                             { name: 'Reason', value: reason, inline: true }
                         )
                         .setTimestamp()]
@@ -743,7 +743,7 @@ module.exports = {
                         .setColor('#00ff00')
                         .setTitle('✅ User Released from Quarantine')
                         .addFields(
-                            { name: 'User', value: `${userToRelease.tag} (${userToRelease.id})` }
+                            { name: 'User', value: `${userToRelease.username} (${userToRelease.id})` }
                         )
                         .setTimestamp()]
                 });

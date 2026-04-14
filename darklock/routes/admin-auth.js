@@ -125,7 +125,11 @@ async function initializeAdminTables() {
         await db.run(`ALTER TABLE admins ADD COLUMN username TEXT`);
         console.log('[Admin Auth] \u2705 Migrated admins table: added username column');
     } catch (_) { /* column already exists */ }
-
+    // Migration: add rfid_card_name column for RFID→admin mapping
+    try {
+        await db.run(`ALTER TABLE admins ADD COLUMN rfid_card_name TEXT`);
+        console.log('[Admin Auth] ✅ Migrated admins table: added rfid_card_name column');
+    } catch (_) { /* column already exists */ }
     // Audit log for all admin authentication events
     await db.run(`
         CREATE TABLE IF NOT EXISTS admin_audit_log (
@@ -388,21 +392,25 @@ router.post('/signin/rfid', signinLimiter, async (req, res) => {
             });
         }
 
-        // Card authorized - map to admin account
-        // For now, we'll look up by checking if an admin exists
-        // In production, you might want to store rfid_card_name in admins table
-        const admins = await db.all('SELECT * FROM admins WHERE active = 1');
-        
-        if (admins.length === 0) {
-            return res.status(500).json({
-                success: false,
-                error: 'No active admin accounts'
-            });
+        // Card authorized - map to admin account by rfid_card_name
+        const cardName = scanResult.user;
+        let admin = null;
+
+        if (cardName) {
+            admin = await db.get('SELECT * FROM admins WHERE rfid_card_name = ? AND active = 1', [cardName]);
         }
 
-        // Use the first active admin (owner)
-        // TODO: Add rfid_card_name column to admins table for proper mapping
-        const admin = admins.find(a => a.role === 'owner') || admins[0];
+        // Fallback: if no per-card mapping, use first owner
+        if (!admin) {
+            const admins = await db.all('SELECT * FROM admins WHERE active = 1');
+            if (admins.length === 0) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'No active admin accounts'
+                });
+            }
+            admin = admins.find(a => a.role === 'owner') || admins[0];
+        }
 
         // Authentication successful
         const ip = getClientIP(req);

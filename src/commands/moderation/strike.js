@@ -188,7 +188,7 @@ module.exports = {
             .setTitle('⚠️ Strike Added')
             .setColor(0xFFA500)
             .addFields(
-                { name: 'User', value: `${user.tag} (${user.id})`, inline: true },
+                { name: 'User', value: `${user.username} (${user.id})`, inline: true },
                 { name: 'Points Added', value: `+${result.points}`, inline: true },
                 { name: 'Total Points', value: `${result.totalPoints}`, inline: true },
                 { name: 'Strike ID', value: `#${result.strikeId}`, inline: true },
@@ -270,7 +270,7 @@ module.exports = {
             .setTitle('🧹 Strikes Cleared')
             .setColor(0x00FF00)
             .addFields(
-                { name: 'User', value: `${user.tag} (${user.id})`, inline: true },
+                { name: 'User', value: `${user.username} (${user.id})`, inline: true },
                 { name: 'Strikes Cleared', value: `${count}`, inline: true }
             )
             .setTimestamp();
@@ -292,7 +292,7 @@ module.exports = {
         const strikes = await strikeSystem.getUserStrikes(interaction.guildId, user.id, includeAll);
 
         const embed = new EmbedBuilder()
-            .setTitle(`📋 Strike Record: ${user.tag}`)
+            .setTitle(`📋 Strike Record: ${user.username}`)
             .setColor(totals.active_points > 0 ? 0xFFA500 : 0x00FF00)
             .setThumbnail(user.displayAvatarURL())
             .addFields(
@@ -335,7 +335,7 @@ module.exports = {
         } else {
             const list = await Promise.all(leaders.map(async (entry, i) => {
                 const user = await interaction.client.users.fetch(entry.user_id).catch(() => null);
-                const name = user ? user.tag : `Unknown (${entry.user_id})`;
+                const name = user ? user.username : `Unknown (${entry.user_id})`;
                 return `**${i + 1}.** ${name} - **${entry.active_points}** points (${entry.active_strikes} strikes)`;
             }));
 

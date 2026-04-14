@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Darklock Secure Channel</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: radial-gradient(ellipse at 18% 12%, rgba(124,77,255,0.10), transparent 38%),
+                        radial-gradient(ellipse at 82% 8%, rgba(0,212,255,0.07), transparent 32%),
+                        radial-gradient(ellipse at 50% 95%, rgba(124,77,255,0.06), transparent 40%),
+                        #0a0e1a;
+            min-height: 100vh;
+            display: flex; flex-direction: column; align-items: center;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            color: #e8ecf4;
+            padding: 40px 16px 60px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Header ── */
+        .hero { text-align: center; margin-bottom: 48px; max-width: 640px; }
+        .shield-icon {
+            width: 88px; height: 88px; margin-bottom: 18px;
+            filter: drop-shadow(0 0 28px rgba(124,77,255,0.5));
+        }
+        h1 {
+            font-size: clamp(28px, 5vw, 42px); font-weight: 800; line-height: 1.1;
+            background: linear-gradient(135deg, #a78bfa 0%, #7c4dff 35%, #00d4ff 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; margin-bottom: 10px;
+        }
+        .subtitle { color: #94a3b8; font-size: 16px; line-height: 1.6; }
+        .version-row {
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; margin-top: 16px; flex-wrap: wrap;
+        }
+        .version-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(124,77,255,0.15); border: 1px solid rgba(124,77,255,0.3);
+            border-radius: 20px; padding: 5px 14px; font-size: 13px;
+            color: #a78bfa; font-weight: 600;
+        }
+        .version-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:.4; } }
+        .e2e-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(0,212,255,0.10); border: 1px solid rgba(0,212,255,0.25);
+            border-radius: 20px; padding: 5px 14px; font-size: 12px;
+            color: #67e8f9; font-weight: 600;
+        }
+
+        /* ── Grid ── */
+        .platforms {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+            gap: 20px; width: min(960px, 100%);
+        }
+
+        /* ── Card ── */
+        .card {
+            background: linear-gradient(168deg, rgba(17,24,42,0.92), rgba(10,14,28,0.97));
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px; padding: 32px 26px 28px;
+            display: flex; flex-direction: column; align-items: center;
+            transition: border-color .3s, box-shadow .3s, transform .3s;
+            position: relative; overflow: hidden;
+        }
+        .card::before {
+            content: ''; position: absolute; inset: 0;
+            background: radial-gradient(circle at 50% -20%, var(--glow, rgba(124,77,255,0.05)), transparent 65%);
+            pointer-events: none;
+        }
+        .card:hover {
+            border-color: rgba(124,77,255,0.4);
+            box-shadow: 0 14px 52px rgba(124,77,255,0.10);
+            transform: translateY(-4px);
+        }
+        .card.highlight {
+            border-color: rgba(124,77,255,0.45);
+            box-shadow: 0 0 40px rgba(124,77,255,0.10);
+        }
+        .rec-badge {
+            position: absolute; top: 12px; right: 12px;
+            background: linear-gradient(135deg, #7c4dff, #00d4ff);
+            color: #fff; font-size: 10px; font-weight: 700;
+            padding: 3px 10px; border-radius: 8px; letter-spacing: 0.3px;
+            display: none;
+        }
+        .card.highlight .rec-badge { display: block; }
+
+        .card-icon {
+            width: 56px; height: 56px; margin-bottom: 16px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 14px; font-size: 28px;
+        }
+        .card-icon.windows { background: rgba(0,120,215,0.12); color: #47b5ff; --glow: rgba(0,120,215,0.06); }
+        .card-icon.linux    { background: rgba(255,170,0,0.10); color: #ffaa00; --glow: rgba(255,170,0,0.05); }
+        .card-icon.macos    { background: rgba(255,255,255,0.06); color: #d4d4d8; --glow: rgba(255,255,255,0.04); }
+        .card-icon.ios      { background: rgba(0,212,255,0.10); color: #00d4ff; --glow: rgba(0,212,255,0.05); }
+        .card-icon.android  { background: rgba(61,220,132,0.10); color: #3ddc84; --glow: rgba(61,220,132,0.05); }
+
+        .card h3 { font-size: 19px; font-weight: 700; margin-bottom: 4px; color: #f1f5f9; }
+        .card .arch { font-size: 12px; color: #64748b; margin-bottom: 20px; }
+
+        .dl-btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 11px 24px; border-radius: 10px; font-size: 14px;
+            font-weight: 600; text-decoration: none; transition: all .2s;
+            cursor: pointer; border: none; width: 100%;
+            justify-content: center; position: relative;
+        }
+        .dl-btn svg { width: 16px; height: 16px; fill: currentColor; flex-shrink: 0; }
+        .dl-btn.primary {
+            background: linear-gradient(135deg, #7c4dff, #6535e0);
+            color: #fff; box-shadow: 0 4px 20px rgba(124,77,255,0.25);
+        }
+        .dl-btn.primary:hover { background: linear-gradient(135deg, #9168ff, #7c4dff); box-shadow: 0 6px 28px rgba(124,77,255,0.35); }
+        .dl-btn.secondary {
+            background: rgba(124,77,255,0.06); border: 1px solid rgba(124,77,255,0.22);
+            color: #a78bfa; margin-top: 10px;
+        }
+        .dl-btn.secondary:hover { background: rgba(124,77,255,0.14); }
+        .dl-btn.coming-soon {
+            background: rgba(100,116,139,0.08); border: 1px solid rgba(100,116,139,0.18);
+            color: #525f75; cursor: default; pointer-events: none;
+        }
+        .file-meta { font-size: 11px; color: #475569; margin-top: 10px; line-height: 1.5; }
+
+        /* ── Features ── */
+        .features {
+            display: flex; flex-wrap: wrap; justify-content: center;
+            gap: 10px; margin-top: 48px; width: min(960px, 100%);
+        }
+        .feat {
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(17,24,42,0.6); border: 1px solid rgba(124,77,255,0.10);
+            border-radius: 10px; padding: 9px 16px; font-size: 13px; color: #94a3b8;
+        }
+        .feat-dot { width: 7px; height: 7px; border-radius: 50%; background: linear-gradient(135deg, #7c4dff, #00d4ff); flex-shrink: 0; }
+
+        /* ── System requirements ── */
+        .sysreq {
+            margin-top: 40px; width: min(960px, 100%);
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+        }
+        .sysreq-item {
+            background: rgba(17,24,42,0.5); border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 10px; padding: 16px 18px;
+        }
+        .sysreq-item strong {
+            display: block; font-size: 11px; font-weight: 700;
+            color: #7c4dff; text-transform: uppercase;
+            letter-spacing: 0.5px; margin-bottom: 6px;
+        }
+        .sysreq-item span { font-size: 12px; color: #64748b; line-height: 1.6; display: block; }
+
+        /* ── Footer ── */
+        footer {
+            margin-top: 56px; text-align: center; color: #3f4a5c;
+            font-size: 12px; line-height: 2;
+        }
+        footer a { color: #7c4dff; text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 640px) {
+            .platforms { grid-template-columns: 1fr; }
+            .sysreq { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hero -->
+    <div class="hero">
+        <svg class="shield-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="sg" x1="20" y1="10" x2="80" y2="90" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#a78bfa"/><stop offset="1" stop-color="#7c4dff"/>
+                </linearGradient>
+            </defs>
+            <path d="M50 8L14 26v24c0 22 15.4 42.6 36 48 20.6-5.4 36-26 36-48V26L50 8z" fill="url(#sg)" opacity=".15" stroke="url(#sg)" stroke-width="2.5"/>
+            <path d="M44 52l-8-8 3.5-3.5L44 45l16.5-16.5L64 32 44 52z" fill="#a78bfa"/>
+        </svg>
+        <h1>Darklock Secure Channel</h1>
+        <p class="subtitle">End-to-end encrypted messaging with triple-layer encryption.<br>Your conversations stay yours — zero-knowledge, zero compromise.</p>
+        <div class="version-row">
+            <span class="version-pill"><span class="dot"></span> v1.0.0</span>
+            <span class="e2e-badge">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                E2E Encrypted
+            </span>
+        </div>
+    </div>
+
+    <!-- Platform Cards -->
+    <div class="platforms">
+
+        <!-- Windows -->
+        <div class="card" data-platform="windows">
+            <span class="rec-badge">RECOMMENDED</span>
+            <div class="card-icon windows">
+                <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M3 12V5.5l7-1v7.5H3zm8 0V4.3l10-1.5V12H11zM3 13h7v7.5l-7-1V13zm8 0h10v8.2l-10-1.5V13z"/></svg>
+            </div>
+            <h3>Windows</h3>
+            <p class="arch">x64 &bull; Windows 10 / 11</p>
+            <a class="dl-btn primary" href="/platform/downloads/updates/secure-channel/DarklockSecureChannel-1.0.0-win-x64.exe">
+                <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                Download Installer
+            </a>
+            <p class="file-meta">77 MB &bull; NSIS Installer &bull; .exe</p>
+        </div>
+
+        <!-- macOS -->
+        <div class="card" data-platform="macos">
+            <span class="rec-badge">RECOMMENDED</span>
+            <div class="card-icon macos">
+                <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            </div>
+            <h3>macOS</h3>
+            <p class="arch">x64 &bull; macOS 11 Big Sur+</p>
+            <a class="dl-btn primary" href="/platform/downloads/updates/secure-channel/DarklockSecureChannel-1.0.0-mac-x64.zip">
+                <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                Download .zip
+            </a>
+            <p class="file-meta">98 MB &bull; Extract and run &bull; Unsigned</p>
+        </div>
+
+        <!-- Linux -->
+        <div class="card" data-platform="linux">
+            <span class="rec-badge">RECOMMENDED</span>
+            <div class="card-icon linux">
+                <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.84-.41 1.738-.41 2.655 0 .87.527 2.23 1.065 2.877.521.623 1.303.952 2.145.952.84 0 1.608-.329 2.131-.952.539-.647 1.064-2.006 1.064-2.877 0-.917-.132-1.815-.41-2.655-.589-1.771-1.831-3.47-2.715-4.521-.75-1.067-.975-1.928-1.05-3.02-.066-1.491 1.055-5.965-3.17-6.298-.165-.013-.325-.021-.48-.021z"/></svg>
+            </div>
+            <h3>Linux</h3>
+            <p class="arch">x86_64 &bull; Ubuntu, Debian, Fedora</p>
+            <a class="dl-btn primary" href="/platform/downloads/updates/secure-channel/DarklockSecureChannel-1.0.0-linux-x86_64.AppImage">
+                <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                Download AppImage
+            </a>
+            <a class="dl-btn secondary" href="/platform/downloads/updates/secure-channel/DarklockSecureChannel-1.0.0-linux-amd64.deb">
+                <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                Download .deb
+            </a>
+            <p class="file-meta">107 MB AppImage &bull; 74 MB .deb</p>
+        </div>
+
+        <!-- iOS -->
+        <div class="card" data-platform="ios">
+            <span class="rec-badge">RECOMMENDED</span>
+            <div class="card-icon ios">
+                <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            </div>
+            <h3>iOS</h3>
+            <p class="arch">iPhone &bull; iPad &bull; iOS 16+</p>
+            <span class="dl-btn coming-soon">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                Coming Soon
+            </span>
+            <p class="file-meta">Capacitor build ready &bull; App Store pending</p>
+        </div>
+
+        <!-- Android -->
+        <div class="card" data-platform="android">
+            <span class="rec-badge">RECOMMENDED</span>
+            <div class="card-icon android">
+                <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V7H6v11zM3.5 7C2.67 7 2 7.67 2 8.5v7c0 .83.67 1.5 1.5 1.5S5 16.33 5 15.5v-7C5 7.67 4.33 7 3.5 7zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0012 0c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.983 5.983 0 006 6h12c0-2.21-1.19-4.14-2.97-5.18zM10 4H9V3h1v1zm5 0h-1V3h1v1z"/></svg>
+            </div>
+            <h3>Android</h3>
+            <p class="arch">APK &bull; Android 8.0+</p>
+            <span class="dl-btn coming-soon">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                Coming Soon
+            </span>
+            <p class="file-meta">Capacitor build ready &bull; APK build pending</p>
+        </div>
+
+    </div>
+
+    <!-- Features -->
+    <div class="features">
+        <div class="feat"><span class="feat-dot"></span> Triple-layer encryption</div>
+        <div class="feat"><span class="feat-dot"></span> X3DH + Double Ratchet</div>
+        <div class="feat"><span class="feat-dot"></span> XChaCha20-Poly1305</div>
+        <div class="feat"><span class="feat-dot"></span> Zero-knowledge relay</div>
+        <div class="feat"><span class="feat-dot"></span> Encrypted file sharing</div>
+        <div class="feat"><span class="feat-dot"></span> Screenshot protection</div>
+        <div class="feat"><span class="feat-dot"></span> Self-destructing messages</div>
+        <div class="feat"><span class="feat-dot"></span> Clipboard auto-clear</div>
+    </div>
+
+    <!-- System requirements -->
+    <div class="sysreq">
+        <div class="sysreq-item">
+            <strong>Windows</strong>
+            <span>Windows 10 / 11<br>x64 architecture<br>77 MB disk space</span>
+        </div>
+        <div class="sysreq-item">
+            <strong>macOS</strong>
+            <span>macOS 11 Big Sur+<br>Intel or Apple Silicon<br>98 MB disk space</span>
+        </div>
+        <div class="sysreq-item">
+            <strong>Linux</strong>
+            <span>Ubuntu 20.04+ / Debian 11+<br>x86_64<br>107 MB disk space</span>
+        </div>
+        <div class="sysreq-item">
+            <strong>Network</strong>
+            <span>Connects to Pi5 relay<br>WebSocket port 4101<br>Always encrypted</span>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 Darklock &mdash; All rights reserved</p>
+        <p>Hosted on Raspberry Pi 5 &bull; <a href="/platform">Admin Panel</a> &bull; <a href="/platform/download/darklock-guard">Darklock Guard</a></p>
+    </footer>
+
+    <!-- Auto-detect platform & highlight -->
+    <script>
+    (function() {
+        var ua = navigator.userAgent.toLowerCase();
+        var p = null;
+        if (/iphone|ipad|ipod/.test(ua)) p = 'ios';
+        else if (/android/.test(ua)) p = 'android';
+        else if (/macintosh|mac os/.test(ua)) p = 'macos';
+        else if (/win/.test(ua)) p = 'windows';
+        else if (/linux/.test(ua)) p = 'linux';
+        if (!p) return;
+        var cards = document.querySelectorAll('.card[data-platform]');
+        for (var i = 0; i < cards.length; i++) {
+            if (cards[i].getAttribute('data-platform') === p) {
+                cards[i].classList.add('highlight');
+                // Move to first position
+                cards[i].parentNode.insertBefore(cards[i], cards[i].parentNode.firstChild);
+                break;
+            }
+        }
+    })();
+    </script>
+</body>
+</html>

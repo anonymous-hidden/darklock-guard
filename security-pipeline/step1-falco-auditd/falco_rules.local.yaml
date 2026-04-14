@@ -1,0 +1,236 @@
+# =============================================================================
+# Custom Falco Rules — Security Pipeline
+# Monitors: process spawning, privesc, outbound connections, 
+#           sensitive file writes, container escapes
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# RULE 1: Suspicious process spawning from unexpected parents
+# ---------------------------------------------------------------------------
+- rule: Unexpected child process of web server
+  desc: >
+    Detects shell or scripting processes spawned by web server processes.
+    This is a common indicator of web shell exploitation or RCE.
+  condition: >
+    spawned_process and
+    proc.pname in (nginx, apache2, httpd, caddy, node, python3, python, gunicorn, uvicorn) and
+    proc.name in (bash, sh, dash, zsh, csh, python, python3, perl, ruby, php, nc, ncat, nmap, curl, wget)
+  output: >
+    Suspicious child process spawned by web server
+    (parent=%proc.pname command=%proc.cmdline user=%user.name container=%container.id
+     pid=%proc.pid ppid=%proc.ppid exe=%proc.exepath)
+  priority: WARNING
+  tags: [process, web, exploit, mitre_execution]
+
+- rule: Process launched in /tmp or /dev/shm
+  desc: >
+    Processes executing from /tmp or shared memory are suspicious — 
+    often used by attackers for fileless payloads.
+  condition: >
+    spawned_process and
+    (proc.exepath startswith "/tmp/" or 
+     proc.exepath startswith "/dev/shm/" or
+     proc.exepath startswith "/var/tmp/")
+  output: >
+    Process executed from suspicious directory
+    (command=%proc.cmdline exe=%proc.exepath user=%user.name pid=%proc.pid)
+  priority: CRITICAL
+  tags: [process, fileless, mitre_defense_evasion]
+
+- rule: Reverse shell detected
+  desc: Detects common reverse shell patterns
+  condition: >
+    spawned_process and
+    ((proc.name = "bash" and proc.cmdline contains "-i") or
+     (proc.name in (nc, ncat, nmap) and proc.cmdline contains "-e") or
+     (proc.cmdline contains "/dev/tcp/") or
+     (proc.cmdline contains "mkfifo") or
+     (proc.name = "python" and proc.cmdline contains "socket") or
+     (proc.name = "python3" and proc.cmdline contains "socket") or
+     (proc.name = "perl" and proc.cmdline contains "socket"))
+  output: >
+    Possible reverse shell detected!
+    (command=%proc.cmdline user=%user.name pid=%proc.pid parent=%proc.pname)
+  priority: CRITICAL
+  tags: [process, reverse_shell, mitre_command_and_control]
+
+# ---------------------------------------------------------------------------
+# RULE 2: Privilege escalation detection
+# ---------------------------------------------------------------------------
+- rule: Unexpected setuid/setgid call
+  desc: Detects processes calling setuid/setgid to escalate privileges
+  condition: >
+    evt.type in (setuid, setgid, setresuid, setresgid) and
+    evt.dir = < and
+    not proc.name in (sudo, su, login, sshd, cron, systemd, polkitd, pkexec, dbus-daemon) and
+    not user.name = root
+  output: >
+    Privilege escalation attempt via setuid/setgid
+    (user=%user.name command=%proc.cmdline evt=%evt.type pid=%proc.pid)
+  priority: CRITICAL
+  tags: [privesc, mitre_privilege_escalation]
+
+- rule: SUID binary created
+  desc: Detects creation of new SUID/SGID binaries
+  condition: >
+    evt.type in (chmod, fchmod, fchmodat) and
+    evt.dir = < and
+    evt.arg.mode contains "S_ISUID"
+  output: >
+    New SUID binary created!
+    (file=%fd.name user=%user.name command=%proc.cmdline mode=%evt.arg.mode)
+  priority: CRITICAL
+  tags: [privesc, suid, mitre_privilege_escalation]
+
+- rule: Sudo usage by unexpected user
+  desc: Detects sudo usage by users not in the expected list
+  condition: >
+    spawned_process and
+    proc.name = "sudo" and
+    not user.name in (cayden, root)
+  output: >
+    Unexpected sudo usage
+    (user=%user.name command=%proc.cmdline pid=%proc.pid)
+  priority: WARNING
+  tags: [privesc, sudo, mitre_privilege_escalation]
+
+# ---------------------------------------------------------------------------
+# RULE 3: Unexpected outbound connections
+# ---------------------------------------------------------------------------
+- rule: Unexpected outbound connection
+  desc: >
+    Detects outbound TCP connections from processes that should not be  
+    making external connections. Whitelists common services.
+  condition: >
+    evt.type in (connect) and
+    evt.dir = < and
+    fd.typechar = 4 and
+    fd.ip != "0.0.0.0" and
+    fd.sip != "127.0.0.1" and
+    fd.sip != "::1" and
+    not fd.sip startswith "10." and
+    not fd.sip startswith "192.168." and
+    not fd.sip startswith "172." and
+    not proc.name in (curl, wget, apt, dpkg, snap, falco, vector, node, npm, python3, python, ollama, git, ssh, chronyd, ntpd, systemd-resolve, systemd-timesyncd)
+  output: >
+    Unexpected outbound connection
+    (process=%proc.name command=%proc.cmdline connection=%fd.name 
+     user=%user.name container=%container.id pid=%proc.pid)
+  priority: WARNING
+  tags: [network, outbound, mitre_command_and_control]
+
+- rule: Connection to known malicious ports
+  desc: Detects connections to commonly abused ports (IRC, crypto mining, etc.)
+  condition: >
+    evt.type = connect and
+    evt.dir = < and
+    fd.typechar = 4 and
+    fd.sport in (6667, 6668, 6669, 4444, 5555, 1234, 31337, 8333, 8545, 3333, 14444, 14433)
+  output: >
+    Connection to suspicious port detected
+    (process=%proc.name port=%fd.sport dest=%fd.name user=%user.name pid=%proc.pid)
+  priority: CRITICAL
+  tags: [network, suspicious_port, mitre_command_and_control]
+
+# ---------------------------------------------------------------------------
+# RULE 4: Sensitive file writes
+# ---------------------------------------------------------------------------
+- rule: Write to sensitive system files
+  desc: Detects writes to critical system configuration files
+  condition: >
+    evt.type in (open, openat, openat2) and
+    evt.dir = < and
+    evt.is_open_write = true and
+    (fd.name startswith "/etc/passwd" or
+     fd.name startswith "/etc/shadow" or
+     fd.name startswith "/etc/sudoers" or
+     fd.name startswith "/etc/ssh/sshd_config" or
+     fd.name startswith "/etc/crontab" or
+     fd.name startswith "/etc/cron." or
+     fd.name startswith "/etc/systemd/" or
+     fd.name startswith "/etc/ld.so" or
+     fd.name startswith "/etc/pam.d/") and
+    not proc.name in (apt, dpkg, unattended-upgr, cloud-init, systemd, auditd, packagekitd)
+  output: >
+    Write to sensitive system file!
+    (file=%fd.name user=%user.name command=%proc.cmdline pid=%proc.pid)
+  priority: CRITICAL
+  tags: [filesystem, sensitive_write, mitre_persistence]
+
+- rule: Write to SSH authorized_keys
+  desc: Detects modifications to SSH authorized_keys (persistence technique)
+  condition: >
+    evt.type in (open, openat, openat2) and
+    evt.dir = < and
+    evt.is_open_write = true and
+    fd.name contains "authorized_keys"
+  output: >
+    SSH authorized_keys modified!
+    (file=%fd.name user=%user.name command=%proc.cmdline pid=%proc.pid)
+  priority: CRITICAL
+  tags: [filesystem, ssh, mitre_persistence]
+
+- rule: Write to init or systemd service
+  desc: Detects creation/modification of systemd services or init scripts
+  condition: >
+    evt.type in (open, openat, openat2) and
+    evt.dir = < and
+    evt.is_open_write = true and
+    (fd.name startswith "/etc/init.d/" or
+     fd.name startswith "/etc/systemd/system/" or
+     fd.name startswith "/usr/lib/systemd/system/" or
+     fd.name startswith "/lib/systemd/system/") and
+    not proc.name in (apt, dpkg, systemd, systemctl)
+  output: >
+    Systemd service file modified!
+    (file=%fd.name user=%user.name command=%proc.cmdline pid=%proc.pid)
+  priority: WARNING
+  tags: [filesystem, persistence, mitre_persistence]
+
+# ---------------------------------------------------------------------------
+# RULE 5: Container escape detection
+# ---------------------------------------------------------------------------
+- rule: Container escape via mount namespace
+  desc: Detects attempts to break out of a container via mount manipulation
+  condition: >
+    spawned_process and
+    container and
+    (proc.name = "nsenter" or
+     proc.cmdline contains "mount" or
+     proc.cmdline contains "chroot" or
+     proc.cmdline contains "/proc/1/root" or
+     proc.cmdline contains "/proc/sysrq")
+  output: >
+    Possible container escape attempt!
+    (command=%proc.cmdline user=%user.name container=%container.id
+     container_name=%container.name pid=%proc.pid)
+  priority: CRITICAL
+  tags: [container, escape, mitre_privilege_escalation]
+
+- rule: Container writing to host filesystem
+  desc: Detects container processes writing outside their overlay
+  condition: >
+    evt.type in (open, openat, openat2) and
+    evt.dir = < and
+    evt.is_open_write = true and
+    container and
+    (fd.name startswith "/host" or
+     fd.name startswith "/rootfs" or
+     fd.name startswith "/proc/1")
+  output: >
+    Container writing to host filesystem!
+    (file=%fd.name command=%proc.cmdline container=%container.id pid=%proc.pid)
+  priority: CRITICAL
+  tags: [container, escape, host_write, mitre_privilege_escalation]
+
+- rule: Privileged container started
+  desc: Detects privileged containers which can escape trivially
+  condition: >
+    container and
+    evt.type = container and
+    container.privileged = true
+  output: >
+    Privileged container started!
+    (container=%container.name image=%container.image.repository)
+  priority: WARNING
+  tags: [container, privileged, mitre_privilege_escalation]

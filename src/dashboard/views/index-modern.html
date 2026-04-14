@@ -46,7 +46,7 @@
     <link rel="stylesheet" href="/css/darklock-fx.css">
     <script src="/js/darklock-fx.js" defer></script>
     <script src="/js/settings-panel.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
     <script src="/js/chart-manager.js"></script>
     <script src="/js/chart-builder.js"></script>
     <script id="widget-system-inline">
@@ -444,7 +444,6 @@ class WidgetSystem {
                     <a href="/setup/notifications" class="nav-item">
                         <i class="fas fa-bell"></i>
                         <span>Notifications & Logs</span>
-                        <i class="fas fa-crown premium-badge" style="color: #ffc107; font-size: 10px; margin-left: auto;" title="Premium features available"></i>
                     </a>
                 </div>
 
@@ -457,17 +456,14 @@ class WidgetSystem {
                     <a href="/dashboard/console" class="nav-item" data-requires-admin data-premium-required="true">
                         <i class="fas fa-terminal"></i>
                         <span>Bot Console</span>
-                        <i class="fas fa-crown premium-badge" style="color: #ffc107; font-size: 10px; margin-left: auto;"></i>
                     </a>
                     <a href="/access-generator" class="nav-item" data-requires-admin data-premium-required="true">
                         <i class="fas fa-key"></i>
                         <span>Access Generator</span>
-                        <i class="fas fa-crown premium-badge" style="color: #ffc107; font-size: 10px; margin-left: auto;"></i>
                     </a>
                     <a href="/access-share" class="nav-item" data-requires-admin data-premium-required="true">
                         <i class="fas fa-share-alt"></i>
                         <span>Access Share</span>
-                        <i class="fas fa-crown premium-badge" style="color: #ffc107; font-size: 10px; margin-left: auto;"></i>
                     </a>
                     <a href="/admin/users" class="nav-item" data-requires-super-admin>
                         <i class="fas fa-users-cog"></i>
@@ -1270,6 +1266,18 @@ class WidgetSystem {
                     { id: 'list', label: 'List View', icon: 'list' }
                 ],
                 defaultView: 'grid'
+            },
+            {
+                id: 'recent-events',
+                title: 'Recent Events',
+                icon: 'stream',
+                description: 'All server events — nuke, bans, kicks, raids & more',
+                colSpan: 2,
+                views: [
+                    { id: 'table', label: 'Table', icon: 'table' },
+                    { id: 'compact', label: 'Compact', icon: 'list' }
+                ],
+                defaultView: 'table'
             }
         ];
 
@@ -1359,6 +1367,9 @@ class WidgetSystem {
                 case 'quick-actions':
                     renderQuickActionsWidget(viewId, container);
                     break;
+                case 'recent-events':
+                    renderRecentEventsWidget(viewId, container, data);
+                    break;
                 default:
                     // Custom chart widgets
                     if (widgetId.startsWith('custom-') && window._dlChartBuilder) {
@@ -1447,8 +1458,11 @@ class WidgetSystem {
             let labels = memberActivity.map(d => formatChartDate(d.date));
             if (labels.length === 0) labels = getLast7Days();
 
-            const joinsData    = memberActivity.map(d => d.joins    || 0);
-            const commandsData = commandUsage.map(d  => d.count     || 0);
+            let joinsData    = memberActivity.map(d => d.joins    || 0);
+            let commandsData = commandUsage.map(d  => d.count     || 0);
+            // Pad data to match labels length to avoid Chart.js animation crash
+            if (joinsData.length === 0 && labels.length > 0) joinsData = Array(labels.length).fill(0);
+            if (commandsData.length === 0 && labels.length > 0) commandsData = Array(labels.length).fill(0);
 
             const canvasId = 'activityChart_' + Date.now();
             container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
@@ -1496,7 +1510,7 @@ class WidgetSystem {
                         backgroundColor: chartType === 'bar' ? 'rgba(16,185,129,0.6)' : 'rgba(16,185,129,0.12)',
                         fill, tension: 0.4, pointBackgroundColor: '#10b981', pointRadius: 4,
                         borderRadius: chartType === 'bar' ? 4 : 0,
-                        stack: stacked ? 'stack' : undefined
+                        ...(stacked ? { stack: 'stack' } : {})
                     }, {
                         label: 'Commands',
                         data: commandsData,
@@ -1504,11 +1518,12 @@ class WidgetSystem {
                         backgroundColor: chartType === 'bar' ? 'rgba(124,58,237,0.6)' : 'rgba(124,58,237,0.12)',
                         fill, tension: 0.4, pointBackgroundColor: '#7c3aed', pointRadius: 4,
                         borderRadius: chartType === 'bar' ? 4 : 0,
-                        stack: stacked ? 'stack' : undefined
+                        ...(stacked ? { stack: 'stack' } : {})
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
+                    animation: false,
                     plugins: { legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } } },
                     scales: stacked
                         ? { y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { stacked: true, grid: { display: false } } }
@@ -1535,7 +1550,7 @@ class WidgetSystem {
                 charts.security = new Chart(ctx, {
                     type: 'radar',
                     data: { labels: secLabels, datasets: [{ label: 'Events', data: secData, borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.15)', pointBackgroundColor: secColors }] },
-                    options: { responsive: true, maintainAspectRatio: false, ...legendOpts, scales: { r: { grid: { color: 'rgba(255,255,255,0.08)' }, ticks: { display: false } } } }
+                    options: { responsive: true, maintainAspectRatio: false, animation: false, ...legendOpts, scales: { r: { grid: { color: 'rgba(255,255,255,0.08)' }, ticks: { display: false } } } }
                 });
                 return;
             }
@@ -1544,7 +1559,7 @@ class WidgetSystem {
                 charts.security = new Chart(ctx, {
                     type: 'line',
                     data: { labels: secLabels, datasets: [{ label: 'Events', data: secData, borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.1)', fill: true, tension: 0.4, pointBackgroundColor: secColors, pointRadius: 6 }] },
-                    options: { responsive: true, maintainAspectRatio: false, ...legendOpts, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
+                    options: { responsive: true, maintainAspectRatio: false, animation: false, ...legendOpts, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
                 });
                 return;
             }
@@ -1562,9 +1577,9 @@ class WidgetSystem {
                 type: chartType,
                 data: {
                     labels: secLabels,
-                    datasets: [{ data: secData, backgroundColor: chartType === 'bar' ? secColors.map(c => c + '99') : secColors, borderColor: chartType === 'bar' ? secColors : undefined, borderWidth: chartType === 'bar' ? 1 : 0, borderRadius: chartType === 'bar' ? 4 : 0 }]
+                    datasets: [{ data: secData, backgroundColor: chartType === 'bar' ? secColors.map(c => c + '99') : secColors, ...(chartType === 'bar' ? { borderColor: secColors, borderWidth: 1, borderRadius: 4 } : { borderWidth: 0 }) }]
                 },
-                options: opts
+                options: { ...opts, animation: false }
             });
         }
 
@@ -1572,7 +1587,8 @@ class WidgetSystem {
             const msgActivity = data.memberActivity || [];
             let labels    = msgActivity.map(d => formatChartDate(d.date));
             if (labels.length === 0) labels = getLast7Days();
-            const msgData = msgActivity.map(d => d.messages || 0);
+            let msgData = msgActivity.map(d => d.messages || 0);
+            if (msgData.length === 0 && labels.length > 0) msgData = Array(labels.length).fill(0);
 
             const canvasId = 'msgChart_' + Date.now();
             container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
@@ -1580,7 +1596,7 @@ class WidgetSystem {
             if (!ctx) return;
 
             if (viewId === 'radar') {
-                charts.messages = new Chart(ctx, { type: 'radar', data: { labels, datasets: [{ label: 'Messages', data: msgData, borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.15)', pointBackgroundColor: '#ec4899' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } } }, scales: { r: { grid: { color: 'rgba(255,255,255,0.08)' }, ticks: { display: false } } } } });
+                charts.messages = new Chart(ctx, { type: 'radar', data: { labels, datasets: [{ label: 'Messages', data: msgData, borderColor: '#ec4899', backgroundColor: 'rgba(236,72,153,0.15)', pointBackgroundColor: '#ec4899' }] }, options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } } }, scales: { r: { grid: { color: 'rgba(255,255,255,0.08)' }, ticks: { display: false } } } } });
                 return;
             }
 
@@ -1589,7 +1605,7 @@ class WidgetSystem {
             charts.messages = new Chart(ctx, {
                 type: chartType,
                 data: { labels, datasets: [{ label: 'Messages', data: msgData, borderColor: '#ec4899', backgroundColor: chartType === 'bar' ? 'rgba(236,72,153,0.55)' : 'rgba(236,72,153,0.12)', fill, tension: 0.4, pointBackgroundColor: '#ec4899', pointRadius: 4, borderRadius: chartType === 'bar' ? 4 : 0 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
+                options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
             });
         }
 
@@ -1599,6 +1615,9 @@ class WidgetSystem {
             if (labels.length === 0) labels = getLast7Days();
             const joinsData  = activity.map(d => d.joins  || 0);
             const leavesData = activity.map(d => d.leaves || 0);
+            // Pad to match labels length to avoid Chart.js 4.4.0 animation crash
+            if (joinsData.length === 0 && labels.length > 0) joinsData.push(...Array(labels.length).fill(0));
+            if (leavesData.length === 0 && labels.length > 0) leavesData.push(...Array(labels.length).fill(0));
 
             const canvasId = 'growthChart_' + Date.now();
             container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
@@ -1612,10 +1631,10 @@ class WidgetSystem {
             charts.memberGrowth = new Chart(ctx, {
                 type: chartType,
                 data: { labels, datasets: [
-                    { label: 'Joins',  data: joinsData,  borderColor: '#10b981', backgroundColor: chartType === 'bar' ? 'rgba(16,185,129,0.6)'  : 'rgba(16,185,129,0.12)',  fill, tension: 0.4, pointRadius: 4, borderRadius: 4, stack: stacked ? 's' : undefined },
-                    { label: 'Leaves', data: leavesData, borderColor: '#ef4444', backgroundColor: chartType === 'bar' ? 'rgba(239,68,68,0.6)'   : 'rgba(239,68,68,0.12)',   fill, tension: 0.4, pointRadius: 4, borderRadius: 4, stack: stacked ? 's' : undefined }
+                    { label: 'Joins',  data: joinsData,  borderColor: '#10b981', backgroundColor: chartType === 'bar' ? 'rgba(16,185,129,0.6)'  : 'rgba(16,185,129,0.12)',  fill, tension: 0.4, pointRadius: 4, borderRadius: 4, ...(stacked ? { stack: 's' } : {}) },
+                    { label: 'Leaves', data: leavesData, borderColor: '#ef4444', backgroundColor: chartType === 'bar' ? 'rgba(239,68,68,0.6)'   : 'rgba(239,68,68,0.12)',   fill, tension: 0.4, pointRadius: 4, borderRadius: 4, ...(stacked ? { stack: 's' } : {}) }
                 ]},
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } } }, scales: stacked ? { y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { stacked: true, grid: { display: false } } } : { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
+                options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } } }, scales: stacked ? { y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { stacked: true, grid: { display: false } } } : { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
             });
         }
 
@@ -1645,12 +1664,12 @@ class WidgetSystem {
             charts.modTimeline = new Chart(ctx, {
                 type: chartType,
                 data: { labels, datasets: [
-                    { label: 'Warns',    data: warnData,    borderColor: '#f59e0b', backgroundColor: chartType === 'bar' ? 'rgba(245,158,11,0.6)'  : 'rgba(245,158,11,0.12)',  tension: 0.4, fill: false, pointRadius: 3, borderRadius: 3, stack: stacked ? 's' : undefined },
-                    { label: 'Kicks',    data: kickData,    borderColor: '#ec4899', backgroundColor: chartType === 'bar' ? 'rgba(236,72,153,0.6)'  : 'rgba(236,72,153,0.12)',  tension: 0.4, fill: false, pointRadius: 3, borderRadius: 3, stack: stacked ? 's' : undefined },
-                    { label: 'Bans',     data: banData,     borderColor: '#ef4444', backgroundColor: chartType === 'bar' ? 'rgba(239,68,68,0.6)'   : 'rgba(239,68,68,0.12)',   tension: 0.4, fill: false, pointRadius: 3, borderRadius: 3, stack: stacked ? 's' : undefined },
-                    { label: 'Timeouts', data: timeoutData, borderColor: '#7c3aed', backgroundColor: chartType === 'bar' ? 'rgba(124,58,237,0.6)'  : 'rgba(124,58,237,0.12)',  tension: 0.4, fill: false, pointRadius: 3, borderRadius: 3, stack: stacked ? 's' : undefined }
+                    { label: 'Warns',    data: warnData,    borderColor: '#f59e0b', backgroundColor: chartType === 'bar' ? 'rgba(245,158,11,0.6)'  : 'rgba(245,158,11,0.12)',  tension: 0.4, fill: false, pointRadius: 3, borderRadius: 3, ...(stacked ? { stack: 's' } : {}) },
+                    { label: 'Kicks',    data: kickData,    borderColor: '#ec4899', backgroundColor: chartType === 'bar' ? 'rgba(236,72,153,0.6)'  : 'rgba(236,72,153,0.12)',  tension: 0.4, fill: false, pointRadius: 3, borderRadius: 3, ...(stacked ? { stack: 's' } : {}) },
+                    { label: 'Bans',     data: banData,     borderColor: '#ef4444', backgroundColor: chartType === 'bar' ? 'rgba(239,68,68,0.6)'   : 'rgba(239,68,68,0.12)',   tension: 0.4, fill: false, pointRadius: 3, borderRadius: 3, ...(stacked ? { stack: 's' } : {}) },
+                    { label: 'Timeouts', data: timeoutData, borderColor: '#7c3aed', backgroundColor: chartType === 'bar' ? 'rgba(124,58,237,0.6)'  : 'rgba(124,58,237,0.12)',  tension: 0.4, fill: false, pointRadius: 3, borderRadius: 3, ...(stacked ? { stack: 's' } : {}) }
                 ]},
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } } }, scales: stacked ? { y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { stacked: true, grid: { display: false } } } : { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
+                options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } } }, scales: stacked ? { y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { stacked: true, grid: { display: false } } } : { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
             });
         }
 
@@ -1698,6 +1717,95 @@ class WidgetSystem {
         // Initialize charts with real data (kept for compatibility)
         async function initCharts() {
             // Now handled by widget system — this is a no-op
+        }
+
+        // ── Recent Events Widget ──────────────────────────────────────────────
+        const _sevIcon = { critical:'🚨', high:'⚠️', medium:'🔶', low:'ℹ️', info:'📌' };
+        const _sevColor= { critical:'#ef4444', high:'#f97316', medium:'#f59e0b', low:'#6b7280', info:'#3b82f6' };
+        const _srcLabel = { security_logs:'Security', security_incidents:'Incident', antinuke_incidents:'Anti-Nuke', action_logs:'Action', raid_detection:'Raid', security_events:'Security', audit_log:'Audit', join_analytics:'Join', leave_analytics:'Leave', mod_actions:'Moderation' };
+
+        function _evSev(sev) {
+            const s = (sev || 'low').toLowerCase();
+            return { icon: _sevIcon[s] || '📌', color: _sevColor[s] || '#6b7280', label: sev || 'Low' };
+        }
+
+        function _relTime(ts) {
+            if (!ts) return '—';
+            const diff = Date.now() - new Date(ts).getTime();
+            if (diff < 60000) return Math.floor(diff/1000) + 's ago';
+            if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+            if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+            return new Date(ts).toLocaleDateString();
+        }
+
+        function renderRecentEventsWidget(viewId, container, data) {
+            const events = (data.recentEvents || data.securityEvents || []);
+            if (events.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align:center;padding:2rem;color:rgba(255,255,255,0.35);">
+                        <div style="font-size:2rem;margin-bottom:0.5rem;">📭</div>
+                        <div>No events recorded yet</div>
+                        <div style="font-size:0.8rem;margin-top:0.25rem;">Events will appear here after server activity</div>
+                    </div>`;
+                return;
+            }
+            if (viewId === 'compact') {
+                container.innerHTML = `<div style="display:flex;flex-direction:column;gap:0.3rem;">
+                    ${events.slice(0,15).map(e => {
+                        const sv = _evSev(e.severity);
+                        return `<div style="display:flex;align-items:center;gap:0.6rem;padding:0.3rem 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                            <span style="font-size:0.9rem;">${sv.icon}</span>
+                            <span style="font-size:0.75rem;font-weight:600;color:${sv.color};min-width:60px;">${(e.type||'').replace(/_/g,' ').slice(0,12)}</span>
+                            <span style="color:#ddd;font-size:0.8rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(e.description||'-')}</span>
+                            <span style="color:rgba(255,255,255,0.35);font-size:0.72rem;white-space:nowrap;">${_relTime(e.timestamp)}</span>
+                        </div>`;
+                    }).join('')}
+                </div>`;
+            } else {
+                container.innerHTML = `
+                    <div style="margin-bottom:0.5rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+                        ${['all','security','moderation','members'].map(f=>`
+                            <button onclick="filterRecentEvents(this,'${f}')" data-filter="${f}" style="padding:3px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);background:${f==='all'?'rgba(0,212,255,0.15)':'transparent'};color:${f==='all'?'#00d4ff':'rgba(255,255,255,0.6)'};font-size:0.75rem;cursor:pointer;">${f.charAt(0).toUpperCase()+f.slice(1)}</button>
+                        `).join('')}
+                    </div>
+                    <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+                        <thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);text-align:left;">
+                            <th style="padding:0.4rem 0.5rem;">Sev</th>
+                            <th style="padding:0.4rem 0.5rem;">Type</th>
+                            <th style="padding:0.4rem 0.5rem;max-width:320px;">Description</th>
+                            <th style="padding:0.4rem 0.5rem;">Source</th>
+                            <th style="padding:0.4rem 0.5rem;white-space:nowrap;">Time</th>
+                        </tr></thead>
+                        <tbody id="recentEventsBody">
+                        ${events.slice(0,50).map(e => {
+                            const sv = _evSev(e.severity);
+                            return `<tr style="border-bottom:1px solid rgba(255,255,255,0.04);" data-category="${e.category||'security'}">
+                                <td style="padding:0.35rem 0.5rem;">${sv.icon}</td>
+                                <td style="padding:0.35rem 0.5rem;color:${sv.color};font-weight:600;white-space:nowrap;">${escHtml((e.type||'UNKNOWN').replace(/_/g,' '))}</td>
+                                <td style="padding:0.35rem 0.5rem;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#ccc;">${escHtml(e.description||'-')}</td>
+                                <td style="padding:0.35rem 0.5rem;color:rgba(255,255,255,0.45);font-size:0.75rem;">${_srcLabel[e.source]||e.source||'—'}</td>
+                                <td style="padding:0.35rem 0.5rem;color:rgba(255,255,255,0.4);white-space:nowrap;">${_relTime(e.timestamp)}</td>
+                            </tr>`;
+                        }).join('')}
+                        </tbody>
+                    </table></div>`;
+            }
+        }
+
+        function filterRecentEvents(btn, filter) {
+            document.querySelectorAll('[data-filter]').forEach(b => {
+                b.style.background = 'transparent';
+                b.style.color = 'rgba(255,255,255,0.6)';
+            });
+            btn.style.background = 'rgba(0,212,255,0.15)';
+            btn.style.color = '#00d4ff';
+            document.querySelectorAll('#recentEventsBody tr').forEach(row => {
+                row.style.display = (filter === 'all' || row.dataset.category === filter) ? '' : 'none';
+            });
+        }
+
+        function escHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
         
         // Helper: Format date for chart labels

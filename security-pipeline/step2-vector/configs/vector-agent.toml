@@ -1,0 +1,292 @@
+# =============================================================================
+# Vector Agent Configuration — runs on each server
+# Collects: Falco, auditd, nginx/caddy, auth.log, syslog
+# Forwards to central aggregator over TLS
+# =============================================================================
+
+# Global settings
+data_dir = "/var/lib/vector"
+
+# ============================================================================
+# SOURCES — Collect from local log files
+# ============================================================================
+
+# --- Falco JSON events ---
+[sources.falco]
+type = "file"
+include = ["/var/log/falco/falco_events.jsonl"]
+read_from = "end"
+fingerprint.strategy = "checksum"
+# Falco outputs one JSON per line
+line_delimiter = "\n"
+
+# --- Auditd logs ---
+[sources.auditd]
+type = "file"
+include = ["/var/log/audit/audit.log"]
+read_from = "end"
+fingerprint.strategy = "checksum"
+
+# --- Auth logs ---
+[sources.auth_log]
+type = "file"
+include = ["/var/log/auth.log"]
+read_from = "end"
+fingerprint.strategy = "checksum"
+
+# --- Syslog ---
+[sources.syslog]
+type = "file"
+include = ["/var/log/syslog"]
+read_from = "end"
+fingerprint.strategy = "checksum"
+
+# --- Nginx access + error ---
+[sources.nginx_access]
+type = "file"
+include = ["/var/log/nginx/access.log"]
+read_from = "end"
+fingerprint.strategy = "checksum"
+ignore_not_found = true
+
+[sources.nginx_error]
+type = "file"
+include = ["/var/log/nginx/error.log"]
+read_from = "end"
+fingerprint.strategy = "checksum"
+ignore_not_found = true
+
+# --- Caddy access + error ---
+[sources.caddy_access]
+type = "file"
+include = ["/var/log/caddy/access.log"]
+read_from = "end"
+fingerprint.strategy = "checksum"
+ignore_not_found = true
+
+[sources.caddy_error]
+type = "file"
+include = ["/var/log/caddy/error.log"]
+read_from = "end"
+fingerprint.strategy = "checksum"
+ignore_not_found = true
+
+# ============================================================================
+# TRANSFORMS — Normalize into consistent JSON schema
+# ============================================================================
+
+# --- Parse & normalize Falco events ---
+[transforms.parse_falco]
+type = "remap"
+inputs = ["falco"]
+source = '''
+# Falco outputs JSON already
+parsed, err = parse_json(.message)
+if err == null {
+  .timestamp = parsed.time || now()
+  .source_host = get_hostname!()
+  .service = "falco"
+  .severity = downcase!(string!(parsed.priority || "unknown"))
+  .raw_message = .message
+  .rule = parsed.rule || "unknown"
+  .output = parsed.output || ""
+  .tags = parsed.tags || []
+  .container_id = parsed.output_fields.container.id || null
+  .process = parsed.output_fields.proc.cmdline || null
+  .user = parsed.output_fields.user.name || null
+  .file = parsed.output_fields.fd.name || null
+  # Map Falco priorities to standard severity
+  if .severity == "emergency" || .severity == "critical" || .severity == "alert" {
+    .severity = "critical"
+  } else if .severity == "error" || .severity == "warning" {
+    .severity = "warning"
+  } else {
+    .severity = "info"
+  }
+} else {
+  .timestamp = now()
+  .source_host = get_hostname!()
+  .service = "falco"
+  .severity = "info"
+  .raw_message = .message
+}
+'''
+
+# --- Parse & normalize Auditd events ---
+[transforms.parse_auditd]
+type = "remap"
+inputs = ["auditd"]
+source = '''
+.timestamp = now()
+.source_host = get_hostname!()
+.service = "auditd"
+.raw_message = .message
+
+# Extract audit key if present
+key = parse_regex(.message, r'key="(?P<key>[^"]*)"') ?? {}
+.audit_key = key.key || "none"
+
+# Extract audit type
+atype = parse_regex(.message, r'type=(?P<type>\S+)') ?? {}
+.audit_type = atype.type || "unknown"
+
+# Determine severity from key
+rm = string!(.raw_message)
+if contains(rm, "suid") || contains(rm, "kernel_module") || contains(rm, "process_injection") {
+  .severity = "critical"
+} else if contains(rm, "sudo") || contains(rm, "auth") || contains(rm, "perm_change") {
+  .severity = "warning"
+} else {
+  .severity = "info"
+}
+
+# Extract common fields
+uid_match = parse_regex(.message, r'uid=(?P<uid>\d+)') ?? {}
+.uid = uid_match.uid || null
+exe_match = parse_regex(.message, r'exe="(?P<exe>[^"]*)"') ?? {}
+.exe = exe_match.exe || null
+'''
+
+# --- Parse & normalize auth.log ---
+[transforms.parse_auth]
+type = "remap"
+inputs = ["auth_log"]
+source = '''
+.source_host = get_hostname!()
+.service = "auth"
+.raw_message = .message
+
+# Parse syslog timestamp
+ts = parse_regex(.message, r'^(?P<ts>\w+\s+\d+\s+[\d:]+)') ?? {}
+.timestamp = parse_timestamp(ts.ts || "", "%b %d %H:%M:%S") ?? now()
+
+# Determine severity
+rm = string!(.raw_message)
+if contains(rm, "Failed") || contains(rm, "FAILED") || contains(rm, "Invalid user") {
+  .severity = "warning"
+} else if contains(rm, "BREAK-IN") || contains(rm, "authentication failure") {
+  .severity = "critical"
+} else {
+  .severity = "info"
+}
+'''
+
+# --- Parse & normalize syslog ---
+[transforms.parse_syslog]
+type = "remap"
+inputs = ["syslog"]
+source = '''
+.source_host = get_hostname!()
+.service = "syslog"
+.raw_message = .message
+.timestamp = now()
+
+rm = string!(.raw_message)
+if contains(rm, "error") || contains(rm, "ERROR") {
+  .severity = "warning"
+} else if contains(rm, "crit") || contains(rm, "CRIT") || contains(rm, "panic") {
+  .severity = "critical"
+} else {
+  .severity = "info"
+}
+'''
+
+# --- Parse & normalize nginx ---
+[transforms.parse_nginx_access]
+type = "remap"
+inputs = ["nginx_access"]
+source = '''
+.source_host = get_hostname!()
+.service = "nginx_access"
+.raw_message = .message
+.timestamp = now()
+
+# Parse common log format
+parsed = parse_nginx_log(.message, "combined") ?? {}
+.http_status = parsed.status || null
+.http_method = parsed.method || null
+.http_path = parsed.path || null
+.remote_addr = parsed.client || null
+
+# Severity from status code
+status = to_int(.http_status || "200") ?? 200
+if status >= 500 {
+  .severity = "critical"
+} else if status >= 400 {
+  .severity = "warning"
+} else {
+  .severity = "info"
+}
+'''
+
+[transforms.parse_nginx_error]
+type = "remap"
+inputs = ["nginx_error"]
+source = '''
+.source_host = get_hostname!()
+.service = "nginx_error"
+.raw_message = .message
+.timestamp = now()
+.severity = "warning"
+'''
+
+# --- Parse & normalize caddy ---
+[transforms.parse_caddy_access]
+type = "remap"
+inputs = ["caddy_access"]
+source = '''
+.source_host = get_hostname!()
+.service = "caddy_access"
+.raw_message = .message
+.timestamp = now()
+
+# Caddy outputs JSON by default
+parsed, err = parse_json(.message)
+if err == null {
+  .http_status = parsed.status || null
+  .http_method = parsed.request.method || null
+  .http_path = parsed.request.uri || null
+  .remote_addr = parsed.request.remote_ip || null
+  status = to_int(.http_status || "200") ?? 200
+  if status >= 500 { .severity = "critical" } else if status >= 400 { .severity = "warning" } else { .severity = "info" }
+} else {
+  .severity = "info"
+}
+'''
+
+[transforms.parse_caddy_error]
+type = "remap"
+inputs = ["caddy_error"]
+source = '''
+.source_host = get_hostname!()
+.service = "caddy_error"
+.raw_message = .message
+.timestamp = now()
+.severity = "warning"
+'''
+
+# ============================================================================
+# SINKS — Forward to central aggregator over TLS + local file backup
+# ============================================================================
+
+# --- Local file store (backup — all normalized events) ---
+[sinks.local_file]
+type = "file"
+inputs = [
+  "parse_falco", "parse_auditd", "parse_auth", "parse_syslog",
+  "parse_nginx_access", "parse_nginx_error",
+  "parse_caddy_access", "parse_caddy_error"
+]
+path = "/var/log/vector/normalized/%Y-%m-%d.jsonl"
+encoding.codec = "json"
+
+# --- HTTP sink to triage service ---
+[sinks.triage]
+type = "http"
+inputs = [
+  "parse_falco", "parse_auditd", "parse_auth", "parse_syslog",
+  "parse_nginx_access", "parse_nginx_error",
+  "parse_caddy_access", "parse_caddy_error"
+]
+uri = "http://127.0.0.1:8089/ingest"
+encoding.codec = "json"

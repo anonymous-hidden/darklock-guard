@@ -122,7 +122,7 @@ module.exports = {
                 mode,
                 reason,
                 activatedBy: interaction.user.id,
-                activatedByTag: interaction.user.tag,
+                activatedByTag: interaction.user.username,
                 channelIds,
                 settings: {
                     timeoutNewAccounts,
@@ -197,7 +197,7 @@ module.exports = {
                 eventType: 'lockdown_activated',
                 guildId: interaction.guild.id,
                 moderatorId: interaction.user.id,
-                moderatorTag: interaction.user.tag,
+                moderatorTag: interaction.user.username,
                 reason: reason,
                 details: {
                     mode,
@@ -218,7 +218,7 @@ module.exports = {
                         type: 'lockdown',
                         category: 'security',
                         target: { id: interaction.guild.id, tag: interaction.guild.name },
-                        moderator: { id: interaction.user.id, tag: interaction.user.tag },
+                        moderator: { id: interaction.user.id, tag: interaction.user.username },
                         reason: reason,
                         details: `${mode.toUpperCase()} mode - ${result.locked} channels locked`,
                         canUndo: true,
@@ -234,7 +234,7 @@ module.exports = {
                     data: {
                         mode,
                         reason,
-                        activatedBy: interaction.user.tag,
+                        activatedBy: interaction.user.username,
                         channelsLocked: result.locked
                     }
                 });

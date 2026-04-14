@@ -39,7 +39,7 @@
 /* Base Layout */
 .platform-layout {
     min-height: 100vh;
-    background: var(--bg-primary);
+    background: url('/images/platform-bg.webp') center center / cover no-repeat fixed, var(--bg-primary);
     color: var(--text-primary);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }

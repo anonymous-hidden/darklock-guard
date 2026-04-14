@@ -43,7 +43,7 @@ module.exports = {
                 .setTitle(embedData.title)
                 .setColor(embedData.color)
                 .setDescription(
-                    `Trust assessment for **${targetUser.tag}**\n\n` +
+                    `Trust assessment for **${targetUser.username}**\n\n` +
                     `A trust score reflects behavior patterns, account age, and moderation history. ` +
                     `Higher scores may grant access to features that require trust.`
                 )
@@ -71,7 +71,7 @@ module.exports = {
                 await bot.logger.logCommand({
                     commandName: 'trustscore',
                     userId: interaction.user.id,
-                    userTag: interaction.user.tag,
+                    userTag: interaction.user.username,
                     guildId: interaction.guild.id,
                     channelId: interaction.channel.id,
                     options: { targetUserId: targetUser.id },

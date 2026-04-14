@@ -525,7 +525,7 @@ module.exports = {
             try {
                 const bot = interaction.client.bot;
                 if (bot?.logger) {
-                    bot.logger.info(`[ROLESCAN] ${interaction.user.tag} fixed ${fixResults.success.length} roles in ${guild.name}`);
+                    bot.logger.info(`[ROLESCAN] ${interaction.user.username} fixed ${fixResults.success.length} roles in ${guild.name}`);
                 }
             } catch (e) {
                 // Logging failed, not critical

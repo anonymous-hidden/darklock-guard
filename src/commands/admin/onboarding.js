@@ -53,7 +53,7 @@ module.exports = {
                     setting: 'welcome_enabled',
                     before: cfg.welcome_enabled,
                     after: welcome,
-                    changedBy: interaction.user.tag
+                    changedBy: interaction.user.username
                 });
                 bot.dashboard.broadcastToGuild(guildId, {
                     type: 'dashboard_setting_update',
@@ -61,7 +61,7 @@ module.exports = {
                     setting: 'verification_enabled',
                     before: cfg.verification_enabled,
                     after: verify,
-                    changedBy: interaction.user.tag
+                    changedBy: interaction.user.username
                 });
                 if (verify) {
                     bot.dashboard.broadcastToGuild(guildId, { type: 'verification_instructions', guildId });

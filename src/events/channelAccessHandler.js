@@ -190,7 +190,7 @@ async function handleChannelAccessSelect(interaction, bot) {
             try {
                 await member.roles.remove(selectedRole);
                 
-                console.log(`[ChannelAccess] Removed role ${selectedRole.name} from ${member.user.tag}`);
+                console.log(`[ChannelAccess] Removed role ${selectedRole.name} from ${member.user.username}`);
 
                 const embed = new EmbedBuilder()
                     .setTitle('❌ Role Removed')
@@ -233,7 +233,7 @@ async function handleChannelAccessSelect(interaction, bot) {
         try {
             await member.roles.add(selectedRole);
             
-            console.log(`[ChannelAccess] Added role ${selectedRole.name} to ${member.user.tag}`);
+            console.log(`[ChannelAccess] Added role ${selectedRole.name} to ${member.user.username}`);
 
             const targetChannel = interaction.guild.channels.cache.get(panel.target_channel_id);
             

@@ -85,14 +85,17 @@ class NetworkSecurityMonitor {
         if (options.body) {
             const bodyStr = typeof options.body === 'string' ? options.body : JSON.stringify(options.body);
 
-            if (bodyStr.includes(process.env.DISCORD_TOKEN?.substring(0, 10))) {
+            // Detect potential token patterns without referencing actual secrets
+            // Discord bot tokens match: base64.base64.base64 pattern
+            if (/[A-Za-z0-9_-]{24}\.[A-Za-z0-9_-]{6}\.[A-Za-z0-9_-]{27,}/.test(bodyStr)) {
                 logEntry.suspicious = true;
-                logEntry.flags.push('token-in-body');
+                logEntry.flags.push('possible-token-in-body');
             }
 
-            if (bodyStr.includes(process.env.ADMIN_PASSWORD)) {
+            // Detect common credential patterns without comparing raw secrets
+            if (/password["'\s:=]+[^"'\s]{8,}/i.test(bodyStr)) {
                 logEntry.suspicious = true;
-                logEntry.flags.push('password-in-body');
+                logEntry.flags.push('possible-credential-in-body');
             }
 
             // Check for excessive data transmission

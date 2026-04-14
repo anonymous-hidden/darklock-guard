@@ -40,6 +40,9 @@ const {
     requireAdminAuth 
 } = require('./routes/admin-auth');
 
+// CSRF Protection
+const { csrfCookie, csrfProtection } = require('./middleware/csrf');
+
 // Admin dashboard
 const { initializeAdminSchema } = require('./utils/admin-schema');
 // Team Management routes
@@ -99,7 +102,7 @@ class DarklockPlatform {
             contentSecurityPolicy: {
                 directives: {
                     defaultSrc: ["'self'"],
-                    scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-hashes'", "https://static.cloudflareinsights.com"], // Needed for inline handlers + CF beacon
+                    scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-hashes'", "'wasm-unsafe-eval'", "https://static.cloudflareinsights.com"], // 'wasm-unsafe-eval' required for WebAssembly (libsodium) used by Darklock Notes
                     scriptSrcAttr: ["'unsafe-inline'", "'unsafe-hashes'"], // Allow inline event handlers (onclick, etc.)
                     styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
                     fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
@@ -203,7 +206,7 @@ class DarklockPlatform {
             },
             credentials: true,
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token']
         }));
         
         // Global rate limiting (500 requests per 15 minutes per IP - generous for admin dashboard)
@@ -258,6 +261,13 @@ class DarklockPlatform {
         // Cookie parser
         this.app.use(cookieParser());
         
+        // CSRF protection: set token cookie on all responses, validate on state-changing requests
+        this.app.use('/platform', csrfCookie);
+        this.app.use('/platform/auth', csrfProtection);
+        this.app.use('/platform/profile', csrfProtection);
+        this.app.use('/platform/premium', csrfProtection);
+        this.app.use('/admin', csrfProtection);
+        
         // UTF-8 charset for HTML responses
         this.app.use((req, res, next) => {
             // Don't override Content-Type for static assets
@@ -265,7 +275,10 @@ class DarklockPlatform {
                 !req.path.startsWith('/site/css/') && 
                 !req.path.startsWith('/site/js/') && 
                 !req.path.startsWith('/site/images/') && 
-                !req.path.startsWith('/js/')) {
+                !req.path.startsWith('/js/') &&
+                !req.path.startsWith('/platform/notes/assets/') &&
+                !req.path.startsWith('/platform/notes/manifest') &&
+                !req.path.startsWith('/platform/notes/favicon')) {
                 res.setHeader('Content-Type', 'text/html; charset=utf-8');
             }
             next();
@@ -519,7 +532,14 @@ class DarklockPlatform {
         this.app.use('/js', express.static(path.join(siteAssetsDir, 'js'))); // Backwards compatibility (website-only files)
         
         // Downloads folder for installers
-        this.app.use('/platform/downloads', express.static(path.join(__dirname, 'downloads')));
+        this.app.use('/platform/downloads/files', express.static(path.join(__dirname, 'downloads')));
+        
+        // Secure Channel PWA (mobile web app)
+        this.app.use('/app/secure-channel', express.static(path.join(__dirname, 'pwa/secure-channel')));
+        // SPA fallback — serve index.html for all sub-routes
+        this.app.get('/app/secure-channel/*', (req, res) => {
+            res.sendFile(path.join(__dirname, 'pwa/secure-channel/index.html'));
+        });
         
         // Avatars folder for user avatars
         const avatarsPath = path.join(process.env.DATA_PATH || path.join(__dirname, 'data'), 'avatars');
@@ -540,6 +560,14 @@ class DarklockPlatform {
         });
         this.app.get('/signin', (req, res) => {
             res.redirect(302, 'https://admin.darklock.net/signin');
+        });
+
+        // Login page — serves the bot dashboard login UI
+        this.app.get('/login', (req, res) => {
+            const loginPage = path.join(__dirname, '../src/dashboard/views/login.html');
+            res.sendFile(loginPage, (err) => {
+                if (err) res.redirect('/platform/auth/login');
+            });
         });
 
         // Main homepage (with user state)
@@ -574,7 +602,8 @@ class DarklockPlatform {
             
             // Read HTML file and inject user data
             const fs = require('fs');
-            const htmlPath = path.join(__dirname, 'views/home.html');
+            const { resolveView } = require('./utils/theme-resolver');
+            const htmlPath = resolveView('home.html');
             let html = fs.readFileSync(htmlPath, 'utf8');
             
             // Inject user data into script
@@ -587,6 +616,11 @@ class DarklockPlatform {
         // Darklock Guard - Download page (Tauri app)
         this.app.get('/platform/download/darklock-guard', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/download-page.html'));
+        });
+        
+        // Secure Channel - Public download page
+        this.app.get('/platform/download/secure-channel', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/secure-channel-download.html'));
         });
         
         // Darklock Guard - Installer download (new Tauri build + legacy fallback)
@@ -707,31 +741,30 @@ class DarklockPlatform {
         this.app.get('/platform/api/download/secure-channel-installer', (req, res) => {
             const format = (req.query.format || 'deb').toLowerCase();
             const fs = require('fs');
-            const version = '0.1.0';
-            const bundleBase = path.join(__dirname, '../secure-channel/apps/dl-secure-channel/src-tauri/target/release/bundle');
+            const version = '1.1.0';
 
             console.log(`[SecureChannel] Download request for format: ${format} from IP: ${req.ip}`);
 
+            const electronRelease = path.join(__dirname, '../secure-channel/apps/dl-secure-channel/release');
+
             const fileLocations = {
                 deb: [
-                    path.join(bundleBase, `deb/Darklock Secure Channel_${version}_amd64.deb`),
-                    path.join(__dirname, `downloads/darklock-secure-channel_${version}_amd64.deb`),
-                    path.join(__dirname, 'downloads/darklock-secure-channel_0.1.0_amd64.deb')
+                    path.join(__dirname, `downloads/DarklockSecureChannel-${version}-linux-amd64.deb`),
+                    path.join(electronRelease, `DarklockSecureChannel-${version}-linux-amd64.deb`),
+                    path.join(__dirname, 'downloads/DarklockSecureChannel-1.0.0-linux-amd64.deb'),
+                    path.join(electronRelease, 'DarklockSecureChannel-1.0.0-linux-amd64.deb')
                 ],
                 appimage: [
-                    path.join(bundleBase, `appimage/Darklock Secure Channel_${version}_amd64.AppImage`),
-                    path.join(__dirname, `downloads/darklock-secure-channel_${version}_amd64.AppImage`),
-                    path.join(__dirname, 'downloads/darklock-secure-channel_0.1.0_amd64.AppImage')
+                    path.join(__dirname, `downloads/DarklockSecureChannel-${version}-linux-x86_64.AppImage`),
+                    path.join(electronRelease, `DarklockSecureChannel-${version}-linux-x86_64.AppImage`),
+                    path.join(__dirname, 'downloads/DarklockSecureChannel-1.0.0-linux-x86_64.AppImage'),
+                    path.join(electronRelease, 'DarklockSecureChannel-1.0.0-linux-x86_64.AppImage')
                 ],
                 exe: [
-                    path.join(bundleBase, `nsis/Darklock Secure Channel_${version}_x64-setup.exe`),
-                    path.join(__dirname, `downloads/darklock-secure-channel_${version}_x64-setup.exe`),
-                    path.join(__dirname, 'downloads/darklock-secure-channel-setup.exe')
-                ],
-                msi: [
-                    path.join(bundleBase, `msi/Darklock Secure Channel_${version}_x64_en-US.msi`),
-                    path.join(__dirname, `downloads/darklock-secure-channel_${version}_x64_en-US.msi`),
-                    path.join(__dirname, 'downloads/darklock-secure-channel-setup.msi')
+                    path.join(__dirname, `downloads/DarklockSecureChannel-${version}-win-x64.exe`),
+                    path.join(electronRelease, `DarklockSecureChannel-${version}-win-x64.exe`),
+                    path.join(__dirname, 'downloads/DarklockSecureChannel-1.0.0-win-x64.exe'),
+                    path.join(electronRelease, 'DarklockSecureChannel-1.0.0-win-x64.exe')
                 ]
             };
 
@@ -742,8 +775,6 @@ class DarklockPlatform {
                 searchFormats = ['appimage'];
             } else if (format === 'exe' || format === 'windows') {
                 searchFormats = ['exe'];
-            } else if (format === 'msi') {
-                searchFormats = ['msi'];
             } else {
                 searchFormats = ['deb'];
             }
@@ -769,15 +800,13 @@ class DarklockPlatform {
                             .card { background: #111827; border: 1px solid rgba(0,212,255,0.35); padding:32px; border-radius:12px; max-width:560px; text-align:center; }
                             h1 { margin:0 0 12px; }
                             p { color: #94a3b8; line-height:1.6; }
-                            code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; }
                             a.btn { display:inline-block; margin-top:16px; padding:12px 20px; border-radius:8px; background: linear-gradient(135deg,#00d4ff,#7c4dff); color:white; text-decoration:none; }
                         </style>
                     </head>
                     <body>
                         <div class="card">
                             <h1>Installer Not Available</h1>
-                            <p>The <strong>${format}</strong> installer is not yet built.</p>
-                            <p>Build it with: <code>cd secure-channel/apps/dl-secure-channel && npx tauri build --bundles deb,appimage</code></p>
+                            <p>The <strong>${format}</strong> installer for Darklock Secure Channel is not available at this time.</p>
                             <a class="btn" href="/platform/download/secure-channel">Back to downloads</a>
                         </div>
                     </body>
@@ -790,6 +819,39 @@ class DarklockPlatform {
         this.app.use('/platform/notes', express.static(notesWebDist));
         this.app.get('/platform/notes/*', (req, res) => {
             res.sendFile(path.join(notesWebDist, 'index.html'));
+        });
+
+        // Darklock Secure Notes - Notes server API proxy (/api/notes/* → localhost:3003/api/*)
+        // The Notes PWA is built with VITE_NOTES_API_URL=/api/notes so all its API calls
+        // come here; we forward them to the Notes server running on port 3003.
+        this.app.all('/api/notes/*', (req, res) => {
+            const notesServerPort = parseInt(process.env.NOTES_SERVER_PORT || '3003', 10);
+            const targetPath = req.originalUrl.replace('/api/notes', '/api');
+            const body = req.body ? JSON.stringify(req.body) : undefined;
+            const reqHeaders = { ...req.headers, host: `localhost:${notesServerPort}` };
+            // Strip browser Origin/Referer — this is a server-side proxy; CORS doesn't apply
+            delete reqHeaders['origin'];
+            delete reqHeaders['referer'];
+            if (body) {
+                reqHeaders['content-type'] = 'application/json';
+                reqHeaders['content-length'] = String(Buffer.byteLength(body));
+            }
+            const options = {
+                hostname: 'localhost',
+                port: notesServerPort,
+                path: targetPath,
+                method: req.method,
+                headers: reqHeaders,
+            };
+            const proxyReq = http.request(options, (proxyRes) => {
+                res.writeHead(proxyRes.statusCode, proxyRes.headers);
+                proxyRes.pipe(res, { end: true });
+            });
+            proxyReq.on('error', () => {
+                if (!res.headersSent) res.status(502).json({ success: false, error: 'Notes server unavailable' });
+            });
+            if (body) proxyReq.write(body);
+            proxyReq.end();
         });
 
         // Darklock Secure Notes - Download page (URL exists, not linked from site nav)
@@ -811,23 +873,26 @@ class DarklockPlatform {
         this.app.get('/platform/api/download/darklock-notes-installer', (req, res) => {
             const format = (req.query.format || 'deb').toLowerCase();
             const fs = require('fs');
-            const version = '0.1.0';
+            const version = '1.0.0';
             const bundleBase = path.join(__dirname, '../darklock-notes/apps/desktop/src-tauri/target/release/bundle');
+            const electronRelease = path.join(__dirname, '../darklock-notes/apps/desktop/release');
 
             console.log(`[DarklockNotes] Download request for format: ${format} from IP: ${req.ip}`);
 
             const fileLocations = {
                 deb: [
+                    path.join(electronRelease, `DarklockSecureNotes-${version}-linux-amd64.deb`),
+                    path.join(__dirname, `downloads/DarklockSecureNotes-${version}-linux-amd64.deb`),
                     path.join(bundleBase, `deb/Darklock Notes_${version}_amd64.deb`),
                     path.join(bundleBase, `deb/darklock-notes_${version}_amd64.deb`),
-                    path.join(__dirname, `downloads/darklock-notes_${version}_amd64.deb`),
-                    path.join(__dirname, 'downloads/darklock-notes_0.1.0_amd64.deb')
+                    path.join(__dirname, `downloads/darklock-notes_${version}_amd64.deb`)
                 ],
                 appimage: [
+                    path.join(electronRelease, `DarklockSecureNotes-${version}-linux-x86_64.AppImage`),
+                    path.join(__dirname, `downloads/DarklockSecureNotes-${version}-linux-x86_64.AppImage`),
                     path.join(bundleBase, `appimage/Darklock Notes_${version}_amd64.AppImage`),
                     path.join(bundleBase, `appimage/darklock-notes_${version}_amd64.AppImage`),
-                    path.join(__dirname, `downloads/darklock-notes_${version}_amd64.AppImage`),
-                    path.join(__dirname, 'downloads/darklock-notes_0.1.0_amd64.AppImage')
+                    path.join(__dirname, `downloads/darklock-notes_${version}_amd64.AppImage`)
                 ],
                 ipa: [
                     path.join(__dirname, `downloads/darklock-notes_${version}.ipa`),
@@ -1506,26 +1571,50 @@ class DarklockPlatform {
                 // Get active announcements (global, not expired)
                 const now = new Date().toISOString();
                 const announcements = await db.all(`
-                    SELECT id, title, content, type, is_global, target_app
+                    SELECT id, title, content, type, scope, app_id
                     FROM announcements
                     WHERE is_active = 1 
-                    AND (starts_at IS NULL OR starts_at <= ?)
-                    AND (ends_at IS NULL OR ends_at >= ?)
+                    AND (start_at IS NULL OR start_at <= ?)
+                    AND (end_at IS NULL OR end_at >= ?)
                     ORDER BY type = 'critical' DESC, created_at DESC
                     LIMIT 5
-                `, [now, now]) || [];
+                `, [now, now]).catch(async () => {
+                    // Fallback: try rbac-schema column names
+                    return db.all(`
+                        SELECT id, title, content, type,
+                               CASE WHEN is_global = 1 THEN 'global' ELSE 'platform' END as scope,
+                               NULL as app_id
+                        FROM announcements
+                        ORDER BY type = 'critical' DESC, created_at DESC
+                        LIMIT 5
+                    `).catch(() => []);
+                }) || [];
                 
                 // Get service statuses
                 const services = await db.all(`
-                    SELECT service_name, display_name, status, status_message, last_check
+                    SELECT service_name, display_name, status, status_message,
+                           last_checked as last_check
                     FROM service_status
-                    ORDER BY display_order ASC
-                `) || [];
+                    WHERE is_visible = 1
+                    ORDER BY sort_order ASC
+                `).catch(async () => {
+                    // Fallback: try rbac-schema column names
+                    return db.all(`
+                        SELECT service_name, display_name, status,
+                               NULL as status_message, last_check
+                        FROM service_status
+                        ORDER BY service_name ASC
+                    `).catch(() => []);
+                }) || [];
                 
                 res.json({
                     maintenance: maintenanceSetting?.value === 'true',
                     maintenanceMessage: maintenanceMsgSetting?.value || null,
-                    announcements,
+                    announcements: announcements.map(a => ({
+                        ...a,
+                        is_global: a.scope === 'global' || !a.scope,
+                        target_app: a.app_id || null
+                    })),
                     services
                 });
             } catch (err) {
@@ -1665,6 +1754,11 @@ class DarklockPlatform {
         // Security page
         this.app.get('/platform/security', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/security.html'));
+        });
+        
+        // Downloads page
+        this.app.get('/platform/downloads', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/downloads.html'));
         });
         
         // Health check endpoint for monitoring (public)
@@ -2031,7 +2125,8 @@ class DarklockPlatform {
                 const jwt = require('jsonwebtoken');
                 const { requireEnv } = require('./utils/env-validator');
                 jwt.verify(token, requireEnv('JWT_SECRET'));
-                return res.sendFile(path.join(__dirname, 'views/dashboard.html'));
+                const { resolveView } = require('./utils/theme-resolver');
+                return res.sendFile(resolveView('dashboard.html'));
             } catch (err) {
                 res.clearCookie('darklock_token');
                 return res.redirect('/platform/auth/login');
@@ -2121,7 +2216,7 @@ class DarklockPlatform {
         existingApp.use('/platform/static', express.static(path.join(__dirname, 'public')));
         
         // Downloads folder for installers
-        existingApp.use('/platform/downloads', express.static(path.join(__dirname, 'downloads')));
+        existingApp.use('/platform/downloads/files', express.static(path.join(__dirname, 'downloads')));
         
         // Avatars folder for user avatars
         const avatarsPath = path.join(process.env.DATA_PATH || path.join(__dirname, 'data'), 'avatars');
@@ -2159,7 +2254,8 @@ class DarklockPlatform {
             
             // Read HTML file and inject user data
             const fs = require('fs');
-            const htmlPath = path.join(__dirname, 'views/home.html');
+            const { resolveView } = require('./utils/theme-resolver');
+            const htmlPath = resolveView('home.html');
             let html = fs.readFileSync(htmlPath, 'utf8');
             
             // Inject user data into script
@@ -2192,6 +2288,37 @@ class DarklockPlatform {
             res.sendFile(path.join(notesWebDist, 'index.html'));
         });
 
+        // Darklock Secure Notes - Notes server API proxy (/api/notes/* → localhost:3003/api/*)
+        existingApp.all('/api/notes/*', (req, res) => {
+            const notesServerPort = parseInt(process.env.NOTES_SERVER_PORT || '3003', 10);
+            const targetPath = req.originalUrl.replace('/api/notes', '/api');
+            const body = req.body ? JSON.stringify(req.body) : undefined;
+            const reqHeaders = { ...req.headers, host: `localhost:${notesServerPort}` };
+            // Strip browser Origin/Referer — this is a server-side proxy; CORS doesn't apply
+            delete reqHeaders['origin'];
+            delete reqHeaders['referer'];
+            if (body) {
+                reqHeaders['content-type'] = 'application/json';
+                reqHeaders['content-length'] = String(Buffer.byteLength(body));
+            }
+            const options = {
+                hostname: 'localhost',
+                port: notesServerPort,
+                path: targetPath,
+                method: req.method,
+                headers: reqHeaders,
+            };
+            const proxyReq = http.request(options, (proxyRes) => {
+                res.writeHead(proxyRes.statusCode, proxyRes.headers);
+                proxyRes.pipe(res, { end: true });
+            });
+            proxyReq.on('error', () => {
+                if (!res.headersSent) res.status(502).json({ success: false, error: 'Notes server unavailable' });
+            });
+            if (body) proxyReq.write(body);
+            proxyReq.end();
+        });
+
         // Darklock Secure Notes - Download page (URL accessible, not linked from nav)
         existingApp.get('/platform/download/darklock-notes', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/darklock-notes-download.html'));
@@ -2211,8 +2338,9 @@ class DarklockPlatform {
         existingApp.get('/platform/api/download/darklock-notes-installer', (req, res) => {
             const format = (req.query.format || 'deb').toLowerCase();
             const fs = require('fs');
-            const version = '0.1.0';
+            const version = '1.0.0';
             const bundleBase = path.join(__dirname, '../darklock-notes/apps/desktop/src-tauri/target/release/bundle');
+            const electronRelease = path.join(__dirname, '../darklock-notes/apps/desktop/release');
 
             console.log(`[DarklockNotes] Download request for format: ${format} from IP: ${req.ip}`);
 
@@ -2225,16 +2353,18 @@ class DarklockPlatform {
 
             const fileLocations = {
                 deb: [
+                    path.join(electronRelease, `DarklockSecureNotes-${version}-linux-amd64.deb`),
+                    path.join(__dirname, `downloads/DarklockSecureNotes-${version}-linux-amd64.deb`),
                     path.join(bundleBase, `deb/Darklock Notes_${version}_amd64.deb`),
                     path.join(bundleBase, `deb/darklock-notes_${version}_amd64.deb`),
-                    path.join(__dirname, `downloads/darklock-notes_${version}_amd64.deb`),
-                    path.join(__dirname, 'downloads/darklock-notes_0.1.0_amd64.deb')
+                    path.join(__dirname, `downloads/darklock-notes_${version}_amd64.deb`)
                 ],
                 appimage: [
+                    path.join(electronRelease, `DarklockSecureNotes-${version}-linux-x86_64.AppImage`),
+                    path.join(__dirname, `downloads/DarklockSecureNotes-${version}-linux-x86_64.AppImage`),
                     path.join(bundleBase, `appimage/Darklock Notes_${version}_amd64.AppImage`),
                     path.join(bundleBase, `appimage/darklock-notes_${version}_amd64.AppImage`),
-                    path.join(__dirname, `downloads/darklock-notes_${version}_amd64.AppImage`),
-                    path.join(__dirname, 'downloads/darklock-notes_0.1.0_amd64.AppImage')
+                    path.join(__dirname, `downloads/darklock-notes_${version}_amd64.AppImage`)
                 ],
                 ipa: [
                     path.join(__dirname, `downloads/darklock-notes_${version}.ipa`),
@@ -2364,24 +2494,34 @@ class DarklockPlatform {
         existingApp.get('/platform/api/download/secure-channel-installer', (req, res) => {
             const format = (req.query.format || 'deb').toLowerCase();
             const fs = require('fs');
-            const version = '0.1.0';
+            const version = '1.1.0';
 
             console.log(`[SecureChannel] (existingApp) Download request for format: ${format} from IP: ${req.ip}`);
 
+            const electronRelease = path.join(__dirname, '../secure-channel/apps/dl-secure-channel/release');
+
             const fileLocations = {
                 deb: [
-                    path.join(__dirname, `downloads/darklock-secure-channel_${version}_amd64.deb`),
-                    path.join(__dirname, 'downloads/darklock-secure-channel_0.1.0_amd64.deb')
+                    path.join(__dirname, `downloads/DarklockSecureChannel-${version}-linux-amd64.deb`),
+                    path.join(electronRelease, `DarklockSecureChannel-${version}-linux-amd64.deb`),
+                    path.join(__dirname, 'downloads/DarklockSecureChannel-1.0.0-linux-amd64.deb'),
+                    path.join(electronRelease, 'DarklockSecureChannel-1.0.0-linux-amd64.deb')
                 ],
                 appimage: [
-                    path.join(__dirname, `downloads/darklock-secure-channel_${version}_amd64.AppImage`),
-                    path.join(__dirname, 'downloads/darklock-secure-channel_0.1.0_amd64.AppImage')
+                    path.join(__dirname, `downloads/DarklockSecureChannel-${version}-linux-x86_64.AppImage`),
+                    path.join(electronRelease, `DarklockSecureChannel-${version}-linux-x86_64.AppImage`),
+                    path.join(__dirname, 'downloads/DarklockSecureChannel-1.0.0-linux-x86_64.AppImage'),
+                    path.join(electronRelease, 'DarklockSecureChannel-1.0.0-linux-x86_64.AppImage')
                 ],
-                exe: [ path.join(__dirname, 'downloads/darklock-secure-channel-setup.exe') ],
-                msi: [ path.join(__dirname, 'downloads/darklock-secure-channel-setup.msi') ]
+                exe: [
+                    path.join(__dirname, `downloads/DarklockSecureChannel-${version}-win-x64.exe`),
+                    path.join(electronRelease, `DarklockSecureChannel-${version}-win-x64.exe`),
+                    path.join(__dirname, 'downloads/DarklockSecureChannel-1.0.0-win-x64.exe'),
+                    path.join(electronRelease, 'DarklockSecureChannel-1.0.0-win-x64.exe')
+                ]
             };
 
-            const fmtKey = format === 'appimage' ? 'appimage' : format === 'exe' || format === 'windows' ? 'exe' : format === 'msi' ? 'msi' : 'deb';
+            const fmtKey = format === 'appimage' ? 'appimage' : format === 'exe' || format === 'windows' ? 'exe' : 'deb';
             for (const filePath of (fileLocations[fmtKey] || [])) {
                 if (fs.existsSync(filePath)) {
                     return res.download(filePath, path.basename(filePath));
@@ -2391,10 +2531,9 @@ class DarklockPlatform {
             return res.status(404).send(`
                 <html>
                     <head><title>Installer Not Available</title>
-                    <style>body{background:#0a0a0f;color:#f8fafc;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui}.card{background:#111827;border:1px solid rgba(0,212,255,.35);padding:32px;border-radius:12px;max-width:560px;text-align:center}p{color:#94a3b8}code{background:rgba(255,255,255,.06);padding:2px 6px;border-radius:4px}a.btn{display:inline-block;margin-top:16px;padding:12px 20px;border-radius:8px;background:linear-gradient(135deg,#00d4ff,#7c4dff);color:#fff;text-decoration:none}</style></head>
+                    <style>body{background:#0a0a0f;color:#f8fafc;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui}.card{background:#111827;border:1px solid rgba(0,212,255,.35);padding:32px;border-radius:12px;max-width:560px;text-align:center}p{color:#94a3b8}a.btn{display:inline-block;margin-top:16px;padding:12px 20px;border-radius:8px;background:linear-gradient(135deg,#00d4ff,#7c4dff);color:#fff;text-decoration:none}</style></head>
                     <body><div class="card"><h1>Installer Not Available</h1>
-                    <p>The <strong>${format}</strong> installer is not yet built.</p>
-                    <p>Build: <code>cd secure-channel/apps/dl-secure-channel && npx tauri build --bundles deb,appimage</code></p>
+                    <p>The <strong>${format}</strong> installer for Darklock Secure Channel is not available at this time.</p>
                     <a class="btn" href="/platform/download/secure-channel">Back to downloads</a></div></body>
                 </html>
             `);
@@ -2443,6 +2582,11 @@ class DarklockPlatform {
         // Security page
         existingApp.get('/platform/security', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/security.html'));
+        });
+        
+        // Downloads page
+        existingApp.get('/platform/downloads', (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/downloads.html'));
         });
         
         // Health check endpoint for monitoring (public)
@@ -2730,7 +2874,8 @@ class DarklockPlatform {
                 const jwt = require('jsonwebtoken');
                 const { requireEnv } = require('./utils/env-validator');
                 jwt.verify(token, requireEnv('JWT_SECRET'));
-                return res.sendFile(path.join(__dirname, 'views/dashboard.html'));
+                const { resolveView } = require('./utils/theme-resolver');
+                return res.sendFile(resolveView('dashboard.html'));
             } catch (err) {
                 res.clearCookie('darklock_token');
                 return res.redirect('/platform/auth/login');

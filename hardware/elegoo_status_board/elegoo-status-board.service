@@ -1,0 +1,19 @@
+[Unit]
+Description=Elegoo Status Board Bridge
+Documentation=https://github.com/darklock
+After=network.target discord-bot.service
+Wants=discord-bot.service
+
+[Service]
+Type=simple
+User=darklock
+WorkingDirectory=/home/darklock/discord-bot/hardware/elegoo_status_board
+ExecStart=/usr/bin/python3 -u /home/darklock/discord-bot/hardware/elegoo_status_board/elegoo_status_bridge.py
+Environment=ELEGOO_PORT=/dev/elegoo
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

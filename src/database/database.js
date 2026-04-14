@@ -1432,6 +1432,26 @@ class Database {
                 UNIQUE(guild_id, user_id)
             )`,
 
+            `CREATE TABLE IF NOT EXISTS antinuke_incidents (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                incident_id TEXT UNIQUE,
+                guild_id TEXT NOT NULL,
+                attacker_id TEXT,
+                violation_type TEXT,
+                violation_count INTEGER DEFAULT 0,
+                restore_source TEXT,
+                backup_id TEXT,
+                backup_age_hours REAL,
+                items_restored TEXT,
+                items_skipped TEXT,
+                actions_performed TEXT,
+                warnings TEXT,
+                detected_at DATETIME,
+                completed_at DATETIME,
+                response_time_ms INTEGER,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`,
+
             `CREATE TABLE IF NOT EXISTS quarantined_messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 guild_id TEXT NOT NULL,
@@ -1576,28 +1596,6 @@ class Database {
                 UNIQUE(guild_id, user_id)
             )`,
 
-            `CREATE TABLE IF NOT EXISTS shop_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                guild_id TEXT NOT NULL,
-                name TEXT NOT NULL,
-                description TEXT,
-                price INTEGER NOT NULL,
-                role_id TEXT,
-                emoji TEXT,
-                stock INTEGER DEFAULT -1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )`,
-
-            `CREATE TABLE IF NOT EXISTS user_inventory (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                guild_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                item_id INTEGER NOT NULL,
-                quantity INTEGER DEFAULT 1,
-                purchased_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(item_id) REFERENCES shop_items(id)
-            )`
-            ,
             // AI Assistant Conversation History
             `CREATE TABLE IF NOT EXISTS ai_conversations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2917,8 +2915,10 @@ class Database {
     }
 
     // ============================================
-    // COIN SYSTEM METHODS (Atomic Operations)
+    // ECONOMY SYSTEM METHODS (Atomic Operations)
     // ============================================
+
+    // --- Core Balance Operations ---
 
     async getCoins(guildId, userId) {
         const result = await this.get(
@@ -2929,20 +2929,32 @@ class Database {
     }
 
     async addCoins(guildId, userId, amount, reason = 'Admin grant') {
+        // SECURITY FIX: Validate amount is a positive integer
+        amount = Math.floor(Number(amount));
+        if (!Number.isFinite(amount) || amount <= 0) {
+            return { success: false, error: 'Amount must be a positive number' };
+        }
+
         try {
-            // Use INSERT OR IGNORE followed by UPDATE for atomic operation
             await this.run(
                 'INSERT OR IGNORE INTO coins (guild_id, user_id, balance) VALUES (?, ?, 0)',
                 [guildId, userId]
             );
+            await this.run(
+                'INSERT OR IGNORE INTO user_economy (guild_id, user_id, balance, bank, total_earned, total_spent) VALUES (?, ?, 0, 0, 0, 0)',
+                [guildId, userId]
+            );
 
-            // Atomic increment
-            const result = await this.run(
+            // Atomic increment on both tables
+            await this.run(
                 'UPDATE coins SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ? AND user_id = ?',
                 [amount, guildId, userId]
             );
+            await this.run(
+                'UPDATE user_economy SET balance = balance + ?, total_earned = total_earned + ? WHERE guild_id = ? AND user_id = ?',
+                [amount, amount, guildId, userId]
+            );
 
-            // Log transaction
             await this.run(
                 'INSERT INTO coin_transactions (guild_id, from_user_id, to_user_id, amount, transaction_type, reason) VALUES (?, ?, ?, ?, ?, ?)',
                 [guildId, 'SYSTEM', userId, amount, 'ADMIN_GRANT', reason]
@@ -2957,8 +2969,16 @@ class Database {
     }
 
     async transferCoins(guildId, fromUserId, toUserId, amount) {
-        // SECURITY FIX: Wrap entire transfer in a transaction to prevent race conditions.
-        // Balance check + debit + credit + log are now atomic.
+        // SECURITY FIX: Validate amount is a positive integer
+        amount = Math.floor(Number(amount));
+        if (!Number.isFinite(amount) || amount <= 0) {
+            return { success: false, error: 'Amount must be a positive number' };
+        }
+        // Prevent self-transfer
+        if (fromUserId === toUserId) {
+            return { success: false, error: 'Cannot transfer coins to yourself' };
+        }
+
         return new Promise((resolve) => {
             this.db.serialize(() => {
                 this.db.run('BEGIN IMMEDIATE TRANSACTION', (beginErr) => {
@@ -2967,35 +2987,62 @@ class Database {
                         return resolve({ success: false, error: 'Transfer failed - try again' });
                     }
 
-                    // Check balance inside transaction (no TOCTOU race)
                     this.db.get(
                         'SELECT balance FROM coins WHERE guild_id = ? AND user_id = ?',
                         [guildId, fromUserId],
                         (err, row) => {
+                            if (err) {
+                                this.db.run('ROLLBACK');
+                                return resolve({ success: false, error: 'Transfer failed - try again' });
+                            }
                             const balance = row ? row.balance : 0;
                             if (balance < amount) {
                                 this.db.run('ROLLBACK');
                                 return resolve({ success: false, error: 'Insufficient coins' });
                             }
 
-                            // Init recipient
+                            let failed = false;
+                            const checkErr = (stepName) => (err) => {
+                                if (err && !failed) {
+                                    failed = true;
+                                    console.error(`Transfer step ${stepName} failed:`, err);
+                                    this.db.run('ROLLBACK');
+                                    resolve({ success: false, error: 'Transfer failed - try again' });
+                                }
+                            };
+
+                            // Init recipient in both tables
                             this.db.run('INSERT OR IGNORE INTO coins (guild_id, user_id, balance) VALUES (?, ?, 0)',
-                                [guildId, toUserId]);
+                                [guildId, toUserId], checkErr('init_coins'));
+                            this.db.run('INSERT OR IGNORE INTO user_economy (guild_id, user_id, balance, bank, total_earned, total_spent) VALUES (?, ?, 0, 0, 0, 0)',
+                                [guildId, toUserId], checkErr('init_economy_recipient'));
+                            this.db.run('INSERT OR IGNORE INTO user_economy (guild_id, user_id, balance, bank, total_earned, total_spent) VALUES (?, ?, 0, 0, 0, 0)',
+                                [guildId, fromUserId], checkErr('init_economy_sender'));
+
                             // Debit sender
                             this.db.run('UPDATE coins SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ? AND user_id = ?',
-                                [amount, guildId, fromUserId]);
+                                [amount, guildId, fromUserId], checkErr('debit_coins'));
+                            this.db.run('UPDATE user_economy SET balance = balance - ?, total_spent = total_spent + ? WHERE guild_id = ? AND user_id = ?',
+                                [amount, amount, guildId, fromUserId], checkErr('debit_economy'));
+
                             // Credit recipient
                             this.db.run('UPDATE coins SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ? AND user_id = ?',
-                                [amount, guildId, toUserId]);
-                            // Log
+                                [amount, guildId, toUserId], checkErr('credit_coins'));
+                            this.db.run('UPDATE user_economy SET balance = balance + ?, total_earned = total_earned + ? WHERE guild_id = ? AND user_id = ?',
+                                [amount, amount, guildId, toUserId], checkErr('credit_economy'));
+
+                            // Log transaction
                             this.db.run('INSERT INTO coin_transactions (guild_id, from_user_id, to_user_id, amount, transaction_type) VALUES (?, ?, ?, ?, ?)',
-                                [guildId, fromUserId, toUserId, amount, 'TRANSFER']);
+                                [guildId, fromUserId, toUserId, amount, 'TRANSFER'], checkErr('log'));
 
                             this.db.run('COMMIT', async (commitErr) => {
-                                if (commitErr) {
-                                    this.db.run('ROLLBACK');
-                                    console.error('Error committing coin transfer:', commitErr);
-                                    return resolve({ success: false, error: 'Transfer failed - try again' });
+                                if (commitErr || failed) {
+                                    if (!failed) {
+                                        this.db.run('ROLLBACK');
+                                        console.error('Error committing coin transfer:', commitErr);
+                                        resolve({ success: false, error: 'Transfer failed - try again' });
+                                    }
+                                    return;
                                 }
                                 const newSender = await this.getCoins(guildId, fromUserId);
                                 const newRecipient = await this.getCoins(guildId, toUserId);
@@ -3009,18 +3056,20 @@ class Database {
     }
 
     async getCoinLeaderboard(guildId, limit = 10) {
+        const safeLimit = Math.min(Math.max(1, Math.floor(Number(limit)) || 10), 100);
         return this.all(
-            'SELECT user_id, balance FROM coins WHERE guild_id = ? ORDER BY balance DESC LIMIT ?',
-            [guildId, limit]
+            'SELECT user_id, balance FROM coins WHERE guild_id = ? AND balance > 0 ORDER BY balance DESC LIMIT ?',
+            [guildId, safeLimit]
         );
     }
 
     async getCoinTransactions(guildId, userId, limit = 20) {
+        const safeLimit = Math.min(Math.max(1, Math.floor(Number(limit)) || 20), 100);
         return this.all(
             `SELECT * FROM coin_transactions 
              WHERE guild_id = ? AND (from_user_id = ? OR to_user_id = ?)
              ORDER BY timestamp DESC LIMIT ?`,
-            [guildId, userId, userId, limit]
+            [guildId, userId, userId, safeLimit]
         );
     }
 

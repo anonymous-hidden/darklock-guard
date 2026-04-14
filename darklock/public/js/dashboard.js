@@ -325,9 +325,13 @@ function updateUserDisplay() {
         welcomeSubtitle.textContent = `${greeting}, ${currentUser.username}! Here's your security overview.`;
     }
     
-    // Update 2FA status in dashboard
+    // Update 2FA status in dashboard (hide entirely for OAuth users)
+    const stat2FACard = document.getElementById('stat2FA')?.closest('.stat-card') || document.getElementById('stat2FA')?.closest('.overview-stat');
     const stat2FA = document.getElementById('stat2FA');
-    if (stat2FA) {
+    if (currentUser.oauthProvider) {
+        if (stat2FACard) stat2FACard.style.display = 'none';
+        else if (stat2FA) stat2FA.closest('[class*="stat"]') && (stat2FA.closest('[class*="stat"]').style.display = 'none');
+    } else if (stat2FA) {
         stat2FA.textContent = currentUser.twoFactorEnabled ? 'Enabled' : 'Disabled';
         stat2FA.className = currentUser.twoFactorEnabled ? 'stat-value stat-success' : 'stat-value stat-warning';
     }
@@ -339,6 +343,11 @@ function updateUserDisplay() {
 function updateSecurityChecklist() {
     const check2FA = document.getElementById('check2FA');
     if (check2FA) {
+        // Hide 2FA checklist item for OAuth users
+        if (currentUser && currentUser.oauthProvider) {
+            check2FA.style.display = 'none';
+            return;
+        }
         const icon = check2FA.querySelector('.security-icon');
         const desc = check2FA.querySelector('.security-desc');
         
@@ -402,6 +411,7 @@ function navigateTo(page) {
         dashboard: 'Dashboard',
         profile: 'Profile',
         apps: 'Applications',
+        downloads: 'App Downloads',
         security: 'Security',
         account: 'Account',
         settings: 'Settings'
@@ -992,7 +1002,15 @@ window.revokeAllSessions = revokeAllSessions;
 // 2FA
 // ============================================================================
 async function load2FAStatus() {
+    const section = document.getElementById('twoFactorSection');
     const container = document.getElementById('twoFactorContent');
+
+    // Google/Discord OAuth users don't use 2FA — hide the section entirely
+    if (currentUser && currentUser.oauthProvider) {
+        if (section) section.style.display = 'none';
+        return;
+    }
+
     container.innerHTML = '<div class="loading-state"><div class="spinner"></div><span>Loading 2FA status...</span></div>';
     
     try {
@@ -1037,7 +1055,13 @@ async function load2FAStatus() {
 async function setup2FA() {
     const container = document.getElementById('twoFactorContent');
     
-    // First, ask for password verification
+    // OAuth users (Google/Discord) skip password — go straight to setup
+    if (currentUser && currentUser.oauthProvider) {
+        startSetup2FA(null);
+        return;
+    }
+    
+    // Password users: verify identity first
     container.innerHTML = `
         <div class="two-factor-setup">
             <h4>Verify Your Identity</h4>
@@ -1055,9 +1079,10 @@ async function setup2FA() {
 }
 
 async function startSetup2FA(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     
-    const password = document.getElementById('setup2FAPassword').value;
+    const passwordEl = document.getElementById('setup2FAPassword');
+    const password = passwordEl ? passwordEl.value : undefined;
     const container = document.getElementById('twoFactorContent');
     container.innerHTML = '<div class="loading-state"><div class="spinner"></div><span>Setting up 2FA...</span></div>';
     

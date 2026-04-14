@@ -1,18 +1,26 @@
 const EventEmitter = require('events');
+const { calculateLevel, xpForLevel } = require('../utils/levelFormula');
 
+/**
+ * Database-backed Rank System (secondary)
+ * 
+ * NOTE: The primary rank system used by the bot is src/utils/RankSystem.js (JSON-based).
+ * This module provides a database-backed alternative with voice XP tracking.
+ * Both now use the canonical level formula from src/utils/levelFormula.js:
+ *   level = floor(0.1 * sqrt(xp))
+ */
 class RankSystem extends EventEmitter {
     constructor(database) {
         super();
         this.database = database;
-        this.xpCooldowns = new Map(); // userId_guildId -> timestamp
-        this.voiceTracking = new Map(); // userId_guildId -> join timestamp
+        this.xpCooldowns = new Map();
+        this.voiceTracking = new Map();
         
         // XP Configuration
         this.config = {
             messageXP: { min: 15, max: 25 },
             voiceXPPerMinute: 10,
-            cooldownSeconds: 60,
-            levelFormula: (level) => Math.pow(level, 2) * 100
+            cooldownSeconds: 60
         };
     }
 
@@ -147,25 +155,21 @@ class RankSystem extends EventEmitter {
     }
 
     /**
-     * Calculate level from XP
+     * Calculate level from XP (canonical formula)
      * @param {number} xp - Total XP
      * @returns {number} Level
      */
     calculateLevel(xp) {
-        let level = 0;
-        while (this.config.levelFormula(level + 1) <= xp) {
-            level++;
-        }
-        return level;
+        return calculateLevel(xp);
     }
 
     /**
-     * Get XP required for a specific level
+     * Get XP required for a specific level (canonical formula)
      * @param {number} level - Target level
      * @returns {number} XP required
      */
     getXPForLevel(level) {
-        return this.config.levelFormula(level);
+        return xpForLevel(level);
     }
 
     /**

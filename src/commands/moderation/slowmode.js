@@ -35,7 +35,7 @@ module.exports = {
 
             // Broadcast to dashboard console
             if (typeof bot?.broadcastConsole === 'function') {
-                bot.broadcastConsole(interaction.guild.id, `[SLOWMODE] #${channel.name} set to ${duration} by ${interaction.user.tag}`);
+                bot.broadcastConsole(interaction.guild.id, `[SLOWMODE] #${channel.name} set to ${duration} by ${interaction.user.username}`);
             }
 
             // Log to bot_logs for dashboard Logs & Audit Trail page
@@ -45,7 +45,7 @@ module.exports = {
                     guildId: interaction.guild.id,
                     channelId: channel.id,
                     moderatorId: interaction.user.id,
-                    moderatorTag: interaction.user.tag,
+                    moderatorTag: interaction.user.username,
                     details: { seconds: seconds, duration: duration, channelName: channel.name }
                 });
             }

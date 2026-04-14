@@ -47,11 +47,11 @@ class DashboardLogger {
                     type,
                     reason,
                     target.id,
-                    target.username || target.tag?.split('#')[0] || 'Unknown',
-                    target.tag || `${target.username}#0000`,
+                    target.username || target.username?.split('#')[0] || 'Unknown',
+                    target.username || `${target.username}#0000`,
                     moderator.id,
-                    moderator.username || moderator.tag?.split('#')[0] || 'Unknown',
-                    moderator.tag || `${moderator.username}#0000`,
+                    moderator.username || moderator.username?.split('#')[0] || 'Unknown',
+                    moderator.username || `${moderator.username}#0000`,
                     new Date().toISOString(),
                     extra.duration || null,
                     ['ban', 'kick', 'timeout', 'warn'].includes(type) ? 1 : 0,
@@ -59,7 +59,7 @@ class DashboardLogger {
                     JSON.stringify(extra)
                 ]);
 
-                this.bot.logger?.info(`[DASHBOARD] Logged ${type} action ${actionId} by ${moderator.tag} on ${target.tag}`);
+                this.bot.logger?.info(`[DASHBOARD] Logged ${type} action ${actionId} by ${moderator.username} on ${target.username}`);
             }
 
             // Send to dashboard in real-time
@@ -72,13 +72,13 @@ class DashboardLogger {
                         category: this.getCategoryFromType(type),
                         target: {
                             id: target.id,
-                            tag: target.tag || `${target.username}#0000`,
+                            tag: target.username || `${target.username}#0000`,
                             username: target.username || 'Unknown',
                             avatar: target.displayAvatarURL?.() || target.avatarURL?.() || null
                         },
                         moderator: {
                             id: moderator.id,
-                            tag: moderator.tag || `${moderator.username}#0000`,
+                            tag: moderator.username || `${moderator.username}#0000`,
                             username: moderator.username || 'Unknown',
                             avatar: moderator.displayAvatarURL?.() || moderator.avatarURL?.() || null
                         },
@@ -127,7 +127,7 @@ class DashboardLogger {
                     `, [
                         commandName,
                         user.id,
-                        user.tag || `${user.username}#0000`,
+                        user.username || `${user.username}#0000`,
                         guildId,
                         JSON.stringify(options),
                         success ? 1 : 0,
@@ -148,7 +148,7 @@ class DashboardLogger {
                         name: commandName,
                         user: {
                             id: user.id,
-                            tag: user.tag || `${user.username}#0000`,
+                            tag: user.username || `${user.username}#0000`,
                             username: user.username || 'Unknown'
                         },
                         timestamp: Date.now(),

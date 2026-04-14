@@ -134,7 +134,7 @@ class XPTracker {
                 const role = member.guild.roles.cache.get(roleId);
                 if (role && !member.roles.cache.has(roleId)) {
                     await member.roles.add(role);
-                    console.log(`✅ Assigned level ${level} role to ${member.user.tag}`);
+                    console.log(`✅ Assigned level ${level} role to ${member.user.username}`);
                 }
             } catch (error) {
                 console.error('Error assigning level role:', error);

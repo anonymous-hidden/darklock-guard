@@ -432,7 +432,7 @@ class QuarantineSystem {
                 .setTitle('🔒 User Quarantined')
                 .setColor(0xFF6600)
                 .addFields(
-                    { name: 'User', value: `${member.user.tag}\n${member.id}`, inline: true },
+                    { name: 'User', value: `${member.user.username}\n${member.id}`, inline: true },
                     { name: 'Moderator', value: options.moderatorId ? `<@${options.moderatorId}>` : 'Auto', inline: true },
                     { name: 'Reason', value: options.reason || options.autoReason || 'No reason', inline: false }
                 );
@@ -441,7 +441,7 @@ class QuarantineSystem {
                 .setTitle('🔓 User Released')
                 .setColor(0x00FF00)
                 .addFields(
-                    { name: 'User', value: `${member.user.tag}\n${member.id}`, inline: true },
+                    { name: 'User', value: `${member.user.username}\n${member.id}`, inline: true },
                     { name: 'Released By', value: options.moderatorId ? `<@${options.moderatorId}>` : 'Unknown', inline: true }
                 );
 
@@ -465,7 +465,7 @@ class QuarantineSystem {
             .setColor(0xFFCC00)
             .setThumbnail(member.user.displayAvatarURL())
             .addFields(
-                { name: 'User', value: `${member.user.tag}\n<@${member.id}>`, inline: true },
+                { name: 'User', value: `${member.user.username}\n<@${member.id}>`, inline: true },
                 { name: 'Account Age', value: `${accountAge} days`, inline: true },
                 { name: 'Joined Server', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: true },
                 { name: 'Reason', value: options.reason || options.autoReason || 'No reason provided', inline: false }

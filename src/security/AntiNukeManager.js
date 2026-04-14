@@ -23,7 +23,10 @@ class AntiNukeManager {
 
     this.permissionMonitor = new PermissionMonitor(this.client, { whitelist: this.whitelist, onDangerDetected: (...args)=>this._onDangerDetected(...args) });
 
-    this._bindEvents();
+    // v3.0: _bindEvents() DISABLED — all anti-nuke events are now handled by
+    // antiNukeHandlers.js (registered inline in bot.js) to prevent double-processing
+    // and to ensure the antinuke_enabled toggle is always respected.
+    // this._bindEvents();
     this.snapshotManager.startAutoSnapshot(this.client);
   }
 

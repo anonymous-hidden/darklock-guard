@@ -58,7 +58,7 @@ module.exports = {
                     .setDescription(`You were kicked from **${interaction.guild.name}**`)
                     .addFields(
                         { name: 'Reason', value: reason, inline: false },
-                        { name: 'Moderator', value: interaction.user.tag, inline: true }
+                        { name: 'Moderator', value: interaction.user.username, inline: true }
                     )
                     .setColor('#ff6b6b')
                     .setTimestamp();
@@ -67,16 +67,16 @@ module.exports = {
                 dmSent = true;
             } catch (dmError) {
                 // DM failed (user has DMs disabled or bot blocked) - continue with kick
-                bot.logger?.warn(`Could not DM user ${target.tag} before kick:`, dmError.message);
+                bot.logger?.warn(`Could not DM user ${target.username} before kick:`, dmError.message);
             }
 
             // Kick the member
             await member.kick(reason);
-            bot.logger?.info(`✅ Successfully kicked ${target.tag} from ${interaction.guild.name}`);
+            bot.logger?.info(`✅ Successfully kicked ${target.username} from ${interaction.guild.name}`);
 
             // Broadcast to dashboard console
             if (typeof bot.broadcastConsole === 'function') {
-                bot.broadcastConsole(interaction.guild.id, `[KICK] ${target.tag} (${target.id}) by ${interaction.user.tag}`);
+                bot.broadcastConsole(interaction.guild.id, `[KICK] ${target.username} (${target.id}) by ${interaction.user.username}`);
             }
             // Log to bot_logs for dashboard Logs & Audit Trail page
             if (bot?.logger) {
@@ -84,9 +84,9 @@ module.exports = {
                     eventType: 'kick',
                     guildId: interaction.guild.id,
                     moderatorId: interaction.user.id,
-                    moderatorTag: interaction.user.tag,
+                    moderatorTag: interaction.user.username,
                     targetId: target.id,
-                    targetTag: target.tag,
+                    targetTag: target.username,
                     reason: reason
                 });
             }            // Log to forensics audit trail
@@ -95,8 +95,8 @@ module.exports = {
                     guildId: interaction.guild.id,
                     eventType: 'kick',
                     eventCategory: 'moderation',
-                    executor: { id: interaction.user.id, tag: interaction.user.tag },
-                    target: { id: target.id, name: target.tag, type: 'user' },
+                    executor: { id: interaction.user.id, tag: interaction.user.username },
+                    target: { id: target.id, name: target.username, type: 'user' },
                     reason: reason,
                     canReplay: true
                 });
@@ -123,9 +123,9 @@ module.exports = {
                         actionType: 'kick',
                         actionCategory: 'moderation',
                         targetUserId: target.id,
-                        targetUsername: target.tag,
+                        targetUsername: target.username,
                         moderatorId: interaction.user.id,
-                        moderatorUsername: interaction.user.tag,
+                        moderatorUsername: interaction.user.username,
                         reason: reason,
                         canUndo: false // Kicks cannot be undone
                     });
@@ -144,8 +144,8 @@ module.exports = {
                                 id: actionId,
                                 type: 'kick',
                                 category: 'moderation',
-                                target: { id: target.id, tag: target.tag, avatar: target.displayAvatarURL() },
-                                moderator: { id: interaction.user.id, tag: interaction.user.tag },
+                                target: { id: target.id, tag: target.username, avatar: target.displayAvatarURL() },
+                                moderator: { id: interaction.user.id, tag: interaction.user.username },
                                 reason: reason,
                                 canUndo: false,
                                 timestamp: Date.now()
@@ -162,8 +162,8 @@ module.exports = {
                         await bot.eventEmitter.emitModerationAction(
                             interaction.guild.id,
                             'kick',
-                            { id: target.id, tag: target.tag },
-                            { id: interaction.user.id, tag: interaction.user.tag },
+                            { id: target.id, tag: target.username },
+                            { id: interaction.user.id, tag: interaction.user.username },
                             reason,
                             false
                         );
@@ -177,10 +177,10 @@ module.exports = {
             const t = (key, vars) => bot.languageSystem?.t(guildId, key, vars) || key;
             const successEmbed = new EmbedBuilder()
                 .setTitle(t('moderation.kick.title') || '✅ Member Kicked')
-                .setDescription(t('moderation.kick.success', { user: target.tag }) || `**${target.tag}** has been kicked from the server.`)
+                .setDescription(t('moderation.kick.success', { user: target.username }) || `**${target.username}** has been kicked from the server.`)
                 .addFields(
                     { name: t('common.reason') || 'Reason', value: reason, inline: false },
-                    { name: t('common.moderator') || 'Moderator', value: interaction.user.tag, inline: true },
+                    { name: t('common.moderator') || 'Moderator', value: interaction.user.username, inline: true },
                     { name: t('moderation.kick.dmNotification') || 'DM Notification', value: dmSent ? '✅ Sent' : '❌ Failed (DMs disabled)', inline: true }
                 )
                 .setColor('#2ed573')
@@ -198,8 +198,8 @@ module.exports = {
                     const logEmbed = new EmbedBuilder()
                         .setTitle('🦵 Member Kicked')
                         .addFields(
-                            { name: 'User', value: `${target.tag} (${target.id})`, inline: true },
-                            { name: 'Moderator', value: interaction.user.tag, inline: true },
+                            { name: 'User', value: `${target.username} (${target.id})`, inline: true },
+                            { name: 'Moderator', value: interaction.user.username, inline: true },
                             { name: 'Reason', value: reason, inline: false }
                         )
                         .setColor('#ff6b6b')

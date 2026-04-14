@@ -117,7 +117,7 @@ module.exports = {
             }
 
         } catch (error) {
-            bot.logger.error(`Error processing message from ${message.author.tag}:`, error);
+            bot.logger.error(`Error processing message from ${message.author.username}:`, error);
         }
     }
 };
@@ -241,7 +241,7 @@ async function handleXPGain(message, bot) {
 
             await message.channel.send({ embeds: [embed] });
 
-            bot.logger.info(`User ${message.author.tag} leveled up to ${newLevel} in ${message.guild.name}`);
+            bot.logger.info(`User ${message.author.username} leveled up to ${newLevel} in ${message.guild.name}`);
         }
     } catch (error) {
         bot.logger.error('Error handling XP gain:', error);

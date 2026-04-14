@@ -1,42 +1,51 @@
-"""
-pico_led_bridge.py  —  Pi5 bridge for the DarkLock LED Pico module
-===================================================================
-Reads ~/discord-bot/data/bot_status.json every STATUS_INTERVAL seconds
-and sends the appropriate LED command to the Pico over USB serial.
+not """
+pico_led_bridge.py  --  Pi5 bridge for the DarkLock LED Pico (v2)
+==================================================================
+Monitors three services and drives three independent LED sets on
+the Pico over USB serial.
+
+  SET1 = Bot status       (data/bot_status.json)
+  SET2 = Guard status     (http://localhost:3002/health)
+  SET3 = Notes status     (http://localhost:3003/health)
 
 Environment variables:
-  PICO_LED_PORT   — serial device (default: /dev/pico-led)
-  STATUS_FILE     — path to bot_status.json (default auto-detected)
-  STATUS_INTERVAL — poll interval in seconds (default: 5)
-  LED_BAUDRATE    — serial baud rate (default: 115200)
-
-Systemd service file: pico-led-bridge.service
+  PICO_LED_PORT     -- serial device  (default: /dev/pico-led)
+  STATUS_INTERVAL   -- poll interval in seconds  (default: 5)
+  LED_BAUDRATE      -- serial baud rate  (default: 115200)
+  STATUS_FILE       -- override path to bot_status.json
 """
 
 import os
 import sys
 import json
 import time
-import serial
+import datetime
 import logging
+import urllib.request
+import urllib.error
+import serial
 from pathlib import Path
 
-# ─── Configuration ───────────────────────────────────────────────────────────
-PICO_PORT       = os.environ.get("PICO_LED_PORT",    "/dev/pico-led")
-STATUS_INTERVAL = int(os.environ.get("STATUS_INTERVAL", "5"))
-BAUDRATE        = int(os.environ.get("LED_BAUDRATE",    "115200"))
+# --- Configuration ------------------------------------------------------------
+PICO_PORT        = os.environ.get("PICO_LED_PORT",    "/dev/pico-led")
+STATUS_INTERVAL  = int(os.environ.get("STATUS_INTERVAL", "5"))
+BAUDRATE         = int(os.environ.get("LED_BAUDRATE",    "115200"))
+HEARTBEAT_SECS   = 60    # re-send each set's command every 60 s even if unchanged
+HTTP_TIMEOUT     = 4     # seconds per HTTP health check
+BOT_STALE_SECS   = 60   # bot_status.json older than this -> FAIL
 
-# Auto-detect bot_status.json next to this script or in data/
+GUARD_URL = "http://localhost:3002/health"
+NOTES_URL = "http://localhost:3003/health"
+
 _HERE = Path(__file__).parent
-_CANDIDATES = [
+_BOT_CANDIDATES = [
     Path(os.environ["STATUS_FILE"]) if "STATUS_FILE" in os.environ else None,
     _HERE / "data" / "bot_status.json",
     _HERE / "bot_status.json",
-    Path("/home/darklock/discord-bot/data/bot_status.json"),
 ]
-STATUS_FILE = next((p for p in _CANDIDATES if p and p.exists()), _CANDIDATES[2])
+BOT_STATUS_FILE = next((p for p in _BOT_CANDIDATES if p and p.exists()), _HERE / "data" / "bot_status.json")
 
-# ─── Logging ─────────────────────────────────────────────────────────────────
+# --- Logging ------------------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [pico-led-bridge] %(levelname)s %(message)s",
@@ -47,85 +56,100 @@ logging.basicConfig(
 )
 log = logging.getLogger("pico-led-bridge")
 
-# ─── Status → LED command mapping ────────────────────────────────────────────
-def derive_command(status: dict) -> str:
-    """
-    Map bot_status.json fields to a LED command string.
-
-    Fields read:
-      bot_online    (bool)  — is the bot connected to Discord?
-      guild_count   (int)   — number of guilds (0 = suspicious)
-      checking      (bool)  — optional, bridge is still initialising
-      error_level   (str)   — optional: "warn" | "error" | "fail"
-    """
-    if not status:
+# --- Status derivation --------------------------------------------------------
+def derive_bot_cmd() -> str:
+    try:
+        with open(BOT_STATUS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        log.warning("bot_status.json unreadable: %s", e)
         return "FAIL"
 
-    # status file uses "online" key; fall back to "bot_online" for compatibility
-    bot_online  = status.get("online", status.get("bot_online", False))
-    guild_count = status.get("guild_count", 0)
-    error_level = status.get("error_level", "").lower()
-    checking    = status.get("checking",    False)
+    # Stale check (supports both unix ts float and ISO-8601 string)
+    ts_raw = data.get("timestamp", 0)
+    try:
+        if isinstance(ts_raw, str):
+            ts = datetime.datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
+            age = (datetime.datetime.now(datetime.timezone.utc) - ts).total_seconds()
+        else:
+            age = time.time() - float(ts_raw)
+        if age > BOT_STALE_SECS:
+            return "FAIL"
+    except (ValueError, OverflowError, TypeError):
+        pass
 
-    # Explicit error overrides
-    if error_level == "fail":
+    if not data.get("online", data.get("bot_online", False)):
         return "FAIL"
-    if error_level == "error":
-        return "ERROR"
-    if error_level == "warn":
-        return "WARN"
 
-    if checking:
+    error_level = str(data.get("error_level", "")).lower()
+    if error_level in ("fail", "error", "2"):
+        return "FAIL"
+    if error_level in ("warn", "1"):
+        return "DEGRADED"
+
+    if data.get("checking", False):
         return "CHECKING"
 
-    if not bot_online:
-        return "FAIL"
-
-    if guild_count == 0:
-        return "WARN"
+    if data.get("guild_count", 1) == 0:
+        return "DEGRADED"
+    if data.get("ping", data.get("ping_ms", 0)) > 500:
+        return "DEGRADED"
 
     return "OK"
 
-# ─── Serial connection ────────────────────────────────────────────────────────
-def open_serial() -> serial.Serial | None:
+
+def check_http(url: str) -> str:
+    """HTTP GET url; returns OK if 2xx/3xx/4xx, FAIL on 5xx or connection error."""
+    try:
+        with urllib.request.urlopen(url, timeout=HTTP_TIMEOUT) as resp:
+            return "OK" if resp.status < 500 else "FAIL"
+    except urllib.error.HTTPError as e:
+        return "OK" if e.code < 500 else "FAIL"
+    except Exception as e:
+        log.debug("HTTP check %s failed: %s", url, e)
+        return "FAIL"
+
+# --- Serial helpers -----------------------------------------------------------
+def open_serial() -> "serial.Serial | None":
     try:
         s = serial.Serial(PICO_PORT, BAUDRATE, timeout=2)
-        log.info("Opened serial port %s", PICO_PORT)
-        # Wait for READY
+        log.info("Opened %s", PICO_PORT)
+        # Wait for READY (Pico sends it on boot)
         deadline = time.time() + 6
         while time.time() < deadline:
             line = s.readline().decode("utf-8", errors="replace").strip()
             if line == "READY":
-                log.info("Pico responded READY")
+                log.info("Pico READY")
                 return s
             if line:
                 log.debug("Pico boot: %s", line)
-        log.warning("Pico did not send READY within 6 s — continuing anyway")
+        log.warning("Pico did not send READY within 6 s -- continuing")
         return s
     except serial.SerialException as e:
         log.error("Cannot open %s: %s", PICO_PORT, e)
         return None
 
-def send_cmd(ser: serial.Serial, cmd: str) -> bool:
-    """Send LED command; return True on ACK."""
+
+def send_cmd(ser: "serial.Serial", set_num: int, cmd: str) -> bool:
+    """Send SET{n}:{cmd} and return True on ACK."""
     try:
-        line = f"LED:{cmd}\n"
-        ser.write(line.encode())
+        ser.write(f"SET{set_num}:{cmd}\n".encode())
         ser.flush()
         deadline = time.time() + 2
         while time.time() < deadline:
             resp = ser.readline().decode("utf-8", errors="replace").strip()
-            if resp == f"ACK:{cmd}":
+            if resp == f"ACK:SET{set_num}:{cmd}":
                 return True
             if resp:
                 log.debug("Pico: %s", resp)
-        log.warning("No ACK for LED:%s", cmd)
+        log.warning("No ACK for SET%d:%s", set_num, cmd)
         return False
     except serial.SerialException as e:
         log.error("Serial write error: %s", e)
         return False
 
-def ping(ser: serial.Serial) -> bool:
+
+def ping(ser: "serial.Serial") -> bool:
     try:
         ser.write(b"PING\n")
         ser.flush()
@@ -138,53 +162,35 @@ def ping(ser: serial.Serial) -> bool:
     except serial.SerialException:
         return False
 
-# ─── Status file reader ───────────────────────────────────────────────────────
-def read_status() -> dict:
-    try:
-        with open(STATUS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        log.warning("Status file not found: %s", STATUS_FILE)
-        return {}
-    except json.JSONDecodeError as e:
-        log.warning("Bad JSON in status file: %s", e)
-        return {}
-
-# ─── Main loop ────────────────────────────────────────────────────────────────
+# --- Main loop ----------------------------------------------------------------
 def run():
-    log.info("Starting — port=%s interval=%ss status=%s", PICO_PORT, STATUS_INTERVAL, STATUS_FILE)
+    log.info("Starting -- port=%s interval=%ss", PICO_PORT, STATUS_INTERVAL)
 
     ser = None
-    last_cmd = None
-    fail_count = 0
-    last_sent_ms = 0   # timestamp of last LED command send (for periodic heartbeat)
-    HEARTBEAT_INTERVAL = 60  # re-send current command every 60 s even if unchanged
-    bad_read_streak = 0  # consecutive bad status reads before switching to FAIL
+    prev     = {1: None, 2: None, 3: None}
+    sent_at  = {1: 0.0,  2: 0.0,  3: 0.0}
 
-    # Initial connection: retry up to 10 times, then keep trying in loop
+    # Initial connection: retry up to 10 times
     for attempt in range(10):
         ser = open_serial()
         if ser:
             break
-        log.warning("Retry %d/10 in 3 s…", attempt + 1)
+        log.warning("Retry %d/10 in 3 s", attempt + 1)
         time.sleep(3)
 
     while True:
-        # ── Reconnect if needed ──────────────────────────────────────────────
+        # Reconnect if needed
         if ser is None or not ser.is_open:
-            log.info("Attempting serial reconnect…")
+            log.info("Reconnecting...")
             ser = open_serial()
             if ser is None:
-                fail_count += 1
-                log.warning("Reconnect failed (#%d), retry in 10 s", fail_count)
                 time.sleep(10)
                 continue
-            fail_count = 0
-            last_cmd = None  # force resend after reconnect
+            prev = {1: None, 2: None, 3: None}  # force re-send after reconnect
 
-        # ── Periodic health-check ────────────────────────────────────────────
+        # Ping watchdog
         if not ping(ser):
-            log.warning("Pico ping failed — closing port for reconnect")
+            log.warning("Ping failed -- reconnecting")
             try:
                 ser.close()
             except Exception:
@@ -193,51 +199,56 @@ def run():
             time.sleep(5)
             continue
 
-        # ── Read status and derive command ───────────────────────────────────
-        status = read_status()
-        if not status:
-            bad_read_streak += 1
-            if bad_read_streak < 3:
-                log.debug("Bad/empty status read (#%d), holding current mode", bad_read_streak)
-                time.sleep(STATUS_INTERVAL)
-                continue
-        else:
-            bad_read_streak = 0
-        cmd = derive_command(status)
+        # Derive current states for all three sets
+        current = {
+            1: derive_bot_cmd(),
+            2: check_http(GUARD_URL),
+            3: check_http(NOTES_URL),
+        }
 
-        now_ts = time.time()
-        need_send = (cmd != last_cmd) or (now_ts - last_sent_ms >= HEARTBEAT_INTERVAL)
-        if need_send:
-            if cmd != last_cmd:
-                log.info("Status change → LED:%s  (was %s)", cmd, last_cmd or "none")
+        now = time.time()
+        dead = False
+
+        for n in (1, 2, 3):
+            cmd = current[n]
+            if cmd == prev[n] and (now - sent_at[n]) < HEARTBEAT_SECS:
+                continue
+
+            if cmd != prev[n]:
+                log.info("SET%d: %s -> %s", n, prev[n] or "none", cmd)
             else:
-                log.debug("Heartbeat — LED:%s", cmd)
-            if send_cmd(ser, cmd):
-                last_cmd = cmd
-                last_sent_ms = now_ts
+                log.debug("SET%d heartbeat: %s", n, cmd)
+
+            if send_cmd(ser, n, cmd):
+                prev[n]    = cmd
+                sent_at[n] = now
             else:
-                # Assume port lost
                 try:
                     ser.close()
                 except Exception:
                     pass
-                ser = None
-        else:
-            log.debug("No change — LED:%s", cmd)
+                ser  = None
+                dead = True
+                break
+
+        if dead:
+            time.sleep(2)
+            continue
 
         time.sleep(STATUS_INTERVAL)
 
-# ─── Entry point ─────────────────────────────────────────────────────────────
+# --- Entry point --------------------------------------------------------------
 if __name__ == "__main__":
     try:
         run()
     except KeyboardInterrupt:
-        log.info("Interrupted — sending SHUTDOWN")
-        # best-effort final shutdown
+        log.info("Interrupted -- sending SHUTDOWN to all sets")
         try:
             s = serial.Serial(PICO_PORT, BAUDRATE, timeout=1)
-            s.write(b"LED:SHUTDOWN\n")
+            for n in (1, 2, 3):
+                s.write(f"SET{n}:SHUTDOWN\n".encode())
+                s.flush()
+                time.sleep(0.1)
             s.close()
         except Exception:
             pass
-        sys.exit(0)

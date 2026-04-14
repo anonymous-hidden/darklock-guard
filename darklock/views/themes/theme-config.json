@@ -1,0 +1,21 @@
+{
+  "activeTheme": null,
+  "available": [
+    {
+      "id": "theme-1-glass",
+      "name": "Glassmorphism Dark",
+      "description": "Frosted glass panels with animated orb backgrounds"
+    },
+    {
+      "id": "theme-2-minimal",
+      "name": "Minimal Light",
+      "description": "Clean white design with indigo accents"
+    },
+    {
+      "id": "theme-3-neon",
+      "name": "Cyberpunk Neon",
+      "description": "Dark grid background with neon green/pink/cyan accents"
+    }
+  ],
+  "_comment": "Set activeTheme to a theme id (e.g. 'theme-1-glass') to enable it. Set to null to use default views."
+}

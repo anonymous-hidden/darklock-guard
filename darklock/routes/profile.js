@@ -758,18 +758,21 @@ router.post('/api/2fa/regenerate-backup', requireAuth, async (req, res) => {
 
 /**
  * POST /profile/api/2fa/verify-backup - Use a backup code
+ * Requires authentication and rate limiting to prevent brute-force
  */
-router.post('/api/2fa/verify-backup', async (req, res) => {
+router.post('/api/2fa/verify-backup', requireAuth, rateLimitMiddleware('2fa'), async (req, res) => {
     try {
-        const { username, backupCode } = req.body;
+        const { backupCode } = req.body;
         
-        if (!username || !backupCode) {
+        if (!backupCode) {
             return res.status(400).json({
                 success: false,
-                error: 'Username and backup code are required'
+                error: 'Backup code is required'
             });
         }
         
+        // Use authenticated user identity, never trust client-supplied username
+        const username = req.user.username;
         const usersData = await loadUsers();
         const user = usersData.users.find(
             u => u.username.toLowerCase() === username.toLowerCase()
@@ -893,7 +896,7 @@ router.post('/api/avatar', requireAuth, avatarUpload.single('avatar'), async (re
         await fs.writeFile(filepath, processedImage);
         
         // Delete old avatar if exists
-        const oldAvatar = source === 'db' ? user.avatar : user.avatar;
+        const oldAvatar = user.avatar;
         if (oldAvatar && oldAvatar.startsWith('/platform/avatars/')) {
             const oldFilename = path.basename(oldAvatar);
             const oldFilepath = path.join(avatarsDir, oldFilename);
@@ -987,7 +990,7 @@ router.post('/api/banner', requireAuth, bannerUpload.single('banner'), async (re
         await fs.writeFile(filepath, processedImage);
         
         // Delete old banner if exists
-        const oldBanner = source === 'db' ? user.banner : user.banner;
+        const oldBanner = user.banner;
         if (oldBanner && oldBanner.startsWith('/platform/banners/')) {
             const oldFilename = path.basename(oldBanner);
             const oldFilepath = path.join(bannersDir, oldFilename);
@@ -1026,7 +1029,7 @@ router.delete('/api/banner', requireAuth, async (req, res) => {
         const { source, user, usersData } = await getUserRecord(req.user.userId);
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
         
-        const currentBanner = source === 'db' ? user.banner : user.banner;
+        const currentBanner = user.banner;
         if (currentBanner && currentBanner.startsWith('/platform/banners/')) {
             const bannersDir = path.join(DATA_DIR, 'banners');
             try { await fs.unlink(path.join(bannersDir, path.basename(currentBanner))); } catch (e) { /* ignore */ }
@@ -1050,7 +1053,7 @@ router.delete('/api/avatar', requireAuth, async (req, res) => {
         const { source, user, usersData } = await getUserRecord(req.user.userId);
         if (!user) return res.status(404).json({ success: false, error: 'User not found' });
         
-        const currentAvatar = source === 'db' ? user.avatar : user.avatar;
+        const currentAvatar = user.avatar;
         if (currentAvatar && currentAvatar.startsWith('/platform/avatars/')) {
             const avatarsDir = path.join(DATA_DIR, 'avatars');
             try { await fs.unlink(path.join(avatarsDir, path.basename(currentAvatar))); } catch (e) { /* ignore */ }

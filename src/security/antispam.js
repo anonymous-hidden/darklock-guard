@@ -42,7 +42,7 @@ class AntiSpam {
 
             // Skip if user has certain permissions
             if (message.member && this.hasModeratorPermissions(message.member)) {
-                this.bot.logger.debug(`Skipping spam check for moderator: ${message.author.tag}`);
+                this.bot.logger.debug(`Skipping spam check for moderator: ${message.author.username}`);
                 return false;
             }
             
@@ -50,7 +50,7 @@ class AntiSpam {
             const punishmentKey = `${guildId}_${userId}`;
             const lastPunishment = this.recentlyPunished.get(punishmentKey);
             if (lastPunishment && (now - lastPunishment) < 30000) {
-                this.bot.logger.debug(`Skipping spam check for ${message.author.tag} - in grace period after punishment`);
+                this.bot.logger.debug(`Skipping spam check for ${message.author.username} - in grace period after punishment`);
                 return false;
             }
             
@@ -93,7 +93,7 @@ class AntiSpam {
             
             this.bot.logger.debug(`Anti-spam thresholds for ${guildNameSafe}: flood=${maxMessages}/${timeWindow}ms, dup=${maxDuplicates}, mention=${maxMentions}, emoji=${maxEmojis}, links=${maxLinks}, caps=${capsRatio*100}%/${capsMinLength}chars, action=${spamAction}`);
             
-            this.bot.logger.debug(`Checking message from ${message.author.tag}: "${message.content.substring(0, 50)}"`);
+            this.bot.logger.debug(`Checking message from ${message.author.username}: "${message.content.substring(0, 50)}"`);
             
             let spamDetected = false;
             let spamTypes = [];
@@ -103,7 +103,7 @@ class AntiSpam {
             if (floodDetected) {
                 spamDetected = true;
                 spamTypes.push('MESSAGE_FLOOD');
-                this.bot.logger.debug(`Flood detected for ${message.author.tag}`);
+                this.bot.logger.debug(`Flood detected for ${message.author.username}`);
             }
             
             // Check cross-channel flood (global per-user) — prevents spreading 4 msgs across 5 channels
@@ -112,7 +112,7 @@ class AntiSpam {
                 if (globalFlood) {
                     spamDetected = true;
                     spamTypes.push('CROSS_CHANNEL_FLOOD');
-                    this.bot.logger.debug(`Cross-channel flood detected for ${message.author.tag}`);
+                    this.bot.logger.debug(`Cross-channel flood detected for ${message.author.username}`);
                 }
             }
             
@@ -355,7 +355,7 @@ class AntiSpam {
         const userId = message.author.id;
         const channelId = message.channelId;
         
-        this.bot.logger.info(`🚨 SPAM DETECTED! User: ${message.author.tag}, Types: ${spamTypes.join(', ')}, Guild: ${message.guild.name}, Action: ${configuredAction}`);
+        this.bot.logger.info(`🚨 SPAM DETECTED! User: ${message.author.username}, Types: ${spamTypes.join(', ')}, Guild: ${message.guild.name}, Action: ${configuredAction}`);
         
         // Broadcast analytics_update for real-time charts
         if (this.bot.analyticsManager) {
@@ -365,14 +365,14 @@ class AntiSpam {
         // Broadcast to console
         try {
             if (this.bot && typeof this.bot.broadcastConsole === 'function') {
-                this.bot.broadcastConsole(guildId, `[ANTI-SPAM] ${message.author.tag} - ${spamTypes.join(', ')} in #${message.channel.name}`);
+                this.bot.broadcastConsole(guildId, `[ANTI-SPAM] ${message.author.username} - ${spamTypes.join(', ')} in #${message.channel.name}`);
             }
         } catch (_) {}
         
         // Capture all message data BEFORE deleting anything
         const messageData = {
             content: message.content,
-            authorTag: message.author.tag,
+            authorTag: message.author.username,
             authorId: message.author.id,
             author: message.author,
             channel: message.channel,
@@ -431,7 +431,7 @@ class AntiSpam {
                 // Decay 1 warning per 10 minutes of good behavior (max decay 3)
                 const decayAmount = Math.min(3, Math.floor(timeSinceLastWarning / (10 * 60 * 1000)));
                 dbWarningCount = Math.max(0, dbWarningCount - decayAmount);
-                this.bot.logger.debug(`Warning decay applied for ${message.author.tag}: -${decayAmount} warnings`);
+                this.bot.logger.debug(`Warning decay applied for ${message.author.username}: -${decayAmount} warnings`);
             }
             
             // Now increment for current violation
@@ -492,10 +492,10 @@ class AntiSpam {
             if (warningCount >= punishmentThreshold && action !== 'BAN') {
                 if (message.member && message.member.kickable) {
                     action = 'KICK';
-                    this.bot.logger.info(`[ANTI-SPAM] Auto-escalating to KICK: ${message.author.tag} exceeded ${punishmentThreshold} warnings (${warningCount})`);
+                    this.bot.logger.info(`[ANTI-SPAM] Auto-escalating to KICK: ${message.author.username} exceeded ${punishmentThreshold} warnings (${warningCount})`);
                 } else if (message.member && message.member.bannable) {
                     action = 'BAN';
-                    this.bot.logger.info(`[ANTI-SPAM] Auto-escalating to BAN: ${message.author.tag} exceeded threshold but not kickable (${warningCount})`);
+                    this.bot.logger.info(`[ANTI-SPAM] Auto-escalating to BAN: ${message.author.username} exceeded threshold but not kickable (${warningCount})`);
                 }
             }
             
@@ -513,9 +513,9 @@ class AntiSpam {
                             actionType: 'ban',
                             actionCategory: 'moderation',
                             targetUserId: userId,
-                            targetUsername: message.author.tag,
+                            targetUsername: message.author.username,
                             moderatorId: this.bot.client.user.id,
-                            moderatorUsername: this.bot.client.user.tag,
+                            moderatorUsername: this.bot.client.user.username,
                             reason: `Auto-ban: spam detection - ${spamTypes.join(', ')}`,
                             canUndo: true,
                             details: { spamTypes, warningCount, auto: true, configuredAction }
@@ -529,9 +529,9 @@ class AntiSpam {
                             actionType: 'kick',
                             actionCategory: 'moderation',
                             targetUserId: userId,
-                            targetUsername: message.author.tag,
+                            targetUsername: message.author.username,
                             moderatorId: this.bot.client.user.id,
-                            moderatorUsername: this.bot.client.user.tag,
+                            moderatorUsername: this.bot.client.user.username,
                             reason: `Auto-kick: spam detection threshold (${warningCount}/${punishmentThreshold}) - ${spamTypes.join(', ')}`,
                             canUndo: false,
                             details: { spamTypes, warningCount, auto: true, configuredAction }
@@ -545,9 +545,9 @@ class AntiSpam {
                             actionType: 'timeout',
                             actionCategory: 'moderation',
                             targetUserId: userId,
-                            targetUsername: message.author.tag,
+                            targetUsername: message.author.username,
                             moderatorId: this.bot.client.user.id,
-                            moderatorUsername: this.bot.client.user.tag,
+                            moderatorUsername: this.bot.client.user.username,
                             reason: `Auto-timeout: spam detection (${spamTypes.join(', ')})`,
                             duration: `${Math.round(actionDuration/60000)}m`,
                             canUndo: true,
@@ -650,7 +650,7 @@ class AntiSpam {
             const now = Date.now();
             
             if (lastNotification && (now - lastNotification) < 10000) {
-                this.bot.logger.debug(`Skipping duplicate notification for ${message.author.tag} - cooldown active`);
+                this.bot.logger.debug(`Skipping duplicate notification for ${message.author.username} - cooldown active`);
                 return;
             }
             this.notificationCooldowns.set(cooldownKey, now);
@@ -667,7 +667,7 @@ class AntiSpam {
                 
                 const alertEmbed = {
                     title: '🚨 Spam Alert - Moderator Attention Required',
-                    description: `Repeated spam detected from **${message.author.tag}**`,
+                    description: `Repeated spam detected from **${message.author.username}**`,
                     fields: [
                         {
                             name: 'User',

@@ -81,7 +81,11 @@ class APIErrorHandler {
         if (!input) return '';
         
         let sanitized = String(input)
-            .replace(/[<>]/g, '') // Remove < and > to prevent HTML injection
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;')
             .trim();
         
         if (sanitized.length > maxLength) {

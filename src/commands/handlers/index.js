@@ -124,7 +124,7 @@ const onboardingHandlers = {
                     setting: 'welcome_enabled',
                     before: cfg.welcome_enabled,
                     after: welcome,
-                    changedBy: interaction.user.tag
+                    changedBy: interaction.user.username
                 });
                 bot.dashboard.broadcastToGuild(guildId, {
                     type: 'dashboard_setting_update',
@@ -132,7 +132,7 @@ const onboardingHandlers = {
                     setting: 'verification_enabled',
                     before: cfg.verification_enabled,
                     after: verify,
-                    changedBy: interaction.user.tag
+                    changedBy: interaction.user.username
                 });
                 if (verify) {
                     bot.dashboard.broadcastToGuild(guildId, { type: 'verification_instructions', guildId });
@@ -327,12 +327,12 @@ const serverControlHandlers = {
         if (scope === 'all') {
             for (const [, channel] of interaction.guild.channels.cache) {
                 if (channel.type !== ChannelType.GuildText) continue;
-                try { await channel.setRateLimitPerUser(seconds, `Set by ${interaction.user.tag}`); affected++; } catch {}
+                try { await channel.setRateLimitPerUser(seconds, `Set by ${interaction.user.username}`); affected++; } catch {}
             }
         } else {
             const ch = interaction.channel;
             if (ch?.type === ChannelType.GuildText) {
-                try { await ch.setRateLimitPerUser(seconds, `Set by ${interaction.user.tag}`); affected = 1; } catch {}
+                try { await ch.setRateLimitPerUser(seconds, `Set by ${interaction.user.username}`); affected = 1; } catch {}
             }
         }
 
@@ -348,10 +348,10 @@ const serverControlHandlers = {
         try {
             const position = ch.position;
             const parent = ch.parent;
-            const newCh = await ch.clone({ reason: `Nuked by ${interaction.user.tag}` });
+            const newCh = await ch.clone({ reason: `Nuked by ${interaction.user.username}` });
             await newCh.setPosition(position);
             if (parent) await newCh.setParent(parent.id);
-            await ch.delete(`Nuked by ${interaction.user.tag}`);
+            await ch.delete(`Nuked by ${interaction.user.username}`);
             await newCh.send({ content: '💣 This channel has been nuked.' });
             return; // Original interaction is deleted with channel
         } catch (e) {

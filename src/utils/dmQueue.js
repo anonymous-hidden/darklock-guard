@@ -12,7 +12,7 @@ class DMQueue {
 
     enqueueDM(member, content) {
         this.queue.push({ member, content, timestamp: Date.now() });
-        this.bot.logger?.debug && this.bot.logger.debug(`[DMQueue] Enqueued DM for ${member.user.tag}, queue size: ${this.queue.length}`);
+        this.bot.logger?.debug && this.bot.logger.debug(`[DMQueue] Enqueued DM for ${member.user.username}, queue size: ${this.queue.length}`);
         
         if (!this.processing) {
             this.startProcessing();
@@ -28,9 +28,9 @@ class DMQueue {
             
             try {
                 await member.send(content);
-                this.bot.logger?.debug && this.bot.logger.debug(`[DMQueue] Sent DM to ${member.user.tag}`);
+                this.bot.logger?.debug && this.bot.logger.debug(`[DMQueue] Sent DM to ${member.user.username}`);
             } catch (error) {
-                this.bot.logger?.warn && this.bot.logger.warn(`[DMQueue] Failed to DM ${member.user.tag}, attempting fallback:`, error.message);
+                this.bot.logger?.warn && this.bot.logger.warn(`[DMQueue] Failed to DM ${member.user.username}, attempting fallback:`, error.message);
                 
                 // Fallback to guild channel
                 try {

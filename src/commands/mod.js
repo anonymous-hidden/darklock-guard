@@ -134,8 +134,8 @@ module.exports = {
                     .setColor('#ff0000')
                     .setTitle('🔨 User Banned')
                     .addFields(
-                        { name: 'User', value: `${user.tag} (${user.id})`, inline: true },
-                        { name: 'Moderator', value: interaction.user.tag, inline: true },
+                        { name: 'User', value: `${user.username} (${user.id})`, inline: true },
+                        { name: 'Moderator', value: interaction.user.username, inline: true },
                         { name: 'Reason', value: reason }
                     )
                     .setTimestamp()]
@@ -168,8 +168,8 @@ module.exports = {
                     .setColor('#ff9900')
                     .setTitle('👢 User Kicked')
                     .addFields(
-                        { name: 'User', value: `${user.tag} (${user.id})`, inline: true },
-                        { name: 'Moderator', value: interaction.user.tag, inline: true },
+                        { name: 'User', value: `${user.username} (${user.id})`, inline: true },
+                        { name: 'Moderator', value: interaction.user.username, inline: true },
                         { name: 'Reason', value: reason }
                     )
                     .setTimestamp()]
@@ -203,7 +203,7 @@ module.exports = {
                     .setColor('#ffcc00')
                     .setTitle('⏱️ User Timed Out')
                     .addFields(
-                        { name: 'User', value: `${user.tag} (${user.id})`, inline: true },
+                        { name: 'User', value: `${user.username} (${user.id})`, inline: true },
                         { name: 'Duration', value: `${duration} minutes`, inline: true },
                         { name: 'Reason', value: reason }
                     )
@@ -236,7 +236,7 @@ module.exports = {
                     .setColor('#ffcc00')
                     .setTitle('⚠️ User Warned')
                     .addFields(
-                        { name: 'User', value: `${user.tag} (${user.id})`, inline: true },
+                        { name: 'User', value: `${user.username} (${user.id})`, inline: true },
                         { name: 'Total Warnings', value: `${warnings.count}`, inline: true },
                         { name: 'Reason', value: reason }
                     )
@@ -264,7 +264,7 @@ module.exports = {
                     .setColor('#ff0000')
                     .setTitle('⚡ Strike Issued')
                     .addFields(
-                        { name: 'User', value: `${user.tag} (${user.id})`, inline: true },
+                        { name: 'User', value: `${user.username} (${user.id})`, inline: true },
                         { name: 'Severity', value: `Level ${severity}`, inline: true },
                         { name: 'Reason', value: reason }
                     )

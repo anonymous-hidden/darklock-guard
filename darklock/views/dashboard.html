@@ -60,6 +60,14 @@
                         </svg>
                         <span data-i18n="nav.apps">Applications</span>
                     </button>
+                    <button type="button" class="nav-item" data-page="downloads">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        <span>App Downloads</span>
+                    </button>
                 </div>
 
                 <div class="nav-section">
@@ -623,6 +631,106 @@
                 </div>
 
                 <!-- ================================================================
+                     DOWNLOADS PAGE
+                     ================================================================ -->
+                <div class="page" id="page-downloads">
+                    <div class="page-header">
+                        <h1>App Downloads</h1>
+                        <p>Download Darklock desktop &amp; mobile applications</p>
+                    </div>
+
+                    <div class="downloads-grid">
+                        <!-- Darklock Guard -->
+                        <div class="download-card">
+                            <div class="download-card-icon guard">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="3" width="20" height="14" rx="2"/>
+                                    <line x1="8" y1="21" x2="16" y2="21"/>
+                                    <line x1="12" y1="17" x2="12" y2="21"/>
+                                    <path d="M12 7l3 2v2.5c0 1.5-1.5 3-3 3.5-1.5-.5-3-2-3-3.5V9l3-2z"/>
+                                </svg>
+                            </div>
+                            <div class="download-card-body">
+                                <h3>Darklock Guard</h3>
+                                <span class="download-badge active">Active</span>
+                                <p>Desktop security application for real-time file integrity monitoring, zero-trust device authentication, and system protection with hardware key support.</p>
+                                <div class="download-card-platforms">
+                                    <span class="platform-tag">Windows</span>
+                                    <span class="platform-tag">Linux</span>
+                                </div>
+                            </div>
+                            <a href="/platform/download/darklock-guard" class="download-card-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                                    <polyline points="7 10 12 15 17 10"/>
+                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                                Download
+                            </a>
+                        </div>
+
+                        <!-- Secure Channel -->
+                        <div class="download-card">
+                            <div class="download-card-icon channel">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                                    <rect x="9" y="8" width="6" height="5" rx="1"/>
+                                    <path d="M10 8V6.5a2 2 0 014 0V8"/>
+                                </svg>
+                            </div>
+                            <div class="download-card-body">
+                                <h3>Secure Channel</h3>
+                                <span class="download-badge beta">Beta</span>
+                                <p>End-to-end encrypted messaging with voice, video, and secure file sharing. Zero-knowledge relay ensures complete privacy for your conversations.</p>
+                                <div class="download-card-platforms">
+                                    <span class="platform-tag">Windows</span>
+                                    <span class="platform-tag">Linux</span>
+                                    <span class="platform-tag">macOS</span>
+                                </div>
+                            </div>
+                            <a href="/platform/download/secure-channel" class="download-card-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                                    <polyline points="7 10 12 15 17 10"/>
+                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                                Download
+                            </a>
+                        </div>
+
+                        <!-- Secure Notes -->
+                        <div class="download-card">
+                            <div class="download-card-icon notes">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <rect x="8" y="13" width="8" height="4" rx="1"/>
+                                    <path d="M10 13v-1a2 2 0 014 0v1"/>
+                                </svg>
+                            </div>
+                            <div class="download-card-body">
+                                <h3>Secure Notes</h3>
+                                <span class="download-badge active">Active</span>
+                                <p>Encrypted note-taking application with end-to-end encryption, offline support, and cross-device sync. Your notes stay private — only you hold the keys.</p>
+                                <div class="download-card-platforms">
+                                    <span class="platform-tag">Web</span>
+                                    <span class="platform-tag">Windows</span>
+                                    <span class="platform-tag">Linux</span>
+                                </div>
+                            </div>
+                            <a href="/platform/download/darklock-notes" class="download-card-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                                    <polyline points="7 10 12 15 17 10"/>
+                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                                Download
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================================================================
                      SECURITY PAGE
                      ================================================================ -->
                 <div class="page" id="page-security">
@@ -709,7 +817,7 @@
                                 <div class="section-divider"></div>
 
                                 <!-- 2FA Management -->
-                                <div class="security-section">
+                                <div class="security-section" id="twoFactorSection">
                                     <div class="security-section-header">
                                         <h4 data-i18n="security.authentication.2fa.title">Two-Factor Authentication</h4>
                                         <p data-i18n="security.authentication.2fa.description">Add an extra layer of security to your account</p>
@@ -1224,6 +1332,6 @@
 
     <script src="/platform/static/js/i18n.js"></script>
     <script src="/platform/static/js/console-branding.js"></script>
-    <script src="/platform/static/js/dashboard.js"></script>
+    <script src="/platform/static/js/dashboard.js?v=3"></script>
 </body>
 </html>

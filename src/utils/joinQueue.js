@@ -12,7 +12,7 @@ class JoinQueue {
 
     enqueueJoin(member) {
         this.queue.push(member);
-        this.bot.logger?.debug && this.bot.logger.debug(`[JoinQueue] Enqueued ${member.user.tag}, queue size: ${this.queue.length}`);
+        this.bot.logger?.debug && this.bot.logger.debug(`[JoinQueue] Enqueued ${member.user.username}, queue size: ${this.queue.length}`);
         
         if (!this.processing) {
             this.startProcessing();
@@ -29,7 +29,7 @@ class JoinQueue {
             try {
                 await this.processJoin(member);
             } catch (error) {
-                this.bot.logger?.error && this.bot.logger.error(`[JoinQueue] Failed to process ${member.user.tag}:`, error);
+                this.bot.logger?.error && this.bot.logger.error(`[JoinQueue] Failed to process ${member.user.username}:`, error);
             }
 
             // Delay before next join to avoid rate limits
@@ -43,7 +43,7 @@ class JoinQueue {
     }
 
     async processJoin(member) {
-        this.bot.logger?.info && this.bot.logger.info(`[JoinQueue] Processing join: ${member.user.tag}`);
+        this.bot.logger?.info && this.bot.logger.info(`[JoinQueue] Processing join: ${member.user.username}`);
 
         const config = await this.bot.database.getGuildConfig(member.guild.id);
         

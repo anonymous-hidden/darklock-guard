@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Darklock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --border-light: #f1f5f9;
+            --text: #0f172a;
+            --text-dim: #475569;
+            --text-muted: #94a3b8;
+            --accent: #4f46e5;
+            --accent-light: #818cf8;
+            --accent-bg: #eef2ff;
+            --accent-glow: rgba(79,70,229,0.12);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #06b6d4;
+            --sidebar-w: 250px;
+            --topbar-h: 60px;
+            --font: 'Inter', system-ui, sans-serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+
+        /* ──── Layout ──── */
+        .layout { display: flex; min-height: 100vh; }
+
+        /* ──── Sidebar ──── */
+        .sidebar { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 20; transition: transform 0.3s; }
+        .sidebar-brand { display: flex; align-items: center; gap: 0.5rem; padding: 1.1rem 1.25rem; text-decoration: none; color: var(--text); border-bottom: 1px solid var(--border); }
+        .sidebar-brand img { width: 26px; height: 26px; border-radius: 7px; }
+        .sidebar-brand span { font-weight: 700; font-size: 1.05rem; }
+        .sidebar-nav { flex: 1; overflow-y: auto; padding: 0.75rem; }
+        .nav-group-title { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); padding: 0.85rem 0.7rem 0.4rem; }
+        .nav-item { display: flex; align-items: center; gap: 0.65rem; width: 100%; padding: 0.55rem 0.7rem; border: none; background: none; color: var(--text-dim); font-size: 0.87rem; font-weight: 500; font-family: var(--font); border-radius: 8px; cursor: pointer; transition: all 0.12s; text-align: left; }
+        .nav-item:hover { background: var(--bg); color: var(--text); }
+        .nav-item.active { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+        .nav-item svg { width: 17px; height: 17px; flex-shrink: 0; }
+
+        .sidebar-footer { padding: 0.85rem 1rem; border-top: 1px solid var(--border); }
+        .user-pill { display: flex; align-items: center; gap: 0.55rem; }
+        .user-avatar { width: 32px; height: 32px; border-radius: 8px; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; color: white; flex-shrink: 0; }
+        .user-name { font-size: 0.85rem; font-weight: 600; }
+        .user-role { display: block; font-size: 0.72rem; color: var(--text-muted); }
+
+        /* ──── Main ──── */
+        .main { flex: 1; margin-left: var(--sidebar-w); min-height: 100vh; }
+
+        /* ──── Topbar ──── */
+        .topbar { height: var(--topbar-h); display: flex; align-items: center; justify-content: space-between; padding: 0 1.75rem; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+        .topbar-title { font-size: 1rem; font-weight: 600; }
+        .topbar-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.12s; }
+        .topbar-btn:hover { background: var(--surface); color: var(--text); }
+        .topbar-btn svg { width: 17px; height: 17px; }
+        .hamburger { display: none; width: 34px; height: 34px; border: none; background: none; color: var(--text-dim); cursor: pointer; }
+        .hamburger svg { width: 20px; height: 20px; }
+
+        /* ──── Content ──── */
+        .content { padding: 1.75rem; }
+        .page-header h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.2rem; }
+        .page-header p { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 1.75rem; }
+
+        /* ──── Stats ──── */
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.85rem; margin-bottom: 1.75rem; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.1rem; display: flex; align-items: flex-start; gap: 0.85rem; }
+        .stat-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .stat-icon svg { width: 18px; height: 18px; }
+        .stat-icon.purple { background: #f5f3ff; color: #7c3aed; }
+        .stat-icon.cyan { background: #ecfeff; color: #06b6d4; }
+        .stat-icon.green { background: #ecfdf5; color: #10b981; }
+        .stat-icon.amber { background: #fffbeb; color: #f59e0b; }
+        .stat-value { font-size: 1.35rem; font-weight: 700; display: block; }
+        .stat-label { font-size: 0.75rem; color: var(--text-muted); }
+
+        /* ──── Panels ──── */
+        .panels { display: grid; grid-template-columns: 2fr 1fr; gap: 0.85rem; }
+        .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+        .panel-title { font-size: 0.92rem; font-weight: 600; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.4rem; }
+        .panel-title svg { width: 16px; height: 16px; color: var(--accent); }
+
+        /* Activity */
+        .activity-list { list-style: none; }
+        .activity-item { display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.65rem 0; border-bottom: 1px solid var(--border-light); }
+        .activity-item:last-child { border: none; }
+        .activity-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+        .activity-dot.green { background: var(--success); }
+        .activity-dot.blue { background: var(--info); }
+        .activity-dot.amber { background: var(--warning); }
+        .activity-text { font-size: 0.85rem; color: var(--text-dim); }
+        .activity-text strong { color: var(--text); font-weight: 600; }
+        .activity-time { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+
+        /* Quick actions */
+        .quick-actions { display: flex; flex-direction: column; gap: 0.4rem; }
+        .quick-btn { display: flex; align-items: center; gap: 0.65rem; padding: 0.65rem; border: 1px solid var(--border); background: var(--bg); border-radius: 8px; color: var(--text-dim); font-size: 0.85rem; font-family: var(--font); cursor: pointer; transition: all 0.12s; text-decoration: none; }
+        .quick-btn:hover { background: var(--surface); color: var(--text); border-color: #cbd5e1; }
+        .quick-btn svg { width: 16px; height: 16px; color: var(--accent); flex-shrink: 0; }
+
+        /* ──── Pages ──── */
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* ──── Profile ──── */
+        .profile-header { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.75rem; }
+        .profile-avatar-lg { width: 70px; height: 70px; border-radius: 16px; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 800; color: white; }
+        .profile-name { font-size: 1.3rem; font-weight: 700; }
+        .profile-email { color: var(--text-dim); font-size: 0.88rem; }
+        .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+        .profile-field label { display: block; font-size: 0.76rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.35rem; }
+        .profile-field .value { font-size: 0.9rem; padding: 0.6rem 0.85rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+
+        /* ──── Settings ──── */
+        .settings-section { margin-bottom: 1.75rem; }
+        .settings-section h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.75rem; }
+        .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 0.85rem; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 0.4rem; }
+        .setting-info p { font-size: 0.87rem; font-weight: 500; }
+        .setting-info span { font-size: 0.78rem; color: var(--text-muted); }
+        .toggle { width: 40px; height: 22px; border-radius: 11px; background: #e2e8f0; border: none; cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0; }
+        .toggle.on { background: var(--accent); }
+        .toggle::after { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%; background: white; top: 3px; left: 3px; transition: transform 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .toggle.on::after { transform: translateX(18px); }
+
+        /* ──── Responsive ──── */
+        @media (max-width: 900px) { .panels { grid-template-columns: 1fr; } .profile-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main { margin-left: 0; }
+            .hamburger { display: flex; align-items: center; justify-content: center; }
+            .content { padding: 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar" id="sidebar">
+        <a href="/platform" class="sidebar-brand">
+            <img src="/platform/static/icons/darklock-logo.png" alt="" onerror="this.style.display='none'">
+            <span>Darklock</span>
+        </a>
+        <nav class="sidebar-nav">
+            <div class="nav-group-title">Main</div>
+            <button class="nav-item active" data-page="dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                Dashboard
+            </button>
+            <button class="nav-item" data-page="profile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Profile
+            </button>
+            <button class="nav-item" data-page="apps">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                Applications
+            </button>
+            <div class="nav-group-title">Account</div>
+            <button class="nav-item" data-page="security">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Security
+            </button>
+            <button class="nav-item" data-page="settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33"/></svg>
+                Settings
+            </button>
+            <button class="nav-item" id="logoutBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+            </button>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-pill">
+                <div class="user-avatar" id="avatarInitial">?</div>
+                <div><div class="user-name" id="userName">Loading...</div><div class="user-role" id="userRole">User</div></div>
+            </div>
+        </div>
+    </aside>
+
+    <div class="main">
+        <header class="topbar">
+            <button class="hamburger" id="hamburger">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div class="topbar-title" id="pageTitle">Dashboard</div>
+            <div>
+                <button class="topbar-btn" aria-label="Notifications">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="content">
+            <!-- DASHBOARD -->
+            <div class="page active" id="page-dashboard">
+                <div class="page-header">
+                    <h1>Welcome back, <span id="welcomeName">User</span></h1>
+                    <p>Here's an overview of your Darklock platform</p>
+                </div>
+                <div class="stats">
+                    <div class="stat-card"><div class="stat-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div><div><span class="stat-value" id="statApps">0</span><span class="stat-label">Active Apps</span></div></div>
+                    <div class="stat-card"><div class="stat-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div><span class="stat-value" id="statSecurity">Good</span><span class="stat-label">Security Status</span></div></div>
+                    <div class="stat-card"><div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div><span class="stat-value" id="statUptime">99.9%</span><span class="stat-label">Uptime</span></div></div>
+                    <div class="stat-card"><div class="stat-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><span class="stat-value" id="statSessions">0</span><span class="stat-label">Active Sessions</span></div></div>
+                </div>
+                <div class="panels">
+                    <div class="panel">
+                        <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Recent Activity</div>
+                        <ul class="activity-list" id="activityList">
+                            <li class="activity-item"><span class="activity-dot green"></span><div><div class="activity-text"><strong>Login successful</strong> from your device</div><div class="activity-time">Just now</div></div></li>
+                            <li class="activity-item"><span class="activity-dot blue"></span><div><div class="activity-text"><strong>Security scan</strong> completed — no threats</div><div class="activity-time">2 hours ago</div></div></li>
+                            <li class="activity-item"><span class="activity-dot amber"></span><div><div class="activity-text"><strong>Password updated</strong> successfully</div><div class="activity-time">Yesterday</div></div></li>
+                        </ul>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Quick Actions</div>
+                        <div class="quick-actions">
+                            <button class="quick-btn" onclick="showPage('security')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Security Settings</button>
+                            <button class="quick-btn" onclick="showPage('profile')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Edit Profile</button>
+                            <a class="quick-btn" href="/platform/downloads"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Downloads</a>
+                            <button class="quick-btn" onclick="showPage('settings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg> Settings</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PROFILE -->
+            <div class="page" id="page-profile">
+                <div class="page-header"><h1>Profile</h1><p>Manage your personal information</p></div>
+                <div class="profile-header">
+                    <div class="profile-avatar-lg" id="profileAvatar">?</div>
+                    <div><div class="profile-name" id="profileName">Loading...</div><div class="profile-email" id="profileEmail">loading@...</div></div>
+                </div>
+                <div class="profile-grid">
+                    <div class="panel profile-field"><label>Username</label><div class="value" id="profileUsername">—</div></div>
+                    <div class="panel profile-field"><label>Email</label><div class="value" id="profileEmailField">—</div></div>
+                    <div class="panel profile-field"><label>Member Since</label><div class="value" id="profileJoined">—</div></div>
+                    <div class="panel profile-field"><label>Role</label><div class="value" id="profileRole">User</div></div>
+                </div>
+            </div>
+
+            <!-- APPS -->
+            <div class="page" id="page-apps">
+                <div class="page-header"><h1>Applications</h1><p>Manage your connected applications</p></div>
+                <div class="panel" style="text-align:center;padding:2.5rem">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:44px;height:44px;color:var(--text-muted);margin-bottom:0.75rem"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    <p style="color:var(--text-dim)">Your connected applications will appear here.</p>
+                </div>
+            </div>
+
+            <!-- SECURITY -->
+            <div class="page" id="page-security">
+                <div class="page-header"><h1>Security</h1><p>Manage your security settings and sessions</p></div>
+                <div class="settings-section">
+                    <h3>Two-Factor Authentication</h3>
+                    <div class="setting-row"><div class="setting-info"><p>Authenticator App</p><span>Add an extra layer of security</span></div><button class="toggle" id="toggle2fa"></button></div>
+                </div>
+                <div class="settings-section">
+                    <h3>Sessions</h3>
+                    <div class="panel">
+                        <div class="activity-item"><span class="activity-dot green"></span><div><div class="activity-text"><strong>Current session</strong> — this device</div><div class="activity-time">Active now</div></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SETTINGS -->
+            <div class="page" id="page-settings">
+                <div class="page-header"><h1>Settings</h1><p>Customize your experience</p></div>
+                <div class="settings-section">
+                    <h3>Notifications</h3>
+                    <div class="setting-row"><div class="setting-info"><p>Email Notifications</p><span>Receive security alerts via email</span></div><button class="toggle on" id="toggleEmail"></button></div>
+                    <div class="setting-row"><div class="setting-info"><p>Login Alerts</p><span>Get notified on new login activity</span></div><button class="toggle on" id="toggleLogin"></button></div>
+                </div>
+                <div class="settings-section">
+                    <h3>Privacy</h3>
+                    <div class="setting-row"><div class="setting-info"><p>Profile Visibility</p><span>Allow others to see your profile</span></div><button class="toggle" id="toggleVisibility"></button></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const navItems = document.querySelectorAll('.nav-item[data-page]');
+    const pages = document.querySelectorAll('.page');
+    const titles = { dashboard:'Dashboard', profile:'Profile', apps:'Applications', security:'Security', settings:'Settings' };
+
+    function showPage(id) {
+        pages.forEach(p => p.classList.remove('active'));
+        navItems.forEach(n => n.classList.remove('active'));
+        const t = document.getElementById('page-' + id);
+        if (t) t.classList.add('active');
+        const n = document.querySelector(`.nav-item[data-page="${id}"]`);
+        if (n) n.classList.add('active');
+        document.getElementById('pageTitle').textContent = titles[id] || id;
+        document.getElementById('sidebar').classList.remove('open');
+    }
+
+    navItems.forEach(btn => btn.addEventListener('click', () => showPage(btn.dataset.page)));
+    document.getElementById('hamburger').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
+    document.querySelectorAll('.toggle').forEach(t => t.addEventListener('click', () => t.classList.toggle('on')));
+
+    async function loadUser() {
+        try {
+            const res = await fetch('/platform/auth/me', { credentials: 'same-origin' });
+            if (!res.ok) { window.location.href = '/platform/auth/login'; return; }
+            const data = await res.json();
+            const u = data.user || data;
+            const name = u.username || u.displayName || 'User';
+            document.getElementById('welcomeName').textContent = name;
+            document.getElementById('userName').textContent = name;
+            document.getElementById('userRole').textContent = u.role || 'User';
+            document.getElementById('avatarInitial').textContent = name[0].toUpperCase();
+            document.getElementById('profileName').textContent = name;
+            document.getElementById('profileAvatar').textContent = name[0].toUpperCase();
+            document.getElementById('profileEmail').textContent = u.email || '';
+            document.getElementById('profileUsername').textContent = name;
+            document.getElementById('profileEmailField').textContent = u.email || '—';
+            document.getElementById('profileRole').textContent = u.role || 'User';
+            if (u.createdAt) document.getElementById('profileJoined').textContent = new Date(u.createdAt).toLocaleDateString();
+        } catch {}
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await fetch('/platform/auth/logout', { method: 'POST', credentials: 'same-origin' });
+        window.location.href = '/platform/auth/login';
+    });
+
+    loadUser();
+</script>
+</body>
+</html>

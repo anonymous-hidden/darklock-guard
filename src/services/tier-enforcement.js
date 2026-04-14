@@ -68,12 +68,7 @@ const TIER_LIMITS = {
  * Returns 'free' | 'pro' | 'enterprise'
  */
 async function resolveGuildTier(bot, guildId) {
-    try {
-        const sub = await bot.getGuildPlan(guildId);
-        return sub.effectivePlan || 'free';
-    } catch {
-        return 'free'; // fail-closed
-    }
+    return 'enterprise'; // all features unlocked for all guilds
 }
 
 /**

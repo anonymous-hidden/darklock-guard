@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account | Darklock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
+    <style>
+        :root {
+            --bg: #030014;
+            --glass: rgba(255,255,255,0.05);
+            --glass-border: rgba(255,255,255,0.08);
+            --glass-hover: rgba(255,255,255,0.1);
+            --text: #f1f5f9;
+            --text-dim: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #7c3aed;
+            --accent-light: #a78bfa;
+            --accent-glow: rgba(124,58,237,0.35);
+            --danger: #ef4444;
+            --success: #10b981;
+            --font: 'Inter', system-ui, sans-serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; -webkit-font-smoothing: antialiased; overflow: hidden; }
+
+        .bg-scene { position: fixed; inset: 0; z-index: 0; }
+        .bg-orb { position: absolute; border-radius: 50%; filter: blur(120px); opacity: 0.35; animation: drift 25s ease-in-out infinite; }
+        .bg-orb-1 { width: 500px; height: 500px; background: var(--accent); top: -20%; right: -10%; }
+        .bg-orb-2 { width: 400px; height: 400px; background: #06b6d4; bottom: -15%; left: -10%; animation-delay: -8s; }
+        @keyframes drift { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(30px,-20px); } }
+
+        .wrapper { position: relative; z-index: 2; width: 100%; max-width: 440px; padding: 1.5rem; }
+
+        .card { background: var(--glass); border: 1px solid var(--glass-border); backdrop-filter: blur(20px) saturate(1.5); border-radius: 20px; padding: 2.5rem; }
+
+        .brand { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 2rem; text-decoration: none; color: var(--text); }
+        .brand img { width: 36px; height: 36px; border-radius: 10px; }
+        .brand span { font-weight: 700; font-size: 1.3rem; }
+
+        h1 { font-size: 1.5rem; font-weight: 700; text-align: center; margin-bottom: 0.5rem; }
+        .subtitle { text-align: center; color: var(--text-dim); font-size: 0.9rem; margin-bottom: 2rem; }
+
+        .alert { padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.85rem; margin-bottom: 1.25rem; display: none; }
+        .alert.error { display: block; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+        .alert.success { display: block; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; }
+
+        .field { margin-bottom: 1.25rem; }
+        .field label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-dim); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.04em; }
+        .field input { width: 100%; padding: 0.8rem 1rem; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: 10px; color: var(--text); font-size: 0.95rem; font-family: var(--font); transition: all 0.2s; outline: none; }
+        .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+        .field input::placeholder { color: var(--text-muted); }
+
+        .password-strength { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.05); margin-top: 0.5rem; overflow: hidden; }
+        .password-strength-bar { height: 100%; width: 0%; border-radius: 2px; transition: all 0.3s; }
+
+        .field-row { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 1.5rem; }
+        .field-row input[type="checkbox"] { margin-top: 3px; accent-color: var(--accent); }
+        .field-row label { font-size: 0.83rem; color: var(--text-dim); cursor: pointer; line-height: 1.4; }
+        .field-row a { color: var(--accent-light); text-decoration: none; }
+        .field-row a:hover { text-decoration: underline; }
+
+        .btn-submit { width: 100%; padding: 0.85rem; background: linear-gradient(135deg, var(--accent), #9333ea); border: none; border-radius: 10px; color: white; font-size: 1rem; font-weight: 600; font-family: var(--font); cursor: pointer; transition: all 0.25s; }
+        .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 8px 25px var(--accent-glow); }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .divider { display: flex; align-items: center; gap: 1rem; margin: 1.5rem 0; color: var(--text-muted); font-size: 0.8rem; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--glass-border); }
+
+        .oauth-btn { width: 100%; padding: 0.75rem; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 10px; color: var(--text); font-size: 0.9rem; font-weight: 500; font-family: var(--font); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+        .oauth-btn:hover { background: var(--glass-hover); border-color: rgba(255,255,255,0.15); }
+        .oauth-btn svg { width: 18px; height: 18px; }
+
+        .footer-text { text-align: center; margin-top: 1.75rem; font-size: 0.9rem; color: var(--text-dim); }
+        .footer-text a { color: var(--accent-light); text-decoration: none; font-weight: 600; }
+        .footer-text a:hover { text-decoration: underline; }
+        .back-link { display: block; text-align: center; margin-top: 1rem; color: var(--text-muted); font-size: 0.85rem; text-decoration: none; }
+        .back-link:hover { color: var(--text-dim); }
+    </style>
+</head>
+<body>
+<div class="bg-scene">
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+</div>
+
+<div class="wrapper">
+    <div class="card">
+        <a href="/platform" class="brand">
+            <img src="/platform/static/icons/darklock-logo.png" alt="" onerror="this.style.display='none'">
+            <span>Darklock</span>
+        </a>
+        <h1>Create your account</h1>
+        <p class="subtitle">Get started with Darklock security</p>
+
+        <div class="alert" id="alert"></div>
+
+        <form id="signupForm" autocomplete="on">
+            <div class="field">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Choose a username" required autocomplete="username" minlength="3" maxlength="32">
+            </div>
+            <div class="field">
+                <label for="email">Email address</label>
+                <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
+            </div>
+            <div class="field">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Minimum 8 characters" required autocomplete="new-password" minlength="8">
+                <div class="password-strength"><div class="password-strength-bar" id="strengthBar"></div></div>
+            </div>
+            <div class="field">
+                <label for="confirmPassword">Confirm password</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Re-enter your password" required autocomplete="new-password">
+            </div>
+            <div class="field-row">
+                <input type="checkbox" id="terms" required>
+                <label for="terms">I agree to the <a href="/platform/terms">Terms of Service</a> and <a href="/platform/privacy">Privacy Policy</a></label>
+            </div>
+            <button type="submit" class="btn-submit" id="submitBtn">Create Account</button>
+        </form>
+
+        <div class="divider">or sign up with</div>
+
+        <button class="oauth-btn" id="discordBtn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286z"/></svg>
+            Continue with Discord
+        </button>
+
+        <p class="footer-text">Already have an account? <a href="/platform/auth/login">Sign in</a></p>
+    </div>
+    <a href="/platform" class="back-link">← Back to home</a>
+</div>
+
+<script>
+    const form = document.getElementById('signupForm');
+    const alertEl = document.getElementById('alert');
+    const btn = document.getElementById('submitBtn');
+    const passInput = document.getElementById('password');
+    const bar = document.getElementById('strengthBar');
+
+    function showAlert(msg, type = 'error') {
+        alertEl.textContent = msg;
+        alertEl.className = 'alert ' + type;
+    }
+
+    passInput.addEventListener('input', () => {
+        const v = passInput.value;
+        let s = 0;
+        if (v.length >= 8) s++;
+        if (/[A-Z]/.test(v)) s++;
+        if (/[0-9]/.test(v)) s++;
+        if (/[^A-Za-z0-9]/.test(v)) s++;
+        const colors = ['#ef4444','#f97316','#eab308','#10b981'];
+        bar.style.width = (s * 25) + '%';
+        bar.style.background = colors[s - 1] || '#ef4444';
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const password = passInput.value;
+        const confirm = document.getElementById('confirmPassword').value;
+        if (password !== confirm) { showAlert('Passwords do not match'); return; }
+
+        btn.disabled = true;
+        btn.textContent = 'Creating account...';
+        alertEl.className = 'alert';
+
+        try {
+            const res = await fetch('/platform/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    username: document.getElementById('username').value,
+                    email: document.getElementById('email').value,
+                    password
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showAlert('Account created! Redirecting...', 'success');
+                setTimeout(() => window.location.href = data.redirect || '/platform/auth/login', 500);
+            } else {
+                showAlert(data.error || 'Registration failed');
+            }
+        } catch {
+            showAlert('Network error. Please try again.');
+        }
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+    });
+
+    document.getElementById('discordBtn').addEventListener('click', () => {
+        window.location.href = '/platform/auth/discord';
+    });
+</script>
+</body>
+</html>

@@ -335,10 +335,10 @@ function populateModal(moduleId) {
  * Render tags in a tag container
  */
 function renderTags(container, items, type) {
-    const existingTags = container.querySelectorAll('.tag-item');
+    const existingTags = container.querySelectorAll('.username-item');
     existingTags.forEach(tag => tag.remove());
     
-    const input = container.querySelector('.tag-input');
+    const input = container.querySelector('.username-input');
     
     items.forEach(item => {
         const tag = document.createElement('span');
@@ -584,7 +584,7 @@ function setupTagInput(containerId, stateKey, moduleId = null) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const input = container.querySelector('.tag-input');
+    const input = container.querySelector('.username-input');
     if (!input) return;
 
     input.addEventListener('keydown', (e) => {
@@ -612,7 +612,7 @@ function addTag(container, value, stateKey, moduleId = null) {
         targetArray.push(value);
         
         // Add visual tag
-        const input = container.querySelector('.tag-input');
+        const input = container.querySelector('.username-input');
         const tag = document.createElement('span');
         tag.className = 'tag-item';
         tag.innerHTML = `
@@ -621,7 +621,7 @@ function addTag(container, value, stateKey, moduleId = null) {
         `;
         
         // Add remove handler
-        tag.querySelector('.tag-remove').addEventListener('click', () => {
+        tag.querySelector('.username-remove').addEventListener('click', () => {
             const index = targetArray.indexOf(value);
             if (index > -1) {
                 targetArray.splice(index, 1);

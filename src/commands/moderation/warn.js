@@ -97,7 +97,7 @@ module.exports = {
             
             // Broadcast to dashboard console
             if (typeof bot?.broadcastConsole === 'function') {
-                bot.broadcastConsole(interaction.guild.id, `[WARN] ${target.tag} (${target.id}) by ${interaction.user.tag} - ${reason}`);
+                bot.broadcastConsole(interaction.guild.id, `[WARN] ${target.username} (${target.id}) by ${interaction.user.username} - ${reason}`);
             }
             // Log to bot_logs for dashboard Logs & Audit Trail page
             if (bot?.logger) {
@@ -105,9 +105,9 @@ module.exports = {
                     eventType: 'warn',
                     guildId: interaction.guild.id,
                     moderatorId: interaction.user.id,
-                    moderatorTag: interaction.user.tag,
+                    moderatorTag: interaction.user.username,
                     targetId: target.id,
-                    targetTag: target.tag,
+                    targetTag: target.username,
                     reason: reason
                 });
             }            // Log to forensics audit trail
@@ -116,8 +116,8 @@ module.exports = {
                     guildId: interaction.guild.id,
                     eventType: 'warn',
                     eventCategory: 'moderation',
-                    executor: { id: interaction.user.id, tag: interaction.user.tag },
-                    target: { id: target.id, name: target.tag, type: 'user' },
+                    executor: { id: interaction.user.id, tag: interaction.user.username },
+                    target: { id: target.id, name: target.username, type: 'user' },
                     reason: reason,
                     canReplay: false
                 });
@@ -144,9 +144,9 @@ module.exports = {
                     actionType: 'warn',
                     actionCategory: 'moderation',
                     targetUserId: target.id,
-                    targetUsername: target.tag,
+                    targetUsername: target.username,
                     moderatorId: interaction.user.id,
-                    moderatorUsername: interaction.user.tag,
+                    moderatorUsername: interaction.user.username,
                     reason: reason,
                     details: { warningCount },
                     canUndo: false // Warnings cannot be undone (but can be cleared)
@@ -161,8 +161,8 @@ module.exports = {
                             id: actionId,
                             type: 'warn',
                             category: 'moderation',
-                            target: { id: target.id, tag: target.tag, avatar: target.displayAvatarURL() },
-                            moderator: { id: interaction.user.id, tag: interaction.user.tag },
+                            target: { id: target.id, tag: target.username, avatar: target.displayAvatarURL() },
+                            moderator: { id: interaction.user.id, tag: interaction.user.username },
                             reason: reason,
                             warningCount: warningCount,
                             canUndo: false,
@@ -176,8 +176,8 @@ module.exports = {
                     await bot.eventEmitter.emitModerationAction(
                         interaction.guild.id,
                         'warn',
-                        { id: target.id, tag: target.tag },
-                        { id: interaction.user.id, tag: interaction.user.tag },
+                        { id: target.id, tag: target.username },
+                        { id: interaction.user.id, tag: interaction.user.username },
                         reason,
                         false
                     );
@@ -191,7 +191,7 @@ module.exports = {
                     .setDescription(`You were warned in **${interaction.guild.name}**`)
                     .addFields(
                         { name: 'Reason', value: reason, inline: false },
-                        { name: 'Moderator', value: interaction.user.tag, inline: true },
+                        { name: 'Moderator', value: interaction.user.username, inline: true },
                         { name: 'Total Warnings', value: `${warningCount}`, inline: true }
                     )
                     .setColor('#ffa502')
@@ -205,10 +205,10 @@ module.exports = {
             // Success embed
             const successEmbed = new EmbedBuilder()
                 .setTitle('✅ Member Warned')
-                .setDescription(`**${target.tag}** has been warned.`)
+                .setDescription(`**${target.username}** has been warned.`)
                 .addFields(
                     { name: 'Reason', value: reason, inline: false },
-                    { name: 'Moderator', value: interaction.user.tag, inline: true },
+                    { name: 'Moderator', value: interaction.user.username, inline: true },
                     { name: 'Total Warnings', value: `${warningCount}`, inline: true }
                 )
                 .setColor('#2ed573')
@@ -225,8 +225,8 @@ module.exports = {
                 const logEmbed = new EmbedBuilder()
                     .setTitle('⚠️ Member Warned')
                     .addFields(
-                        { name: 'User', value: `${target.tag} (${target.id})`, inline: true },
-                        { name: 'Moderator', value: interaction.user.tag, inline: true },
+                        { name: 'User', value: `${target.username} (${target.id})`, inline: true },
+                        { name: 'Moderator', value: interaction.user.username, inline: true },
                         { name: 'Total Warnings', value: `${warningCount}`, inline: true },
                         { name: 'Reason', value: reason, inline: false }
                     )
@@ -241,7 +241,7 @@ module.exports = {
                 try {
                     await member.timeout(24 * 60 * 60 * 1000, `Automatic timeout - ${warningCount} warnings`);
                     await interaction.followUp({
-                        content: `🔄 **${target.tag}** has been automatically timed out for 24 hours due to reaching ${warningCount} warnings.`,
+                        content: `🔄 **${target.username}** has been automatically timed out for 24 hours due to reaching ${warningCount} warnings.`,
                         ephemeral: false
                     });
                 } catch (error) {
@@ -249,7 +249,7 @@ module.exports = {
                 }
             } else if (warningCount >= 3) {
                 await interaction.followUp({
-                    content: `⚠️ **${target.tag}** now has ${warningCount} warnings. Consider escalating moderation actions.`,
+                    content: `⚠️ **${target.username}** now has ${warningCount} warnings. Consider escalating moderation actions.`,
                     ephemeral: true
                 });
             }

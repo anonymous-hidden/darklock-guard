@@ -115,7 +115,7 @@ module.exports = {
         const effective = stats.regular_invites + stats.bonus_invites - stats.fake_invites - stats.left_invites;
 
         const embed = new EmbedBuilder()
-            .setTitle(`📊 Invite Stats for ${user.tag}`)
+            .setTitle(`📊 Invite Stats for ${user.username}`)
             .setThumbnail(user.displayAvatarURL({ dynamic: true }))
             .setColor(0x5865F2)
             .addFields(
@@ -165,7 +165,7 @@ module.exports = {
 
         if (!inviterId) {
             return interaction.reply({
-                content: `❓ Could not determine who invited ${user.tag}.`,
+                content: `❓ Could not determine who invited ${user.username}.`,
                 ephemeral: true
             });
         }
@@ -174,10 +174,10 @@ module.exports = {
         const joinRecord = await tracker.getJoinRecord(interaction.guild.id, user.id);
 
         const embed = new EmbedBuilder()
-            .setTitle(`📋 Invite Info for ${user.tag}`)
+            .setTitle(`📋 Invite Info for ${user.username}`)
             .setColor(0x5865F2)
             .addFields(
-                { name: 'Invited By', value: inviter ? `${inviter.tag} (${inviter.id})` : inviterId, inline: false },
+                { name: 'Invited By', value: inviter ? `${inviter.username} (${inviter.id})` : inviterId, inline: false },
                 { name: 'Join Type', value: joinRecord?.join_type || 'Unknown', inline: true },
                 { name: 'Invite Code', value: joinRecord?.invite_code || 'Unknown', inline: true },
                 { name: 'Account Age at Join', value: `${joinRecord?.account_age_days || 'Unknown'} days`, inline: true }
@@ -197,13 +197,13 @@ module.exports = {
 
         if (invited.length === 0) {
             return interaction.reply({
-                content: `📋 ${user.tag} hasn't invited anyone yet.`,
+                content: `📋 ${user.username} hasn't invited anyone yet.`,
                 ephemeral: true
             });
         }
 
         const embed = new EmbedBuilder()
-            .setTitle(`📋 Users Invited by ${user.tag}`)
+            .setTitle(`📋 Users Invited by ${user.username}`)
             .setColor(0x5865F2)
             .setTimestamp();
 
@@ -243,7 +243,7 @@ module.exports = {
         const stats = await tracker.getInviterStats(interaction.guild.id, user.id);
 
         await interaction.reply({
-            content: `✅ ${amount >= 0 ? 'Added' : 'Removed'} **${Math.abs(amount)}** bonus invites ${amount >= 0 ? 'to' : 'from'} ${user.tag}.\nNew bonus total: **${stats.bonus_invites}**`,
+            content: `✅ ${amount >= 0 ? 'Added' : 'Removed'} **${Math.abs(amount)}** bonus invites ${amount >= 0 ? 'to' : 'from'} ${user.username}.\nNew bonus total: **${stats.bonus_invites}**`,
             ephemeral: true
         });
     },
@@ -261,7 +261,7 @@ module.exports = {
         if (user) {
             await tracker.resetInviterStats(interaction.guild.id, user.id);
             await interaction.reply({
-                content: `✅ Reset invite stats for ${user.tag}.`,
+                content: `✅ Reset invite stats for ${user.username}.`,
                 ephemeral: true
             });
         } else {

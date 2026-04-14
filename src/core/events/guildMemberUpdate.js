@@ -26,7 +26,7 @@ async function handleRoleConflicts(oldMember, newMember, bot) {
         if (cfg?.verified_role_id && cfg?.unverified_role_id) {
             if (newMember.roles.cache.has(cfg.verified_role_id) && newMember.roles.cache.has(cfg.unverified_role_id)) {
                 await newMember.roles.remove(cfg.unverified_role_id).catch(() => {});
-                bot.logger?.info && bot.logger.info(`[RoleConflict] Removed Unverified from ${newMember.user.tag} (has Verified)`);
+                bot.logger?.info && bot.logger.info(`[RoleConflict] Removed Unverified from ${newMember.user.username} (has Verified)`);
             }
         }
     } catch (err) {
@@ -45,14 +45,14 @@ async function handleTimeoutNotifications(oldMember, newMember, bot) {
         
         // User was just timed out
         if (!wasTimedOut && isTimedOut) {
-            bot.logger.info(`🔇 Timeout detected: ${newMember.user.tag} in ${newMember.guild.name}`);
+            bot.logger.info(`🔇 Timeout detected: ${newMember.user.username} in ${newMember.guild.name}`);
             
             const timeoutUntil = new Date(isTimedOut);
             const duration = Math.round((timeoutUntil - Date.now()) / 1000 / 60); // minutes
             
             // Broadcast to dashboard console
             if (typeof bot.broadcastConsole === 'function') {
-                bot.broadcastConsole(newMember.guild.id, `[TIMEOUT] ${newMember.user.tag} (${newMember.user.id}) for ${duration} minutes`);
+                bot.broadcastConsole(newMember.guild.id, `[TIMEOUT] ${newMember.user.username} (${newMember.user.id}) for ${duration} minutes`);
             }
             
             // Get guild config
@@ -75,9 +75,9 @@ async function handleTimeoutNotifications(oldMember, newMember, bot) {
             if (logChannel && logChannel.isTextBased()) {
                 const timeoutEmbed = new EmbedBuilder()
                     .setTitle('🔇 Member Timed Out')
-                    .setDescription(`**${newMember.user.tag}** has been timed out`)
+                    .setDescription(`**${newMember.user.username}** has been timed out`)
                     .addFields(
-                        { name: '👤 User', value: `${newMember.user.tag}\n<@${newMember.user.id}>\n\`${newMember.user.id}\``, inline: true },
+                        { name: '👤 User', value: `${newMember.user.username}\n<@${newMember.user.id}>\n\`${newMember.user.id}\``, inline: true },
                         { name: '⏰ Duration', value: `${duration} minutes`, inline: true },
                         { name: '🕐 Until', value: `<t:${Math.floor(timeoutUntil.getTime() / 1000)}:F>`, inline: true }
                     )
@@ -100,7 +100,7 @@ async function handleTimeoutNotifications(oldMember, newMember, bot) {
                     data: {
                         type: 'TIMEOUT',
                         userId: newMember.user.id,
-                        userTag: newMember.user.tag,
+                        userTag: newMember.user.username,
                         userAvatar: newMember.user.displayAvatarURL({ dynamic: true }),
                         guildId: newMember.guild.id,
                         guildName: newMember.guild.name,
@@ -122,7 +122,7 @@ async function handleTimeoutNotifications(oldMember, newMember, bot) {
                     moderatorId: null,
                     moderatorTag: null,
                     targetId: newMember.user.id,
-                    targetTag: newMember.user.tag,
+                    targetTag: newMember.user.username,
                     reason: `Timed out for ${duration} minutes`,
                     details: {
                         duration: duration,
@@ -137,12 +137,12 @@ async function handleTimeoutNotifications(oldMember, newMember, bot) {
         
         // User timeout was removed (manually by mod or expired)
         if (wasTimedOut && !isTimedOut) {
-            bot.logger.info(`✅ Timeout removed: ${newMember.user.tag} in ${newMember.guild.name}`);
+            bot.logger.info(`✅ Timeout removed: ${newMember.user.username} in ${newMember.guild.name}`);
             
             // Reset spam tracking for this user to prevent instant re-timeout
             if (bot.antiSpam && typeof bot.antiSpam.clearUserTracking === 'function') {
                 bot.antiSpam.clearUserTracking(newMember.guild.id, newMember.user.id);
-                bot.logger.debug(`Cleared spam tracking for ${newMember.user.tag} after timeout removal`);
+                bot.logger.debug(`Cleared spam tracking for ${newMember.user.username} after timeout removal`);
             }
             
             // Also give them a grace period

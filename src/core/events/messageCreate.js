@@ -183,7 +183,7 @@ async function handleXPGain(message, bot, guildConfig) {
                 await message.channel.send({ embeds: [levelUpEmbed] });
             }
             
-            bot.logger.info(`User ${message.author.tag} leveled up to ${result.newLevel} in ${message.guild.name}`);
+            bot.logger.info(`User ${message.author.username} leveled up to ${result.newLevel} in ${message.guild.name}`);
         } catch (e) {
             // Couldn't send level up message (permissions)
             bot.logger.warn(`Failed to send level up message: ${e.message}`);

@@ -29,14 +29,14 @@ module.exports = {
 
             // Case 1: Welcome ON, Verification OFF -> send welcome immediately
             if (welcomeOn && !verifyOn) {
-                bot.logger?.info(`[JOIN] Welcome ON, Verification OFF for ${member.user.tag}`);
+                bot.logger?.info(`[JOIN] Welcome ON, Verification OFF for ${member.user.username}`);
                 await sendImmediateWelcome(member, config, bot);
                 return;
             }
 
             // Case 2: Welcome OFF, Verification ON -> run verification only (no welcome)
             if (!welcomeOn && verifyOn) {
-                bot.logger?.info(`[JOIN] Welcome OFF, Verification ON for ${member.user.tag}`);
+                bot.logger?.info(`[JOIN] Welcome OFF, Verification ON for ${member.user.username}`);
                 const Actions = require('../security/verificationActions');
                 if (!bot.verificationActions) bot.verificationActions = new Actions(bot);
                 await bot.verificationActions.handleJoin(member);
@@ -45,7 +45,7 @@ module.exports = {
 
             // Case 3: Both ON -> run verification, defer welcome until after verification completes
             if (welcomeOn && verifyOn) {
-                bot.logger?.info(`[JOIN] Both Welcome and Verification ON for ${member.user.tag}; deferring welcome`);
+                bot.logger?.info(`[JOIN] Both Welcome and Verification ON for ${member.user.username}; deferring welcome`);
                 const Actions = require('../security/verificationActions');
                 if (!bot.verificationActions) bot.verificationActions = new Actions(bot);
                 await bot.verificationActions.handleJoin(member);
@@ -53,7 +53,7 @@ module.exports = {
             }
 
             // Case 4: Both OFF -> do nothing special
-            bot.logger?.debug(`[JOIN] Both welcome and verification OFF for ${member.user.tag}; normal entry`);
+            bot.logger?.debug(`[JOIN] Both welcome and verification OFF for ${member.user.username}; normal entry`);
 
         } catch (error) {
             bot.logger?.error('Error processing member join:', error);
@@ -87,10 +87,10 @@ async function applyAutoroles(member, bot) {
         
         if (rolesToAdd.length > 0) {
             await member.roles.add(rolesToAdd, 'Autorole assignment');
-            bot.logger?.info(`[AUTOROLE] Applied ${rolesToAdd.length} autoroles to ${member.user.tag}`);
+            bot.logger?.info(`[AUTOROLE] Applied ${rolesToAdd.length} autoroles to ${member.user.username}`);
         }
     } catch (e) {
-        bot.logger?.warn(`[AUTOROLE] Failed to apply autoroles to ${member.user.tag}:`, e.message);
+        bot.logger?.warn(`[AUTOROLE] Failed to apply autoroles to ${member.user.username}:`, e.message);
     }
 }
 
@@ -147,7 +147,7 @@ async function sendImmediateWelcome(member, config, bot) {
             }
         }
 
-        bot.logger?.info(`[WELCOME] Sent immediate welcome for ${member.user.tag}`);
+        bot.logger?.info(`[WELCOME] Sent immediate welcome for ${member.user.username}`);
     } catch (e) {
         member.guild.client.bot?.logger?.warn('[WELCOME] Failed to send immediate welcome:', e.message);
     }

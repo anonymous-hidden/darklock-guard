@@ -36,7 +36,7 @@ class AnalyticsCollector {
                 channelId: msg.channel.id,
                 channelName: msg.channel.name,
                 userId: msg.author.id,
-                username: msg.author.tag,
+                username: msg.author.username,
             });
         });
 
@@ -44,7 +44,7 @@ class AnalyticsCollector {
         this._on(client, 'guildMemberAdd', (member) => {
             this.bus.push(member.guild.id, 'member_join', {
                 userId: member.user.id,
-                username: member.user.tag,
+                username: member.user.username,
                 isBot: member.user.bot,
                 accountAge: Date.now() - member.user.createdTimestamp,
             });
@@ -54,7 +54,7 @@ class AnalyticsCollector {
         this._on(client, 'guildMemberRemove', (member) => {
             this.bus.push(member.guild.id, 'member_leave', {
                 userId: member.user.id,
-                username: member.user.tag,
+                username: member.user.username,
             });
         });
 

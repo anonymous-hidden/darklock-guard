@@ -9,10 +9,18 @@ const path = require('path');
 
 module.exports = (dashboard) => {
     const db = dashboard.db;
+    const { authenticateToken } = require('../middleware/auth')({ bot: dashboard.bot });
 
-    // Main unified admin dashboard - NO AUTH FOR NOW to avoid redirect loops
-    // TODO: Add proper authentication once redirect loop is fixed
-    router.get('/admin', async (req, res) => {
+    // Require admin role for all admin routes
+    function requireAdmin(req, res, next) {
+        if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'owner')) {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        next();
+    }
+
+    // Main unified admin dashboard - requires authentication
+    router.get('/admin', authenticateToken, requireAdmin, async (req, res) => {
         try {
             console.log('[Unified Admin] Serving dashboard...');
             res.sendFile(path.join(__dirname, '../views/unified-admin.html'));
@@ -22,8 +30,8 @@ module.exports = (dashboard) => {
         }
     });
 
-    // Admin Dashboard Data API - also no auth for now
-    router.get('/api/admin/dashboard', async (req, res) => {
+    // Admin Dashboard Data API - requires authentication
+    router.get('/api/admin/dashboard', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const today = new Date().toISOString().split('T')[0];
 
@@ -92,8 +100,8 @@ module.exports = (dashboard) => {
         }
     });
 
-    // Quick Actions API - no auth for now
-    router.post('/api/admin/action/:type', async (req, res) => {
+    // Quick Actions API - requires admin authentication
+    router.post('/api/admin/action/:type', authenticateToken, requireAdmin, async (req, res) => {
         try {
             const { type } = req.params;
             const { data } = req.body;

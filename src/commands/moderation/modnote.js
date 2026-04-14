@@ -49,7 +49,7 @@ module.exports = {
 
                 // Broadcast to dashboard console
                 if (typeof bot?.broadcastConsole === 'function') {
-                    bot.broadcastConsole(interaction.guild.id, `[MODNOTE] Added note for ${user.tag} by ${interaction.user.tag}`);
+                    bot.broadcastConsole(interaction.guild.id, `[MODNOTE] Added note for ${user.username} by ${interaction.user.username}`);
                 }
 
                 // Log to bot_logs for dashboard Logs & Audit Trail page
@@ -58,15 +58,15 @@ module.exports = {
                         eventType: 'modnote_add',
                         guildId: interaction.guild.id,
                         moderatorId: interaction.user.id,
-                        moderatorTag: interaction.user.tag,
+                        moderatorTag: interaction.user.username,
                         targetId: user.id,
-                        targetTag: user.tag,
+                        targetTag: user.username,
                         details: { notePreview: note.substring(0, 50) + (note.length > 50 ? '...' : '') }
                     });
                 }
 
                 await interaction.reply({
-                    content: `✅ Note added for ${user.tag}`,
+                    content: `✅ Note added for ${user.username}`,
                     ephemeral: true
                 });
             } catch (error) {
@@ -87,13 +87,13 @@ module.exports = {
 
                 if (notes.length === 0) {
                     return await interaction.reply({
-                        content: `No notes found for ${user.tag}`,
+                        content: `No notes found for ${user.username}`,
                         ephemeral: true
                     });
                 }
 
                 const embed = new EmbedBuilder()
-                    .setTitle(`📝 Moderator Notes for ${user.tag}`)
+                    .setTitle(`📝 Moderator Notes for ${user.username}`)
                     .setColor('#5865F2')
                     .setThumbnail(user.displayAvatarURL())
                     .setTimestamp();
@@ -102,7 +102,7 @@ module.exports = {
                     const moderator = await interaction.client.users.fetch(note.moderator_id).catch(() => null);
                     embed.addFields({
                         name: `Note #${note.id} - ${new Date(note.created_at).toLocaleDateString()}`,
-                        value: `**Moderator:** ${moderator?.tag || 'Unknown'}\n**Note:** ${note.note}`,
+                        value: `**Moderator:** ${moderator?.username || 'Unknown'}\n**Note:** ${note.note}`,
                         inline: false
                     });
                 }

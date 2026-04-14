@@ -1,0 +1,24 @@
+[Unit]
+Description=Security Playbook Runner (Unix Socket API)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/home/cayden/discord bot/discord bot/security-pipeline/step6-playbooks/runner
+ExecStart=/usr/bin/python3 playbook_runner.py
+ExecStartPost=/bin/bash -c 'sleep 1 && chgrp jarvis /var/run/playbook-runner.sock && chmod 660 /var/run/playbook-runner.sock'
+Restart=always
+RestartSec=5
+
+# Note: runs as root because playbooks need nftables/kill access
+# The Unix socket restricts access to jarvis group only
+
+# Limit what root can do
+NoNewPrivileges=false
+ProtectSystem=false
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

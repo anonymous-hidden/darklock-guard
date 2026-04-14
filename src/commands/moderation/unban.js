@@ -57,7 +57,7 @@ module.exports = {
             
             // Broadcast to dashboard console
             if (typeof bot?.broadcastConsole === 'function') {
-                bot.broadcastConsole(interaction.guild.id, `[UNBAN] ${userId} by ${interaction.user.tag}`);
+                bot.broadcastConsole(interaction.guild.id, `[UNBAN] ${userId} by ${interaction.user.username}`);
             }
             // Log to bot_logs for dashboard Logs & Audit Trail page
             if (bot?.logger) {
@@ -65,19 +65,19 @@ module.exports = {
                     eventType: 'unban',
                     guildId: interaction.guild.id,
                     moderatorId: interaction.user.id,
-                    moderatorTag: interaction.user.tag,
+                    moderatorTag: interaction.user.username,
                     targetId: userId,
-                    targetTag: bannedUser?.tag || userId,
+                    targetTag: bannedUser?.username || userId,
                     reason: reason
                 });
             }
             // Success embed
             const successEmbed = new EmbedBuilder()
                 .setTitle('✅ User Unbanned')
-                .setDescription(`**${bannedUser.user.tag}** has been unbanned from the server.`)
+                .setDescription(`**${bannedUser.user.username}** has been unbanned from the server.`)
                 .addFields(
                     { name: 'User ID', value: userId, inline: true },
-                    { name: 'Moderator', value: interaction.user.tag, inline: true },
+                    { name: 'Moderator', value: interaction.user.username, inline: true },
                     { name: 'Reason', value: reason, inline: false }
                 )
                 .setColor('#2ed573')
@@ -94,8 +94,8 @@ module.exports = {
                 const logEmbed = new EmbedBuilder()
                     .setTitle('✅ User Unbanned')
                     .addFields(
-                        { name: 'User', value: `${bannedUser.user.tag} (${userId})`, inline: true },
-                        { name: 'Moderator', value: interaction.user.tag, inline: true },
+                        { name: 'User', value: `${bannedUser.user.username} (${userId})`, inline: true },
+                        { name: 'Moderator', value: interaction.user.username, inline: true },
                         { name: 'Reason', value: reason, inline: false }
                     )
                     .setColor('#2ed573')

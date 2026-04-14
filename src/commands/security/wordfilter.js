@@ -34,10 +34,6 @@ module.exports = {
     async execute(interaction, bot) {
         const sub = interaction.options.getSubcommand();
 
-        console.log('[DEBUG] WordFilter command - bot exists:', !!bot);
-        console.log('[DEBUG] WordFilter command - bot.wordFilter exists:', !!bot?.wordFilter);
-        console.log('[DEBUG] WordFilter command - wordFilter type:', typeof bot?.wordFilter);
-
         if (!bot || !bot.wordFilter) {
             return interaction.reply({
                 content: '❌ Word filter system is not initialized.',
@@ -59,15 +55,9 @@ module.exports = {
     },
 
     async handleList(interaction, bot) {
-        console.log('[DEBUG] handleList called');
-        console.log('[DEBUG] handleList - bot exists:', !!bot);
-        console.log('[DEBUG] handleList - bot.database exists:', !!bot?.database);
-        console.log('[DEBUG] handleList - bot.wordFilter exists:', !!bot?.wordFilter);
-        
         await interaction.deferReply({ ephemeral: true });
 
         try {
-            console.log('[DEBUG] Querying database for guild:', interaction.guild.id);
             const config = await bot.database.get(
                 `SELECT 
                     word_filter_enabled, 
@@ -80,10 +70,6 @@ module.exports = {
                 FROM guild_configs WHERE guild_id = ?`,
                 [interaction.guild.id]
             );
-            
-            console.log('[DEBUG] Database query result:', config ? 'Config found' : 'No config');
-            console.log('[DEBUG] word_filter_enabled:', config?.word_filter_enabled);
-            console.log('[DEBUG] banned_words length:', config?.banned_words?.length || 0);
 
             if (!config) {
                 return interaction.editReply({
@@ -150,24 +136,15 @@ module.exports = {
     },
 
     async handleTest(interaction, bot) {
-        console.log('[DEBUG] handleTest called');
-        console.log('[DEBUG] handleTest - bot exists:', !!bot);
-        console.log('[DEBUG] handleTest - bot.wordFilter exists:', !!bot?.wordFilter);
-        
         await interaction.deferReply({ ephemeral: true });
 
         const testMessage = interaction.options.getString('message');
-        console.log('[DEBUG] Testing message:', testMessage.substring(0, 50));
 
         try {
-            console.log('[DEBUG] Calling bot.wordFilter.testMessage...');
             const result = await bot.wordFilter.testMessage(
                 interaction.guild.id,
                 testMessage
             );
-            
-            console.log('[DEBUG] Test result - wouldBlock:', result.wouldBlock);
-            console.log('[DEBUG] Test result - matches:', result.matches?.length || 0);
 
             if (!result.wouldBlock) {
                 const embed = new EmbedBuilder()
@@ -202,25 +179,15 @@ module.exports = {
     },
 
     async handleToggle(interaction, bot, enabled) {
-        console.log('[DEBUG] handleToggle called');
-        console.log('[DEBUG] handleToggle - bot exists:', !!bot);
-        console.log('[DEBUG] handleToggle - bot.database exists:', !!bot?.database);
-        console.log('[DEBUG] handleToggle - bot.wordFilter exists:', !!bot?.wordFilter);
-        console.log('[DEBUG] handleToggle - enabled:', enabled);
-        
         await interaction.deferReply({ ephemeral: true });
 
         try {
-            console.log('[DEBUG] Updating database for guild:', interaction.guild.id);
             await bot.database.run(
                 `UPDATE guild_configs SET word_filter_enabled = ? WHERE guild_id = ?`,
                 [enabled ? 1 : 0, interaction.guild.id]
             );
-            
-            console.log('[DEBUG] Database update complete');
 
             // Clear cache
-            console.log('[DEBUG] Clearing wordFilter cache...');
             if (bot.wordFilter.configCache) {
                 bot.wordFilter.configCache.delete(interaction.guild.id);
                 bot.wordFilter.cacheExpiry.delete(interaction.guild.id);

@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation | Darklock Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
+    <link rel="stylesheet" href="/platform/static/css/main.css">
+    <style>
+        /* ── Layout ── */
+        .docs-shell {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 2rem 5rem;
+            gap: 3rem;
+            min-height: calc(100vh - 72px);
+        }
+
+        /* ── Sidebar ── */
+        .docs-sidebar {
+            position: sticky;
+            top: 88px;
+            align-self: start;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .sidebar-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin: 1.5rem 0 0.5rem;
+            padding-left: 0.75rem;
+        }
+
+        .sidebar-label:first-child { margin-top: 0; }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.45rem 0.75rem;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+
+        .sidebar-link:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+        .sidebar-link.active { background: rgba(99,102,241,0.1); color: var(--accent-light); }
+        .sidebar-link i { width: 16px; text-align: center; font-size: 0.8rem; }
+
+        /* ── Content ── */
+        .docs-content { min-width: 0; }
+
+        .docs-hero {
+            padding: 2.5rem 0 2rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 3rem;
+        }
+
+        .docs-hero h1 {
+            font-size: 2.4rem;
+            font-weight: 800;
+            margin-bottom: 0.6rem;
+            background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .docs-hero p {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            max-width: 620px;
+            line-height: 1.6;
+        }
+
+        /* ── Sections ── */
+        .doc-section {
+            margin-bottom: 3.5rem;
+            scroll-margin-top: 90px;
+        }
+
+        .doc-section h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .doc-section h2 i {
+            font-size: 1.1rem;
+            color: var(--accent-light);
+        }
+
+        .section-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 0.6rem 0 1.5rem;
+        }
+
+        /* ── How-it-works steps ── */
+        .steps-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .step {
+            display: flex;
+            gap: 1.1rem;
+            align-items: flex-start;
+            padding: 1.1rem 1.25rem;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: border-color 0.2s;
+        }
+
+        .step:hover { border-color: var(--border-hover); }
+
+        .step-num {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(99,102,241,0.12);
+            color: var(--accent-light);
+            font-size: 0.82rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .step-body h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+        }
+
+        .step-body p {
+            color: var(--text-secondary);
+            font-size: 0.86rem;
+            line-height: 1.55;
+            margin: 0;
+        }
+
+        /* ── Troubleshooting cards ── */
+        .trouble-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+        }
+
+        .trouble-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .trouble-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.25rem;
+            cursor: pointer;
+            gap: 1rem;
+            user-select: none;
+            transition: background 0.15s;
+        }
+
+        .trouble-header:hover { background: rgba(255,255,255,0.02); }
+
+        .trouble-q {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            font-size: 0.92rem;
+        }
+
+        .trouble-q i { color: var(--warning); font-size: 0.85rem; flex-shrink: 0; }
+
+        .trouble-chevron {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            transition: transform 0.2s;
+            flex-shrink: 0;
+        }
+
+        .trouble-card.open .trouble-chevron { transform: rotate(180deg); }
+
+        .trouble-body {
+            display: none;
+            padding: 0 1.25rem 1.1rem 3.25rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .trouble-card.open .trouble-body { display: block; }
+
+        .trouble-body p, .trouble-body li {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            line-height: 1.65;
+            margin-top: 0.8rem;
+        }
+
+        .trouble-body ul {
+            padding-left: 1.25rem;
+            margin-top: 0.6rem;
+        }
+
+        .trouble-body li { margin-top: 0.35rem; }
+
+        .fix-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            background: rgba(34,197,94,0.08);
+            color: var(--success);
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.2rem 0.5rem;
+            border-radius: 5px;
+            margin-right: 0.4rem;
+        }
+
+        /* ── Info cards (feature highlights) ── */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+
+        .info-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem 1.35rem;
+        }
+
+        .info-card-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 9px;
+            background: rgba(99,102,241,0.08);
+            color: var(--accent-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            margin-bottom: 0.85rem;
+        }
+
+        .info-card h4 { font-size: 0.92rem; font-weight: 600; margin-bottom: 0.35rem; }
+        .info-card p  { color: var(--text-secondary); font-size: 0.83rem; line-height: 1.55; margin: 0; }
+
+        /* ── Alert box ── */
+        .docs-alert {
+            padding: 0.9rem 1.1rem;
+            border-radius: 10px;
+            font-size: 0.86rem;
+            line-height: 1.55;
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-start;
+            margin-bottom: 1.25rem;
+        }
+
+        .docs-alert i { flex-shrink: 0; margin-top: 1px; }
+        .docs-alert-info    { background: rgba(99,102,241,0.08); color: var(--accent-light); border: 1px solid rgba(99,102,241,0.18); }
+        .docs-alert-warning { background: rgba(245,158,11,0.08); color: var(--warning);      border: 1px solid rgba(245,158,11,0.18); }
+        .docs-alert-tip     { background: rgba(34,197,94,0.08);  color: var(--success);      border: 1px solid rgba(34,197,94,0.18); }
+
+        /* ── Footer ── */
+        .docs-footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 860px) {
+            .docs-shell { grid-template-columns: 1fr; }
+            .docs-sidebar { position: static; max-height: none; }
+        }
+
+        @media (max-width: 480px) {
+            .docs-shell { padding: 1rem 1rem 3rem; gap: 1.5rem; }
+            .docs-hero h1 { font-size: 1.75rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="/platform" class="nav-brand">
+                <img src="/platform/static/icons/darklock-logo.png" alt="Darklock" width="26" height="26" style="border-radius:6px;">
+                <span class="brand-text">Darklock</span>
+            </a>
+            <div class="nav-links">
+                <a href="/platform" class="nav-link">Home</a>
+                <a href="/platform/docs" class="nav-link active">Documentation</a>
+                <a href="/platform/status" class="nav-link">Status</a>
+                <a href="/platform/auth/login" class="btn btn-primary btn-sm">Sign In</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="docs-shell">
+
+        <!-- ─── Sidebar ─── -->
+        <aside class="docs-sidebar">
+            <div class="sidebar-label">Platform</div>
+            <a class="sidebar-link active" href="#overview" onclick="activate(this)">
+                <i class="fas fa-layer-group"></i> Overview
+            </a>
+            <a class="sidebar-link" href="#how-auth-works" onclick="activate(this)">
+                <i class="fas fa-key"></i> Authentication
+            </a>
+            <a class="sidebar-link" href="#how-guard-works" onclick="activate(this)">
+                <i class="fas fa-shield-halved"></i> Darklock Guard
+            </a>
+            <a class="sidebar-link" href="#how-dashboard-works" onclick="activate(this)">
+                <i class="fas fa-gauge"></i> Dashboard
+            </a>
+            <a class="sidebar-link" href="#how-discord-works" onclick="activate(this)">
+                <i class="fab fa-discord"></i> Discord Integration
+            </a>
+
+            <div class="sidebar-label">Troubleshooting</div>
+            <a class="sidebar-link" href="#trouble-login" onclick="activate(this)">
+                <i class="fas fa-triangle-exclamation"></i> Login Issues
+            </a>
+            <a class="sidebar-link" href="#trouble-guard" onclick="activate(this)">
+                <i class="fas fa-triangle-exclamation"></i> Guard Problems
+            </a>
+            <a class="sidebar-link" href="#trouble-discord" onclick="activate(this)">
+                <i class="fas fa-triangle-exclamation"></i> Discord Bot
+            </a>
+            <a class="sidebar-link" href="#trouble-platform" onclick="activate(this)">
+                <i class="fas fa-triangle-exclamation"></i> Platform / Server
+            </a>
+
+            <div class="sidebar-label">Security</div>
+            <a class="sidebar-link" href="#security-practices" onclick="activate(this)">
+                <i class="fas fa-lock"></i> Best Practices
+            </a>
+            <a class="sidebar-link" href="#two-factor" onclick="activate(this)">
+                <i class="fas fa-mobile-screen"></i> Two-Factor Auth
+            </a>
+
+            <div class="sidebar-label">Support</div>
+            <a class="sidebar-link" href="#faq" onclick="activate(this)">
+                <i class="fas fa-circle-question"></i> FAQ
+            </a>
+        </aside>
+
+        <!-- ─── Main Content ─── -->
+        <main class="docs-content">
+
+            <div class="docs-hero">
+                <h1>Darklock Documentation</h1>
+                <p>Learn how the platform works, understand each service, and find quick fixes for common issues — no code required.</p>
+            </div>
+
+            <!-- OVERVIEW -->
+            <section class="doc-section" id="overview">
+                <h2><i class="fas fa-layer-group"></i> Platform Overview</h2>
+                <div class="section-divider"></div>
+
+                <p style="color:var(--text-secondary);margin-bottom:1.5rem;line-height:1.65;font-size:0.92rem;">
+                    Darklock is a unified security platform built around three interconnected services: the <strong>Platform</strong> (web dashboard &amp; accounts), <strong>Darklock Guard</strong> (desktop file-integrity monitor), and the <strong>Discord Bot</strong> (community moderation &amp; security alerts). They share one database and talk to each other through a common API, so managing your security happens in one place.
+                </p>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="info-card-icon"><i class="fas fa-globe"></i></div>
+                        <h4>Web Platform</h4>
+                        <p>Your central control hub. Manage your account, view device status, download Guard, and review security events.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-icon"><i class="fas fa-shield-halved"></i></div>
+                        <h4>Darklock Guard</h4>
+                        <p>A desktop application that watches your files for unauthorised changes and reports tampering in real time.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-icon"><i class="fab fa-discord"></i></div>
+                        <h4>Discord Bot</h4>
+                        <p>Sits inside your Discord server, enforces moderation rules, detects raids, and bridges security alerts to your community.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-icon"><i class="fas fa-database"></i></div>
+                        <h4>Shared Database</h4>
+                        <p>All three services read from and write to the same SQLite database, keeping user data, device records, and events in sync.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- HOW AUTH WORKS -->
+            <section class="doc-section" id="how-auth-works">
+                <h2><i class="fas fa-key"></i> How Authentication Works</h2>
+                <div class="section-divider"></div>
+
+                <div class="docs-alert docs-alert-info">
+                    <i class="fas fa-circle-info"></i>
+                    <span>Darklock uses <strong>session cookies</strong> — not tokens you copy manually. After signing in, your browser holds a secure, HttpOnly cookie that authenticates every request automatically.</span>
+                </div>
+
+                <div class="steps-list">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h4>You submit your credentials</h4>
+                            <p>Enter your username (or email) and password on the Sign In page. Optionally you can sign in via Discord or Google OAuth — this skips the password step entirely and uses your existing social account as proof of identity.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h4>The server verifies your password</h4>
+                            <p>Passwords are never stored in plain text. The server compares your input against a bcrypt hash. If they match, the login proceeds. If not, you receive a generic "invalid credentials" message — the server intentionally doesn't say whether the username or password was wrong.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h4>Two-Factor check (if enabled)</h4>
+                            <p>If you have 2FA turned on, the server halts and asks for your 6-digit authenticator code before creating a session. The code must match the current 30-second TOTP window.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-body">
+                            <h4>A session is created</h4>
+                            <p>The server generates a cryptographically random session ID, stores it in the database alongside your user ID and expiry time, then sends it to your browser as a secure cookie. Every subsequent page load or API call includes this cookie automatically.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">5</div>
+                        <div class="step-body">
+                            <h4>Session expires or you sign out</h4>
+                            <p>Sessions have a maximum lifetime. Signing out immediately deletes the session record from the database, making the cookie worthless even if someone intercepts it.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- HOW GUARD WORKS -->
+            <section class="doc-section" id="how-guard-works">
+                <h2><i class="fas fa-shield-halved"></i> How Darklock Guard Works</h2>
+                <div class="section-divider"></div>
+
+                <p style="color:var(--text-secondary);margin-bottom:1.5rem;line-height:1.65;font-size:0.92rem;">
+                    Guard is a background service that runs on your computer. It creates a cryptographic fingerprint of the files you care about, then continuously checks whether anything has changed without your knowledge.
+                </p>
+
+                <div class="docs-alert docs-alert-tip">
+                    <i class="fas fa-lightbulb"></i>
+                    <span>Guard stores its vault in your user data folder. The vault is encrypted — the Guard service itself needs your vault password to read fingerprints at startup.</span>
+                </div>
+
+                <div class="steps-list">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h4>Baseline generation</h4>
+                            <p>The first time Guard runs, it hashes every file in your monitored paths using a secure algorithm (SHA-256). These hashes are stored as your "baseline" — the known-good state of your files.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h4>Continuous verification</h4>
+                            <p>On a configurable schedule, Guard rehashes each monitored file and compares the result to the baseline. A mismatch means the file was modified outside of normal operations.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h4>Alert & report</h4>
+                            <p>When tampering is detected, Guard logs the event locally, shows a desktop notification, and sends a report to the Darklock Platform so you can review what changed from any browser.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-body">
+                            <h4>Strict Mode (optional)</h4>
+                            <p>In Strict Mode, Guard requires a password on every launch and before deactivating itself. This prevents an attacker who has physical access to your machine from simply turning Guard off.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-grid" style="margin-top:1.5rem;">
+                    <div class="info-card">
+                        <div class="info-card-icon"><i class="fas fa-vault"></i></div>
+                        <h4>Encrypted Vault</h4>
+                        <p>All fingerprints are stored in an encrypted vault. Anyone who steals the file cannot read the hashes without your vault password.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-icon"><i class="fas fa-plug"></i></div>
+                        <h4>IPC Communication</h4>
+                        <p>The Guard UI app and the background service talk via a local Unix socket (IPC). The web platform connects through the API — Guard never exposes a public network port.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-icon"><i class="fas fa-arrows-rotate"></i></div>
+                        <h4>Baseline Updates</h4>
+                        <p>After an intentional file update, regenerate your baseline from the Guard UI so new hashes replace the old ones. This marks the current state as "trusted."</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- HOW DASHBOARD WORKS -->
+            <section class="doc-section" id="how-dashboard-works">
+                <h2><i class="fas fa-gauge"></i> How the Dashboard Works</h2>
+                <div class="section-divider"></div>
+
+                <p style="color:var(--text-secondary);margin-bottom:1.5rem;line-height:1.65;font-size:0.92rem;">
+                    The dashboard is the web interface that ties everything together. It fetches live data from the platform API every time you load a page or click refresh, so numbers are always up to date.
+                </p>
+
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="info-card-icon"><i class="fas fa-chart-line"></i></div>
+                        <h4>Real-Time Data</h4>
+                        <p>Most panels poll the API on a short interval. You don't need to reload manually — new events appear as they happen.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-icon"><i class="fas fa-user-shield"></i></div>
+                        <h4>Role-Based Access</h4>
+                        <p>What you see depends on your role. Standard users see their own devices and events. Admins see the full system view, all users, and configuration panels.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-icon"><i class="fas fa-laptop"></i></div>
+                        <h4>Device Management</h4>
+                        <p>Each computer running Guard registers as a "device." The dashboard lists all your devices, their last-seen time, and any pending alerts.</p>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-card-icon"><i class="fas fa-bell"></i></div>
+                        <h4>Event Feed</h4>
+                        <p>Security events from Guard and the Discord bot are collected in one feed. Filter by type, severity, or time range to pinpoint what happened.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- HOW DISCORD WORKS -->
+            <section class="doc-section" id="how-discord-works">
+                <h2><i class="fab fa-discord"></i> How the Discord Integration Works</h2>
+                <div class="section-divider"></div>
+
+                <div class="steps-list">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h4>Bot joins your server</h4>
+                            <p>You invite the Darklock bot to your Discord server using the invite link in your dashboard. The bot receives a set of permissions that let it read messages, manage roles, and post in designated channels.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h4>Server configuration</h4>
+                            <p>Through the dashboard you configure which channels receive alerts, what auto-moderation rules are active, and thresholds for actions like raid detection. Settings are saved to the database and read by the bot on startup.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h4>Real-time gateway connection</h4>
+                            <p>The bot maintains a persistent WebSocket connection to Discord's gateway. Every message, join, and reaction is delivered instantly — the bot does not poll. This keeps reaction times low and API usage minimal.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-body">
+                            <h4>Moderation actions</h4>
+                            <p>When a rule triggers — a spam burst, a new account joining too fast, a phishing link — the bot takes the configured action (warn, mute, kick, ban) and logs it. Logs are visible in the dashboard so you can review and appeal decisions.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">5</div>
+                        <div class="step-body">
+                            <h4>Slash commands</h4>
+                            <p>Server members and admins interact with the bot using slash commands (typing / in Discord). Commands are registered globally and respond ephemerally (visible only to you) unless the action is meant for everyone to see.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TROUBLESHOOTING LOGIN -->
+            <section class="doc-section" id="trouble-login">
+                <h2><i class="fas fa-triangle-exclamation"></i> Troubleshooting — Login Issues</h2>
+                <div class="section-divider"></div>
+
+                <div class="trouble-list">
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> "Invalid credentials" but I know my password is correct</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>This message is deliberately generic — it covers both wrong username and wrong password. Try these in order:</p>
+                            <ul>
+                                <li>Make sure Caps Lock is off. Passwords are case-sensitive.</li>
+                                <li>Try signing in with your <strong>email address</strong> instead of your username, or vice versa — the field accepts both.</li>
+                                <li>If you registered via Discord or Google OAuth, you may not have a password set. Use the <strong>Continue with Discord</strong> or <strong>Continue with Google</strong> button instead.</li>
+                                <li>If you've forgotten your password, use the forgot-password flow on the login page to receive a reset link by email.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> Two-factor code is rejected</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>TOTP codes are valid for 30 seconds. A rejected code is almost always a clock drift issue.</p>
+                            <ul>
+                                <li>Check that the time on your phone is set to <strong>automatic / network time</strong>. Even a minute's drift will cause codes to fail.</li>
+                                <li>TOTP codes cycle every 30 seconds. If yours just expired, wait for the next one before submitting the form.</li>
+                                <li>Make sure you're using the correct account entry in your authenticator app — if you've scanned a new QR code, the old entry is now invalid.</li>
+                                <li>If you've lost access to your authenticator entirely, contact the server admin to reset 2FA on your account.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> Page redirects me back to login immediately after signing in</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>This is caused by the session cookie not being saved or sent back correctly.</p>
+                            <ul>
+                                <li>Make sure your browser accepts cookies from this site. Check your privacy settings or extensions (ad blockers sometimes block cookies).</li>
+                                <li>If you're in an Incognito / Private window, cookies may be blocked by default in some browsers — try a normal window.</li>
+                                <li>Ensure you're accessing the platform on the correct hostname. If the server is running on <strong>localhost</strong>, a cookie issued for <strong>127.0.0.1</strong> won't work and vice versa — always use the same address.</li>
+                                <li>Clear your browser cookies for this site and try again.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> Discord OAuth login shows "redirect_uri_mismatch"</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>The OAuth redirect URI you're using doesn't match what's registered on Discord's Developer Portal.</p>
+                            <ul>
+                                <li>Go to <strong>Discord Developer Portal → Your Application → OAuth2 → Redirects</strong>.</li>
+                                <li>Add the exact callback URL shown in your environment config (e.g. <em>http://localhost:3001/auth/discord/callback</em>). It must match character-for-character including the protocol and trailing slash.</li>
+                                <li>If you recently changed your domain or port, update the redirect URL in both your <strong>.env</strong> file and the Discord portal.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> "Registration is disabled" when trying to create an account</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>An admin has turned off new registrations. Contact the platform administrator (or if you <em>are</em> the admin, re-enable registrations in the admin panel under <strong>Platform Settings → Registration</strong>).</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TROUBLESHOOTING GUARD -->
+            <section class="doc-section" id="trouble-guard">
+                <h2><i class="fas fa-triangle-exclamation"></i> Troubleshooting — Darklock Guard</h2>
+                <div class="section-divider"></div>
+
+                <div class="trouble-list">
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> Guard shows "Service not connected" in the UI</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>The Guard UI app can't find the background service via the IPC socket.</p>
+                            <ul>
+                                <li>Check that the <strong>guard-service</strong> background process is running. If the service crashed, start it again from the Start All script or the Guard start script in its folder.</li>
+                                <li>The IPC socket lives at <em>~/.local/share/guard/ipc.sock</em>. If that file is missing, the service isn't running.</li>
+                                <li>If the service starts but immediately crashes, check the vault password environment variable (<strong>GUARD_VAULT_PASSWORD</strong>) is set correctly before launching.</li>
+                                <li>On some Linux installs, AppArmor or SELinux blocks Unix socket creation. Check your system logs for permission denied errors.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> Guard keeps flagging files I intentionally changed</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>Your baseline is out of date. After any intentional update to monitored files, regenerate the baseline so Guard records the new hashes as trusted.</p>
+                            <ul>
+                                <li>Open the Guard UI, go to <strong>Baseline → Regenerate</strong>, enter your vault password, and confirm.</li>
+                                <li>If certain files change very frequently (logs, caches), consider excluding them from the monitored paths rather than regenerating the baseline constantly.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> Forgot my Strict Mode password</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>Strict Mode passwords are stored in the encrypted vault. If the vault itself is accessible, an admin can reset it — otherwise the vault must be deleted and a new one created, which means losing your existing baseline.</p>
+                            <ul>
+                                <li>Delete the vault file at <em>~/.local/share/guard/vault.dat</em> to start fresh. Guard will be in an unenrolled state until you regenerate a new baseline.</li>
+                                <li>Going forward, store your Strict Mode password in a password manager so this doesn't happen again.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> Guard UI opens but is blank / white screen</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>This is a WebView rendering issue — common on Linux if the WebKit library is not installed.</p>
+                            <ul>
+                                <li>Install the required WebKit library: on Ubuntu/Debian, <strong>libwebkit2gtk-4.1-dev</strong>.</li>
+                                <li>Try running the Guard UI binary from a terminal to see any error output that doesn't appear in the window.</li>
+                                <li>If you see GPU-related errors, try launching with hardware acceleration disabled by setting the environment variable <strong>WEBKIT_DISABLE_COMPOSITING_MODE=1</strong>.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TROUBLESHOOTING DISCORD -->
+            <section class="doc-section" id="trouble-discord">
+                <h2><i class="fas fa-triangle-exclamation"></i> Troubleshooting — Discord Bot</h2>
+                <div class="section-divider"></div>
+
+                <div class="trouble-list">
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> Bot is offline / appears greyed out in Discord</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>The bot process has stopped. Check these in order:</p>
+                            <ul>
+                                <li>Look at the health check endpoint — if it returns an error, the server isn't running at all.</li>
+                                <li>Check the combined log file for a crash reason. Common causes: invalid bot token, missing environment variables, or a syntax error introduced by a recent edit.</li>
+                                <li>Verify your <strong>BOT_TOKEN</strong> in <em>.env</em> is current. Tokens are invalidated when you regenerate them in the Discord Developer Portal.</li>
+                                <li>Restart the bot. If it crashes immediately, fix the error in the logs before starting again.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> Slash commands don't appear in Discord</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>Slash commands are registered with Discord's API on startup. If they're missing, one of the following happened:</p>
+                            <ul>
+                                <li>The bot may not have the <strong>applications.commands</strong> OAuth2 scope — re-invite it using the invite URL that includes this scope.</li>
+                                <li>Global command registration can take up to <strong>1 hour</strong> to propagate to all Discord clients. Guild-scoped commands update instantly — during development you should use guild commands.</li>
+                                <li>If you see a "Missing Access" error in the logs during command registration, check the bot's permissions in your server and make sure it hasn't been kicked or banned.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> Bot isn't sending alerts to my configured channel</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>Alert channels must be configured correctly and the bot must have permission to send messages there.</p>
+                            <ul>
+                                <li>In your server settings, verify the bot role has <strong>Send Messages</strong> and <strong>Embed Links</strong> permissions in the target channel.</li>
+                                <li>In the Darklock dashboard under server configuration, confirm the correct channel ID is saved. If you recently created a new channel, update the setting.</li>
+                                <li>Check the bot logs for any "Missing Permissions" or "Unknown Channel" errors — these point directly to the problem.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> The bot is banning or kicking people incorrectly</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>Auto-moderation thresholds may be set too aggressively for your community size.</p>
+                            <ul>
+                                <li>Review the auto-mod settings in the dashboard — raise the join rate threshold if fast legitimate growth is triggering raid detection.</li>
+                                <li>Whitelist trusted roles so they are never subject to auto-moderation actions.</li>
+                                <li>Check the event log in the dashboard to see exactly which rule triggered and on which user, so you can tune the rule rather than disabling protection entirely.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TROUBLESHOOTING PLATFORM -->
+            <section class="doc-section" id="trouble-platform">
+                <h2><i class="fas fa-triangle-exclamation"></i> Troubleshooting — Platform &amp; Server</h2>
+                <div class="section-divider"></div>
+
+                <div class="trouble-list">
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> Platform pages return a blank screen or 500 error</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>A 500 error means the server encountered an unhandled exception while processing your request.</p>
+                            <ul>
+                                <li>Check the error log (<em>logs/error.log</em>) — the exact error and stack trace are always recorded there.</li>
+                                <li>Common cause: the SQLite database file is missing or corrupted. Restore from a backup or re-run the database initialisation script.</li>
+                                <li>Another common cause: a required environment variable (like <strong>JWT_SECRET</strong> or <strong>SESSION_SECRET</strong>) is missing from <em>.env</em>. The startup log will often warn about this.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> "Port already in use" when starting the server</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>Another process — often a previous, zombie instance of the bot or platform — is still holding the port.</p>
+                            <ul>
+                                <li>Run the stop script (<strong>stop-all.sh</strong>) to cleanly shut down all services, then start again.</li>
+                                <li>If the stop script doesn't clear it, find the process holding the port and kill it manually. Look for <strong>node</strong> processes in your process list.</li>
+                                <li>If you changed the port number in <em>.env</em>, make sure no other service is already bound to the new port either.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> Static assets (CSS, images) not loading — page looks unstyled</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>The static file middleware isn't finding the assets directory.</p>
+                            <ul>
+                                <li>Verify the <em>darklock/public/</em> folder exists and contains the <em>css/</em> and <em>icons/</em> subfolders.</li>
+                                <li>If you moved or renamed the project folder, the static mount path may be wrong — check the server startup log for any "Could not serve static files" warnings.</li>
+                                <li>Make sure you're running the server from the correct working directory. The static paths are resolved relative to the project root.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-circle-exclamation"></i> Maintenance mode is stuck on and I can't turn it off</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>Maintenance mode is stored as a platform setting in the database. If the admin UI is itself blocked, you need to update it directly.</p>
+                            <ul>
+                                <li>Admin accounts bypass maintenance mode — sign in as an admin and disable it from the <strong>Platform Settings</strong> panel.</li>
+                                <li>If you can't reach the admin panel at all, update the <strong>maintenance_mode</strong> row in the <em>platform_settings</em> table via the database CLI and restart the server.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECURITY PRACTICES -->
+            <section class="doc-section" id="security-practices">
+                <h2><i class="fas fa-lock"></i> Security Best Practices</h2>
+                <div class="section-divider"></div>
+
+                <div class="docs-alert docs-alert-warning">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <span>These are recommended practices for anyone running the Darklock Platform, especially in a production or shared environment.</span>
+                </div>
+
+                <div class="steps-list">
+                    <div class="step">
+                        <div class="step-num"><i class="fas fa-key" style="font-size:0.75rem;"></i></div>
+                        <div class="step-body">
+                            <h4>Use strong, unique secrets</h4>
+                            <p>Generate random values for <strong>JWT_SECRET</strong>, <strong>SESSION_SECRET</strong>, and <strong>INTERNAL_API_KEY</strong>. Never reuse secrets across environments and never commit them to version control. Store them in a secrets manager or a <em>.env</em> file that's listed in <em>.gitignore</em>.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num"><i class="fas fa-mobile-screen" style="font-size:0.75rem;"></i></div>
+                        <div class="step-body">
+                            <h4>Enable Two-Factor Authentication</h4>
+                            <p>Admin accounts especially should have 2FA enabled. There is no way for an attacker to bypass it without access to your physical authenticator device (and your password). Enable it under your Profile settings.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num"><i class="fas fa-clock" style="font-size:0.75rem;"></i></div>
+                        <div class="step-body">
+                            <h4>Keep sessions short</h4>
+                            <p>Set a reasonable session expiry (8–24 hours for normal use). Shorter sessions mean a stolen cookie is useful for less time. Adjust the session lifetime in your environment config.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num"><i class="fas fa-arrows-rotate" style="font-size:0.75rem;"></i></div>
+                        <div class="step-body">
+                            <h4>Regenerate baselines after legitimate updates</h4>
+                            <p>After any intentional software update or config change, immediately regenerate your Guard baseline. If you don't, Guard will fire alerts for the changed files until you do — and you may start ignoring real tampering alerts.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num"><i class="fas fa-database" style="font-size:0.75rem;"></i></div>
+                        <div class="step-body">
+                            <h4>Back up your database regularly</h4>
+                            <p>Run the database backup command on a schedule. The database contains your users, device records, and security events — losing it means starting from scratch. Keep backups in a separate physical location from the server.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num"><i class="fas fa-eye" style="font-size:0.75rem;"></i></div>
+                        <div class="step-body">
+                            <h4>Review the audit log</h4>
+                            <p>Admin actions are recorded in the audit log. Review it periodically to make sure no unexpected changes were made to settings, user roles, or service statuses.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TWO-FACTOR AUTH -->
+            <section class="doc-section" id="two-factor">
+                <h2><i class="fas fa-mobile-screen"></i> Two-Factor Authentication</h2>
+                <div class="section-divider"></div>
+
+                <p style="color:var(--text-secondary);margin-bottom:1.5rem;line-height:1.65;font-size:0.92rem;">
+                    Darklock uses the industry-standard <strong>TOTP</strong> (Time-based One-Time Password) protocol — the same standard used by Google Authenticator, Authy, and 1Password. Any TOTP-compatible app works.
+                </p>
+
+                <div class="steps-list">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <div class="step-body">
+                            <h4>Go to Profile → Security → Enable 2FA</h4>
+                            <p>The platform generates a secret key and displays it as a QR code. This QR code encodes everything your authenticator app needs.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <div class="step-body">
+                            <h4>Scan the QR code with your authenticator app</h4>
+                            <p>Open Google Authenticator, Authy, 1Password, Bitwarden, or any TOTP app. Use the "Add account" or "Scan QR code" option. The app will immediately start generating 6-digit codes that rotate every 30 seconds.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <div class="step-body">
+                            <h4>Confirm with a code</h4>
+                            <p>Enter the current 6-digit code shown by your app to prove the setup worked. The platform won't enable 2FA until this confirmation succeeds, so you can't accidentally lock yourself out.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">4</div>
+                        <div class="step-body">
+                            <h4>Save your backup codes</h4>
+                            <p>You're given one-time backup codes after enabling 2FA. Store them somewhere safe — printed on paper, or in a different password manager than your TOTP app. If you lose your phone, a backup code lets you sign in and disable 2FA.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- FAQ -->
+            <section class="doc-section" id="faq">
+                <h2><i class="fas fa-circle-question"></i> Frequently Asked Questions</h2>
+                <div class="section-divider"></div>
+
+                <div class="trouble-list">
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-question-circle" style="color:var(--accent-light);"></i> Can I run the platform on a Raspberry Pi?</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>Yes — the Pi 5 is recommended for comfortable performance. The Pi 4 works but may feel slow under concurrent load. Use the dedicated Pi install scripts in the project root. Guard can also run on a Pi, but the Tauri desktop UI requires a connected display — on a headless setup, run the Guard service only.</p>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-question-circle" style="color:var(--accent-light);"></i> Is my data sent to any external servers?</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>No. Everything runs locally on your machine. The only external connections are to Discord's API (for the bot), Google/Discord OAuth (if you use social login), and any optional APIs you configure like VirusTotal or Google Safe Browsing. Your file hashes, user accounts, and security events stay on your own database.</p>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-question-circle" style="color:var(--accent-light);"></i> How do I expose the platform to the internet safely?</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>Use a Cloudflare Tunnel — it creates an encrypted, authenticated tunnel between your local server and a Cloudflare edge endpoint, without opening any firewall ports. The project includes tunnel setup scripts. Never expose port 3001 or 3002 directly to the internet without a reverse proxy that enforces HTTPS.</p>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-question-circle" style="color:var(--accent-light);"></i> The status page shows no services — is something broken?</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>If no service rows appear, the <em>service_status</em> table in your database is empty. This happens on a fresh install before the schema seeds default data. Restart the server once with the full startup script — it will initialise the admin schema and insert the default service rows (API, Dashboard, Authentication, Database, Darklock Guard). The status page will then display them.</p>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-question-circle" style="color:var(--accent-light);"></i> How do I add a new admin account?</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>There are two separate admin systems — the <strong>Platform admin</strong> (for the Darklock web platform) and the <strong>Admin v4</strong> RBAC system (for the full admin dashboard at port 3002).</p>
+                            <ul>
+                                <li>For the <strong>platform</strong>: use the create-admin script from the project root, or promote an existing user via the admin panel under User Management.</li>
+                                <li>For <strong>Admin v4</strong>: use the create-admin script inside the <em>darklock/</em> folder. That admin account only applies to the RBAC dashboard, not the platform user system.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="trouble-card">
+                        <div class="trouble-header" onclick="toggle(this)">
+                            <div class="trouble-q"><i class="fas fa-question-circle" style="color:var(--accent-light);"></i> How do I reset the entire database and start fresh?</div>
+                            <i class="fas fa-chevron-down trouble-chevron"></i>
+                        </div>
+                        <div class="trouble-body">
+                            <p>Take a backup first, then delete the database file (<em>data/darklock.db</em> or the path set in your <em>.env</em>). On next startup the server will create a new empty database and run the schema migrations to seed it with defaults. All users, devices, and events will be gone — this is irreversible without a backup.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <footer class="docs-footer">
+        &copy; 2026 Darklock — Documentation
+    </footer>
+
+    <script>
+        function toggle(header) {
+            var card = header.parentElement;
+            card.classList.toggle('open');
+        }
+
+        function activate(link) {
+            document.querySelectorAll('.sidebar-link').forEach(function (l) {
+                l.classList.remove('active');
+            });
+            link.classList.add('active');
+        }
+
+        /* Highlight sidebar link on scroll */
+        var sections = document.querySelectorAll('.doc-section');
+        var links    = document.querySelectorAll('.sidebar-link');
+
+        window.addEventListener('scroll', function () {
+            var scrollY = window.scrollY + 100;
+            sections.forEach(function (section) {
+                if (section.offsetTop <= scrollY && section.offsetTop + section.offsetHeight > scrollY) {
+                    var id = section.getAttribute('id');
+                    links.forEach(function (l) {
+                        l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+                    });
+                }
+            });
+        }, { passive: true });
+    </script>
+</body>
+</html>

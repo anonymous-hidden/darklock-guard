@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy | Darklock Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/platform/static/css/main.css">
+    <style>
+        .privacy-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            min-height: calc(100vh - 200px);
+        }
+
+        .privacy-header {
+            text-align: center;
+            padding: 4rem 0 3rem;
+        }
+
+        .privacy-header h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #7c4dff 0%, #00bcd4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .privacy-header p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .last-updated {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 3rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .privacy-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .privacy-section h2 {
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .privacy-section h3 {
+            font-size: 1.25rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .privacy-section p {
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin-bottom: 1rem;
+        }
+
+        .privacy-section ul {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 1rem;
+        }
+
+        .privacy-section li {
+            padding: 0.5rem 0 0.5rem 1.5rem;
+            position: relative;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .privacy-section li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(124, 77, 255, 0.1) 0%, rgba(0, 188, 212, 0.1) 100%);
+            border: 1px solid rgba(124, 77, 255, 0.3);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .highlight-box strong {
+            color: var(--primary);
+        }
+
+        .contact-info {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .contact-info a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .contact-info a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="/platform" class="nav-brand">
+                <svg class="brand-icon" width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="privacyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#60A5FA" />
+                            <stop offset="50%" style="stop-color:#6366F1" />
+                            <stop offset="100%" style="stop-color:#7C3AED" />
+                        </linearGradient>
+                        <linearGradient id="privacyShine" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#a5b4fc" />
+                            <stop offset="100%" style="stop-color:#6366F1" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M20 15 L20 85 L50 85 C75 85 90 70 90 50 C90 30 75 15 50 15 L20 15 Z" fill="url(#privacyGrad)" />
+                    <path d="M35 30 L35 70 L50 70 C65 70 75 62 75 50 C75 38 65 30 50 30 L35 30 Z" fill="#0a0a0f" />
+                    <path d="M42 42 L58 50 L42 58 L42 52 L52 50 L42 48 Z" fill="url(#privacyShine)" />
+                    <path d="M20 75 L35 85 L20 85 Z" fill="#4338ca" opacity="0.7" />
+                </svg>
+                <span class="brand-text">Darklock</span>
+            </a>
+            <div class="nav-links">
+                <a href="/platform" class="nav-link">Home</a>
+                <a href="/platform/docs" class="nav-link">Documentation</a>
+                <a href="/platform/status" class="nav-link">Status</a>
+                <a href="/platform/auth/login" class="btn btn-primary btn-sm">Sign In</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="privacy-container">
+        <div class="privacy-header">
+            <h1>Privacy Policy</h1>
+            <p>How we protect and handle your data</p>
+        </div>
+
+        <div class="last-updated">
+            <strong>Last Updated:</strong> January 16, 2026
+        </div>
+
+        <!-- Introduction -->
+        <div class="privacy-section">
+            <h2>Introduction</h2>
+            <p>
+                At Darklock, we take your privacy seriously. This Privacy Policy explains how we collect, 
+                use, and protect your personal information when you use the Darklock Platform and related 
+                services. By using our services, you agree to the collection and use of information in 
+                accordance with this policy.
+            </p>
+            <div class="highlight-box">
+                <p><strong>Our Commitment:</strong> We will never sell your personal data to third parties. 
+                Your security and privacy are our top priorities.</p>
+            </div>
+        </div>
+
+        <!-- Information We Collect -->
+        <div class="privacy-section">
+            <h2>Information We Collect</h2>
+            
+            <h3>Account Information</h3>
+            <p>When you create an account, we collect:</p>
+            <ul>
+                <li>Username and email address</li>
+                <li>Encrypted password (hashed using bcrypt)</li>
+                <li>Account creation date and last login timestamp</li>
+                <li>User role and permission level</li>
+            </ul>
+
+            <h3>Usage Data</h3>
+            <p>We automatically collect certain information about your interaction with our platform:</p>
+            <ul>
+                <li>IP address and browser information</li>
+                <li>Pages visited and features used</li>
+                <li>Time and date of access</li>
+                <li>Device and operating system information</li>
+            </ul>
+
+            <h3>Security Logs</h3>
+            <p>For security purposes, we maintain logs of:</p>
+            <ul>
+                <li>Login attempts (successful and failed)</li>
+                <li>API requests and responses</li>
+                <li>File integrity monitoring events</li>
+                <li>Security alerts and anomaly detections</li>
+            </ul>
+        </div>
+
+        <!-- How We Use Information -->
+        <div class="privacy-section">
+            <h2>How We Use Your Information</h2>
+            <p>We use the collected information for the following purposes:</p>
+
+            <h3>Service Provision</h3>
+            <ul>
+                <li>Authenticating your identity and managing your account</li>
+                <li>Providing access to the Darklock Platform features</li>
+                <li>Delivering requested services and support</li>
+                <li>Processing downloads of Darklock Guard application</li>
+            </ul>
+
+            <h3>Security & Protection</h3>
+            <ul>
+                <li>Detecting and preventing unauthorized access</li>
+                <li>Monitoring for suspicious activity and potential threats</li>
+                <li>Enforcing our Terms of Service and policies</li>
+                <li>Maintaining the integrity of our platform</li>
+            </ul>
+
+            <h3>Service Improvement</h3>
+            <ul>
+                <li>Analyzing usage patterns to improve features</li>
+                <li>Identifying and fixing bugs or technical issues</li>
+                <li>Developing new features and capabilities</li>
+                <li>Optimizing performance and user experience</li>
+            </ul>
+        </div>
+
+        <!-- Data Storage -->
+        <div class="privacy-section">
+            <h2>Data Storage & Security</h2>
+            
+            <h3>Storage Infrastructure</h3>
+            <p>Your data is stored securely using the following measures:</p>
+            <ul>
+                <li><strong>Database:</strong> SQLite database with persistent disk storage</li>
+                <li><strong>Password Security:</strong> All passwords are hashed using bcrypt with salt</li>
+                <li><strong>Session Management:</strong> Secure httpOnly cookies with JWT tokens</li>
+                <li><strong>Backups:</strong> Regular automated backups stored securely</li>
+            </ul>
+
+            <h3>Security Measures</h3>
+            <ul>
+                <li>HTTPS/TLS encryption for all data transmission</li>
+                <li>Rate limiting to prevent abuse and brute-force attacks</li>
+                <li>Comprehensive security headers (CSP, HSTS, XSS protection)</li>
+                <li>Regular security audits and vulnerability assessments</li>
+                <li>Secure file integrity monitoring and tamper detection</li>
+            </ul>
+
+            <div class="highlight-box">
+                <p><strong>Data Persistence:</strong> Unlike in-memory databases, your data is persistently 
+                stored on disk, ensuring reliability and preventing data loss during service restarts or updates.</p>
+            </div>
+        </div>
+
+        <!-- Data Sharing -->
+        <div class="privacy-section">
+            <h2>Data Sharing & Third Parties</h2>
+            <p>
+                We do not sell, trade, or rent your personal information to third parties. 
+                We may share your information only in the following limited circumstances:
+            </p>
+            <ul>
+                <li><strong>Legal Requirements:</strong> When required by law or legal process</li>
+                <li><strong>Security:</strong> To protect our rights, property, or safety</li>
+                <li><strong>Service Providers:</strong> With trusted partners who assist in operating our platform (under strict confidentiality agreements)</li>
+            </ul>
+        </div>
+
+        <!-- Your Rights -->
+        <div class="privacy-section">
+            <h2>Your Rights</h2>
+            <p>You have the following rights regarding your personal data:</p>
+            <ul>
+                <li><strong>Access:</strong> Request a copy of your personal data</li>
+                <li><strong>Correction:</strong> Update or correct inaccurate information</li>
+                <li><strong>Deletion:</strong> Request deletion of your account and data</li>
+                <li><strong>Export:</strong> Download your data in a portable format</li>
+                <li><strong>Opt-Out:</strong> Unsubscribe from non-essential communications</li>
+            </ul>
+            <p>
+                To exercise any of these rights, please contact us using the information provided below.
+            </p>
+        </div>
+
+        <!-- Cookies -->
+        <div class="privacy-section">
+            <h2>Cookies & Tracking</h2>
+            <p>
+                We use cookies and similar technologies to maintain your session and improve your experience:
+            </p>
+            <ul>
+                <li><strong>Essential Cookies:</strong> Required for authentication and platform functionality</li>
+                <li><strong>Security Cookies:</strong> HttpOnly cookies containing JWT tokens</li>
+                <li><strong>Preference Cookies:</strong> Remember your settings and preferences</li>
+            </ul>
+            <p>
+                You can control cookies through your browser settings, but disabling essential cookies 
+                may limit platform functionality.
+            </p>
+        </div>
+
+        <!-- Children's Privacy -->
+        <div class="privacy-section">
+            <h2>Children's Privacy</h2>
+            <p>
+                The Darklock Platform is not intended for users under the age of 13. We do not knowingly 
+                collect personal information from children under 13. If you believe we have inadvertently 
+                collected such information, please contact us immediately.
+            </p>
+        </div>
+
+        <!-- Changes to Policy -->
+        <div class="privacy-section">
+            <h2>Changes to This Policy</h2>
+            <p>
+                We may update this Privacy Policy from time to time. We will notify you of any changes 
+                by posting the new policy on this page and updating the "Last Updated" date. You are 
+                advised to review this policy periodically for any changes.
+            </p>
+        </div>
+
+        <!-- Contact -->
+        <div class="privacy-section">
+            <h2>Contact Us</h2>
+            <p>
+                If you have any questions about this Privacy Policy or how we handle your data, 
+                please contact us:
+            </p>
+            <div class="contact-info">
+                <p><strong>Darklock Platform Support</strong></p>
+                <p>Email: <a href="mailto:guardianbotsystem@gmail.com">guardianbotsystem@gmail.com</a></p>
+                <p>For general inquiries: <a href="mailto:guardianbotsystem@gmail.com">guardianbotsystem@gmail.com</a></p>
+            </div>
+        </div>
+    </div>
+
+    <footer style="text-align: center; padding: 2rem; color: var(--text-secondary); border-top: 1px solid var(--border-color);">
+        <p>&copy; 2026 Darklock. All rights reserved.</p>
+    </footer>
+</body>
+</html>

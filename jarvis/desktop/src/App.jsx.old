@@ -1,0 +1,262 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Sidebar from './components/Sidebar.jsx';
+import ChatArea from './components/ChatArea.jsx';
+import InputBar from './components/InputBar.jsx';
+import Settings from './components/Settings.jsx';
+import AlertBanner from './components/AlertBanner.jsx';
+import MoodBar from './components/MoodBar.jsx';
+import MemoriesPanel from './components/MemoriesPanel.jsx';
+import VoiceCall from './components/VoiceCall.jsx';
+import ActivityDashboard from './components/ActivityDashboard.jsx';
+import LearningPanel from './components/LearningPanel.jsx';
+
+const API = 'http://127.0.0.1:8950/api';
+
+export default function App() {
+  const [conversations, setConversations] = useState([]);
+  const [activeConvId, setActiveConvId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [streaming, setStreaming] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState(null);
+  const [alerts, setAlerts] = useState([]);
+  const [emotion, setEmotion] = useState(null);
+  const [memoriesOpen, setMemoriesOpen] = useState(false);
+  const [voiceCallOpen, setVoiceCallOpen] = useState(false);
+  const [dashboardOpen, setDashboardOpen] = useState(false);
+  const [learningOpen, setLearningOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const wsRef = useRef(null);
+  const streamBuf = useRef('');
+  const lastTokenRef = useRef(0);
+
+  // ── Streaming watchdog — unlock input if stuck for 45s ──
+  useEffect(() => {
+    if (!streaming) return;
+    lastTokenRef.current = Date.now();
+    const iv = setInterval(() => {
+      if (Date.now() - lastTokenRef.current > 45000) {
+        setStreaming(false);
+        streamBuf.current = '';
+        setMessages(prev => prev.map(m => m._streaming ? { ...m, _streaming: false } : m));
+      }
+    }, 5000);
+    return () => clearInterval(iv);
+  }, [streaming]);
+
+  // ── Load conversations + settings on mount ──────
+  useEffect(() => {
+    fetch(`${API}/conversations`).then(r => r.json()).then(setConversations).catch(() => {});
+    fetch(`${API}/settings`).then(r => r.json()).then(setSettings).catch(() => {});
+    fetch(`${API}/emotion`).then(r => r.json()).then(d => setEmotion(d)).catch(() => {});
+  }, []);
+
+  // ── Poll for emotion every 10s ───────────────────
+  useEffect(() => {
+    const poll = () => {
+      fetch(`${API}/emotion`).then(r => r.json()).then(d => setEmotion(d)).catch(() => {});
+    };
+    poll();
+    const iv = setInterval(poll, 10000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // ── Load messages when conversation changes ─────
+  useEffect(() => {
+    if (!activeConvId) { setMessages([]); return; }
+    fetch(`${API}/conversations/${activeConvId}/messages`)
+      .then(r => r.json()).then(setMessages).catch(() => {});
+  }, [activeConvId]);
+
+  // ── WebSocket connection ────────────────────────
+  const connectWs = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState <= 1) return;
+    const ws = new WebSocket('ws://127.0.0.1:8950/ws/chat');
+    ws.onmessage = (evt) => {
+      const data = JSON.parse(evt.data);
+      if (data.type === 'conversation_created') {
+        setActiveConvId(data.conversation_id);
+      } else if (data.type === 'token') {
+        lastTokenRef.current = Date.now();
+        streamBuf.current += data.content;
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last && last.role === 'assistant' && last._streaming) {
+            return [...prev.slice(0, -1), { ...last, content: streamBuf.current }];
+          }
+          return [...prev, { role: 'assistant', content: streamBuf.current, _streaming: true }];
+        });
+      } else if (data.type === 'done') {
+        streamBuf.current = '';
+        setStreaming(false);
+        setMessages(prev => prev.map(m => m._streaming ? { ...m, _streaming: false, interrupted: !!data.interrupted } : m));
+        // Update emotion from response
+        if (data.emotion) setEmotion({ state: data.emotion, feeling: data.emotion.dominant_feeling });
+        // Refresh conversation list (title may have been auto-set)
+        fetch(`${API}/conversations`).then(r => r.json()).then(setConversations).catch(() => {});
+      } else if (data.type === 'state') {
+        // Conversation state update from engine — could be used for UI indicators
+      } else if (data.type === 'alert') {
+        // alerts suppressed
+      } else if (data.type === 'proactive') {
+        // Nova speaking on her own — show as assistant message in chat
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.content,
+          proactive: true,
+          category: data.category,
+        }]);
+        // Play notification sound for high-priority alerts
+        if (data.sound || data.priority === 'critical') {
+          try { new Audio('data:audio/wav;base64,UklGRl9vT19teleVFMQQBgABABEAC').play().catch(()=>{}); } catch {}
+          if (window.electron?.notify) {
+            window.electron.notify('Nova', data.content);
+          }
+        }
+      } else if (data.type === 'error') {
+        setStreaming(false);
+        setMessages(prev => [...prev, { role: 'system', content: `Error: ${data.message}` }]);
+      }
+    };
+    ws.onerror = () => {
+      // WS error (not just a close) — unlock input so user isn't stuck
+      setStreaming(false);
+      streamBuf.current = '';
+      setMessages(prev => prev.map(m => m._streaming ? { ...m, _streaming: false } : m));
+    };
+    ws.onclose = () => {
+      wsRef.current = null;
+      // Reset streaming state so input doesn't stay locked if Nova restarted mid-response
+      setStreaming(false);
+      streamBuf.current = '';
+      setMessages(prev => prev.map(m => m._streaming ? { ...m, _streaming: false } : m));
+    };
+    wsRef.current = ws;
+  }, []);
+
+  // ── Alert actions ───────────────────────────────
+  const dismissAlert = useCallback((id) => {
+    fetch(`${API}/alerts/${id}/ack`, { method: 'POST' }).catch(() => {});
+    setAlerts(prev => prev.filter(a => a.id !== id));
+  }, []);
+
+  const dismissAllAlerts = useCallback(() => {
+    fetch(`${API}/alerts/ack-all`, { method: 'POST' }).catch(() => {});
+    setAlerts([]);
+  }, []);
+
+  // ── Send message (with optional image) ──────────
+  const sendMessage = useCallback(async (text, image) => {
+    if ((!text.trim() && !image) || streaming) return;
+
+    let imageUrl = null;
+    let imageDescription = '';
+
+    if (image?.file) {
+      const formData = new FormData();
+      formData.append('file', image.file);
+      try {
+        const res = await fetch(`${API}/upload`, { method: 'POST', body: formData });
+        const data = await res.json();
+        imageUrl = data.url;
+        imageDescription = data.description || '';
+      } catch { /* continue without image */ }
+    }
+
+    const displayText = text || (imageDescription ? `[Image: ${imageDescription}]` : '[Image]');
+    const messageText = imageDescription ? `${text}\n\n[User attached an image: ${imageDescription}]` : text;
+
+    setMessages(prev => [...prev, { role: 'user', content: displayText, imageUrl }]);
+    setStreaming(true);
+    streamBuf.current = '';
+
+    connectWs();
+    let sendAttempts = 0;
+    const send = () => {
+      if (wsRef.current?.readyState === 1) {
+        wsRef.current.send(JSON.stringify({
+          type: 'message',
+          content: messageText || 'What do you see in this image?',
+          conversation_id: activeConvId,
+        }));
+      } else if (sendAttempts++ < 50) {
+        // Retry for up to 5 seconds, then give up and unlock input
+        setTimeout(send, 100);
+      } else {
+        setStreaming(false);
+        setMessages(prev => [...prev, { role: 'system', content: 'Could not reach Nova. Check that the backend is running.' }]);
+      }
+    };
+    send();
+  }, [activeConvId, streaming, connectWs]);
+
+  // ── Interrupt Nova mid-stream ────────────────────
+  const handleInterrupt = useCallback(() => {
+    connectWs();
+    if (wsRef.current?.readyState === 1) {
+      wsRef.current.send(JSON.stringify({ type: 'interrupt' }));
+    }
+  }, [connectWs]);
+
+  // ── New chat ────────────────────────────────────
+  const newChat = useCallback(async () => {
+    const res = await fetch(`${API}/chat/new`, { method: 'POST' });
+    const data = await res.json();
+    setActiveConvId(data.conversation_id);
+    setMessages([]);
+    fetch(`${API}/conversations`).then(r => r.json()).then(setConversations).catch(() => {});
+  }, []);
+
+  // ── Delete conversation ─────────────────────────
+  const deleteConv = useCallback(async (id) => {
+    await fetch(`${API}/conversations/${id}`, { method: 'DELETE' });
+    if (activeConvId === id) { setActiveConvId(null); setMessages([]); }
+    setConversations(prev => prev.filter(c => c.id !== id));
+  }, [activeConvId]);
+
+  return (
+    <div className="app">
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
+      <Sidebar
+        conversations={conversations}
+        activeId={activeConvId}
+        onSelect={(id) => { setActiveConvId(id); setSidebarOpen(false); }}
+        onNew={() => { newChat(); setSidebarOpen(false); }}
+        onDelete={deleteConv}
+        onSettings={() => { setSettingsOpen(!settingsOpen); setMemoriesOpen(false); setDashboardOpen(false); setSidebarOpen(false); }}
+        onMemories={() => { setMemoriesOpen(!memoriesOpen); setSettingsOpen(false); setDashboardOpen(false); setSidebarOpen(false); }}
+        onVoiceCall={() => { setVoiceCallOpen(true); setSidebarOpen(false); }}
+        onDashboard={() => { setDashboardOpen(!dashboardOpen); setSettingsOpen(false); setMemoriesOpen(false); setLearningOpen(false); setSidebarOpen(false); }}
+        onLearning={() => { setLearningOpen(!learningOpen); setSettingsOpen(false); setMemoriesOpen(false); setDashboardOpen(false); setSidebarOpen(false); }}
+        alertCount={alerts.length}
+        mobileOpen={sidebarOpen}
+      />
+      <main className="main">
+        <div className="topbar">
+          <button className="hamburger" onClick={() => setSidebarOpen(!sidebarOpen)}>☰</button>
+          <span className="topbar-title">Nova</span>
+          <MoodBar emotion={emotion} />
+        </div>
+        {/* AlertBanner hidden */}
+        {settingsOpen && settings ? (
+          <Settings settings={settings} emotion={emotion} onClose={() => setSettingsOpen(false)} />
+        ) : memoriesOpen ? (
+          <MemoriesPanel onClose={() => setMemoriesOpen(false)} />
+        ) : dashboardOpen ? (
+          <ActivityDashboard onClose={() => setDashboardOpen(false)} />
+        ) : learningOpen ? (
+          <LearningPanel onClose={() => setLearningOpen(false)} />
+        ) : (
+          <>
+            <ChatArea messages={messages} streaming={streaming} emotion={emotion} convId={activeConvId} />
+            <InputBar onSend={sendMessage} disabled={streaming} onInterrupt={handleInterrupt} />
+          </>
+        )}
+      </main>
+      {voiceCallOpen && (
+        <VoiceCall onClose={() => setVoiceCallOpen(false)} />
+      )}
+    </div>
+  );
+}

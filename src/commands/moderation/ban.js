@@ -56,7 +56,7 @@ module.exports = {
                     .setDescription(`You were banned from **${interaction.guild.name}**`)
                     .addFields(
                         { name: 'Reason', value: reason, inline: false },
-                        { name: 'Moderator', value: interaction.user.tag, inline: true }
+                        { name: 'Moderator', value: interaction.user.username, inline: true }
                     )
                     .setColor('#ff4757')
                     .setTimestamp();
@@ -74,7 +74,7 @@ module.exports = {
 
             // Broadcast to dashboard console
             if (typeof bot?.broadcastConsole === 'function') {
-                bot.broadcastConsole(interaction.guild.id, `[BAN] ${target.tag} (${target.id}) by ${interaction.user.tag}`);
+                bot.broadcastConsole(interaction.guild.id, `[BAN] ${target.username} (${target.id}) by ${interaction.user.username}`);
             }
 
             // Log to bot_logs for dashboard Logs & Audit Trail page
@@ -83,9 +83,9 @@ module.exports = {
                     eventType: 'ban',
                     guildId: interaction.guild.id,
                     moderatorId: interaction.user.id,
-                    moderatorTag: interaction.user.tag,
+                    moderatorTag: interaction.user.username,
                     targetId: target.id,
-                    targetTag: target.tag,
+                    targetTag: target.username,
                     reason: reason,
                     details: { deleteMessageDays: deleteMessageDays }
                 });
@@ -97,8 +97,8 @@ module.exports = {
                     guildId: interaction.guild.id,
                     eventType: 'ban',
                     eventCategory: 'moderation',
-                    executor: { id: interaction.user.id, tag: interaction.user.tag },
-                    target: { id: target.id, name: target.tag, type: 'user' },
+                    executor: { id: interaction.user.id, tag: interaction.user.username },
+                    target: { id: target.id, name: target.username, type: 'user' },
                     reason: reason,
                     canReplay: true
                 });
@@ -125,9 +125,9 @@ module.exports = {
                     actionType: 'ban',
                     actionCategory: 'moderation',
                     targetUserId: target.id,
-                    targetUsername: target.tag,
+                    targetUsername: target.username,
                     moderatorId: interaction.user.id,
-                    moderatorUsername: interaction.user.tag,
+                    moderatorUsername: interaction.user.username,
                     reason: reason,
                     details: { deleteMessageDays },
                     canUndo: true // Can be undone via unban
@@ -142,8 +142,8 @@ module.exports = {
                             id: actionId,
                             type: 'ban',
                             category: 'moderation',
-                            target: { id: target.id, tag: target.tag, avatar: target.displayAvatarURL() },
-                            moderator: { id: interaction.user.id, tag: interaction.user.tag },
+                            target: { id: target.id, tag: target.username, avatar: target.displayAvatarURL() },
+                            moderator: { id: interaction.user.id, tag: interaction.user.username },
                             reason: reason,
                             canUndo: true,
                             timestamp: Date.now()
@@ -156,8 +156,8 @@ module.exports = {
                     await bot.eventEmitter.emitModerationAction(
                         interaction.guild.id,
                         'ban',
-                        { id: target.id, tag: target.tag },
-                        { id: interaction.user.id, tag: interaction.user.tag },
+                        { id: target.id, tag: target.username },
+                        { id: interaction.user.id, tag: interaction.user.username },
                         reason,
                         true
                     );
@@ -168,10 +168,10 @@ module.exports = {
             const t = (key, vars) => bot.languageSystem?.t(guildId, key, vars) || key;
             const successEmbed = new EmbedBuilder()
                 .setTitle(t('moderation.ban.title') || '✅ Member Banned')
-                .setDescription(t('moderation.ban.success', { user: target.tag }) || `**${target.tag}** has been banned from the server.`)
+                .setDescription(t('moderation.ban.success', { user: target.username }) || `**${target.username}** has been banned from the server.`)
                 .addFields(
                     { name: t('common.reason') || 'Reason', value: reason, inline: false },
-                    { name: t('common.moderator') || 'Moderator', value: interaction.user.tag, inline: true },
+                    { name: t('common.moderator') || 'Moderator', value: interaction.user.username, inline: true },
                     { name: t('moderation.ban.messageDeletion') || 'Message Deletion', value: `${deleteMessageDays} ${t('common.days') || 'days'}`, inline: true }
                 )
                 .setColor('#2ed573')
@@ -188,8 +188,8 @@ module.exports = {
                 const logEmbed = new EmbedBuilder()
                     .setTitle('🔨 Member Banned')
                     .addFields(
-                        { name: 'User', value: `${target.tag} (${target.id})`, inline: true },
-                        { name: 'Moderator', value: interaction.user.tag, inline: true },
+                        { name: 'User', value: `${target.username} (${target.id})`, inline: true },
+                        { name: 'Moderator', value: interaction.user.username, inline: true },
                         { name: 'Reason', value: reason, inline: false },
                         { name: 'Messages Deleted', value: `${deleteMessageDays} days`, inline: true }
                     )

@@ -58,7 +58,7 @@ async function sendSetupDM(owner, guild, client) {
             .setTimestamp();
 
         await owner.send({ embeds: [welcomeEmbed] });
-        console.log(`[GUILD_CREATE] Sent welcome DM to ${owner.user.tag} (${guild.name})`);
+        console.log(`[GUILD_CREATE] Sent welcome DM to ${owner.user.username} (${guild.name})`);
 
     } catch (error) {
         console.log(`[GUILD_CREATE] Could not DM owner: ${error.message}`);

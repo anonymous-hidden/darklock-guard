@@ -342,7 +342,7 @@ class AntiRaid {
                     1
                 ]);
                 
-                this.bot.logger.security(`🔒 Quarantined raid participant: ${member.user.tag} (${joinData.userId})`);
+                this.bot.logger.security(`🔒 Quarantined raid participant: ${member.user.username} (${joinData.userId})`);
                 
             } catch (error) {
                 this.bot.logger.error(`Failed to handle raid user ${joinData.userId}:`, error);
@@ -442,7 +442,7 @@ class AntiRaid {
                     try {
                         await member.roles.remove(quarantineRole, 'Lockdown ended');
                     } catch (error) {
-                        this.bot.logger.error(`Failed to remove quarantine role from ${member.user.tag}:`, error);
+                        this.bot.logger.error(`Failed to remove quarantine role from ${member.user.username}:`, error);
                     }
                 }
                 

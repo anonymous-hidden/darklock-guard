@@ -24,7 +24,7 @@ module.exports = {
                 const welcomeDM = createWelcomeEmbed(guild, bot.client);
                 await owner.send({ embeds: [welcomeDM] });
 
-                bot.logger.info(`📧 Sent welcome guide to ${owner.user.tag}`);
+                bot.logger.info(`📧 Sent welcome guide to ${owner.user.username}`);
             } catch (dmError) {
                 bot.logger.error('Could not send DM to server owner:', dmError);
                 // Fallback: send basic message in server

@@ -90,7 +90,7 @@ module.exports = {
                                 await user.send(`✅ **Verification Complete!**\n\nYou now have access to **${guild.name}**. Welcome!`);
                             } catch {}
 
-                            console.log(`[Verification] User ${user.tag} verified via emoji reaction in ${guild.name}`);
+                            console.log(`[Verification] User ${user.username} verified via emoji reaction in ${guild.name}`);
                         } else {
                             // Wrong emoji - increment attempts
                             const newAttempts = (verificationChallenge.attempts || 0) + 1;
@@ -170,7 +170,7 @@ module.exports = {
             // Add the role
             if (!member.roles.cache.has(role.id)) {
                 await member.roles.add(role);
-                console.log(`Added role ${role.name} to ${user.tag} via reaction roles`);
+                console.log(`Added role ${role.name} to ${user.username} via reaction roles`);
                 
                 // Try to DM the user
                 try {

@@ -10,7 +10,7 @@ module.exports = {
         try {
             // Broadcast to console
             try {
-                bot.broadcastConsole(member.guild.id, `[JOIN] ${member.user.tag} (${member.id}) joined ${member.guild.name}`);
+                bot.broadcastConsole(member.guild.id, `[JOIN] ${member.user.username} (${member.id}) joined ${member.guild.name}`);
             } catch (_) {}
 
             // Lockdown check - handle first
@@ -82,8 +82,8 @@ module.exports = {
                     guildId: member.guild.id,
                     eventType: 'member_join',
                     eventCategory: 'member',
-                    executor: { id: member.id, tag: member.user.tag },
-                    target: { id: member.id, name: member.user.tag, type: 'user' },
+                    executor: { id: member.id, tag: member.user.username },
+                    target: { id: member.id, name: member.user.username, type: 'user' },
                     changes: { accountAgeMs: Date.now() - member.user.createdTimestamp },
                     canReplay: false
                 });
@@ -102,7 +102,7 @@ module.exports = {
                                 member
                             );
                             await channel.send(welcomeMessage);
-                            bot.logger.info(`📩 Sent welcome message to ${member.user.tag} in ${member.guild.name}`);
+                            bot.logger.info(`📩 Sent welcome message to ${member.user.username} in ${member.guild.name}`);
                         }
                     } catch (error) {
                         bot.logger.error('Error sending welcome message:', error);

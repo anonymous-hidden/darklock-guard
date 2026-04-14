@@ -324,7 +324,7 @@ class RiskScoring {
         const embed = new EmbedBuilder()
             .setTitle('⚠️ High Risk Member Detected')
             .setColor(riskData.riskLevel === 'critical' ? 0xFF0000 : 0xFFA500)
-            .setDescription(`${member.user.tag} (${member.id})`)
+            .setDescription(`${member.user.username} (${member.id})`)
             .addFields(
                 { name: 'Risk Level', value: riskData.riskLevel.toUpperCase(), inline: true },
                 { name: 'Risk Score', value: `${riskData.totalScore}/100`, inline: true },

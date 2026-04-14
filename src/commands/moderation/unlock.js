@@ -37,7 +37,7 @@ module.exports = {
 
             // Broadcast to dashboard console
             if (typeof bot?.broadcastConsole === 'function') {
-                bot.broadcastConsole(interaction.guild.id, `[UNLOCK] #${channel.name} by ${interaction.user.tag}`);
+                bot.broadcastConsole(interaction.guild.id, `[UNLOCK] #${channel.name} by ${interaction.user.username}`);
             }
             // Log to forensics audit trail
             if (bot?.forensicsManager) {
@@ -45,7 +45,7 @@ module.exports = {
                     guildId: interaction.guild.id,
                     eventType: 'channel_unlock',
                     eventCategory: 'moderation',
-                    executor: { id: interaction.user.id, tag: interaction.user.tag },
+                    executor: { id: interaction.user.id, tag: interaction.user.username },
                     target: { id: channel.id, name: channel.name, type: 'channel' },
                     reason: reason,
                     canReplay: true
@@ -58,7 +58,7 @@ module.exports = {
                     guildId: interaction.guild.id,
                     channelId: channel.id,
                     moderatorId: interaction.user.id,
-                    moderatorTag: interaction.user.tag,
+                    moderatorTag: interaction.user.username,
                     reason: reason
                 });
             }
@@ -72,7 +72,7 @@ module.exports = {
                         type: 'unlock',
                         category: 'moderation',
                         target: { id: channel.id, tag: `#${channel.name}` },
-                        moderator: { id: interaction.user.id, tag: interaction.user.tag },
+                        moderator: { id: interaction.user.id, tag: interaction.user.username },
                         reason: reason,
                         canUndo: false,
                         timestamp: Date.now()

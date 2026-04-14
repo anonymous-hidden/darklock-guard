@@ -1,0 +1,39 @@
+[Unit]
+Description=Jarvis Security Analyst (32B Model)
+After=network.target redis-security.service ollama.service
+Wants=redis-security.service ollama.service
+Requires=redis-security.service
+
+[Service]
+Type=simple
+User=jarvis
+Group=jarvis
+WorkingDirectory=/home/cayden/discord bot/discord bot/security-pipeline/step5-jarvis-security
+ExecStart=/usr/bin/python3 security_analyst.py
+Restart=always
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# Environment
+Environment=OLLAMA_URL=http://127.0.0.1:11434
+Environment=JARVIS_MODEL=qwen2.5:32b
+EnvironmentFile=-/etc/security-pipeline/redis.env
+EnvironmentFile=-/etc/security-pipeline/triage.env
+
+# Security hardening
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/cayden/discord bot/discord bot/security-pipeline/step5-jarvis-security/data
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+# Resource limits — 32B model needs room
+MemoryMax=2G
+CPUQuota=80%
+
+[Install]
+WantedBy=multi-user.target

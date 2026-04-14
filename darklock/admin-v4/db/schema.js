@@ -117,21 +117,29 @@ async function initializeV4Schema() {
     )
   `);
 
-  // app_updates — pushed update records for Darklock Guard
+  // app_updates — pushed update records for all Darklock apps
   await db.run(`
     CREATE TABLE IF NOT EXISTS app_updates (
       id              TEXT PRIMARY KEY,
-      version         TEXT NOT NULL UNIQUE,
+      app             TEXT NOT NULL DEFAULT 'secure-guard',
+      version         TEXT NOT NULL,
       title           TEXT NOT NULL,
       changelog       TEXT,
       download_url    TEXT,
       force_update    INTEGER NOT NULL DEFAULT 0,
       min_version     TEXT,
       channel         TEXT NOT NULL DEFAULT 'stable',
+      platform        TEXT,
+      file_size       TEXT,
       published_by    TEXT,
-      published_at    TEXT NOT NULL DEFAULT (datetime('now'))
+      published_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(app, version)
     )
   `);
+  // Migrate existing app_updates table to add new columns if missing
+  await db.run(`ALTER TABLE app_updates ADD COLUMN app TEXT NOT NULL DEFAULT 'secure-guard'`).catch(() => {});
+  await db.run(`ALTER TABLE app_updates ADD COLUMN platform TEXT`).catch(() => {});
+  await db.run(`ALTER TABLE app_updates ADD COLUMN file_size TEXT`).catch(() => {});
   // Migrate existing app_updates table to add channel column if missing
   await db.run(`ALTER TABLE app_updates ADD COLUMN channel TEXT NOT NULL DEFAULT 'stable'`).catch(() => {});
 

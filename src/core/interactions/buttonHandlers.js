@@ -188,7 +188,7 @@ async function handleSpamAction(interaction, bot) {
                 try {
                     const isTimedOutRemove = targetMember.communicationDisabledUntil && new Date(targetMember.communicationDisabledUntil) > new Date();
                     if (isTimedOutRemove) {
-                        await targetMember.timeout(null, `Timeout removed by ${member.user.tag}`);
+                        await targetMember.timeout(null, `Timeout removed by ${member.user.username}`);
                         
                         // Log the action
                         await bot.database.run(`
@@ -204,11 +204,11 @@ async function handleSpamAction(interaction, bot) {
                         ]);
 
                         await interaction.editReply({
-                            content: `✅ Removed timeout from ${targetUser.tag}`
+                            content: `✅ Removed timeout from ${targetUser.username}`
                         });
                     } else {
                         await interaction.editReply({
-                            content: `ℹ️ ${targetUser.tag} is not currently timed out.`
+                            content: `ℹ️ ${targetUser.username} is not currently timed out.`
                         });
                     }
                 } catch (removeErr) {
@@ -247,7 +247,7 @@ async function handleSpamAction(interaction, bot) {
                             description: `You received an additional warning in **${guild.name}** from a moderator.`,
                             fields: [
                                 { name: 'Total Warnings', value: `${newWarningCount}`, inline: true },
-                                { name: 'Moderator', value: member.user.tag, inline: true }
+                                { name: 'Moderator', value: member.user.username, inline: true }
                             ],
                             color: 0xffa500,
                             timestamp: new Date().toISOString()
@@ -258,7 +258,7 @@ async function handleSpamAction(interaction, bot) {
                 }
 
                 await interaction.editReply({
-                    content: `✅ Added warning to ${targetUser.tag} (Total: ${newWarningCount})`
+                    content: `✅ Added warning to ${targetUser.username} (Total: ${newWarningCount})`
                 });
                 break;
 
@@ -269,7 +269,7 @@ async function handleSpamAction(interaction, bot) {
                     });
                 }
 
-                await targetMember.kick(`Kicked by ${member.user.tag} after spam detection`);
+                await targetMember.kick(`Kicked by ${member.user.username} after spam detection`);
 
                 // Log to mod_actions table
                 await bot.database.run(`
@@ -286,22 +286,22 @@ async function handleSpamAction(interaction, bot) {
 
                 // Emit to audit trail and dashboard console
                 if (typeof bot.broadcastConsole === 'function') {
-                    bot.broadcastConsole(guild.id, `[KICK] ${targetUser.tag} (${targetUserId}) by ${member.user.tag} (${member.id})`);
+                    bot.broadcastConsole(guild.id, `[KICK] ${targetUser.username} (${targetUserId}) by ${member.user.username} (${member.id})`);
                 }
                 if (bot.forensicsManager) {
                     await bot.forensicsManager.logAuditEvent({
                         guildId: guild.id,
                         eventType: 'kick',
                         eventCategory: 'moderation',
-                        executor: { id: member.id, tag: member.user.tag },
-                        target: { id: targetUserId, name: targetUser.tag, type: 'user' },
+                        executor: { id: member.id, tag: member.user.username },
+                        target: { id: targetUserId, name: targetUser.username, type: 'user' },
                         reason: 'Kicked after spam detection review',
                         canReplay: true
                     });
                 }
 
                 await interaction.editReply({
-                    content: `✅ Kicked ${targetUser.tag} from the server`
+                    content: `✅ Kicked ${targetUser.username} from the server`
                 });
                 break;
 
@@ -313,7 +313,7 @@ async function handleSpamAction(interaction, bot) {
                 }
 
                 await guild.members.ban(targetUserId, { 
-                    reason: `Banned by ${member.user.tag} after spam detection`,
+                    reason: `Banned by ${member.user.username} after spam detection`,
                     deleteMessageSeconds: 86400 // Delete messages from last 24 hours
                 });
 
@@ -332,22 +332,22 @@ async function handleSpamAction(interaction, bot) {
 
                 // Emit to audit trail and dashboard console
                 if (typeof bot.broadcastConsole === 'function') {
-                    bot.broadcastConsole(guild.id, `[BAN] ${targetUser.tag} (${targetUserId}) by ${member.user.tag} (${member.id})`);
+                    bot.broadcastConsole(guild.id, `[BAN] ${targetUser.username} (${targetUserId}) by ${member.user.username} (${member.id})`);
                 }
                 if (bot.forensicsManager) {
                     await bot.forensicsManager.logAuditEvent({
                         guildId: guild.id,
                         eventType: 'ban',
                         eventCategory: 'moderation',
-                        executor: { id: member.id, tag: member.user.tag },
-                        target: { id: targetUserId, name: targetUser.tag, type: 'user' },
+                        executor: { id: member.id, tag: member.user.username },
+                        target: { id: targetUserId, name: targetUser.username, type: 'user' },
                         reason: 'Banned after spam detection review',
                         canReplay: true
                     });
                 }
 
                 await interaction.editReply({
-                    content: `✅ Banned ${targetUser.tag} from the server`
+                    content: `✅ Banned ${targetUser.username} from the server`
                 });
                 break;
 
@@ -361,11 +361,11 @@ async function handleSpamAction(interaction, bot) {
 
                 // Remove timeout if any
                 if (targetMember.communicationDisabledUntil) {
-                    await targetMember.timeout(null, `Whitelisted by ${member.user.tag}`);
+                    await targetMember.timeout(null, `Whitelisted by ${member.user.username}`);
                 }
 
                 await interaction.editReply({
-                    content: `✅ Whitelisted ${targetUser.tag}. Trust score set to maximum.`
+                    content: `✅ Whitelisted ${targetUser.username}. Trust score set to maximum.`
                 });
                 break;
 
@@ -377,7 +377,7 @@ async function handleSpamAction(interaction, bot) {
                     
                     if (isTimedOut) {
                         // Use timeout with duration of null to remove timeout
-                        await targetMember.timeout(null, `Timeout removed by ${member.user.tag}`);
+                        await targetMember.timeout(null, `Timeout removed by ${member.user.username}`);
                         
                         await bot.database.run(`
                             INSERT INTO mod_actions 
@@ -385,9 +385,9 @@ async function handleSpamAction(interaction, bot) {
                             VALUES (?, ?, ?, ?, ?)
                         `, [guild.id, 'TIMEOUT_REMOVED', targetUserId, member.id, 'Manual untimeout after spam detection']);
                         
-                        await interaction.editReply({ content: `✅ Removed timeout from ${targetUser.tag}` });
+                        await interaction.editReply({ content: `✅ Removed timeout from ${targetUser.username}` });
                     } else {
-                        await interaction.editReply({ content: `ℹ️ ${targetUser.tag} is not currently timed out.` });
+                        await interaction.editReply({ content: `ℹ️ ${targetUser.username} is not currently timed out.` });
                     }
                 } catch (untimeoutError) {
                     bot.logger?.error && bot.logger.error('[SPAM_ACTION] Untimeout failed:', untimeoutError);
@@ -412,7 +412,7 @@ async function handleSpamAction(interaction, bot) {
                     .setColor(0x00ff00)
                     .addFields({
                         name: '✅ Action Taken',
-                        value: `${member.user.tag} used: **${action.toUpperCase()}**`,
+                        value: `${member.user.username} used: **${action.toUpperCase()}**`,
                         inline: false
                     });
 
@@ -508,7 +508,7 @@ async function handleRaidAction(interaction, bot) {
                     try {
                         const targetMember = await guild.members.fetch(join.userId).catch(() => null);
                         if (targetMember) {
-                            await targetMember.kick(`Raid protection: mass kick by ${member.user.tag}`);
+                            await targetMember.kick(`Raid protection: mass kick by ${member.user.username}`);
                             kickCount++;
                         }
                     } catch (e) {
@@ -534,7 +534,7 @@ async function handleRaidAction(interaction, bot) {
                 for (const join of flaggedBan) {
                     try {
                         await guild.members.ban(join.userId, { 
-                            reason: `Raid protection: mass ban by ${member.user.tag}`,
+                            reason: `Raid protection: mass ban by ${member.user.username}`,
                             deleteMessageSeconds: 86400
                         });
                         banCount++;
@@ -615,7 +615,7 @@ async function handleNukeAction(interaction, bot) {
                 }
 
                 await guild.members.ban(targetUserId, {
-                    reason: `Anti-nuke action by ${member.user.tag}`,
+                    reason: `Anti-nuke action by ${member.user.username}`,
                     deleteMessageSeconds: 0
                 });
 
@@ -624,7 +624,7 @@ async function handleNukeAction(interaction, bot) {
                     VALUES (?, ?, ?, ?, ?)
                 `, [guild.id, 'BAN', targetUserId, member.id, 'Anti-nuke: manual ban']);
 
-                await interaction.editReply({ content: `✅ Banned ${targetUser?.tag || targetUserId}` });
+                await interaction.editReply({ content: `✅ Banned ${targetUser?.username || targetUserId}` });
                 break;
 
             case 'striproles':
@@ -633,8 +633,8 @@ async function handleNukeAction(interaction, bot) {
                 }
 
                 const removable = targetMember.roles.cache.filter(r => r.id !== guild.id && r.editable);
-                await targetMember.roles.remove(removable, `Anti-nuke: roles stripped by ${member.user.tag}`);
-                await interaction.editReply({ content: `✅ Removed ${removable.size} roles from ${targetUser?.tag || targetUserId}` });
+                await targetMember.roles.remove(removable, `Anti-nuke: roles stripped by ${member.user.username}`);
+                await interaction.editReply({ content: `✅ Removed ${removable.size} roles from ${targetUser?.username || targetUserId}` });
                 break;
 
             case 'whitelist':
@@ -657,7 +657,7 @@ async function handleNukeAction(interaction, bot) {
                         );
                     }
                 }
-                await interaction.editReply({ content: `✅ Added ${targetUser?.tag || targetUserId} to anti-nuke whitelist.` });
+                await interaction.editReply({ content: `✅ Added ${targetUser?.username || targetUserId} to anti-nuke whitelist.` });
                 break;
 
             default:
@@ -726,8 +726,8 @@ async function handleLinkAction(interaction, bot) {
                     if (!targetMember) {
                         return interaction.editReply({ content: '❌ User not in server.' });
                     }
-                    await targetMember.kick(`Link violation: kicked by ${member.user.tag}`);
-                    await interaction.editReply({ content: `✅ Kicked ${targetUser?.tag || targetUserId}` });
+                    await targetMember.kick(`Link violation: kicked by ${member.user.username}`);
+                    await interaction.editReply({ content: `✅ Kicked ${targetUser?.username || targetUserId}` });
                     break;
 
                 case 'ban':
@@ -735,10 +735,10 @@ async function handleLinkAction(interaction, bot) {
                         return interaction.editReply({ content: '❌ You need Ban Members permission.' });
                     }
                     await guild.members.ban(targetUserId, {
-                        reason: `Link violation: banned by ${member.user.tag}`,
+                        reason: `Link violation: banned by ${member.user.username}`,
                         deleteMessageSeconds: 86400
                     });
-                    await interaction.editReply({ content: `✅ Banned ${targetUser?.tag || targetUserId}` });
+                    await interaction.editReply({ content: `✅ Banned ${targetUser?.username || targetUserId}` });
                     break;
 
                 case 'false':
@@ -796,7 +796,7 @@ async function handleVerifyAction(interaction, bot) {
                     await bot.userVerification.markVerified(targetMember, 'manual_approve');
                 }
                 
-                await interaction.editReply({ content: `✅ Verified ${targetUser?.tag || targetUserId}` });
+                await interaction.editReply({ content: `✅ Verified ${targetUser?.username || targetUserId}` });
                 break;
 
             case 'reject':
@@ -804,8 +804,8 @@ async function handleVerifyAction(interaction, bot) {
                     return interaction.editReply({ content: '❌ User not in server.' });
                 }
                 
-                await targetMember.kick(`Verification rejected by ${member.user.tag}`);
-                await interaction.editReply({ content: `✅ Rejected and kicked ${targetUser?.tag || targetUserId}` });
+                await targetMember.kick(`Verification rejected by ${member.user.username}`);
+                await interaction.editReply({ content: `✅ Rejected and kicked ${targetUser?.username || targetUserId}` });
                 break;
 
             case 'ban':
@@ -814,10 +814,10 @@ async function handleVerifyAction(interaction, bot) {
                 }
 
                 await targetGuild.members.ban(targetUserId, {
-                    reason: `Verification ban by ${member.user.tag}`,
+                    reason: `Verification ban by ${member.user.username}`,
                     deleteMessageSeconds: 0
                 });
-                await interaction.editReply({ content: `✅ Banned ${targetUser?.tag || targetUserId}` });
+                await interaction.editReply({ content: `✅ Banned ${targetUser?.username || targetUserId}` });
                 break;
 
             default:
@@ -844,7 +844,7 @@ async function updateNotificationMessage(interaction, member, actionTaken) {
             .setColor(0x10b981) // Green
             .addFields({
                 name: '✅ Action Taken',
-                value: `**${member.user.tag}** used: **${actionTaken}**`,
+                value: `**${member.user.username}** used: **${actionTaken}**`,
                 inline: false
             });
 

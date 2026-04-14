@@ -9,7 +9,7 @@ module.exports = {
     async execute(ban, bot) {
         try {
             // Log the ban
-            bot.logger.info(`[BAN] ${ban.user.tag} (${ban.user.id}) was banned from ${ban.guild.name}`);
+            bot.logger.info(`[BAN] ${ban.user.username} (${ban.user.id}) was banned from ${ban.guild.name}`);
 
             // Alt detector - store fingerprint
             if (bot.altDetector) {
@@ -49,7 +49,7 @@ module.exports = {
                     eventType: 'member_ban',
                     eventCategory: 'moderation',
                     executor: { id: 'unknown', tag: 'unknown' },
-                    target: { id: ban.user.id, name: ban.user.tag, type: 'user' },
+                    target: { id: ban.user.id, name: ban.user.username, type: 'user' },
                     changes: { reason: ban.reason },
                     canReplay: false
                 }).catch(() => {});

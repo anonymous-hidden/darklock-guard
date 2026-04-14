@@ -15,8 +15,7 @@ module.exports = {
             .addStringOption(opt => opt.setName('method').setDescription('Verification method').addChoices(
                 { name: 'Button Click', value: 'button' },
                 { name: 'CAPTCHA Code', value: 'captcha' },
-                { name: 'Emoji Reaction', value: 'reaction' },
-                { name: 'Web Portal', value: 'web' },
+                { name: 'Emoji Challenge', value: 'reaction' },
                 { name: 'Auto (Risk-based)', value: 'auto' }
             ).setRequired(true))
         ),

@@ -284,7 +284,7 @@ module.exports = {
         const pattern = detector.extractPattern(user.username);
         
         const embed = new EmbedBuilder()
-            .setTitle(`🔍 Alt Check: ${user.tag}`)
+            .setTitle(`🔍 Alt Check: ${user.username}`)
             .setColor(userDetection ? 0xFFA500 : 0x00FF00)
             .setThumbnail(user.displayAvatarURL({ dynamic: true }))
             .addFields(
@@ -365,7 +365,7 @@ module.exports = {
         await detector.linkAccounts(interaction.guild.id, user2.id, user1.id, interaction.user.id);
 
         await interaction.reply({
-            content: `✅ Linked **${user2.tag}** as an alt of **${user1.tag}**.\n\nThis has been marked as a confirmed alt (contributes to calibration).`,
+            content: `✅ Linked **${user2.username}** as an alt of **${user1.username}**.\n\nThis has been marked as a confirmed alt (contributes to calibration).`,
             ephemeral: true
         });
     },
@@ -376,13 +376,13 @@ module.exports = {
 
         if (alts.length === 0) {
             return interaction.reply({
-                content: `📋 No known alts for **${user.tag}**.`,
+                content: `📋 No known alts for **${user.username}**.`,
                 ephemeral: true
             });
         }
 
         const embed = new EmbedBuilder()
-            .setTitle(`👥 Known Alts of ${user.tag}`)
+            .setTitle(`👥 Known Alts of ${user.username}`)
             .setColor(0x5865F2)
             .setTimestamp();
 
@@ -449,7 +449,7 @@ module.exports = {
         }
 
         if (success) {
-            let msg = `✅ Marked **${user.tag}** detection as reviewed.`;
+            let msg = `✅ Marked **${user.username}** detection as reviewed.`;
             if (wasAlt !== null) {
                 msg += `\n${wasAlt ? '✅ Confirmed as alt - this improves detection accuracy.' : '❌ Marked as false positive - this helps reduce false alerts.'}`;
             }
@@ -457,7 +457,7 @@ module.exports = {
             await interaction.reply({ content: msg, ephemeral: true });
         } else {
             await interaction.reply({
-                content: `❌ No detection found for **${user.tag}**.`,
+                content: `❌ No detection found for **${user.username}**.`,
                 ephemeral: true
             });
         }

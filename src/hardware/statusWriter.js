@@ -71,7 +71,7 @@ class HardwareStatusWriter {
                 guild_count: this.bot.client.guilds.cache.size,
                 user_count: this.bot.client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0),
                 ping: this.bot.client.ws.ping,
-                username: this.bot.client.user.tag,
+                username: this.bot.client.user.username,
                 user_id: this.bot.client.user.id
             };
 

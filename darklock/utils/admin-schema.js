@@ -36,7 +36,8 @@ async function initializeAdminSchema() {
             last_login TEXT,
             last_login_ip TEXT,
             active INTEGER DEFAULT 1,
-            require_2fa INTEGER DEFAULT 0
+            require_2fa INTEGER DEFAULT 0,
+            rfid_card_name TEXT
         )
     `);
 

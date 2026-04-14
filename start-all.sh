@@ -60,18 +60,48 @@ if ! check_running "node darklock/start.js" "Darklock Platform"; then
 fi
 echo ""
 
-echo "3. Starting Darklock Guard Service + App (Tauri)..."
+echo "3. Starting Secure Channel Services..."
+# dl_ids — Identity & Key Distribution Service (port 4100)
+if ! check_running "node.*dl_ids.*server.js" "Secure Channel IDS"; then
+    cd "$SCRIPT_DIR/secure-channel/services/dl_ids"
+    nohup node src/server.js > "$SCRIPT_DIR/logs/dl-ids.log" 2>&1 &
+    sleep 2
+    if ss -tlnp 2>/dev/null | grep -q ':4100 '; then
+        echo "✓ Secure Channel IDS started (port 4100)"
+    else
+        echo "✗ Secure Channel IDS failed to start (check logs/dl-ids.log)"
+    fi
+fi
+
+# dl_rly — Message Relay Service (port 4101)
+if ! check_running "node.*dl_rly.*server.js" "Secure Channel Relay"; then
+    cd "$SCRIPT_DIR/secure-channel/services/dl_rly"
+    nohup node src/server.js > "$SCRIPT_DIR/logs/dl-rly.log" 2>&1 &
+    sleep 2
+    if ss -tlnp 2>/dev/null | grep -q ':4101 '; then
+        echo "✓ Secure Channel Relay started (port 4101)"
+    else
+        echo "✗ Secure Channel Relay failed to start (check logs/dl-rly.log)"
+    fi
+fi
+echo ""
+
+echo "4. Starting Darklock Guard Service + App (Tauri)..."
 # Start the guard-service daemon first if not already running
 GUARD_BIN="$SCRIPT_DIR/guard-v2/target/debug/guard-service"
 if ! pgrep -f "guard-service run" > /dev/null; then
     if [ -f "$GUARD_BIN" ]; then
-        export GUARD_VAULT_PASSWORD="${GUARD_VAULT_PASSWORD:-darklock2026}"
+        if [ -z "$GUARD_VAULT_PASSWORD" ]; then
+            echo "✗ GUARD_VAULT_PASSWORD is not set. Cannot start guard service."
+            echo "  Set it: export GUARD_VAULT_PASSWORD=<your-secure-password>"
+        else
         "$GUARD_BIN" run > "$SCRIPT_DIR/logs/guard-service.log" 2>&1 &
         sleep 2
         if pgrep -f "guard-service run" > /dev/null; then
             echo "✓ Guard service daemon started"
         else
             echo "✗ Guard service daemon failed to start (check logs/guard-service.log)"
+        fi
         fi
     else
         echo "⚠ guard-service binary not found, run: cd guard-v2 && cargo build"
@@ -84,13 +114,16 @@ GUARD_UI_BIN="$SCRIPT_DIR/guard-v2/target/debug/darklock-guard-ui"
 if ! pgrep -f "darklock-guard-ui" > /dev/null && ! pgrep -f "vite dev" > /dev/null; then
     if [ -f "$GUARD_UI_BIN" ]; then
         # Run the pre-built binary directly in the background (no recompilation)
-        export GUARD_VAULT_PASSWORD="${GUARD_VAULT_PASSWORD:-darklock2026}"
+        if [ -z "$GUARD_VAULT_PASSWORD" ]; then
+            echo "✗ GUARD_VAULT_PASSWORD is not set. Cannot start Guard UI."
+        else
         nohup "$GUARD_UI_BIN" > "$SCRIPT_DIR/logs/guard-startup.log" 2>&1 &
         sleep 2
         if pgrep -f "darklock-guard-ui" > /dev/null; then
             echo "✓ Darklock Guard App started (background)"
         else
             echo "✗ Darklock Guard App failed to start (check logs/guard-startup.log)"
+        fi
         fi
     else
         # Binary not built yet — fall back to tauri dev (first-time build)
@@ -119,6 +152,8 @@ echo ""
 echo "Checking running services..."
 pgrep -f "node src/bot.js" > /dev/null && echo "✓ Discord Bot: Running" || echo "✗ Discord Bot: Not running"
 pgrep -f "node darklock/start.js" > /dev/null && echo "✓ Darklock Platform: Running" || echo "✗ Darklock Platform: Not running"
+ss -tlnp 2>/dev/null | grep -q ':4100 ' && echo "✓ Secure Channel IDS: Running (port 4100)" || echo "✗ Secure Channel IDS: Not running"
+ss -tlnp 2>/dev/null | grep -q ':4101 ' && echo "✓ Secure Channel Relay: Running (port 4101)" || echo "✗ Secure Channel Relay: Not running"
 pgrep -f "guard-service run" > /dev/null && echo "✓ Guard Service Daemon: Running" || echo "✗ Guard Service Daemon: Not running"
 pgrep -f "darklock-guard-ui" > /dev/null && echo "✓ Darklock Guard App: Running" || (pgrep -f "vite dev" > /dev/null && echo "✓ Darklock Guard App: Building/running (dev mode)" || echo "✗ Darklock Guard App: Not running — check logs/guard-startup.log")
 
@@ -128,7 +163,8 @@ echo "  Access Points"
 echo "=========================================="
 echo "Dashboard:  http://localhost:3001"
 echo "Platform:   http://localhost:3001/platform"
-echo "Darklock:   http://localhost:3002"
+echo "IDS:        http://localhost:4100"
+echo "Relay:      http://localhost:4101"
 echo ""
 echo "Logs directory: $SCRIPT_DIR/logs/"
 echo "=========================================="

@@ -64,7 +64,7 @@ class UserVerification {
     }
 
     async verifyNewMember(member) {
-        this.bot.logger?.info(`[Verification] Intake start for ${member.user.tag} (${member.id}) in guild ${member.guild.id}`);
+        this.bot.logger?.info(`[Verification] Intake start for ${member.user.username} (${member.id}) in guild ${member.guild.id}`);
         const config = await this.bot.database.getGuildConfig(member.guild.id);
         if (!config?.verification_enabled) {
             this.bot.logger?.info(`[Verification] Skipped: verification_disabled for guild ${member.guild.id}`);
@@ -431,7 +431,7 @@ class UserVerification {
                 if (logChannel) {
                     const logEmbed = new EmbedBuilder()
                         .setTitle('🔐 Verification Challenge Issued')
-                        .setDescription(`${member} (${member.user.tag})\nMethod: **${mode}**\nRisk: ${risk.riskLevel}`)
+                        .setDescription(`${member} (${member.user.username})\nMethod: **${mode}**\nRisk: ${risk.riskLevel}`)
                         .setColor('#FFA500')
                         .setTimestamp();
                     await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
@@ -552,7 +552,7 @@ class UserVerification {
                 .setTitle('🔔 Verification Pending')
                 .setDescription(`${member} has a pending verification challenge.`)
                 .addFields(
-                    { name: 'User', value: `${member.user.tag} (${member.id})`, inline: true },
+                    { name: 'User', value: `${member.user.username} (${member.id})`, inline: true },
                     { name: 'Type', value: `${mode}`, inline: true },
                     { name: 'Risk', value: `${risk.riskLevel || risk.score || 'unknown'}`, inline: true },
                     { name: 'Profile', value: profile.toUpperCase(), inline: true }
@@ -647,7 +647,7 @@ class UserVerification {
             .setColor(colorMap[riskData.riskLevel] || 0xFFA500)
             .setDescription(`A potentially risky user has joined the server.`)
             .addFields(
-                { name: '👤 User', value: `${member.user.tag}\n${member} (${member.id})`, inline: true },
+                { name: '👤 User', value: `${member.user.username}\n${member} (${member.id})`, inline: true },
                 { name: '🎯 Risk Level', value: riskData.riskLevel.toUpperCase(), inline: true },
                 { name: '📊 Final Score', value: `${Math.round(riskData.score)}/100`, inline: true }
             )
@@ -802,7 +802,7 @@ class UserVerification {
                 if (logChannel) {
                     const logEmbed = new EmbedBuilder()
                         .setTitle('✅ Verification Completed')
-                        .setDescription(`${member} (${member.user.tag})\nMethod: DM Code`)
+                        .setDescription(`${member} (${member.user.username})\nMethod: DM Code`)
                         .setColor('#00FF00')
                         .setTimestamp();
                     await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
@@ -849,7 +849,7 @@ class UserVerification {
                     if (logChannel) {
                         const logEmbed = new EmbedBuilder()
                             .setTitle('✅ Member Verified')
-                            .setDescription(`${member} (${member.user.tag})\nReason: ${reason}`)
+                            .setDescription(`${member} (${member.user.username})\nReason: ${reason}`)
                             .setColor('#00FF00')
                             .setTimestamp();
                         await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
@@ -983,7 +983,7 @@ class UserVerification {
                         const { EmbedBuilder } = require('discord.js');
                         const logEmbed = new EmbedBuilder()
                             .setTitle('✅ Verification Completed')
-                            .setDescription(`${member} (${member.user.tag})\nMethod: Channel Code`)
+                            .setDescription(`${member} (${member.user.username})\nMethod: Channel Code`)
                             .setColor('#00FF00')
                             .setTimestamp();
                         await logChannel.send({ embeds: [logEmbed] }).catch(() => {});

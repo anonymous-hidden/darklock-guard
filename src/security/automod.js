@@ -262,7 +262,7 @@ class AutoMod {
         const userId = message.author.id;
         const action = filterConfig?.action || 'delete';
         
-        this.bot.logger?.info(`[AutoMod] ${filterName} violation by ${message.author.tag} in ${message.guild.name}: ${reason}`);
+        this.bot.logger?.info(`[AutoMod] ${filterName} violation by ${message.author.username} in ${message.guild.name}: ${reason}`);
 
         // Track violations for escalation
         const key = `${guildId}_${userId}`;
@@ -357,9 +357,9 @@ class AutoMod {
                 actionType: 'timeout',
                 actionCategory: 'automod',
                 targetUserId: message.author.id,
-                targetUsername: message.author.tag,
+                targetUsername: message.author.username,
                 moderatorId: this.bot.client.user.id,
-                moderatorUsername: this.bot.client.user.tag,
+                moderatorUsername: this.bot.client.user.username,
                 reason: `AutoMod ${filterName}: ${reason}`,
                 duration: `${Math.round(duration/60000)}m`,
                 canUndo: true,
@@ -385,9 +385,9 @@ class AutoMod {
                 actionType: 'kick',
                 actionCategory: 'automod',
                 targetUserId: message.author.id,
-                targetUsername: message.author.tag,
+                targetUsername: message.author.username,
                 moderatorId: this.bot.client.user.id,
-                moderatorUsername: this.bot.client.user.tag,
+                moderatorUsername: this.bot.client.user.username,
                 reason: `AutoMod ${filterName}: ${reason}`,
                 canUndo: false,
                 details: { filterName, auto: true }
@@ -414,7 +414,7 @@ class AutoMod {
                 color: 0xff6b6b,
                 title: '🤖 AutoMod Action',
                 fields: [
-                    { name: 'User', value: `${message.author.tag} (${message.author.id})`, inline: true },
+                    { name: 'User', value: `${message.author.username} (${message.author.id})`, inline: true },
                     { name: 'Filter', value: filterName, inline: true },
                     { name: 'Action', value: action, inline: true },
                     { name: 'Reason', value: reason, inline: false },

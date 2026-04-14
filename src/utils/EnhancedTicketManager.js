@@ -242,7 +242,7 @@ class TicketManager {
             const channelOptions = {
                 name: channelName,
                 type: ChannelType.GuildText,
-                topic: `Ticket #${ticketNumber} | ${categoryInfo.name} | Created by ${user.tag}`,
+                topic: `Ticket #${ticketNumber} | ${categoryInfo.name} | Created by ${user.username}`,
                 permissionOverwrites: [
                     {
                         id: guild.id, // @everyone

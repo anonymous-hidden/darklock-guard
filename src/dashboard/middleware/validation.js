@@ -80,7 +80,12 @@ function validateOffset(offset) {
  */
 function sanitizeString(str, maxLength = 2000) {
     if (typeof str !== 'string') return '';
-    return str.slice(0, maxLength).replace(/[<>]/g, '');
+    return str.slice(0, maxLength)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 /**

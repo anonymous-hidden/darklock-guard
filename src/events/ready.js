@@ -2,7 +2,7 @@ module.exports = {
     name: 'ready',
     once: true,
     async execute(client, bot) {
-        bot.logger.info(`🚀 ${client.user.tag} is now online and ready!`);
+        bot.logger.info(`🚀 ${client.user.username} is now online and ready!`);
         bot.logger.info(`📊 Monitoring ${client.guilds.cache.size} servers`);
         bot.logger.info(`👥 Protecting ${client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0)} users`);
 
@@ -198,7 +198,7 @@ function startPeriodicTasks(bot) {
                         const member = await guild.members.fetch(action.target_user_id).catch(() => null);
                         if (member && member.isCommunicationDisabled()) {
                             await member.timeout(null, 'Timeout expired');
-                            bot.logger.info(`⏰ Timeout expired for ${member.user.tag} in ${guild.name}`);
+                            bot.logger.info(`⏰ Timeout expired for ${member.user.username} in ${guild.name}`);
                         }
                     }
                     

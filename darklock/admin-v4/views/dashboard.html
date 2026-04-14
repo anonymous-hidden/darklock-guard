@@ -469,6 +469,8 @@ const ICONS = {
   'palette': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-1 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-5.5-4.5-9-10-9z"/><circle cx="7.5" cy="11.5" r="1.5"/><circle cx="10.5" cy="7.5" r="1.5"/><circle cx="14.5" cy="7.5" r="1.5"/><circle cx="17.5" cy="11.5" r="1.5"/></svg>',
   'tool': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>',
   'chart-bar': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>',
+  'ticket': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 9a3 3 0 010-6h20a3 3 0 010 6"/><path d="M2 15a3 3 0 000 6h20a3 3 0 000-6"/><path d="M2 9h20v6H2z"/><line x1="9" y1="12" x2="9" y2="12.01"/><line x1="12" y1="12" x2="15" y2="12"/></svg>',
+  'server': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>',
 };
 
 // ── API helper (fixed) ───────────────────────────────────────────────────────────
@@ -581,10 +583,10 @@ function renderSidebar(tabs) {
 function navigate(tab) {
   currentTab = tab;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
-  const titleMap = { overview:'Overview', announcements:'Announcements', accounts:'Accounts', roles:'Role & Access', 'app-updates':'App Updates', 'bug-reports':'Bug Reports', 'system-logs':'System Logs', security:'Security Settings', themes:'Themes', maintenance:'Maintenance', settings:'Platform Settings', analytics:'Analytics' };
+  const titleMap = { overview:'Overview', tickets:'Tickets', announcements:'Announcements', accounts:'Accounts', roles:'Role & Access', 'app-updates':'App Updates', pi5:'Pi5 Infrastructure', 'bug-reports':'Bug Reports', 'system-logs':'System Logs', security:'Security Settings', themes:'Themes', maintenance:'Maintenance', settings:'Platform Settings', analytics:'Analytics' };
   document.getElementById('pageTitle').textContent = titleMap[tab] || tab;
   document.getElementById('content').innerHTML = '<div class="loading">Loading...</div>';
-  const loaders = { overview: loadOverview, announcements: loadAnnouncements, accounts: loadAccounts, roles: loadRoles, 'app-updates': loadAppUpdates, 'bug-reports': loadBugReports, 'system-logs': loadSystemLogs, security: loadSecurity, themes: loadThemes, maintenance: loadMaintenance, settings: loadSettings, analytics: loadAnalytics };
+  const loaders = { overview: loadOverview, tickets: loadTickets, announcements: loadAnnouncements, accounts: loadAccounts, roles: loadRoles, 'app-updates': loadAppUpdates, pi5: loadPi5, 'bug-reports': loadBugReports, 'system-logs': loadSystemLogs, security: loadSecurity, themes: loadThemes, maintenance: loadMaintenance, settings: loadSettings, analytics: loadAnalytics };
   (loaders[tab] || (() => {}))();
   if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('mobile-open');
 }
@@ -922,28 +924,42 @@ async function loadAppUpdates() {
   try {
     const d = await api('/app-updates');
     const list = d.updates || [];
+    const apps = ['secure-guard', 'secure-channel', 'secure-notes'];
+    const appLabels = { 'secure-guard': 'Secure Guard', 'secure-channel': 'Secure Channel', 'secure-notes': 'Secure Notes' };
+    const appColors = { 'secure-guard': '#6366f1', 'secure-channel': '#06b6d4', 'secure-notes': '#22c55e' };
     document.getElementById('content').innerHTML = `
       <div class="flex-between mb-2">
-        <span style="font-size:.85rem;color:var(--text-muted)">${list.length} update${list.length !== 1 ? 's' : ''} pushed</span>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <span style="font-size:.85rem;color:var(--text-muted)">${list.length} update${list.length !== 1 ? 's' : ''} pushed</span>
+          <div style="display:flex;gap:.35rem">
+            ${apps.map(a => {
+              const count = list.filter(u => u.app === a).length;
+              return `<span class="badge" style="background:${appColors[a]}22;color:${appColors[a]};font-size:.65rem">${appLabels[a]}: ${count}</span>`;
+            }).join('')}
+          </div>
+        </div>
         <div style="display:flex;gap:.5rem">
           <button class="btn btn-secondary" onclick="showUploadFiles()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload Files</button>
           <button class="btn btn-primary" onclick="showPushUpdate()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Push Update</button>
         </div>
       </div>
-      ${list.length === 0 ? '<div class="empty-state"><h4>No updates pushed</h4><p>Push your first app update to make it available for Darklock Guard users.</p></div>' :
+      ${list.length === 0 ? '<div class="empty-state"><h4>No updates pushed</h4><p>Push your first app update to make it available for users across all Darklock apps.</p></div>' :
         list.map(u => `
         <div class="card mb-1">
           <div class="card-body" style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem">
             <div style="flex:1;min-width:0">
               <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;flex-wrap:wrap">
+                <span class="badge" style="background:${appColors[u.app || 'secure-guard']}22;color:${appColors[u.app || 'secure-guard']};font-weight:700">${appLabels[u.app || 'secure-guard']}</span>
                 <span class="badge badge-accent" style="font-family:monospace">v${esc(u.version)}</span>
                 <span style="font-weight:700">${esc(u.title)}</span>
                 ${u.force_update ? '<span class="badge badge-red">Force</span>' : ''}
                 ${u.min_version ? `<span class="badge badge-muted">Min: v${esc(u.min_version)}</span>` : ''}
                 <span class="badge" style="background:${u.channel === 'beta' ? 'rgba(139,92,246,.2)' : 'rgba(34,197,94,.15)'};color:${u.channel === 'beta' ? '#a78bfa' : '#4ade80'}">${u.channel || 'stable'}</span>
+                ${u.platform ? `<span class="badge badge-muted">${esc(u.platform)}</span>` : ''}
               </div>
               <p style="color:var(--text-secondary);font-size:.825rem;white-space:pre-wrap;margin-bottom:.4rem">${esc(truncate(u.changelog, 200))}</p>
               <span style="font-size:.7rem;color:var(--text-muted)">${fmtDateTime(u.published_at)} by ${esc(u.published_by || 'Unknown')}</span>
+              ${u.file_size ? `<span style="font-size:.7rem;color:var(--text-muted);margin-left:.5rem">${esc(u.file_size)}</span>` : ''}
               ${u.download_url ? `<div style="margin-top:.35rem"><a href="${esc(u.download_url)}" style="font-size:.75rem" target="_blank">Download URL ↗</a></div>` : ''}
               ${u.files && u.files.length > 0 ? `
                 <div style="margin-top:.5rem;padding:.5rem;background:var(--bg-secondary);border-radius:6px">
@@ -956,8 +972,7 @@ async function loadAppUpdates() {
                         <button class="btn btn-danger" style="padding:.1rem .4rem;font-size:.65rem" onclick="deleteUpdateFile('${esc(u.version)}','${esc(f.name)}')">✕</button>
                       </div>
                     </div>`).join('')}
-                </div>` : `
-                <div style="margin-top:.35rem"><button class="btn btn-secondary" style="padding:.2rem .6rem;font-size:.7rem" onclick="showUploadFiles('${esc(u.version)}')">Upload files for v${esc(u.version)}</button></div>`}
+                </div>` : ''}
             </div>
             <button class="btn btn-danger btn-sm" onclick="deleteAppUpdate('${u.id}')">Delete</button>
           </div>
@@ -966,14 +981,14 @@ async function loadAppUpdates() {
         <div class="card-body" style="font-size:.8rem;color:var(--text-muted)">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.6rem">
             <strong style="font-size:.85rem">Public Updates Page</strong>
-            <a href="/platform/updates" target="_blank" style="display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .75rem;background:var(--accent-muted);color:var(--accent);border:1px solid var(--accent);border-radius:6px;font-size:.75rem;font-weight:600;text-decoration:none" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+            <a href="/site/updates.html" target="_blank" style="display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .75rem;background:var(--accent-muted);color:var(--accent);border:1px solid var(--accent);border-radius:6px;font-size:.75rem;font-weight:600;text-decoration:none" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              /platform/updates
+              /site/updates.html
             </a>
           </div>
-          <strong>Update Check Endpoint:</strong> <code style="background:var(--bg-input);padding:.2rem .5rem;border-radius:4px;font-size:.75rem">GET /platform/api/updates/{target}/{currentVersion}</code>
-          <br><strong>Polling Endpoint:</strong> <code style="background:var(--bg-input);padding:.2rem .5rem;border-radius:4px;font-size:.75rem">GET /api/v4/admin/app/latest-update</code>
-          <br>The desktop app calls these endpoints to check for and download updates. Upload installer files (.exe, .msi, .deb, .AppImage, .dmg, .tar.gz) per version.
+          <strong>App-specific polling:</strong> <code style="background:var(--bg-input);padding:.2rem .5rem;border-radius:4px;font-size:.75rem">GET /api/v4/admin/app/latest-update?app=secure-guard|secure-channel|secure-notes</code>
+          <br><strong>All apps latest:</strong> <code style="background:var(--bg-input);padding:.2rem .5rem;border-radius:4px;font-size:.75rem">GET /api/v4/admin/app/all-updates</code>
+          <br><strong>Update history:</strong> <code style="background:var(--bg-input);padding:.2rem .5rem;border-radius:4px;font-size:.75rem">GET /api/v4/admin/app/update-history/:app</code>
         </div>
       </div>`;
   } catch (err) { toast(err.message, 'error'); }
@@ -1087,12 +1102,24 @@ async function deleteUpdateFile(version, filename) {
 
 function showPushUpdate() {
   openModal('Push App Update', `
+    <div class="form-group">
+      <label class="form-label">App</label>
+      <select class="form-input" id="mApp" style="padding:.5rem .75rem">
+        <option value="secure-guard">Secure Guard</option>
+        <option value="secure-channel">Secure Channel</option>
+        <option value="secure-notes">Secure Notes</option>
+      </select>
+    </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Version (semver)</label><input class="form-input" id="mVersion" placeholder="2.1.0"></div>
       <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="mTitle" placeholder="Performance improvements"></div>
     </div>
     <div class="form-group"><label class="form-label">Changelog</label><textarea class="form-textarea" id="mChangelog" rows="4" placeholder="- Fixed bug X\n- Added feature Y"></textarea></div>
     <div class="form-group"><label class="form-label">Download URL (optional — auto-generated if files uploaded)</label><input class="form-input" id="mDownloadUrl" placeholder="https://... (leave empty to use uploaded files)"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Platform (optional)</label><input class="form-input" id="mPlatform" placeholder="Windows, Linux, macOS, All"></div>
+      <div class="form-group"><label class="form-label">File Size (optional)</label><input class="form-input" id="mFileSize" placeholder="~12MB"></div>
+    </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Min Version (optional)</label><input class="form-input" id="mMinVersion" placeholder="1.5.0"></div>
       <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:.15rem">
@@ -1113,7 +1140,7 @@ function showPushUpdate() {
       </div>
     </div>
     <div style="padding:.6rem;background:var(--bg-secondary);border-radius:6px;font-size:.75rem;color:var(--text-muted)">
-      💡 <strong>Tip:</strong> Upload installer files first using the "Upload Files" button, then push the update. The download URL will be auto-generated.
+      💡 <strong>Tip:</strong> Select the correct app first, then fill in version details. Each app maintains its own independent version history.
     </div>`,
     `<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
      <button class="btn btn-primary" onclick="submitAppUpdate()">Publish</button>`);
@@ -1121,17 +1148,20 @@ function showPushUpdate() {
 
 async function submitAppUpdate() {
   try {
+    const app = document.getElementById('mApp').value;
     const version = document.getElementById('mVersion').value.trim();
     const title = document.getElementById('mTitle').value.trim();
     const changelog = document.getElementById('mChangelog').value.trim();
     const download_url = document.getElementById('mDownloadUrl').value.trim() || undefined;
+    const platform = document.getElementById('mPlatform').value.trim() || undefined;
+    const file_size = document.getElementById('mFileSize').value.trim() || undefined;
     const min_version = document.getElementById('mMinVersion').value.trim() || undefined;
     const force_update = document.getElementById('mForce').checked;
     const channel = document.querySelector('input[name="mChannel"]:checked')?.value || 'stable';
     if (!version || !title) return toast('Version and title required', 'error');
     if (!/^\d+\.\d+\.\d+$/.test(version)) return toast('Version must be semantic (e.g. 2.1.0)', 'error');
-    await api('/app-updates', { method: 'POST', body: JSON.stringify({ version, title, changelog, download_url, min_version, force_update, channel }) });
-    closeModal(); toast('Update pushed!', 'success'); loadAppUpdates();
+    await api('/app-updates', { method: 'POST', body: JSON.stringify({ app, version, title, changelog, download_url, min_version, force_update, channel, platform, file_size }) });
+    closeModal(); toast(`Update pushed for ${app}!`, 'success'); loadAppUpdates();
   } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -1139,6 +1169,130 @@ async function deleteAppUpdate(id) {
   if (!confirm('Delete this update and all its files?')) return;
   try { await api(`/app-updates/${id}`, { method: 'DELETE', body: JSON.stringify({ confirm: true }) }); toast('Deleted', 'success'); loadAppUpdates(); }
   catch (err) { toast(err.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 5b: PI5 INFRASTRUCTURE
+// ═══════════════════════════════════════════════════════════════════════════════
+let pi5PollTimer = null;
+
+async function loadPi5() {
+  if (pi5PollTimer) { clearInterval(pi5PollTimer); pi5PollTimer = null; }
+  try {
+    const [statusRes, jobsRes] = await Promise.all([api('/pi5/status'), api('/pi5/jobs')]);
+    const pi = statusRes.pi5 || {};
+    const jobs = (jobsRes.jobs || []).slice(0, 10);
+    document.getElementById('content').innerHTML = `
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:1.5rem">
+        <div class="stat-card">
+          <div class="stat-label">Status</div>
+          <div class="stat-value" style="color:${pi.reachable ? 'var(--green)' : 'var(--red)'}">${pi.reachable ? '● Online' : '● Offline'}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Host</div>
+          <div class="stat-value" style="font-size:1rem;font-family:monospace">${esc(pi.host || '–')}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Uptime</div>
+          <div class="stat-value" style="font-size:.95rem">${esc(pi.uptime || '–')}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Bot Health</div>
+          <div class="stat-value" style="color:${pi.botHealthy ? 'var(--green)' : 'var(--red)'}">${pi.botHealthy ? '✓ Healthy' : '✕ Down'}</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:.75rem;margin-bottom:1.5rem;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="pi5Deploy('full')">
+          ${ICONS['download-cloud'] || ''} Deploy (Sync + Restart)
+        </button>
+        <button class="btn btn-secondary" onclick="pi5Deploy('sync-only')">
+          Sync Files Only
+        </button>
+        <button class="btn btn-secondary" onclick="pi5Update()">
+          ${ICONS.tool || ''} Run Update Script
+        </button>
+        <button class="btn btn-secondary" onclick="pi5Deploy('dry-run')">
+          Dry Run
+        </button>
+        <button class="btn btn-secondary" onclick="loadPi5()">
+          Refresh
+        </button>
+      </div>
+
+      <h3 style="margin-bottom:.75rem;font-size:.95rem">Recent Jobs</h3>
+      <div id="pi5Jobs">
+        ${jobs.length === 0 ? '<div class="empty-state"><p>No deploy/update jobs yet</p></div>' :
+          jobs.map(j => `
+            <div class="card mb-1" id="pi5job-${esc(j.id)}">
+              <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:1rem">
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;flex-wrap:wrap">
+                    <span class="badge ${j.status === 'success' ? 'badge-green' : j.status === 'running' ? 'badge-accent' : 'badge-red'}">${esc(j.status)}</span>
+                    <span style="font-weight:600">${esc(j.script)}</span>
+                    <span class="badge badge-muted" style="font-family:monospace">${esc(j.args?.join(' ') || 'default')}</span>
+                  </div>
+                  <span style="font-size:.7rem;color:var(--text-muted)">Started ${fmtDateTime(j.startedAt)} by ${esc(j.startedBy)}${j.completedAt ? ' · Completed ' + fmtDateTime(j.completedAt) : ''}</span>
+                </div>
+                <button class="btn btn-secondary" style="font-size:.75rem;padding:.3rem .6rem" onclick="viewPi5Job('${esc(j.id)}')">View Output</button>
+              </div>
+            </div>
+          `).join('')}
+      </div>
+      <div id="pi5JobOutput" style="display:none;margin-top:1rem">
+        <h3 style="margin-bottom:.5rem;font-size:.9rem">Job Output <button class="btn btn-secondary" style="font-size:.65rem;padding:.2rem .5rem;margin-left:.5rem" onclick="document.getElementById('pi5JobOutput').style.display='none'">Close</button></h3>
+        <pre id="pi5OutputPre" style="background:var(--bg-input);padding:1rem;border-radius:var(--radius);font-size:.75rem;max-height:400px;overflow:auto;white-space:pre-wrap;color:var(--text-secondary);border:1px solid var(--border)"></pre>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('content').innerHTML = `<div class="empty-state"><h4>Failed to load Pi5 status</h4><p>${esc(err.message)}</p></div>`;
+  }
+}
+
+async function pi5Deploy(mode) {
+  if (mode === 'full' && !confirm('Deploy to Pi5? This will sync files and restart the bot.')) return;
+  try {
+    const res = await api('/pi5/deploy', { method: 'POST', body: JSON.stringify({ mode }) });
+    toast(`Deploy started (${mode}) — Job: ${res.jobId}`, 'success');
+    // Poll job status
+    pi5PollJob(res.jobId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function pi5Update() {
+  const branch = prompt('Branch to update from:', 'main');
+  if (!branch) return;
+  try {
+    const res = await api('/pi5/update', { method: 'POST', body: JSON.stringify({ branch }) });
+    toast(`Update started (branch: ${branch}) — Job: ${res.jobId}`, 'success');
+    pi5PollJob(res.jobId);
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function pi5PollJob(jobId) {
+  if (pi5PollTimer) clearInterval(pi5PollTimer);
+  pi5PollTimer = setInterval(async () => {
+    try {
+      const res = await api(`/pi5/job/${jobId}`);
+      if (res.job && res.job.status !== 'running') {
+        clearInterval(pi5PollTimer);
+        pi5PollTimer = null;
+        toast(`Job ${res.job.status === 'success' ? 'completed ✓' : 'failed ✕'}`, res.job.status === 'success' ? 'success' : 'error');
+        if (currentTab === 'pi5') loadPi5();
+      }
+    } catch { clearInterval(pi5PollTimer); pi5PollTimer = null; }
+  }, 3000);
+}
+
+async function viewPi5Job(jobId) {
+  try {
+    const res = await api(`/pi5/job/${jobId}`);
+    const out = document.getElementById('pi5JobOutput');
+    const pre = document.getElementById('pi5OutputPre');
+    out.style.display = 'block';
+    pre.textContent = res.job?.output || '(no output)';
+    out.scrollIntoView({ behavior: 'smooth' });
+  } catch (err) { toast(err.message, 'error'); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2387,6 +2541,423 @@ function initAnaDragDrop() {
       }
     });
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TICKETS TAB
+// ═══════════════════════════════════════════════════════════════════════════════
+let ticketsPage = 0, ticketsFilter = { status: '', priority: '', guild: '', search: '' };
+let ticketsSubTab = 'tickets'; // 'tickets' | 'blacklist' | 'settings'
+let blPage = 0, blSearch = '';
+let settingsGuildId = '';
+
+async function loadTickets() {
+  try {
+    document.getElementById('content').innerHTML = '<div class="loading">Loading tickets...</div>';
+    const stats = await api('/tickets/stats');
+
+    document.getElementById('content').innerHTML = `
+      <div class="stats-grid" style="margin-bottom:1.25rem">
+        <div class="stat-card"><div class="stat-label">Total Tickets</div><div class="stat-value text-accent">${stats.total}</div></div>
+        <div class="stat-card"><div class="stat-label">Open</div><div class="stat-value text-green">${stats.open}</div></div>
+        <div class="stat-card"><div class="stat-label">Claimed</div><div class="stat-value text-yellow">${stats.claimed}</div></div>
+        <div class="stat-card"><div class="stat-label">Closed</div><div class="stat-value text-blue">${stats.closed}</div></div>
+        <div class="stat-card"><div class="stat-label">Today</div><div class="stat-value text-accent">${stats.today}</div></div>
+        <div class="stat-card"><div class="stat-label">Avg Response</div><div class="stat-value">${stats.avg_minutes != null ? (stats.avg_minutes < 60 ? stats.avg_minutes + 'm' : Math.round(stats.avg_minutes/60) + 'h') : '—'}</div></div>
+      </div>
+      <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:.75rem">
+        <button class="filter-chip${ticketsSubTab==='tickets'?' active':''}" onclick="ticketsSubTab='tickets';loadTickets()">🎫 All Tickets</button>
+        <button class="filter-chip${ticketsSubTab==='blacklist'?' active':''}" onclick="ticketsSubTab='blacklist';loadTickets()">🚫 Blacklist</button>
+        <button class="filter-chip${ticketsSubTab==='settings'?' active':''}" onclick="ticketsSubTab='settings';loadTickets()">⚙️ Guild Settings</button>
+      </div>
+      <div id="ticketsSubContent"></div>
+    `;
+
+    if (ticketsSubTab === 'tickets')   renderTicketsList();
+    if (ticketsSubTab === 'blacklist') renderTicketsBlacklist();
+    if (ticketsSubTab === 'settings')  renderTicketsSettings();
+
+  } catch (err) {
+    document.getElementById('content').innerHTML = `<div class="empty-state"><h4>Failed to load tickets</h4><p>${esc(err.message)}</p></div>`;
+  }
+}
+
+async function renderTicketsList() {
+  const sub = document.getElementById('ticketsSubContent');
+  if (!sub) return;
+  sub.innerHTML = '<div class="loading">Loading...</div>';
+
+  const priorityColors = { urgent:'var(--red)', high:'var(--yellow)', normal:'var(--blue)', low:'var(--text-muted)' };
+  const statusBadge = s => {
+    const m = { open:'green', closed:'red', claimed:'yellow', resolved:'blue' };
+    return `<span class="badge badge-${m[s]||'gray'}">${s}</span>`;
+  };
+
+  try {
+    const params = new URLSearchParams({ page: ticketsPage+1, limit: 20 });
+    if (ticketsFilter.status)   params.set('status',   ticketsFilter.status);
+    if (ticketsFilter.priority) params.set('priority', ticketsFilter.priority);
+    if (ticketsFilter.guild)    params.set('guild_id', ticketsFilter.guild);
+    if (ticketsFilter.search)   params.set('search',   ticketsFilter.search);
+
+    const d = await api(`/tickets?${params}`);
+    const total  = d.pagination?.total || 0;
+    const pages  = d.pagination?.pages || 1;
+
+    sub.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <h3>🎫 Tickets <span style="font-size:.75rem;font-weight:400;color:var(--text-muted)">${total} total</span></h3>
+          <button class="btn btn-secondary btn-sm" onclick="renderTicketsList()" title="Refresh">🔄 Refresh</button>
+        </div>
+        <div style="padding:.75rem 1.25rem;display:flex;flex-wrap:wrap;gap:.5rem;border-bottom:1px solid var(--border);align-items:center">
+          <input class="form-input" style="width:200px" placeholder="Search user, subject…" value="${esc(ticketsFilter.search)}"
+            onkeydown="if(event.key==='Enter'){ticketsFilter.search=this.value;ticketsPage=0;renderTicketsList()}">
+          ${['', 'open', 'claimed', 'closed', 'resolved'].map(s => `<button class="filter-chip${ticketsFilter.status===s?' active':''}" onclick="ticketsFilter.status='${s}';ticketsPage=0;renderTicketsList()">${s||'All Status'}</button>`).join('')}
+          ${['', 'urgent', 'high', 'normal', 'low'].map(p => `<button class="filter-chip${ticketsFilter.priority===p?' active':''}" onclick="ticketsFilter.priority='${p}';ticketsPage=0;renderTicketsList()">${p||'All Priority'}</button>`).join('')}
+          <input class="form-input" style="width:160px" placeholder="Guild ID filter" value="${esc(ticketsFilter.guild)}"
+            onkeydown="if(event.key==='Enter'){ticketsFilter.guild=this.value;ticketsPage=0;renderTicketsList()}">
+        </div>
+        <div style="overflow-x:auto">
+          <table class="table">
+            <thead><tr>
+              <th>ID</th><th>User</th><th>Guild</th><th>Category</th>
+              <th>Status</th><th>Priority</th><th>Created</th><th>Actions</th>
+            </tr></thead>
+            <tbody>
+              ${(d.tickets||[]).length === 0 ? '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted)">No tickets found</td></tr>' :
+                (d.tickets||[]).map(t => `<tr>
+                  <td><span style="font-family:monospace;font-size:.8rem">#${t.id}</span></td>
+                  <td>${esc(t.user_tag||t.user_id)} ${t.escalated?'🔺':''} ${t.locked?'🔒':''}</td>
+                  <td><span style="font-size:.75rem;color:var(--text-muted)">${esc(t.guild_id||'—')}</span></td>
+                  <td>${esc(t.category||'—')}</td>
+                  <td>${statusBadge(t.status)}</td>
+                  <td><span style="color:${priorityColors[t.priority]||'var(--text)'};font-weight:600">${(t.priority||'normal').toUpperCase()}</span></td>
+                  <td>${fmtDateTime(t.created_at)}</td>
+                  <td style="white-space:nowrap">
+                    <button class="btn btn-secondary btn-sm" onclick="openTicketDetail(${t.id})">View</button>
+                    ${t.status==='open'||t.status==='claimed' ? `<button class="btn btn-sm" style="background:var(--red-dim);color:var(--red)" onclick="changeTicketStatus(${t.id},'closed')">Close</button>` : ''}
+                    ${t.status==='closed'||t.status==='resolved' ? `<button class="btn btn-sm" style="background:var(--green-dim);color:var(--green)" onclick="changeTicketStatus(${t.id},'open')">Reopen</button>` : ''}
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem">
+          <span style="font-size:.8rem;color:var(--text-muted)">${total} total • Page ${ticketsPage+1} of ${pages}</span>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-secondary btn-sm" ${ticketsPage===0?'disabled':''} onclick="ticketsPage--;renderTicketsList()">‹ Prev</button>
+            <button class="btn btn-secondary btn-sm" ${ticketsPage>=pages-1?'disabled':''} onclick="ticketsPage++;renderTicketsList()">Next ›</button>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    sub.innerHTML = `<div class="empty-state"><h4>Failed to load</h4><p>${esc(err.message)}</p></div>`;
+  }
+}
+
+async function openTicketDetail(id) {
+  try {
+    const d = await api(`/tickets/${id}`);
+    const t = d.ticket;
+    const notes = d.notes || [];
+    const priorityColors = { urgent:'var(--red)', high:'var(--yellow)', normal:'var(--blue)', low:'var(--text-muted)' };
+
+    openModal(`Ticket #${t.id} — ${esc(t.user_tag || t.user_id)}`,
+      `<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+        <div class="form-group"><label class="form-label">Status</label>
+          <select class="form-input" id="tkStatus" onchange="changeTicketStatus(${t.id}, this.value, true)">
+            ${['open','claimed','closed','resolved'].map(s => `<option value="${s}"${t.status===s?' selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Priority</label>
+          <select class="form-input" id="tkPriority" onchange="changeTicketPriority(${t.id}, this.value)">
+            ${['low','normal','high','urgent'].map(p => `<option value="${p}"${(t.priority||'normal')===p?' selected':''}>${p}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">User ID</label><div class="form-input" style="background:var(--bg-body)">${esc(t.user_id)}</div></div>
+        <div class="form-group"><label class="form-label">Guild ID</label><div class="form-input" style="background:var(--bg-body)">${esc(t.guild_id)}</div></div>
+        <div class="form-group"><label class="form-label">Category</label><div class="form-input" style="background:var(--bg-body)">${esc(t.category||'—')}</div></div>
+        <div class="form-group"><label class="form-label">Channel</label><div class="form-input" style="background:var(--bg-body)font-size:.8rem">${esc(t.channel_id||'—')}</div></div>
+        <div class="form-group"><label class="form-label">Created</label><div class="form-input" style="background:var(--bg-body)">${fmtDateTime(t.created_at)}</div></div>
+        <div class="form-group"><label class="form-label">Closed</label><div class="form-input" style="background:var(--bg-body)">${t.closed_at ? fmtDateTime(t.closed_at) : '—'}</div></div>
+      </div>
+      ${t.subject ? `<div class="form-group"><label class="form-label">Subject</label><div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .75rem;font-size:.875rem">${esc(t.subject)}</div></div>` : ''}
+      ${t.description ? `<div class="form-group"><label class="form-label">Description</label><div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .75rem;font-size:.875rem">${esc(t.description)}</div></div>` : ''}
+      ${t.close_reason ? `<div class="form-group"><label class="form-label">Close Reason</label><div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .75rem;font-size:.875rem;color:var(--text-muted)">${esc(t.close_reason)}</div></div>` : ''}
+
+      <div class="form-group" style="margin-top:1rem">
+        <label class="form-label">Internal Notes (${notes.length})</label>
+        <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);max-height:180px;overflow-y:auto;padding:.5rem">
+          ${notes.length === 0 ? '<p style="color:var(--text-muted);font-size:.825rem;padding:.5rem">No notes yet.</p>' :
+            notes.map(n => `<div style="padding:.5rem;border-bottom:1px solid var(--border);last-child:{border:none}">
+              <div style="font-size:.75rem;color:var(--text-muted)">${esc(n.added_by_tag||n.added_by_id)} — ${fmtDateTime(n.created_at)}</div>
+              <div style="font-size:.875rem;margin-top:.25rem">${esc(n.content)}</div>
+            </div>`).join('')}
+        </div>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem">
+          <input class="form-input" id="tkNoteInput" placeholder="Add private staff note…" style="flex:1">
+          <button class="btn btn-secondary" onclick="addTicketNote(${t.id})">Add Note</button>
+        </div>
+      </div>
+
+      <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="addToBlacklist('${esc(t.guild_id)}','${esc(t.user_id)}')">🚫 Blacklist User</button>
+        ${t.status==='open'||t.status==='claimed' ? `<button class="btn btn-sm" style="background:var(--red-dim);color:var(--red)" onclick="changeTicketStatus(${t.id},'closed','close reason from admin');closeModal()">Close Ticket</button>` : ''}
+        ${t.status==='closed'||t.status==='resolved' ? `<button class="btn btn-sm" style="background:var(--green-dim);color:var(--green)" onclick="changeTicketStatus(${t.id},'open');closeModal()">Reopen</button>` : ''}
+      </div>
+    `,
+      `<button class="btn btn-secondary" onclick="closeModal()">Close</button>`
+    );
+  } catch (err) {
+    toast('Failed to load ticket: ' + err.message, 'error');
+  }
+}
+
+async function changeTicketStatus(id, status, noRefresh) {
+  const reason = prompt(`Reason for ${status} (optional):`) || '';
+  try {
+    await api(`/tickets/${id}/status`, { method: 'PUT', body: JSON.stringify({ status, reason }) });
+    toast(`Ticket ${status}`, 'success');
+    if (!noRefresh) renderTicketsList();
+  } catch (err) {
+    toast('Failed: ' + err.message, 'error');
+  }
+}
+
+async function changeTicketPriority(id, priority) {
+  try {
+    await api(`/tickets/${id}/priority`, { method: 'PUT', body: JSON.stringify({ priority }) });
+    toast(`Priority set to ${priority}`, 'success');
+  } catch (err) {
+    toast('Failed: ' + err.message, 'error');
+  }
+}
+
+async function addTicketNote(id) {
+  const content = document.getElementById('tkNoteInput')?.value?.trim();
+  if (!content) return toast('Note cannot be empty', 'error');
+  try {
+    await api(`/tickets/${id}/note`, { method: 'POST', body: JSON.stringify({ content }) });
+    toast('Note added', 'success');
+    document.getElementById('tkNoteInput').value = '';
+    openTicketDetail(id);
+  } catch (err) {
+    toast('Failed: ' + err.message, 'error');
+  }
+}
+
+async function renderTicketsBlacklist() {
+  const sub = document.getElementById('ticketsSubContent');
+  if (!sub) return;
+  sub.innerHTML = '<div class="loading">Loading blacklist...</div>';
+  try {
+    const params = new URLSearchParams({ page: blPage+1, limit: 20 });
+    if (blSearch) params.set('search', blSearch);
+    const d = await api(`/tickets/blacklist/all?${params}`);
+    const total = d.pagination?.total || 0;
+    const pages = d.pagination?.pages || 1;
+
+    sub.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <h3>🚫 Ticket Blacklist <span style="font-size:.75rem;font-weight:400;color:var(--text-muted)">${total} users</span></h3>
+          <button class="btn btn-primary btn-sm" onclick="showAddBlacklist()">+ Add User</button>
+        </div>
+        <div style="padding:.75rem 1.25rem;display:flex;gap:.5rem;border-bottom:1px solid var(--border)">
+          <input class="form-input" style="width:260px" placeholder="Search user ID or reason…" value="${esc(blSearch)}"
+            onkeydown="if(event.key==='Enter'){blSearch=this.value;blPage=0;renderTicketsBlacklist()}">
+        </div>
+        <div style="overflow-x:auto">
+          <table class="table">
+            <thead><tr><th>User ID</th><th>Guild ID</th><th>Reason</th><th>Added By</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${(d.blacklist||[]).length===0 ? '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted)">No blacklisted users</td></tr>' :
+                (d.blacklist||[]).map(b => `<tr>
+                  <td><code>${esc(b.user_id)}</code></td>
+                  <td><span style="font-size:.75rem;color:var(--text-muted)">${esc(b.guild_id)}</span></td>
+                  <td>${esc(b.reason||'—')}</td>
+                  <td>${esc(b.added_by||'—')}</td>
+                  <td>${fmtDateTime(b.created_at)}</td>
+                  <td><button class="btn btn-sm" style="background:var(--red-dim);color:var(--red)" onclick="removeBlacklist('${esc(b.guild_id)}','${esc(b.user_id)}')">Remove</button></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem">
+          <span style="font-size:.8rem;color:var(--text-muted)">${total} total • Page ${blPage+1} of ${pages}</span>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-secondary btn-sm" ${blPage===0?'disabled':''} onclick="blPage--;renderTicketsBlacklist()">‹ Prev</button>
+            <button class="btn btn-secondary btn-sm" ${blPage>=pages-1?'disabled':''} onclick="blPage++;renderTicketsBlacklist()">Next ›</button>
+          </div>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    sub.innerHTML = `<div class="empty-state"><h4>Failed to load blacklist</h4><p>${esc(err.message)}</p></div>`;
+  }
+}
+
+function showAddBlacklist(guildId = '', userId = '') {
+  openModal('Add to Ticket Blacklist',
+    `<div class="form-group"><label class="form-label">Guild ID</label><input class="form-input" id="blGuildId" value="${esc(guildId)}" placeholder="Discord Guild ID"></div>
+     <div class="form-group"><label class="form-label">User ID</label><input class="form-input" id="blUserId" value="${esc(userId)}" placeholder="Discord User ID"></div>
+     <div class="form-group"><label class="form-label">Reason</label><input class="form-input" id="blReason" placeholder="Why is this user blacklisted?"></div>`,
+    `<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="submitAddBlacklist()">Add to Blacklist</button>`
+  );
+}
+
+async function addToBlacklist(guildId, userId) {
+  showAddBlacklist(guildId, userId);
+}
+
+async function submitAddBlacklist() {
+  const guild_id = document.getElementById('blGuildId')?.value?.trim();
+  const user_id  = document.getElementById('blUserId')?.value?.trim();
+  const reason   = document.getElementById('blReason')?.value?.trim();
+  if (!guild_id || !user_id) return toast('Guild ID and User ID are required', 'error');
+  try {
+    await api('/tickets/blacklist/add', { method: 'POST', body: JSON.stringify({ guild_id, user_id, reason }) });
+    toast('User blacklisted', 'success');
+    closeModal();
+    renderTicketsBlacklist();
+  } catch (err) {
+    toast('Failed: ' + err.message, 'error');
+  }
+}
+
+async function removeBlacklist(guildId, userId) {
+  if (!confirm(`Remove ${userId} from ticket blacklist for guild ${guildId}?`)) return;
+  try {
+    await api(`/tickets/blacklist/${encodeURIComponent(guildId)}/${encodeURIComponent(userId)}`, { method: 'DELETE' });
+    toast('Removed from blacklist', 'success');
+    renderTicketsBlacklist();
+  } catch (err) {
+    toast('Failed: ' + err.message, 'error');
+  }
+}
+
+async function renderTicketsSettings() {
+  const sub = document.getElementById('ticketsSubContent');
+  if (!sub) return;
+  sub.innerHTML = '<div class="loading">Loading guild list...</div>';
+  try {
+    const d = await api('/tickets/guilds/list');
+    const guilds = d.guilds || [];
+
+    const settingsPanel = settingsGuildId ? await api(`/tickets/settings/${settingsGuildId}`).catch(() => ({ settings: null })) : null;
+    const s = settingsPanel?.settings || {};
+
+    sub.innerHTML = `
+      <div style="display:grid;grid-template-columns:240px 1fr;gap:1rem">
+        <div class="card">
+          <div class="card-header"><h3>Guilds</h3></div>
+          <div style="max-height:500px;overflow-y:auto">
+            ${guilds.length===0 ? '<div style="padding:1rem;color:var(--text-muted);font-size:.85rem">No guilds with tickets yet.</div>' :
+              guilds.map(g => `<div class="nav-item${settingsGuildId===g.guild_id?' active':''}" onclick="settingsGuildId='${esc(g.guild_id)}';renderTicketsSettings()" style="border-left:none;padding:.65rem 1rem">
+                <div>${esc(g.guild_id)}</div>
+                <div style="font-size:.7rem;color:var(--text-muted)">${g.ticket_count} tickets • ${g.open_count} open</div>
+              </div>`).join('')}
+          </div>
+        </div>
+        <div class="card">
+          ${!settingsGuildId ? '<div class="card-body empty-state"><p>Select a guild to view and edit settings.</p></div>' : `
+          <div class="card-header">
+            <h3>⚙️ Settings — <span style="font-size:.8rem;font-weight:400"><code>${esc(settingsGuildId)}</code></span></h3>
+            <button class="btn btn-primary btn-sm" onclick="saveTicketSettings('${esc(settingsGuildId)}')">Save Changes</button>
+          </div>
+          <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div class="form-group">
+              <label class="form-label">Ticket System</label>
+              <div class="form-toggle"><label class="toggle-switch"><input type="checkbox" id="ts_enabled" ${s.enabled?'checked':''}><span class="toggle-slider"></span></label><span style="font-size:.85rem">Enabled</span></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max Tickets per User</label>
+              <input class="form-input" id="ts_ticket_limit" type="number" min="1" max="20" value="${s.ticket_limit??3}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Support Role ID</label>
+              <input class="form-input" id="ts_support_role_id" value="${esc(s.support_role_id||'')}" placeholder="Role ID">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Log Channel ID</label>
+              <input class="form-input" id="ts_log_channel_id" value="${esc(s.log_channel_id||'')}" placeholder="Channel ID">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ticket Category ID</label>
+              <input class="form-input" id="ts_category_id" value="${esc(s.category_id||'')}" placeholder="Category Channel ID">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Transcript Channel ID</label>
+              <input class="form-input" id="ts_transcript_channel_id" value="${esc(s.transcript_channel_id||'')}" placeholder="Channel ID">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Auto-Close After (hours)</label>
+              <input class="form-input" id="ts_auto_close_hours" type="number" min="0" max="720" value="${s.auto_close_hours??''}" placeholder="e.g. 48">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Panel Title</label>
+              <input class="form-input" id="ts_panel_title" value="${esc(s.panel_title||'Support Tickets')}" placeholder="Support Tickets">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Welcome Message</label>
+              <input class="form-input" id="ts_welcome_message" value="${esc(s.welcome_message||'')}" placeholder="Message sent when ticket is created">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Panel Embed Color</label>
+              <input class="form-input" id="ts_custom_embed_color" type="color" value="${s.custom_embed_color||'#5865F2'}" style="height:40px;width:80px;padding:.2rem">
+            </div>
+            <div class="form-group" style="grid-column:1/-1;display:flex;flex-wrap:wrap;gap:1rem">
+              <div class="form-toggle"><label class="toggle-switch"><input type="checkbox" id="ts_require_reason" ${s.require_reason?'checked':''}><span class="toggle-slider"></span></label><span style="font-size:.85rem">Require close reason</span></div>
+              <div class="form-toggle"><label class="toggle-switch"><input type="checkbox" id="ts_allow_user_close" ${s.allow_user_close??true?'checked':''}><span class="toggle-slider"></span></label><span style="font-size:.85rem">Allow user to close own ticket</span></div>
+              <div class="form-toggle"><label class="toggle-switch"><input type="checkbox" id="ts_dm_on_close" ${s.dm_on_close??true?'checked':''}><span class="toggle-slider"></span></label><span style="font-size:.85rem">DM user on close</span></div>
+              <div class="form-toggle"><label class="toggle-switch"><input type="checkbox" id="ts_dm_on_update" ${s.dm_on_update??true?'checked':''}><span class="toggle-slider"></span></label><span style="font-size:.85rem">DM user on update</span></div>
+              <div class="form-toggle"><label class="toggle-switch"><input type="checkbox" id="ts_close_confirmation" ${s.close_confirmation??true?'checked':''}><span class="toggle-slider"></span></label><span style="font-size:.85rem">Confirm before close</span></div>
+              <div class="form-toggle"><label class="toggle-switch"><input type="checkbox" id="ts_severity_enabled" ${s.severity_enabled?'checked':''}><span class="toggle-slider"></span></label><span style="font-size:.85rem">Enable severity / SLA</span></div>
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label class="form-label">Panel Description</label>
+              <textarea class="form-textarea" id="ts_panel_description" rows="2" placeholder="Panel embed description">${esc(s.panel_description||'')}</textarea>
+            </div>
+          </div>
+          `}
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    sub.innerHTML = `<div class="empty-state"><h4>Failed to load settings</h4><p>${esc(err.message)}</p></div>`;
+  }
+}
+
+async function saveTicketSettings(guildId) {
+  const g = id => document.getElementById(id);
+  const payload = {
+    enabled:              g('ts_enabled')?.checked ? 1 : 0,
+    ticket_limit:         parseInt(g('ts_ticket_limit')?.value) || 3,
+    support_role_id:      g('ts_support_role_id')?.value?.trim() || null,
+    log_channel_id:       g('ts_log_channel_id')?.value?.trim() || null,
+    category_id:          g('ts_category_id')?.value?.trim() || null,
+    transcript_channel_id:g('ts_transcript_channel_id')?.value?.trim() || null,
+    auto_close_hours:     parseInt(g('ts_auto_close_hours')?.value) || null,
+    panel_title:          g('ts_panel_title')?.value?.trim() || 'Support Tickets',
+    welcome_message:      g('ts_welcome_message')?.value?.trim() || null,
+    custom_embed_color:   g('ts_custom_embed_color')?.value || '#5865F2',
+    require_reason:       g('ts_require_reason')?.checked ? 1 : 0,
+    allow_user_close:     g('ts_allow_user_close')?.checked ? 1 : 0,
+    dm_on_close:          g('ts_dm_on_close')?.checked ? 1 : 0,
+    dm_on_update:         g('ts_dm_on_update')?.checked ? 1 : 0,
+    close_confirmation:   g('ts_close_confirmation')?.checked ? 1 : 0,
+    severity_enabled:     g('ts_severity_enabled')?.checked ? 1 : 0,
+    panel_description:    g('ts_panel_description')?.value?.trim() || null,
+  };
+  try {
+    await api(`/tickets/settings/${guildId}`, { method: 'PUT', body: JSON.stringify(payload) });
+    toast('Settings saved', 'success');
+  } catch (err) {
+    toast('Failed: ' + err.message, 'error');
+  }
 }
 
 async function signOut() {

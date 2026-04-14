@@ -378,7 +378,7 @@ async function logRedaction(bot, interaction, message, wasRedacted) {
                 channelId: interaction.channel.id,
                 messageId: message.id,
                 executorId: interaction.user.id,
-                executorTag: interaction.user.tag,
+                executorTag: interaction.user.username,
                 targetAuthorId: message.author.id,
                 wasRedacted: wasRedacted,
                 timestamp: new Date().toISOString()
@@ -394,7 +394,7 @@ async function logRedaction(bot, interaction, message, wasRedacted) {
                 eventCategory: 'moderation',
                 executor: { 
                     id: interaction.user.id, 
-                    tag: interaction.user.tag 
+                    tag: interaction.user.username 
                 },
                 target: {
                     type: 'message',
@@ -413,7 +413,7 @@ async function logRedaction(bot, interaction, message, wasRedacted) {
         if (typeof bot.broadcastConsole === 'function') {
             bot.broadcastConsole(
                 interaction.guild.id, 
-                `[REDACT] ${interaction.user.tag} redacted message ${message.id} in #${interaction.channel.name}`
+                `[REDACT] ${interaction.user.username} redacted message ${message.id} in #${interaction.channel.name}`
             );
         }
         

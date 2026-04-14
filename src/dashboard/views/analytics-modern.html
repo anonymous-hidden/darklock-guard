@@ -421,7 +421,6 @@ class WidgetSystem {
                     <a href="/setup/notifications" class="nav-item">
                         <i class="fas fa-bell"></i>
                         <span>Notifications & Logs</span>
-                        <i class="fas fa-crown premium-badge" style="color: #ffc107; font-size: 10px; margin-left: auto;" title="Premium features available"></i>
                     </a>
                 </div>
 
@@ -431,15 +430,15 @@ class WidgetSystem {
                         <i class="fas fa-book"></i>
                         <span>Help & Commands</span>
                     </a>
-                    <a href="/dashboard/console" class="nav-item">
+                    <a href="/dashboard/console" class="nav-item" data-premium-required="true">
                         <i class="fas fa-terminal"></i>
                         <span>Bot Console</span>
                     </a>
-                    <a href="/access-generator" class="nav-item">
+                    <a href="/access-generator" class="nav-item" data-premium-required="true">
                         <i class="fas fa-key"></i>
                         <span>Access Generator</span>
                     </a>
-                    <a href="/access-share" class="nav-item">
+                    <a href="/access-share" class="nav-item" data-premium-required="true">
                         <i class="fas fa-share-alt"></i>
                         <span>Access Share</span>
                     </a>
@@ -708,9 +707,9 @@ class WidgetSystem {
             },
             {
                 id: 'security-events',
-                title: 'Security Events',
-                icon: 'shield-alt',
-                description: 'Recent security alerts',
+                title: 'Recent Events',
+                icon: 'stream',
+                description: 'All server events — nuke, bans, raids, kicks & more',
                 colSpan: 2,
                 views: [
                     { id: 'table', label: 'Full Table', icon: 'table' },
@@ -1059,43 +1058,76 @@ class WidgetSystem {
             }
         }
 
+        const _anlSrcLabel = { security_logs:'Security', security_incidents:'Incident', antinuke_incidents:'Anti-Nuke', action_logs:'Action', raid_detection:'Raid', security_events:'Security', audit_log:'Audit', join_analytics:'Join', leave_analytics:'Leave', mod_actions:'Moderation' };
+        const _anlSevColor = { critical:'#ef4444', high:'#f97316', medium:'#f59e0b', low:'#6b7280', info:'#3b82f6' };
+        const _anlSevIcon  = { critical:'🚨', high:'⚠️', medium:'🔶', low:'ℹ️', info:'📌' };
+        function _anlRelTime(ts) {
+            if (!ts) return '—';
+            const d = Date.now() - new Date(ts).getTime();
+            if (d < 60000) return Math.floor(d/1000)+'s ago';
+            if (d < 3600000) return Math.floor(d/60000)+'m ago';
+            if (d < 86400000) return Math.floor(d/3600000)+'h ago';
+            return new Date(ts).toLocaleDateString();
+        }
+
         function renderSecurityEventsWidget(viewId, container, data) {
-            const secEvents = data.securityEvents || [];
+            const secEvents = (data.recentEvents || data.securityEvents || []);
+            if (!secEvents || secEvents.length === 0) {
+                container.innerHTML = renderNoData('events');
+                return;
+            }
             if (viewId === 'compact') {
-                if (!secEvents || secEvents.length === 0) {
-                    container.innerHTML = renderNoData('security events');
-                    return;
-                }
                 container.innerHTML = `
-                    <div style="display:flex;flex-direction:column;gap:0.5rem;">
-                        ${secEvents.slice(0, 10).map(event => `
-                            <div style="display:flex;align-items:center;gap:0.75rem;padding:0.35rem 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-                                <span class="severity-badge severity-${(event.severity || 'low').toLowerCase()}" style="font-size:0.7rem;padding:2px 6px;">${event.severity || 'Low'}</span>
-                                <span style="color:#fff;font-size:0.85rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(event.description || event.message || '-')}</span>
-                                <span style="color:var(--text-muted);font-size:0.75rem;white-space:nowrap;">${formatDate(event.timestamp || event.time)}</span>
-                            </div>
-                        `).join('')}
+                    <div style="display:flex;flex-direction:column;gap:0.4rem;">
+                        ${secEvents.slice(0, 15).map(event => {
+                            const sc = _anlSevColor[(event.severity||'low').toLowerCase()] || '#6b7280';
+                            const si = _anlSevIcon[(event.severity||'low').toLowerCase()] || '📌';
+                            return `<div style="display:flex;align-items:center;gap:0.6rem;padding:0.3rem 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                                <span>${si}</span>
+                                <span style="font-size:0.72rem;font-weight:600;color:${sc};min-width:80px;white-space:nowrap;">${escapeHtml((event.type||'UNKNOWN').replace(/_/g,' ').slice(0,14))}</span>
+                                <span style="color:#ddd;font-size:0.82rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(event.description || event.message || '-')}</span>
+                                <span style="color:var(--text-muted);font-size:0.72rem;white-space:nowrap;">${_anlRelTime(event.timestamp || event.time)}</span>
+                            </div>`;
+                        }).join('')}
                     </div>
                 `;
             } else {
                 container.innerHTML = `
+                    <div style="margin-bottom:0.6rem;display:flex;gap:0.4rem;flex-wrap:wrap;">
+                        ${['all','security','moderation','members'].map(f=>`
+                            <button onclick="anlFilterEvents(this,'${f}')" data-anl-filter="${f}" style="padding:3px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.12);background:${f==='all'?'rgba(0,212,255,0.15)':'transparent'};color:${f==='all'?'#00d4ff':'rgba(255,255,255,0.55)'};font-size:0.75rem;cursor:pointer;">${f.charAt(0).toUpperCase()+f.slice(1)}</button>
+                        `).join('')}
+                    </div>
                     <div style="overflow-x:auto;">
-                        <table class="data-table" style="margin:0;">
+                        <table class="data-table" style="margin:0;font-size:0.82rem;">
                             <thead>
                                 <tr>
                                     <th>Time</th>
                                     <th>Type</th>
                                     <th>Description</th>
+                                    <th>Source</th>
                                     <th>Severity</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="anlEventsBody">
                                 ${renderSecurityEvents(secEvents)}
                             </tbody>
                         </table>
                     </div>
                 `;
             }
+        }
+
+        function anlFilterEvents(btn, filter) {
+            document.querySelectorAll('[data-anl-filter]').forEach(b => {
+                b.style.background = 'transparent';
+                b.style.color = 'rgba(255,255,255,0.55)';
+            });
+            btn.style.background = 'rgba(0,212,255,0.15)';
+            btn.style.color = '#00d4ff';
+            document.querySelectorAll('#anlEventsBody tr').forEach(row => {
+                row.style.display = (filter === 'all' || row.dataset.category === filter) ? '' : 'none';
+            });
         }
 
         // No-op for compatibility — charts are now rendered per-widget
@@ -1167,17 +1199,21 @@ class WidgetSystem {
 
         function renderSecurityEvents(events) {
             if (!events || events.length === 0) {
-                return '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">No security events recorded</td></tr>';
+                return '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No events recorded</td></tr>';
             }
 
-            return events.slice(0, 10).map(event => `
-                <tr>
-                    <td>${formatDate(event.timestamp || event.time)}</td>
-                    <td>${event.type || 'Unknown'}</td>
-                    <td>${escapeHtml(event.description || event.message || '-')}</td>
+            return events.slice(0, 50).map(event => {
+                const sc = _anlSevColor[(event.severity||'low').toLowerCase()] || '#6b7280';
+                const si = _anlSevIcon[(event.severity||'low').toLowerCase()] || '📌';
+                const srcLabel = _anlSrcLabel[event.source] || event.source || '—';
+                return `<tr data-category="${event.category || 'security'}">
+                    <td style="white-space:nowrap;">${_anlRelTime(event.timestamp || event.time)}</td>
+                    <td style="color:${sc};font-weight:600;white-space:nowrap;">${si} ${escapeHtml((event.type||'UNKNOWN').replace(/_/g,' '))}</td>
+                    <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(event.description || event.message || '-')}</td>
+                    <td style="font-size:0.75rem;color:rgba(255,255,255,0.45);white-space:nowrap;">${escapeHtml(srcLabel)}</td>
                     <td><span class="severity-badge severity-${(event.severity || 'low').toLowerCase()}">${event.severity || 'Low'}</span></td>
-                </tr>
-            `).join('');
+                </tr>`;
+            }).join('');
         }
 
         // Time range change

@@ -63,11 +63,11 @@ module.exports = async function handleReactionRoleButton(interaction) {
         // Toggle the role
         if (hasRole) {
             await member.roles.remove(role);
-            console.log(`Removed role ${role.name} from ${member.user.tag} via button`);
+            console.log(`Removed role ${role.name} from ${member.user.username} via button`);
             await interaction.editReply({ content: `❌ The **${role.name}** role has been removed!` });
         } else {
             await member.roles.add(role);
-            console.log(`Added role ${role.name} to ${member.user.tag} via button`);
+            console.log(`Added role ${role.name} to ${member.user.username} via button`);
             await interaction.editReply({ content: `✅ You've been given the **${role.name}** role!` });
         }
     } catch (error) {

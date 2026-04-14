@@ -324,7 +324,7 @@ class EmojiSpamDetector {
             .setTitle('🎭 Emoji/Sticker Spam Detected')
             .setColor(0xFFCC00)
             .addFields(
-                { name: 'User', value: `<@${message.author.id}> (${message.author.tag})`, inline: true },
+                { name: 'User', value: `<@${message.author.id}> (${message.author.username})`, inline: true },
                 { name: 'Channel', value: `<#${message.channelId}>`, inline: true },
                 { name: 'Action', value: actionTaken, inline: true },
                 { name: 'Emojis', value: `${emojiStats.total} (${emojiStats.custom} custom, ${emojiStats.unicode} unicode)`, inline: true },

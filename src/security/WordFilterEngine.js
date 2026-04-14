@@ -532,7 +532,7 @@ class WordFilterEngine {
                 .setColor(0xFFA500)
                 .setTitle('Word Filter Triggered')
                 .addFields(
-                    { name: 'User', value: `${message.author.tag}\n\`${message.author.id}\``, inline: true },
+                    { name: 'User', value: `${message.author.username}\n\`${message.author.id}\``, inline: true },
                     { name: 'Channel', value: `<#${message.channel.id}>`, inline: true },
                     { name: 'Action', value: actionLabels[action] || action, inline: true },
                     { name: 'Matched Term', value: `\`${matchedTerm.substring(0, 50)}\``, inline: true },

@@ -128,7 +128,7 @@ module.exports = {
 
                 for (const msg of sortedMessages) {
                     const time = msg.createdAt.toLocaleString();
-                    transcript += `[${time}] ${msg.author.tag}: ${msg.content}\n`;
+                    transcript += `[${time}] ${msg.author.username}: ${msg.content}\n`;
                     if (msg.embeds.length > 0) {
                         transcript += `  [Embed: ${msg.embeds[0].title || 'No title'}]\n`;
                     }

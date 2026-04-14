@@ -481,7 +481,7 @@ class InviteTracker {
             .setColor(isFake ? 0xFFA500 : 0x00FF00)
             .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
             .addFields(
-                { name: 'Member', value: `${member.user.tag}\n${member.user.id}`, inline: true },
+                { name: 'Member', value: `${member.user.username}\n${member.user.id}`, inline: true },
                 { name: 'Account Age', value: `${accountAge} days`, inline: true },
                 { name: 'Join Type', value: joinType, inline: true }
             )
@@ -491,7 +491,7 @@ class InviteTracker {
             const stats = await this.getInviterStats(member.guild.id, inviter.id);
             const effective = stats.regular_invites + stats.bonus_invites - stats.fake_invites - stats.left_invites;
             embed.addFields(
-                { name: 'Invited By', value: `${inviter.tag}\n${inviter.id}`, inline: true },
+                { name: 'Invited By', value: `${inviter.username}\n${inviter.id}`, inline: true },
                 { name: 'Invite Code', value: usedInvite?.code || 'Unknown', inline: true },
                 { name: 'Inviter Stats', value: `Total: ${effective} (${stats.regular_invites} regular, ${stats.bonus_invites} bonus, ${stats.fake_invites} fake, ${stats.left_invites} left)`, inline: false }
             );
@@ -523,7 +523,7 @@ class InviteTracker {
             .setColor(0xFF0000)
             .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
             .addFields(
-                { name: 'Member', value: `${member.user.tag}\n${member.user.id}`, inline: true },
+                { name: 'Member', value: `${member.user.username}\n${member.user.id}`, inline: true },
                 { name: 'Stay Duration', value: `${stayDuration} days`, inline: true }
             )
             .setTimestamp();
@@ -534,7 +534,7 @@ class InviteTracker {
                 const stats = await this.getInviterStats(member.guild.id, inviter.id);
                 const effective = stats.regular_invites + stats.bonus_invites - stats.fake_invites - stats.left_invites;
                 embed.addFields(
-                    { name: 'Originally Invited By', value: `${inviter.tag}`, inline: true },
+                    { name: 'Originally Invited By', value: `${inviter.username}`, inline: true },
                     { name: 'Inviter Stats Now', value: `Total: ${effective}`, inline: true }
                 );
             }

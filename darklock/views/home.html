@@ -7,7 +7,7 @@
     <title>Darklock | Security Platform</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
     <link rel="stylesheet" href="/platform/static/css/main.css">
@@ -24,10 +24,8 @@
         <span class="nav-user" id="navUser">Signed in as <span class="name" id="navUsername">User</span></span>
         <div class="nav-links" id="navLinks">
             <a href="#features">Features</a>
-            <a href="#apps">Applications</a>
-            <a href="/site/"><i class="fas fa-robot" style="margin-right:3px;font-size:.75rem"></i>Discord Bot</a>
+            <a href="/site/">Discord Bot</a>
             <a href="/platform/update">Updates</a>
-            <a href="/site/bug-reports" style="color:#f97316"><i class="fas fa-bug" style="margin-right:3px;font-size:.75rem"></i>Bugs</a>
             <a href="/platform/auth/login" id="navSignin">Sign In</a>
             <a href="/platform/auth/signup" class="btn-cta" id="navSignup">Get Started</a>
             <a href="/platform/dashboard" class="btn-cta" id="navDash" style="display:none">Dashboard</a>
@@ -41,69 +39,45 @@
 <!-- Hero -->
 <section class="hero">
     <div class="hero-bg">
-        <div class="hero-grid"></div>
-        <div class="hero-glow-1"></div>
-        <div class="hero-glow-2"></div>
+        <div class="hero-overlay"></div>
+        <div class="hero-aurora-1"></div>
+        <div class="hero-aurora-2"></div>
+        <div class="hero-aurora-3"></div>
+        <div class="hero-dots"></div>
+        <div class="hero-scanlines"></div>
+        <div class="hero-bottom-fade"></div>
     </div>
     <div class="hero-inner">
-        <div class="hero-text">
-            <div class="hero-badge">
-                <div class="live-dot"></div>
-                <span>Enterprise Security Platform</span>
-            </div>
-            <h1 class="hero-title">
-                Defend Your Digital<br><span class="grad">Infrastructure</span>
-            </h1>
-            <p class="hero-sub">
-                Darklock delivers comprehensive security for Discord servers, web applications, and digital infrastructure. Built for teams that take protection seriously.
-            </p>
-            <div class="hero-actions">
-                <a href="/platform/auth/signup" class="btn-hero primary">
-                    <i class="fas fa-rocket"></i> Start Protecting Now
-                </a>
-                <a href="#apps" class="btn-hero ghost">
-                    <i class="fas fa-grid-2"></i> View Applications
-                </a>
-            </div>
-            <div class="hero-stats">
-                <div class="hero-stat">
-                    <div class="val">24/7</div>
-                    <div class="lbl">Monitoring</div>
-                </div>
-                <div class="hero-stat">
-                    <div class="val" id="responseStat">&lt;100ms</div>
-                    <div class="lbl">Response</div>
-                </div>
-            </div>
+        <div class="hero-badge">
+            <span class="live-dot"></span>
+            <span>Enterprise Security Platform</span>
         </div>
-        <div class="hero-visual">
-            <div class="shield-container">
-                <div class="shield-ring"></div>
-                <div class="shield-ring-2"></div>
-                <div class="shield-center">
-                    <img src="/platform/static/icons/darklock-logo.png" alt="Darklock Shield">
-                    <div class="shield-status"><span class="dot"></span> All Systems Online</div>
-                </div>
-                <div class="float-node"><i class="fas fa-shield-halved"></i></div>
-                <div class="float-node"><i class="fas fa-lock"></i></div>
-                <div class="float-node"><i class="fas fa-eye"></i></div>
-                <div class="float-node"><i class="fas fa-bolt"></i></div>
-            </div>
+        <h1 class="hero-title">
+            Defend Your<br>Digital <span class="grad">Infrastructure</span>
+        </h1>
+        <p class="hero-sub">
+            Darklock delivers comprehensive security for Discord servers, web applications, and digital infrastructure. Built for teams that take protection seriously.
+        </p>
+        <div class="hero-actions">
+            <a href="/platform/auth/signup" class="btn primary">
+                <i class="fas fa-rocket"></i> Start Protecting Now
+            </a>
+            <a href="#features" class="btn ghost">
+                Explore Features
+            </a>
         </div>
-    </div>
-</section>
-
-<!-- Trusted -->
-<section class="trusted">
-    <div class="container">
-        <div class="trusted-inner">
-            <p class="trusted-label">Protecting communities of all sizes</p>
-            <div class="trusted-items">
-                <div class="trusted-item"><i class="fas fa-gamepad"></i> Gaming</div>
-                <div class="trusted-item"><i class="fas fa-code"></i> Development</div>
-                <div class="trusted-item"><i class="fas fa-graduation-cap"></i> Education</div>
-                <div class="trusted-item"><i class="fas fa-building"></i> Business</div>
-                <div class="trusted-item"><i class="fas fa-palette"></i> Creative</div>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <div class="val">24/7</div>
+                <div class="lbl">Monitoring</div>
+            </div>
+            <div class="hero-stat">
+                <div class="val" id="responseStat">&lt;100ms</div>
+                <div class="lbl">Response</div>
+            </div>
+            <div class="hero-stat">
+                <div class="val">99.9%</div>
+                <div class="lbl">Uptime</div>
             </div>
         </div>
     </div>
@@ -114,144 +88,39 @@
     <div class="container">
         <div class="sect-head reveal">
             <span class="sect-badge">Why Darklock</span>
-            <h2 class="sect-title">Security Without Compromise</h2>
+            <h2 class="sect-title">Security Without<br>Compromise</h2>
             <p class="sect-sub">Built from the ground up with security-first architecture. Every feature designed to protect, every line of code audited.</p>
         </div>
         <div class="feat-grid">
-            <div class="feat-card reveal reveal-delay-1">
+            <div class="feat-card reveal">
                 <div class="feat-icon"><i class="fas fa-shield-halved"></i></div>
                 <h3>Defense in Depth</h3>
                 <p>Multiple layers of protection ensure that if one defense fails, others remain active. No single point of failure.</p>
             </div>
-            <div class="feat-card reveal reveal-delay-2">
+            <div class="feat-card reveal">
                 <div class="feat-icon"><i class="fas fa-lock"></i></div>
                 <h3>Zero Trust Architecture</h3>
                 <p>Every request is verified, every action is logged. Trust nothing, verify everything approach to security.</p>
             </div>
-            <div class="feat-card reveal reveal-delay-3">
+            <div class="feat-card reveal">
                 <div class="feat-icon"><i class="fas fa-eye"></i></div>
                 <h3>Real-time Monitoring</h3>
                 <p>Continuous surveillance of all systems with instant alerts. Know about threats before they become incidents.</p>
             </div>
-            <div class="feat-card reveal reveal-delay-1">
+            <div class="feat-card reveal">
                 <div class="feat-icon"><i class="fas fa-chart-line"></i></div>
                 <h3>Threat Intelligence</h3>
                 <p>Powered by up-to-date threat databases and machine learning to identify emerging attack vectors.</p>
             </div>
-            <div class="feat-card reveal reveal-delay-2">
+            <div class="feat-card reveal">
                 <div class="feat-icon"><i class="fas fa-users"></i></div>
                 <h3>Access Control</h3>
                 <p>Granular permissions and role-based access ensure users only have access to what they need. Nothing more.</p>
             </div>
-            <div class="feat-card reveal reveal-delay-3">
+            <div class="feat-card reveal">
                 <div class="feat-icon"><i class="fas fa-file-lines"></i></div>
                 <h3>Audit Logging</h3>
                 <p>Complete audit trails for compliance and forensics. Every action timestamped and attributed.</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Applications -->
-<section id="apps" class="apps">
-    <div class="container">
-        <div class="sect-head reveal">
-            <span class="sect-badge">Applications</span>
-            <h2 class="sect-title">Security Tools Built for You</h2>
-            <p class="sect-sub">A suite of specialized security applications under one unified platform. One account, complete protection.</p>
-        </div>
-        <div class="apps-grid">
-            <!-- Discord Bot -->
-            <div class="app-card featured reveal reveal-delay-1">
-                <div class="app-status live"><span class="dot"></span> Active</div>
-                <div class="app-icon shield"><i class="fas fa-shield-halved"></i></div>
-                <h3>Discord Security Bot</h3>
-                <p class="desc">Enterprise-grade Discord server protection. Anti-raid, anti-nuke, verification systems, advanced moderation, and comprehensive logging.</p>
-                <div class="app-tags">
-                    <span class="app-tag">Anti-Raid</span>
-                    <span class="app-tag">Anti-Nuke</span>
-                    <span class="app-tag">Verification</span>
-                    <span class="app-tag">Auto-Mod</span>
-                    <span class="app-tag">Logging</span>
-                </div>
-                <a href="/site/" class="btn-app primary"><i class="fas fa-globe"></i> Bot Website</a>
-            </div>
-
-            <!-- Darklock Guard -->
-            <div class="app-card reveal reveal-delay-2">
-                <div class="app-status live"><span class="dot"></span> Available Now</div>
-                <div class="app-icon guard"><img src="/platform/static/icons/darklock-guard.png" alt="Darklock Guard"></div>
-                <h3>Darklock Guard</h3>
-                <p class="desc">Enterprise file integrity protection for Windows. Real-time monitoring, tamper detection, encrypted backups, and automatic restoration.</p>
-                <div class="app-tags">
-                    <span class="app-tag">File Protection</span>
-                    <span class="app-tag">Tamper Detection</span>
-                    <span class="app-tag">Auto-Restore</span>
-                    <span class="app-tag">Cloud Sync</span>
-                </div>
-                <a href="/platform/download/darklock-guard" class="btn-app primary"><i class="fas fa-download"></i> Download Desktop App</a>
-                <a href="/platform/monitor/darklock-guard" class="btn-app secondary"><i class="fas fa-desktop"></i> Web Monitor</a>
-            </div>
-
-            <!-- Secure Channel -->
-            <div class="app-card reveal reveal-delay-3">
-                <div class="app-status soon">Coming Soon</div>
-                <div class="app-icon chat"><i class="fas fa-comment-dots"></i></div>
-                <h3>Secure Channel</h3>
-                <p class="desc">End-to-end encrypted desktop messaging with zero-knowledge architecture. X25519 key exchange, ChaCha20-Poly1305 AEAD.</p>
-                <div class="app-tags">
-                    <span class="app-tag">E2E Encrypted</span>
-                    <span class="app-tag">Zero-Knowledge</span>
-                    <span class="app-tag">Ed25519 Keys</span>
-                    <span class="app-tag">Self-Hosted</span>
-                </div>
-                <button class="btn-app secondary" disabled><i class="fas fa-hourglass-half"></i> Coming Soon</button>
-            </div>
-
-            <!-- Threat Monitor -->
-            <div class="app-card reveal reveal-delay-4">
-                <div class="app-status soon">Coming Soon</div>
-                <div class="app-icon monitor"><i class="fas fa-clock"></i></div>
-                <h3>Threat Monitor</h3>
-                <p class="desc">Real-time threat detection and alerting for your digital infrastructure. Stay ahead of attacks with predictive intelligence.</p>
-                <div class="app-tags">
-                    <span class="app-tag">Real-time Alerts</span>
-                    <span class="app-tag">Threat Intel</span>
-                    <span class="app-tag">Incident Response</span>
-                </div>
-                <button class="btn-app secondary" disabled><i class="fas fa-hourglass-half"></i> Coming Q2 2026</button>
-            </div>
-
-            <!-- Secure Vault -->
-            <div class="app-card reveal reveal-delay-4">
-                <div class="app-status soon">Coming Soon</div>
-                <div class="app-icon vault"><i class="fas fa-vault"></i></div>
-                <h3>Secure Vault</h3>
-                <p class="desc">Encrypted credential management for teams. Store API keys, passwords, and secrets with military-grade encryption.</p>
-                <div class="app-tags">
-                    <span class="app-tag">E2E Encryption</span>
-                    <span class="app-tag">Team Sharing</span>
-                    <span class="app-tag">Access Control</span>
-                </div>
-                <button class="btn-app secondary" disabled><i class="fas fa-hourglass-half"></i> Coming Q3 2026</button>
-            </div>
-
-            <!-- Secure Notes -->
-            <div class="app-card reveal reveal-delay-4">
-                <div class="app-status beta"><span class="dot"></span> Beta</div>
-                <div class="app-icon notes" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff"><i class="fas fa-note-sticky"></i></div>
-                <h3>Darklock Secure Notes</h3>
-                <p class="desc">End-to-end encrypted note-taking with zero-knowledge sync. Markdown support, code snippets, and secure sharing across all your devices.</p>
-                <div class="app-tags">
-                    <span class="app-tag">E2E Encrypted</span>
-                    <span class="app-tag">Zero-Knowledge</span>
-                    <span class="app-tag">Markdown</span>
-                    <span class="app-tag">Cross-Platform</span>
-                    <span class="app-tag">iOS</span>
-                    <span class="app-tag">Linux</span>
-                </div>
-                <a href="/platform/download/darklock-notes" class="btn-app primary"><i class="fas fa-download"></i> Download App</a>
-                <a href="/platform/monitor/darklock-notes" class="btn-app secondary"><i class="fas fa-desktop"></i> Web Monitor</a>
             </div>
         </div>
     </div>
@@ -264,27 +133,8 @@
             <h2>Ready to Secure Your Infrastructure?</h2>
             <p>Join teams who trust Darklock to protect their digital assets. Get started in minutes.</p>
             <div class="cta-btns">
-                <a href="/platform/auth/signup" class="btn-hero primary"><i class="fas fa-rocket"></i> Create Free Account</a>
-                <a href="/platform/auth/login" class="btn-hero ghost"><i class="fas fa-sign-in-alt"></i> Sign In</a>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Bug Report Banner -->
-<section class="bug-banner">
-    <div class="container">
-        <div class="bug-inner">
-            <div class="bug-left">
-                <div class="bug-icon-box"><i class="fas fa-bug"></i></div>
-                <div>
-                    <h4>Found a bug or have feedback?</h4>
-                    <p>Help us improve Darklock — every report is reviewed by our team.</p>
-                </div>
-            </div>
-            <div class="bug-btns">
-                <a href="/site/bug-reports" class="btn-bug orange"><i class="fas fa-bug"></i> Report a Bug</a>
-                <a href="https://discord.gg/Vsq9PUTrgb" target="_blank" class="btn-bug discord"><i class="fab fa-discord"></i> Discord Server</a>
+                <a href="/platform/auth/signup" class="btn primary"><i class="fas fa-rocket"></i> Create Free Account</a>
+                <a href="/platform/auth/login" class="btn ghost"><i class="fas fa-sign-in-alt"></i> Sign In</a>
             </div>
         </div>
     </div>
@@ -304,7 +154,6 @@
             <div class="footer-col">
                 <h4>Platform</h4>
                 <a href="#features">Features</a>
-                <a href="#apps">Applications</a>
                 <a href="/platform/auth/login">Sign In</a>
             </div>
             <div class="footer-col">
@@ -312,7 +161,6 @@
                 <a href="/platform/docs">Documentation</a>
                 <a href="/platform/status">System Status</a>
                 <a href="/platform/changelog">Changelog</a>
-                <a href="/site/bug-reports" style="color:#f97316"><i class="fas fa-bug" style="margin-right:4px;font-size:.7rem"></i>Bug Reports</a>
             </div>
             <div class="footer-col">
                 <h4>Legal</h4>
@@ -356,26 +204,12 @@
     }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
     document.querySelectorAll('.reveal').forEach(function(el) { observer.observe(el); });
 
-    // Card spotlight effect (follows mouse)
-    document.querySelectorAll('.feat-card, .app-card').forEach(function(card) {
-        card.addEventListener('mousemove', function(e) {
-            var rect = card.getBoundingClientRect();
-            card.style.setProperty('--mouse-x', (e.clientX - rect.left) + 'px');
-            card.style.setProperty('--mouse-y', (e.clientY - rect.top) + 'px');
-        });
-    });
-
     // Live metrics
     function updateMetrics() {
         try {
             var t0 = performance.now();
             fetch('/platform/api/metrics').then(function(r) {
                 var ms = Math.round(performance.now() - t0);
-                if (r.ok) {
-                    r.json().then(function(d) {
-                        document.getElementById('uptimeStat').textContent = d.uptime || '99.9%';
-                    });
-                }
                 document.getElementById('responseStat').textContent = ms + 'ms';
             });
         } catch (_) {}
@@ -388,17 +222,7 @@
     var links = document.getElementById('navLinks');
     if (toggle) {
         toggle.addEventListener('click', function() {
-            var shown = links.style.display === 'flex';
-            links.style.display = shown ? '' : 'flex';
-            links.style.flexDirection = shown ? '' : 'column';
-            links.style.position = shown ? '' : 'absolute';
-            links.style.top = shown ? '' : '100%';
-            links.style.left = shown ? '' : '0';
-            links.style.right = shown ? '' : '0';
-            links.style.background = shown ? '' : 'rgba(6,6,11,0.96)';
-            links.style.padding = shown ? '' : '1rem 1.5rem';
-            links.style.gap = shown ? '' : '0.75rem';
-            links.style.borderBottom = shown ? '' : '1px solid rgba(255,255,255,0.06)';
+            links.classList.toggle('nav-open');
         });
     }
 })();

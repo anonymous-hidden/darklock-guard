@@ -187,8 +187,8 @@ module.exports = {
         // Add filters info
         const filterList = [];
         if (actionType) filterList.push(`Type: ${actionType}`);
-        if (moderator) filterList.push(`Mod: ${moderator.tag}`);
-        if (target) filterList.push(`Target: ${target.tag}`);
+        if (moderator) filterList.push(`Mod: ${moderator.username}`);
+        if (target) filterList.push(`Target: ${target.username}`);
         if (keyword) filterList.push(`Keyword: ${keyword}`);
 
         if (filterList.length > 0) {
@@ -208,7 +208,7 @@ module.exports = {
         const entries = await auditLog.getUserHistory(interaction.guildId, user.id, 25);
 
         const embed = new EmbedBuilder()
-            .setTitle(`📋 Audit History: ${user.tag}`)
+            .setTitle(`📋 Audit History: ${user.username}`)
             .setColor(0x5865F2)
             .setThumbnail(user.displayAvatarURL())
             .setTimestamp();
@@ -268,7 +268,7 @@ module.exports = {
         if (stats.topModerators.length > 0) {
             const modList = await Promise.all(stats.topModerators.slice(0, 5).map(async m => {
                 const user = await interaction.client.users.fetch(m.moderator_id).catch(() => null);
-                const name = user ? user.tag : `Unknown (${m.moderator_id})`;
+                const name = user ? user.username : `Unknown (${m.moderator_id})`;
                 return `${name}: **${m.count}**`;
             }));
             embed.addFields({ name: 'Top Moderators', value: modList.join('\n'), inline: true });
@@ -278,7 +278,7 @@ module.exports = {
         if (stats.topTargets.length > 0) {
             const targetList = await Promise.all(stats.topTargets.slice(0, 5).map(async t => {
                 const user = await interaction.client.users.fetch(t.target_id).catch(() => null);
-                const name = user ? user.tag : `Unknown (${t.target_id})`;
+                const name = user ? user.username : `Unknown (${t.target_id})`;
                 return `${name}: **${t.count}**`;
             }));
             embed.addFields({ name: 'Top Targets', value: targetList.join('\n'), inline: true });

@@ -38,7 +38,7 @@ module.exports = {
             // Deactivate lockdown
             const result = await bot.lockdownManager.deactivate(interaction.guild, {
                 deactivatedBy: interaction.user.id,
-                deactivatedByTag: interaction.user.tag,
+                deactivatedByTag: interaction.user.username,
                 reason
             });
 
@@ -104,7 +104,7 @@ module.exports = {
                 bot.dashboard.broadcastToGuild(interaction.guild.id, {
                     type: 'lockdown_deactivated',
                     data: {
-                        deactivatedBy: interaction.user.tag,
+                        deactivatedBy: interaction.user.username,
                         channelsRestored: result.restored,
                         reason
                     }
@@ -120,7 +120,7 @@ module.exports = {
                         type: 'unlockdown',
                         category: 'security',
                         target: { id: interaction.guild.id, tag: interaction.guild.name },
-                        moderator: { id: interaction.user.id, tag: interaction.user.tag },
+                        moderator: { id: interaction.user.id, tag: interaction.user.username },
                         reason: reason,
                         details: `Lockdown ended - ${result.restored} channels restored`,
                         canUndo: false,

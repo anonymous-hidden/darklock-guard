@@ -517,7 +517,7 @@ class AntiMaliciousLinks {
             // Notify moderators
             await this.notifyModerators(message, detectedThreats);
 
-            this.bot.logger.security(`🚨 Malicious link blocked from ${message.author.tag}: ${detectedThreats.map(t => t.threatType).join(', ')}`);
+            this.bot.logger.security(`🚨 Malicious link blocked from ${message.author.username}: ${detectedThreats.map(t => t.threatType).join(', ')}`);
 
         } catch (error) {
             this.bot.logger.error(`Failed to handle malicious link:`, error);
@@ -600,7 +600,7 @@ class AntiMaliciousLinks {
             if (logChannel) {
                 const alertEmbed = {
                     title: '🚨 Malicious Link Detected',
-                    description: `**${message.author.tag}** posted a dangerous link`,
+                    description: `**${message.author.username}** posted a dangerous link`,
                     fields: [
                         {
                             name: 'User',

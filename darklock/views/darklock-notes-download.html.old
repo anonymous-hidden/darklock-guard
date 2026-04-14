@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Darklock Notes</title>
+    <link rel="stylesheet" href="/platform/static/css/main.css">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: radial-gradient(circle at 20% 20%, rgba(99,102,241,0.08), transparent 30%),
+                        radial-gradient(circle at 80% 10%, rgba(0,212,255,0.06), transparent 25%),
+                        #0b0f1a;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            color: #f8fafc;
+            padding: 32px 16px;
+            margin: 0;
+        }
+        .download-container {
+            width: min(860px, 100%);
+            padding: 40px 36px;
+            background: linear-gradient(180deg, rgba(17,24,39,0.95) 0%, rgba(10,14,26,0.98) 100%);
+            border: 1px solid rgba(99,102,241,0.35);
+            border-radius: 18px;
+            box-shadow: 0 28px 90px rgba(0,0,0,0.6);
+            text-align: center;
+        }
+        .logo { margin-bottom: 20px; }
+        .logo img {
+            width: 80px; height: 80px; border-radius: 18px;
+            filter: drop-shadow(0 0 20px rgba(99,102,241,0.5));
+        }
+        .logo-fallback {
+            width: 80px; height: 80px; border-radius: 18px;
+            background: linear-gradient(135deg, #6366f1, #00d4ff);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 36px;
+            filter: drop-shadow(0 0 20px rgba(99,102,241,0.5));
+        }
+        h1 {
+            font-size: 34px; margin: 0 0 8px;
+            background: linear-gradient(135deg, #6366f1, #00d4ff);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .version-row {
+            display: flex; align-items: center; justify-content: center;
+            gap: 10px; margin-bottom: 20px;
+        }
+        .version-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 12px;
+            background: rgba(99,102,241,0.15);
+            border: 1px solid rgba(99,102,241,0.35);
+            border-radius: 20px;
+            font-size: 13px; font-weight: 600; color: #a5b4fc;
+        }
+        .new-badge {
+            padding: 3px 10px;
+            background: rgba(34,197,94,0.15);
+            border: 1px solid rgba(34,197,94,0.35);
+            border-radius: 20px;
+            font-size: 11px; font-weight: 700; color: #4ade80;
+            letter-spacing: 0.5px;
+        }
+        .description {
+            color: #a8b2d1; line-height: 1.7;
+            margin-bottom: 24px; font-size: 15px;
+        }
+        .features-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 10px; margin: 20px 0 28px; text-align: left;
+        }
+        .feature-item {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 12px 14px;
+            background: rgba(99,102,241,0.06);
+            border: 1px solid rgba(99,102,241,0.15);
+            border-radius: 10px;
+        }
+        .feature-icon {
+            flex-shrink: 0; width: 18px; height: 18px;
+            color: #4ade80; margin-top: 1px;
+        }
+        .feature-text { font-size: 13px; color: #e2e8f0; line-height: 1.4; }
+        .feature-text strong { color: #fff; display: block; font-size: 13px; }
+        .section-title {
+            font-size: 13px; font-weight: 700; letter-spacing: 1px;
+            color: #6b7280; text-transform: uppercase; margin: 28px 0 16px;
+        }
+        .download-options {
+            display: grid; grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px; margin-top: 8px;
+        }
+        .download-card {
+            background: rgba(255,255,255,0.025);
+            border: 1px solid rgba(99,102,241,0.25);
+            border-radius: 14px; padding: 24px;
+            text-align: center;
+            transition: all 0.25s ease;
+            position: relative;
+        }
+        .download-card:hover:not(.coming-soon-card) {
+            border-color: rgba(99,102,241,0.55);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 28px rgba(99,102,241,0.18);
+        }
+        .download-card.recommended {
+            border-color: rgba(99,102,241,0.55);
+            background: rgba(99,102,241,0.06);
+        }
+        .download-card.coming-soon-card {
+            opacity: 0.6;
+            border-color: rgba(255,255,255,0.08);
+        }
+        .recommended-badge {
+            position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+            padding: 3px 14px;
+            background: linear-gradient(135deg, #6366f1, #00d4ff);
+            border-radius: 20px; font-size: 11px; font-weight: 700;
+            color: #fff; letter-spacing: 0.5px; white-space: nowrap;
+        }
+        .coming-soon-banner {
+            position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+            padding: 3px 14px;
+            background: rgba(100,116,139,0.4);
+            border: 1px solid rgba(100,116,139,0.4);
+            border-radius: 20px; font-size: 11px; font-weight: 700;
+            color: #94a3b8; letter-spacing: 0.5px; white-space: nowrap;
+        }
+        .platform-icon {
+            width: 44px; height: 44px;
+            margin: 0 auto 14px; color: #6366f1;
+        }
+        .platform-icon.ios-icon { color: #a5b4fc; }
+        .platform-icon.windows-icon { color: #64748b; }
+        .platform-name {
+            font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 4px;
+        }
+        .platform-desc {
+            font-size: 12px; color: #64748b; margin-bottom: 18px;
+        }
+        .installer-options {
+            display: flex; flex-direction: column; gap: 9px;
+        }
+        .installer-btn {
+            display: block; padding: 11px 16px;
+            background: linear-gradient(135deg, #6366f1, #00d4ff);
+            border: none; border-radius: 9px;
+            color: #fff; font-size: 14px; font-weight: 600;
+            text-decoration: none; cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .installer-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(99,102,241,0.45);
+            filter: brightness(1.08);
+        }
+        .installer-btn.secondary {
+            background: rgba(99,102,241,0.12);
+            border: 1px solid rgba(99,102,241,0.35);
+        }
+        .installer-btn.secondary:hover {
+            background: rgba(99,102,241,0.22);
+        }
+        .installer-btn.ios-btn {
+            background: linear-gradient(135deg, #1c1c1e, #2c2c2e);
+            border: 1px solid rgba(255,255,255,0.15);
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .installer-btn.ios-btn:hover {
+            background: linear-gradient(135deg, #2c2c2e, #3a3a3c);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+        }
+        .installer-btn.disabled {
+            background: rgba(100,116,139,0.08);
+            border: 1px solid rgba(100,116,139,0.2);
+            color: #475569; pointer-events: none; cursor: default;
+        }
+        .installer-meta {
+            font-size: 11px; opacity: 0.7; margin-top: 4px; font-weight: 400;
+        }
+        .install-snippet {
+            margin-top: 14px; padding: 12px;
+            background: rgba(0,0,0,0.35);
+            border: 1px solid rgba(99,102,241,0.12);
+            border-radius: 8px; text-align: left;
+        }
+        .install-snippet-title {
+            font-size: 11px; font-weight: 700; color: #6366f1;
+            margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .install-snippet code {
+            display: block; font-size: 11px; color: #94a3b8;
+            line-height: 1.7; font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            white-space: pre;
+        }
+        .coming-soon-placeholder {
+            padding: 28px 16px;
+            text-align: center;
+        }
+        .coming-soon-icon {
+            width: 40px; height: 40px; margin: 0 auto 12px; color: #374151;
+        }
+        .coming-soon-text {
+            font-size: 18px; font-weight: 700; color: #4b5563; margin-bottom: 6px;
+        }
+        .coming-soon-sub {
+            font-size: 12px; color: #374151; line-height: 1.5;
+        }
+        .notify-btn {
+            display: inline-block; margin-top: 14px; padding: 8px 16px;
+            background: rgba(99,102,241,0.08);
+            border: 1px solid rgba(99,102,241,0.2);
+            border-radius: 8px; font-size: 12px; font-weight: 600; color: #6366f1;
+            text-decoration: none; cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .notify-btn:hover { background: rgba(99,102,241,0.18); }
+        .sysreq {
+            margin-top: 28px; padding: 18px 20px;
+            background: rgba(10,14,26,0.7);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 10px; text-align: left;
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+        }
+        .sysreq-item { font-size: 12px; color: #64748b; }
+        .sysreq-item strong { color: #a5b4fc; display: block; font-size: 11px; margin-bottom: 3px; }
+        .links-row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 24px; padding-top: 20px;
+            border-top: 1px solid rgba(99,102,241,0.15);
+        }
+        .back-link {
+            color: #6366f1; text-decoration: none; font-size: 14px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .changelog-link {
+            color: #64748b; text-decoration: none; font-size: 13px;
+        }
+        .changelog-link:hover { color: #a5b4fc; }
+        @media (max-width: 700px) {
+            .download-options { grid-template-columns: 1fr; }
+            .features-grid { grid-template-columns: 1fr; }
+            .sysreq { grid-template-columns: 1fr; }
+            .download-container { padding: 28px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="download-container">
+
+        <div class="logo">
+            <img src="/platform/static/icons/darklock-notes.png" alt="Darklock Notes" loading="lazy"
+                 onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='inline-flex'" />
+            <div id="logo-fallback" class="logo-fallback" style="display:none;">📝</div>
+        </div>
+
+        <h1>Darklock Secure Notes</h1>
+
+        <div class="version-row">
+            <span class="version-badge">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                v0.1.0-beta
+            </span>
+            <span class="new-badge">BETA · MARCH 2026</span>
+        </div>
+
+        <p class="description">
+            End-to-end encrypted, zero-knowledge note-taking. Your notes are encrypted on-device with
+            libsodium (Argon2id + XChaCha20-Poly1305) — the server never sees your content.
+            Available on Linux and iOS, with Windows coming soon.
+        </p>
+
+        <div class="features-grid">
+            <div class="feature-item">
+                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <div class="feature-text"><strong>Zero-Knowledge Encryption</strong>Argon2id KDF · XChaCha20-Poly1305 at rest</div>
+            </div>
+            <div class="feature-item">
+                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <div class="feature-text"><strong>Cross-Platform Sync</strong>Optional E2E sync — server sees only ciphertext</div>
+            </div>
+            <div class="feature-item">
+                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <div class="feature-text"><strong>Rich Text Editor</strong>Markdown support · code blocks · attachments</div>
+            </div>
+            <div class="feature-item">
+                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <div class="feature-text"><strong>Offline-First</strong>Works without internet · syncs when connected</div>
+            </div>
+            <div class="feature-item">
+                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <div class="feature-text"><strong>Workspace Organisation</strong>Notebooks · tags · full-text search</div>
+            </div>
+            <div class="feature-item">
+                <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <div class="feature-text"><strong>Open Crypto Primitives</strong>libsodium · auditable · no proprietary black boxes</div>
+            </div>
+        </div>
+
+        <div class="section-title">Choose Your Platform</div>
+
+        <div class="download-options">
+
+            <!-- Linux -->
+            <div class="download-card recommended">
+                <div class="recommended-badge">⭐ Recommended</div>
+
+                <!-- Linux penguin SVG -->
+                <svg class="platform-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.84-.41 1.738-.41 2.655 0 .87.527 2.23 1.065 2.877.521.623 1.303.952 2.145.952.84 0 1.608-.329 2.131-.952.539-.647 1.064-2.006 1.064-2.877 0-.917-.132-1.815-.41-2.655-.589-1.771-1.831-3.47-2.715-4.521-.75-1.067-.975-1.928-1.05-3.02-.066-1.491 1.055-5.965-3.17-6.298-.165-.013-.325-.021-.48-.021zm-2.658 16.156c-1.108 0-1.95.701-1.95 1.699 0 .998.842 1.7 1.95 1.7 1.109 0 1.952-.702 1.952-1.7 0-.998-.843-1.699-1.952-1.699zm5.171 0c-1.108 0-1.95.701-1.95 1.699 0 .998.842 1.7 1.95 1.7 1.109 0 1.952-.702 1.952-1.7 0-.998-.843-1.699-1.952-1.699z"/>
+                </svg>
+
+                <div class="platform-name">Linux</div>
+                <div class="platform-desc">Ubuntu 20.04+ / Debian 11+ · x86_64</div>
+                <div class="installer-options">
+                    <a href="/platform/api/download/darklock-notes-installer?format=deb" class="installer-btn">
+                        Download .deb Package
+                        <div class="installer-meta">Recommended · installs system-wide</div>
+                    </a>
+                    <a href="/platform/api/download/darklock-notes-installer?format=appimage" class="installer-btn secondary">
+                        Download AppImage
+                        <div class="installer-meta">Portable · no installation needed</div>
+                    </a>
+                </div>
+                <div class="install-snippet">
+                    <div class="install-snippet-title">Quick Install (.deb)</div>
+                    <code>sudo apt install ./darklock-notes_0.1.0_amd64.deb
+darklock-notes</code>
+                </div>
+            </div>
+
+            <!-- iOS -->
+            <div class="download-card">
+                <!-- Apple logo SVG -->
+                <svg class="platform-icon ios-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                </svg>
+
+                <div class="platform-name">iOS</div>
+                <div class="platform-desc">iPhone · iPad · iOS 16+ / iPadOS 16+</div>
+                <div class="installer-options">
+                    <a href="/platform/notes/" class="installer-btn ios-btn" target="_blank" rel="noopener">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                        Open Web App
+                        <div class="installer-meta">Opens in Safari · iOS 16+ · iPhone &amp; iPad</div>
+                    </a>
+                </div>
+                <div class="install-snippet">
+                    <div class="install-snippet-title">Install to Home Screen</div>
+                    <code>1. Tap "Open Web App" above in Safari
+2. Tap the Share button (□↑)
+3. Tap "Add to Home Screen"</code>
+                </div>
+            </div>
+
+            <!-- Windows Coming Soon -->
+            <div class="download-card coming-soon-card">
+                <div class="coming-soon-banner">🕐 COMING SOON</div>
+
+                <!-- Windows logo SVG -->
+                <svg class="platform-icon windows-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+                </svg>
+
+                <div class="platform-name" style="color:#4b5563;">Windows</div>
+                <div class="platform-desc">Windows 10 / 11 · x86_64</div>
+                <div class="coming-soon-placeholder">
+                    <svg class="coming-soon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <div class="coming-soon-text">In Development</div>
+                    <div class="coming-soon-sub">Windows support is actively in progress.<br>Sign up to be notified when it launches.</div>
+                    <a href="mailto:updates@darklock.net?subject=Notify me when Darklock Notes for Windows is available" class="notify-btn">
+                        Notify Me
+                    </a>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="sysreq">
+            <div class="sysreq-item">
+                <strong>Linux</strong>
+                Ubuntu 20.04+ / Debian 11+<br>
+                x86_64 · WebKitGTK 4.1<br>
+                ~60 MB disk
+            </div>
+            <div class="sysreq-item">
+                <strong>iOS</strong>
+                iOS 16 / iPadOS 16+<br>
+                iPhone 8+ · All iPads<br>
+                Web App · No install needed
+            </div>
+            <div class="sysreq-item">
+                <strong>Included</strong>
+                Encrypted local vault<br>
+                Optional cloud sync<br>
+                First-run setup wizard
+            </div>
+        </div>
+
+        <div class="links-row">
+            <a href="/platform" class="back-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                Back to Platform
+            </a>
+            <a href="/platform/updates" class="changelog-link">View release history →</a>
+        </div>
+
+    </div>
+</body>
+</html>

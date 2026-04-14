@@ -48,6 +48,17 @@ class AntiNuke {
         this.repairMode = new Map(); // guildId -> { active, incidentId, startedAt }
         this.repairActions = new Map(); // guildId -> Set of action IDs we're performing
         
+        // CANARY TRAPS - Hidden sentinel channels/roles (v4.0)
+        this.canaryChannels = new Map(); // guildId -> Set(channelId)
+        this.canaryRoles = new Map();    // guildId -> Set(roleId)
+        
+        // LOCKDOWN STATE (v4.0)
+        this.lockdownActive = new Map();        // guildId -> { active, reason, timestamp }
+        this.lockdownOriginalPerms = new Map(); // guildId -> Map(roleId -> originalBits)
+        
+        // KILL SWITCH: stripped roles cache (v4.0)
+        this._strippedRoles = new Map(); // `${guildId}:${userId}` -> { roleIds, timestamp }
+        
         // INCIDENT TRACKING - For provenance and auditing
         this.activeIncidents = new Map(); // incidentId -> incident data
         
@@ -549,6 +560,40 @@ class AntiNuke {
     }
 
     // ========================================
+    // SETTINGS CHANGE HANDLER
+    // ========================================
+
+    /**
+     * Called by the dashboard whenever anti-nuke settings are saved.
+     * Clears in-memory tracking when disabled so stale state doesn't
+     * accidentally trigger a future violation.
+     */
+    onSettingsChanged(guildId, updates) {
+        try {
+            // Clear action tracking for this guild so old counts don't carry over
+            if (this.actionTracking.has(guildId)) {
+                this.actionTracking.get(guildId).clear();
+            }
+            // Clear blocked users if disabling
+            if (updates?.antinuke_enabled === 0 || updates?.antinuke_enabled === false) {
+                this.blockedUsers.delete(guildId);
+                this.punishedUsers.delete(guildId);
+                this.repairMode.delete(guildId);
+            }
+            // Invalidate the antiNukeHandlers enabled cache for this guild
+            try {
+                const handlers = require('../core/interactions/antiNukeHandlers');
+                if (typeof handlers.invalidateEnabledCache === 'function') {
+                    handlers.invalidateEnabledCache(guildId);
+                }
+            } catch { /* ignore */ }
+            this.bot.logger.info(`[AntiNuke] Settings changed for ${guildId} — tracking cleared, cache invalidated`);
+        } catch (e) {
+            this.bot.logger.warn(`[AntiNuke] onSettingsChanged error: ${e.message}`);
+        }
+    }
+
+    // ========================================
     // SNAPSHOT MANAGEMENT (For Restoration)
     // ========================================
 
@@ -576,6 +621,16 @@ class AntiNuke {
         await this.snapshotChannels(guild);
         await this.snapshotRoles(guild);
         await this.snapshotWebhooks(guild);
+        
+        // Set up canary traps (v4.0)
+        try {
+            const handlers = require('../core/interactions/antiNukeHandlers');
+            if (typeof handlers.ensureCanaryTraps === 'function') {
+                await handlers.ensureCanaryTraps(guild, this.bot);
+            }
+        } catch (e) {
+            this.bot.logger.warn(`[AntiNuke] Canary trap setup error: ${e.message}`);
+        }
         
         this.bot.logger.info(`🛡️ Anti-nuke initialized for ${guild.name} - ${this.channelSnapshots.get(guildId)?.size || 0} channels, ${this.roleSnapshots.get(guildId)?.size || 0} roles snapshotted`);
     }
@@ -909,30 +964,38 @@ class AntiNuke {
             }).catch(e => this.bot.logger.warn(`[AntiNuke] Forensic backup failed: ${e.message}`));
         }
 
-        // IMMEDIATELY block further actions from this user
-        if (!this.blockedUsers.has(guildId)) {
-            this.blockedUsers.set(guildId, new Set());
+        // IMMEDIATELY block further actions from this user (if attacker is known)
+        if (userId) {
+            if (!this.blockedUsers.has(guildId)) {
+                this.blockedUsers.set(guildId, new Set());
+            }
+            this.blockedUsers.get(guildId).add(userId);
+            
+            // Mark as punished
+            if (!this.punishedUsers.has(guildId)) {
+                this.punishedUsers.set(guildId, new Map());
+            }
+            this.punishedUsers.get(guildId).set(userId, Date.now());
         }
-        this.blockedUsers.get(guildId).add(userId);
-        
-        // Mark as punished
-        if (!this.punishedUsers.has(guildId)) {
-            this.punishedUsers.set(guildId, new Map());
-        }
-        this.punishedUsers.get(guildId).set(userId, Date.now());
         
         try {
             // 1. QUARANTINE - Strip dangerous permissions from ALL roles immediately
-            const quarantineResult = await this.activateQuarantine(guild, userId);
-            this.recordAction(incident, 'quarantine', 'all_roles', quarantineResult.success, quarantineResult.error);
-            
-            // 2. NEUTRALIZE the attacker
-            const neutralizeResult = await this.neutralizeAttacker(guild, userId, violation);
-            for (const action of neutralizeResult.actions) {
-                this.recordAction(incident, action, userId, true);
+            let quarantineResult = { success: true, error: null };
+            if (userId) {
+                quarantineResult = await this.activateQuarantine(guild, userId);
+                this.recordAction(incident, 'quarantine', 'all_roles', quarantineResult.success, quarantineResult.error);
             }
-            for (const error of neutralizeResult.errors) {
-                this.recordAction(incident, 'neutralize_error', userId, false, error);
+            
+            // 2. NEUTRALIZE the attacker (skip when executor is unknown)
+            let neutralizeResult = { actions: [], errors: [] };
+            if (userId) {
+                neutralizeResult = await this.neutralizeAttacker(guild, userId, violation);
+                for (const action of neutralizeResult.actions) {
+                    this.recordAction(incident, action, userId, true);
+                }
+                for (const error of neutralizeResult.errors) {
+                    this.recordAction(incident, 'neutralize_error', userId, false, error);
+                }
             }
             
             // 3. RESTORE any damage (with integrity checks)
@@ -1107,47 +1170,56 @@ class AntiNuke {
      */
     async neutralizeAttacker(guild, userId, violation) {
         const results = { actions: [], errors: [] };
+        const banReason = `Anti-nuke: ${violation.count} ${violation.actionType} in ${Math.round((violation.window || 0) / 1000)}s`;
         
         try {
             const member = await guild.members.fetch(userId).catch(() => null);
             const botMember = guild.members.me;
-            
+
+            if (!botMember) {
+                results.errors.push('Bot member not found in guild');
+                return results;
+            }
+
             if (!member) {
-                results.errors.push('Could not fetch member');
-                // Still try to ban
+                // Member already left — just ban the ID
+                this.bot.logger.warn(`[AntiNuke] Attacker ${userId} not in server — banning by ID`);
                 try {
                     if (botMember.permissions.has(PermissionFlagsBits.BanMembers)) {
-                        await guild.members.ban(userId, {
-                            reason: `Anti-nuke: ${violation.count} ${violation.actionType} in ${violation.window/1000}s`,
-                            deleteMessageSeconds: 0
-                        });
+                        await guild.members.ban(userId, { reason: banReason, deleteMessageSeconds: 0 });
                         results.actions.push('Banned user (not in server)');
+                        this.bot.logger.warn(`✅ [AntiNuke] Banned attacker ${userId} (was not in server)`);
+                    } else {
+                        results.errors.push('Bot lacks BanMembers permission');
+                        this.bot.logger.error(`[AntiNuke] ❌ Cannot ban ${userId}: bot lacks BanMembers permission`);
                     }
                 } catch (e) {
                     results.errors.push(`Failed to ban: ${e.message}`);
+                    this.bot.logger.error(`[AntiNuke] ❌ Ban failed for ${userId}: ${e.message}`);
                 }
                 return results;
             }
-            
-            // Check if we can act on this member
-            if (member.roles.highest.position >= botMember.roles.highest.position) {
-                results.errors.push('Member has higher role than bot');
-            }
-            
-            // 1. Strip ALL roles immediately
+
+            // 1. Strip ALL roles immediately (re-try in case kill switch was racing)
             try {
                 if (botMember.permissions.has(PermissionFlagsBits.ManageRoles)) {
-                    const rolesToRemove = member.roles.cache.filter(r => r.position < botMember.roles.highest.position && r.id !== guild.id);
+                    const rolesToRemove = member.roles.cache.filter(
+                        r => r.position < botMember.roles.highest.position && r.id !== guild.id
+                    );
                     if (rolesToRemove.size > 0) {
-                        await member.roles.remove(rolesToRemove, `Anti-nuke: ${violation.actionType} violation`);
-                        results.actions.push(`Removed ${rolesToRemove.size} roles`);
+                        await member.roles.set([], `Anti-nuke: ${violation.actionType} violation`);
+                        results.actions.push(`Stripped all roles`);
+                        this.bot.logger.warn(`[AntiNuke] Stripped all roles from attacker ${userId}`);
                     }
+                } else {
+                    this.bot.logger.warn(`[AntiNuke] Bot lacks ManageRoles — cannot strip attacker roles`);
                 }
             } catch (e) {
                 results.errors.push(`Failed to remove roles: ${e.message}`);
+                this.bot.logger.warn(`[AntiNuke] Role strip failed for ${userId}: ${e.message}`);
             }
-            
-            // 2. Timeout for max duration
+
+            // 2. Timeout for max duration (belt-and-suspenders while ban processes)
             try {
                 if (botMember.permissions.has(PermissionFlagsBits.ModerateMembers) && member.moderatable) {
                     await member.timeout(28 * 24 * 60 * 60 * 1000, `Anti-nuke: ${violation.actionType}`);
@@ -1156,22 +1228,44 @@ class AntiNuke {
             } catch (e) {
                 results.errors.push(`Failed to timeout: ${e.message}`);
             }
-            
-            // 3. BAN the attacker
+
+            // 3. BAN the attacker — primary punishment
+            let banned = false;
             try {
                 if (botMember.permissions.has(PermissionFlagsBits.BanMembers)) {
-                    await guild.members.ban(userId, {
-                        reason: `Anti-nuke: ${violation.count} ${violation.actionType} in ${violation.window/1000}s`,
-                        deleteMessageSeconds: 0 // Don't delete messages for evidence
-                    });
+                    await guild.members.ban(userId, { reason: banReason, deleteMessageSeconds: 0 });
                     results.actions.push('Banned user');
+                    banned = true;
+                    this.bot.logger.warn(`✅ [AntiNuke] Banned attacker ${member.user?.username || userId}`);
+                } else {
+                    this.bot.logger.error(`[AntiNuke] ❌ Cannot ban ${userId}: bot lacks BanMembers permission`);
+                    results.errors.push('Bot lacks BanMembers permission');
                 }
             } catch (e) {
                 results.errors.push(`Failed to ban: ${e.message}`);
+                this.bot.logger.error(`[AntiNuke] ❌ Ban failed for ${member.user?.username || userId}: ${e.message}`);
             }
-            
+
+            // 4. KICK fallback if ban failed
+            if (!banned) {
+                try {
+                    if (botMember.permissions.has(PermissionFlagsBits.KickMembers) && member.kickable) {
+                        await member.kick(banReason);
+                        results.actions.push('Kicked user (ban fallback)');
+                        this.bot.logger.warn(`✅ [AntiNuke] Kicked attacker ${member.user?.username || userId} (ban failed)`);
+                    } else if (!member.kickable) {
+                        this.bot.logger.error(`[AntiNuke] ❌ Cannot kick ${userId}: member not kickable (may be server owner or above bot)`);
+                        results.errors.push('Member is not kickable');
+                    }
+                } catch (e) {
+                    results.errors.push(`Failed to kick: ${e.message}`);
+                    this.bot.logger.error(`[AntiNuke] ❌ Kick failed for ${member.user?.username || userId}: ${e.message}`);
+                }
+            }
+
         } catch (error) {
             results.errors.push(`Neutralization error: ${error.message}`);
+            this.bot.logger.error(`[AntiNuke] ❌ neutralizeAttacker critical error: ${error.message}`);
         }
         
         return results;
@@ -1438,8 +1532,15 @@ class AntiNuke {
         
         // PHASE 5: Sweep for additional malicious channels created by attacker
         this.bot.logger.info(`[AntiNuke] Phase 5: Sweeping for additional malicious channels...`);
-        await this.sweepMaliciousChannels(guild, attackerId, violation.detectedAt, incident, results);
-        
+        await this.sweepMaliciousChannels(guild, attackerId, violation.attackStartedAt || (violation.detectedAt - 60000), incident, results);
+
+        // PHASE 5.5: Snapshot-based missing channel recovery
+        // Catches any channels that were deleted during the attack but not captured
+        // in violation.actions (e.g. because channelDelete events fired before the
+        // violation threshold was crossed and the executor was resolved).
+        this.bot.logger.info(`[AntiNuke] Phase 5.5: Restoring snapshot-missing channels...`);
+        await this.restoreMissingFromSnapshot(guild, restoredChannels, categoryIdMap, incident, results);
+
         // PHASE 6: Reorder all channels to match original positions
         this.bot.logger.info(`[AntiNuke] Phase 6: Reordering channels to original positions...`);
         await this.reorderChannelsToSnapshots(guild, incident, results);
@@ -1573,48 +1674,168 @@ class AntiNuke {
     }
 
     /**
-     * Sweep for and delete malicious channels created by attacker
+     * Sweep for and delete malicious channels created by attacker.
+     * `attackStartedAt` is when the FIRST malicious create was observed — much more
+     * precise than detectedAt (which includes audit-log wait time).
      */
-    async sweepMaliciousChannels(guild, attackerId, detectedAt, incident, results) {
-        const windowMs = 5 * 60 * 1000;
-        const cutoff = Math.max(0, (detectedAt || Date.now()) - windowMs);
-        
+    async sweepMaliciousChannels(guild, attackerId, attackStartedAt, incident, results) {
+        // Give a 5-second buffer before the first observed event to account for clock skew
+        const cutoff = Math.max(0, (attackStartedAt || Date.now()) - 5000);
+
+        // Channel names that existed BEFORE the attack (for safety guard — don't delete restored channels)
+        const originalChannelNames = new Set();
+        for (const snap of (this.channelSnapshots.get(guild.id)?.values() || [])) {
+            if (snap.name) originalChannelNames.add(snap.name.toLowerCase());
+        }
+
+        const deleted = new Set();
+
+        // Strategy 1: Audit log sweep by executor ID (most precise)
         try {
-            // Fetch audit logs for channel creations
             const createLogs = await guild.fetchAuditLogs({
                 type: AuditLogEvent.ChannelCreate,
                 limit: 100
             }).catch(() => null);
-            
-            if (!createLogs) return;
-            
-            // Get list of original channel IDs from snapshots
-            const originalChannelIds = new Set(this.channelSnapshots.get(guild.id)?.keys() || []);
-            
-            for (const entry of createLogs.entries.values()) {
-                // Only target attacker's actions within the time window
-                if (entry.executor?.id !== attackerId) continue;
-                if (entry.createdTimestamp < cutoff) continue;
-                
-                const channelId = entry.target?.id;
-                const channel = guild.channels.cache.get(channelId);
-                
-                // Delete if channel exists and wasn't in original snapshot
-                if (channel && !originalChannelIds.has(channelId)) {
-                    try {
-                        await channel.delete('Anti-nuke: Removing malicious channel created during attack');
-                        results.channelsDeleted = (results.channelsDeleted || 0) + 1;
-                        this.recordAction(incident, 'delete_malicious_channel', channelId, true);
-                        this.bot.logger.info(`🗑️ Deleted malicious channel: ${channel.name}`);
-                        await this.sleep(300);
-                    } catch (e) {
-                        this.recordAction(incident, 'delete_malicious_channel', channelId, false, e.message);
+
+            if (createLogs) {
+                for (const entry of createLogs.entries.values()) {
+                    if (attackerId && entry.executor?.id !== attackerId) continue;
+                    if (entry.createdTimestamp < cutoff) continue;
+
+                    const channelId = entry.target?.id;
+                    if (!channelId || deleted.has(channelId)) continue;
+                    const channel = guild.channels.cache.get(channelId);
+
+                    if (channel) {
+                        try {
+                            await channel.delete('Anti-nuke: Removing malicious channel (audit log sweep)');
+                            results.channelsDeleted = (results.channelsDeleted || 0) + 1;
+                            deleted.add(channelId);
+                            this.recordAction(incident, 'delete_malicious_channel', channelId, true);
+                            this.bot.logger.info(`🗑️ Deleted malicious channel (audit): ${channel.name}`);
+                            await this.sleep(250);
+                        } catch (e) {
+                            this.recordAction(incident, 'delete_malicious_channel', channelId, false, e.message);
+                        }
                     }
                 }
             }
         } catch (e) {
-            this.bot.logger.error('Failed to sweep malicious channels:', e);
-            this.addWarning(incident, `Malicious channel sweep failed: ${e.message}`);
+            this.bot.logger.warn(`[AntiNuke] Audit log sweep failed: ${e.message}`);
+        }
+
+        // Strategy 2: Timestamp sweep — delete channels created DURING the attack window.
+        //
+        // The snapshot is intentionally NOT used here for the ID-existence check because
+        // updateChannelSnapshot() is called on every channelCreate event, meaning the
+        // "current" snapshot is already poisoned with the attacker's channels by the time
+        // we get here.  Instead we rely purely on createdTimestamp: any channel born after
+        // the attack started and not matching an original-name (safety guard for restorations)
+        // is treated as malicious.
+        try {
+            for (const channel of guild.channels.cache.values()) {
+                if (deleted.has(channel.id)) continue;
+                // Only channels created after the attack started
+                if (!channel.createdTimestamp || channel.createdTimestamp < cutoff) continue;
+                // Safety guard: skip channels whose name matches a pre-existing channel
+                // (these are likely restorations created by the repair pipeline)
+                if (originalChannelNames.has(channel.name?.toLowerCase())) continue;
+
+                try {
+                    await channel.delete('Anti-nuke: Removing channel created during attack (timestamp sweep)');
+                    results.channelsDeleted = (results.channelsDeleted || 0) + 1;
+                    deleted.add(channel.id);
+                    this.recordAction(incident, 'delete_malicious_channel_ts', channel.id, true);
+                    this.bot.logger.info(`🗑️ Deleted attack channel (timestamp): ${channel.name}`);
+                    await this.sleep(250);
+                } catch (e) {
+                    this.recordAction(incident, 'delete_malicious_channel_ts', channel.id, false, e.message);
+                }
+            }
+        } catch (e) {
+            this.bot.logger.warn(`[AntiNuke] Timestamp sweep failed: ${e.message}`);
+        }
+
+        this.bot.logger.info(`[AntiNuke] Sweep complete: deleted ${deleted.size} malicious channels`);
+    }
+
+    /**
+     * Restore channels that were in the snapshot but are now missing from the guild.
+     * This is a safety net that catches deleted channels not captured in violation.actions.
+     * Already-restored channel IDs are passed in `alreadyRestored` to avoid duplicates.
+     */
+    async restoreMissingFromSnapshot(guild, alreadyRestored, categoryIdMap, incident, results) {
+        const guildId = guild.id;
+        const snapshots = this.channelSnapshots.get(guildId);
+        if (!snapshots || snapshots.size === 0) {
+            this.bot.logger.warn('[AntiNuke] restoreMissingFromSnapshot: no snapshots available');
+            return;
+        }
+
+        // Separate categories from other channels
+        const missingCategories = [];
+        const missingChannels = [];
+
+        for (const [channelId, snapshot] of snapshots) {
+            if (alreadyRestored.has(channelId)) continue;
+            if (guild.channels.cache.has(channelId)) continue;
+            // Channel was in snapshot but no longer exists
+
+            if (snapshot.type === ChannelType.GuildCategory) {
+                missingCategories.push({ channelId, data: snapshot });
+            } else {
+                missingChannels.push({ channelId, data: snapshot });
+            }
+        }
+
+        if (missingCategories.length === 0 && missingChannels.length === 0) {
+            this.bot.logger.info('[AntiNuke] restoreMissingFromSnapshot: no missing channels');
+            return;
+        }
+
+        this.bot.logger.info(`[AntiNuke] restoreMissingFromSnapshot: restoring ${missingCategories.length} categories + ${missingChannels.length} channels`);
+
+        // Restore missing categories first
+        missingCategories.sort((a, b) => (a.data?.position || 0) - (b.data?.position || 0));
+        for (const item of missingCategories) {
+            try {
+                const newChannel = await this.restoreChannelFromSnapshotWithId(guild, item.data, incident);
+                if (newChannel) {
+                    categoryIdMap.set(item.channelId, newChannel.id);
+                    alreadyRestored.add(item.channelId);
+                    results.channelsRestored++;
+                    this.recordRestoration(incident, 'channel', item.channelId, item.data.name, 'snapshot-sweep', true);
+                }
+                await this.sleep(200);
+            } catch (e) {
+                this.bot.logger.warn(`[AntiNuke] Failed to restore missing category ${item.data?.name}: ${e.message}`);
+            }
+        }
+
+        // Restore missing regular channels
+        missingChannels.sort((a, b) => {
+            const parentA = a.data?.parentId || '';
+            const parentB = b.data?.parentId || '';
+            if (parentA !== parentB) return parentA.localeCompare(parentB);
+            return (a.data?.position || 0) - (b.data?.position || 0);
+        });
+
+        for (const item of missingChannels) {
+            try {
+                // Remap parent if category was just restored with a new ID
+                if (item.data.parentId && categoryIdMap.has(item.data.parentId)) {
+                    item.data = { ...item.data, parentId: categoryIdMap.get(item.data.parentId) };
+                }
+                const restored = await this.restoreChannelFromSnapshot(guild, item.data, incident);
+                if (restored) {
+                    alreadyRestored.add(item.channelId);
+                    results.channelsRestored++;
+                    this.recordRestoration(incident, 'channel', item.channelId, item.data.name, 'snapshot-sweep', true);
+                }
+                await this.sleep(200);
+            } catch (e) {
+                this.bot.logger.warn(`[AntiNuke] Failed to restore missing channel ${item.data?.name}: ${e.message}`);
+            }
         }
     }
 
@@ -2620,7 +2841,7 @@ class AntiNuke {
                 'ANTI_NUKE_VIOLATION',
                 'CRITICAL',
                 userId,
-                `User ${user.tag} performed ${violation.count} ${violation.actionType} actions in ${violation.window/1000}s`,
+                `User ${user.username} performed ${violation.count} ${violation.actionType} actions in ${violation.window/1000}s`,
                 JSON.stringify({
                     violation,
                     results,
@@ -2660,7 +2881,7 @@ class AntiNuke {
                 fields: [
                     {
                         name: '👤 Attacker',
-                        value: `${user.tag}\n<@${userId}>\nID: \`${userId}\``,
+                        value: `${user.username}\n<@${userId}>\nID: \`${userId}\``,
                         inline: true
                     },
                     {

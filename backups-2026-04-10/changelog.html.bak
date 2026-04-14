@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Changelog | Darklock Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/platform/static/css/main.css">
+    <style>
+        .changelog-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+            min-height: calc(100vh - 200px);
+        }
+
+        .changelog-header {
+            text-align: center;
+            padding: 4rem 0 3rem;
+        }
+
+        .changelog-header h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #7c4dff 0%, #00bcd4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .changelog-header p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .version-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .version-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .version-number {
+            font-size: 1.75rem;
+            font-weight: 600;
+        }
+
+        .version-date {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .version-badge {
+            background: linear-gradient(135deg, #7c4dff 0%, #00bcd4 100%);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .changelog-category {
+            margin-bottom: 1.5rem;
+        }
+
+        .changelog-category h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .changelog-category ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .changelog-category li {
+            padding: 0.5rem 0 0.5rem 1.5rem;
+            position: relative;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .changelog-category li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .coming-soon {
+            background: linear-gradient(135deg, rgba(124, 77, 255, 0.1) 0%, rgba(0, 188, 212, 0.1) 100%);
+            border: 1px solid rgba(124, 77, 255, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .coming-soon h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .coming-soon ul {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .coming-soon li {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-container">
+            <a href="/platform" class="nav-brand">
+                <svg class="brand-icon" width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="changelogGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#60A5FA" />
+                            <stop offset="50%" style="stop-color:#6366F1" />
+                            <stop offset="100%" style="stop-color:#7C3AED" />
+                        </linearGradient>
+                        <linearGradient id="changelogShine" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#a5b4fc" />
+                            <stop offset="100%" style="stop-color:#6366F1" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M20 15 L20 85 L50 85 C75 85 90 70 90 50 C90 30 75 15 50 15 L20 15 Z" fill="url(#changelogGrad)" />
+                    <path d="M35 30 L35 70 L50 70 C65 70 75 62 75 50 C75 38 65 30 50 30 L35 30 Z" fill="#0a0a0f" />
+                    <path d="M42 42 L58 50 L42 58 L42 52 L52 50 L42 48 Z" fill="url(#changelogShine)" />
+                    <path d="M20 75 L35 85 L20 85 Z" fill="#4338ca" opacity="0.7" />
+                </svg>
+                <span class="brand-text">Darklock</span>
+            </a>
+            <div class="nav-links">
+                <a href="/platform" class="nav-link">Home</a>
+                <a href="/platform/docs" class="nav-link">Documentation</a>
+                <a href="/platform/status" class="nav-link">Status</a>
+                <a href="/platform/auth/login" class="btn btn-primary btn-sm">Sign In</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="changelog-container">
+        <div class="changelog-header">
+            <h1>Changelog</h1>
+            <p>Stay updated with the latest features and improvements</p>
+        </div>
+
+        <!-- Version 1.0.0 -->
+        <div class="version-section">
+            <div class="version-header">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                        <span class="version-number">Version 1.0.0</span>
+                        <span class="version-badge">Latest</span>
+                    </div>
+                    <span class="version-date">Released January 2026</span>
+                </div>
+            </div>
+
+            <div class="changelog-category">
+                <h3>Initial Platform Release</h3>
+                <ul>
+                    <li>Complete platform launch with full authentication system</li>
+                    <li>User registration and login with secure JWT-based authentication</li>
+                    <li>Persistent database storage with SQLite for reliable data management</li>
+                </ul>
+            </div>
+
+            <div class="changelog-category">
+                <h3>Security Features</h3>
+                <ul>
+                    <li>Industry-standard password hashing with bcrypt</li>
+                    <li>HttpOnly cookie implementation for secure session management</li>
+                    <li>Rate limiting to prevent abuse and brute-force attacks</li>
+                    <li>Comprehensive security headers for enhanced protection</li>
+                    <li>HTTPS enforcement in production environments</li>
+                </ul>
+            </div>
+
+            <div class="changelog-category">
+                <h3>Darklock Guard Desktop Application</h3>
+                <ul>
+                    <li>Real-time file integrity monitoring system</li>
+                    <li>Tamper detection and alerting capabilities</li>
+                    <li>Cross-platform support (Windows, macOS, Linux)</li>
+                    <li>Automatic backup and restoration features</li>
+                    <li>Integration with platform API for centralized management</li>
+                </ul>
+            </div>
+
+            <div class="changelog-category">
+                <h3>Dashboard Interface</h3>
+                <ul>
+                    <li>Intuitive web-based dashboard for platform management</li>
+                    <li>User profile and account settings management</li>
+                    <li>Real-time security status monitoring</li>
+                    <li>Activity logs and audit trails</li>
+                    <li>Responsive design for desktop and mobile devices</li>
+                </ul>
+            </div>
+
+            <div class="changelog-category">
+                <h3>API & Documentation</h3>
+                <ul>
+                    <li>RESTful API with comprehensive endpoint coverage</li>
+                    <li>Complete API documentation with examples</li>
+                    <li>Authentication endpoints for user management</li>
+                    <li>Download endpoints for Darklock Guard installer</li>
+                    <li>System status and health check endpoints</li>
+                </ul>
+            </div>
+
+            <div class="changelog-category">
+                <h3>Infrastructure</h3>
+                <ul>
+                    <li>Persistent database storage on disk (no in-memory limitations)</li>
+                    <li>Automated backup system for data protection</li>
+                    <li>Performance optimization for high-traffic scenarios</li>
+                    <li>Error logging and monitoring capabilities</li>
+                    <li>Production-ready deployment configuration</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Coming Soon -->
+        <div class="coming-soon">
+            <h2>Coming Soon</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
+                We're constantly working on new features to make Darklock even better
+            </p>
+            <ul>
+                <li>Two-Factor Authentication (2FA)</li>
+                <li>Mobile Applications (iOS & Android)</li>
+                <li>Advanced Monitoring & Analytics</li>
+                <li>Enhanced API Capabilities</li>
+                <li>Multi-language Support</li>
+                <li>Team Collaboration Features</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer style="text-align: center; padding: 2rem; color: var(--text-secondary); border-top: 1px solid var(--border-color);">
+        <p>&copy; 2026 Darklock. All rights reserved.</p>
+    </footer>
+</body>
+</html>

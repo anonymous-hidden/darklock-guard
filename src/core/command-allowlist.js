@@ -87,7 +87,8 @@ const UTILITY_COMMANDS = new Set([
     'trustscore',
     'rank',
     'leaderboard',
-    'analytics'
+    'analytics',
+    'fun'              // Fun and entertainment commands
 ]);
 
 // ═══════════════════════════════════════════════════════════════════
@@ -142,6 +143,8 @@ const BLOCKED_COMMANDS = new Set([
     'inventory',
     'pay',
     'shop',
+    'shop-manage',
+    'coinleaderboard',
     'top10',
     'withdraw',
     'work',

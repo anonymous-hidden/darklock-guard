@@ -37,8 +37,14 @@ if (!fs.existsSync(UPDATES_DIR)) fs.mkdirSync(UPDATES_DIR, { recursive: true });
 
 const updateStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const version = req.body.version || 'unknown';
+    // Sanitize version to prevent path traversal (only allow alphanumeric, dots, hyphens)
+    const version = (req.body.version || 'unknown').replace(/[^a-zA-Z0-9._-]/g, '_');
     const versionDir = path.join(UPDATES_DIR, version);
+    // Verify resolved path stays within UPDATES_DIR
+    const resolved = path.resolve(versionDir);
+    if (!resolved.startsWith(path.resolve(UPDATES_DIR))) {
+      return cb(new Error('Invalid version path'));
+    }
     if (!fs.existsSync(versionDir)) fs.mkdirSync(versionDir, { recursive: true });
     cb(null, versionDir);
   },
@@ -67,7 +73,8 @@ router.use(MW.apiLimiter);
 router.get('/app/latest-update', async (req, res) => {
   try {
     const channel = req.query.channel === 'beta' ? 'beta' : 'stable';
-    const update = await Q.getLatestAppUpdate(channel);
+    const app = req.query.app || 'secure-guard';
+    const update = await Q.getLatestAppUpdate(channel, app);
     if (!update) return res.json({ available: false });
     res.json({
       available:    true,
@@ -78,10 +85,59 @@ router.get('/app/latest-update', async (req, res) => {
       downloadUrl:  update.download_url,
       minVersion:   update.min_version,
       channel:      update.channel || 'stable',
+      app:          update.app,
+      platform:     update.platform,
+      fileSize:     update.file_size,
       publishedAt:  update.published_at,
     });
   } catch (err) {
     console.error('[Admin v4] Latest update error:', err);
+    res.status(500).json({ success: false, error: 'Internal error' });
+  }
+});
+
+// ── Public endpoint (no auth) — all apps latest versions ────────────────────────
+router.get('/app/all-updates', async (req, res) => {
+  try {
+    const channel = req.query.channel === 'beta' ? 'beta' : 'stable';
+    const latest = await Q.getAllLatestUpdates(channel);
+    const apps = {};
+    for (const [appName, update] of Object.entries(latest)) {
+      apps[appName] = update ? {
+        version: update.version,
+        title: update.title,
+        changelog: update.changelog,
+        downloadUrl: update.download_url,
+        platform: update.platform,
+        fileSize: update.file_size,
+        publishedAt: update.published_at,
+      } : null;
+    }
+    res.json({ success: true, apps });
+  } catch (err) {
+    console.error('[Admin v4] All updates error:', err);
+    res.status(500).json({ success: false, error: 'Internal error' });
+  }
+});
+
+// ── Public endpoint (no auth) — app update history ──────────────────────────────
+router.get('/app/update-history/:app', async (req, res) => {
+  try {
+    const app = req.params.app;
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const updates = await Q.getAppUpdateHistory(app, limit);
+    res.json({ success: true, updates: updates.map(u => ({
+      version: u.version,
+      title: u.title,
+      changelog: u.changelog,
+      channel: u.channel,
+      downloadUrl: u.download_url,
+      platform: u.platform,
+      fileSize: u.file_size,
+      publishedAt: u.published_at,
+    })) });
+  } catch (err) {
+    console.error('[Admin v4] Update history error:', err);
     res.status(500).json({ success: false, error: 'Internal error' });
   }
 });
@@ -122,10 +178,12 @@ router.get('/shell', async (req, res) => {
 
     const tabs = [
       { id: 'overview',       label: 'Overview',              icon: 'layout-dashboard', minLevel: 0 },
+      { id: 'tickets',        label: 'Tickets',               icon: 'ticket',           minLevel: 30 },
       { id: 'announcements',  label: 'Announcements',         icon: 'megaphone',        minLevel: 50 },
       { id: 'accounts',       label: 'Accounts',              icon: 'users',            minLevel: 50 },
       { id: 'roles',          label: 'Role & Access',         icon: 'shield-check',     minLevel: 90 },
       { id: 'app-updates',    label: 'App Updates',           icon: 'download-cloud',   minLevel: 50 },
+      { id: 'pi5',             label: 'Pi5 Infrastructure',    icon: 'server',           minLevel: 70 },
       { id: 'bug-reports',    label: 'Bug Reports',           icon: 'bug',              minLevel: 30 },
       { id: 'system-logs',    label: 'System Logs',           icon: 'file-text',        minLevel: 30 },
       { id: 'security',       label: 'Security Settings',     icon: 'lock',             minLevel: 70 },
@@ -441,10 +499,15 @@ router.put('/roles/permissions/:roleId', MW.ownerOnly, MW.sensitiveActionLimiter
 // ═══════════════════════════════════════════════════════════════════════════════
 router.get('/app-updates', MW.modOrAbove, async (req, res) => {
   try {
-    const data = await Q.getAppUpdates({ limit: Number(req.query.limit) || 50, offset: Number(req.query.offset) || 0 });
+    const data = await Q.getAppUpdates({
+      limit: Number(req.query.limit) || 50,
+      offset: Number(req.query.offset) || 0,
+      app: req.query.app || undefined,
+      channel: req.query.channel || undefined,
+    });
     // Enrich with file info
     const enriched = data.map(u => {
-      const versionDir = path.join(UPDATES_DIR, u.version);
+      const versionDir = path.join(UPDATES_DIR, (u.app || 'secure-guard'), u.version);
       let files = [];
       if (fs.existsSync(versionDir)) {
         files = fs.readdirSync(versionDir).map(f => {
@@ -531,8 +594,12 @@ router.delete('/app-updates/files/:version/:filename', MW.adminOrAbove, async (r
 
 router.post('/app-updates', MW.adminOrAbove, MW.auditLog('app_updates'), async (req, res) => {
   try {
-    const { version, title, changelog, download_url, force_update, min_version, channel, platforms } = req.body;
+    const { app, version, title, changelog, download_url, force_update, min_version, channel, platform, file_size } = req.body;
     if (!version || !title) return res.status(400).json({ success: false, error: 'Version and title are required' });
+    if (!app) return res.status(400).json({ success: false, error: 'App name is required (secure-guard, secure-channel, secure-notes)' });
+
+    const validApps = ['secure-guard', 'secure-channel', 'secure-notes'];
+    if (!validApps.includes(app)) return res.status(400).json({ success: false, error: 'Invalid app. Must be: secure-guard, secure-channel, or secure-notes' });
 
     if (!/^\d+\.\d+\.\d+$/.test(version)) {
       return res.status(400).json({ success: false, error: 'Version must be semantic (e.g., 2.1.0)' });
@@ -541,31 +608,25 @@ router.post('/app-updates', MW.adminOrAbove, MW.auditLog('app_updates'), async (
     // Auto-detect download URL from uploaded files if not provided
     let finalDownloadUrl = download_url;
     if (!finalDownloadUrl) {
-      const versionDir = path.join(UPDATES_DIR, version);
+      const versionDir = path.join(UPDATES_DIR, app, version);
       if (fs.existsSync(versionDir) && fs.readdirSync(versionDir).length > 0) {
         const baseUrl = req.protocol + '://' + req.get('host');
-        finalDownloadUrl = `${baseUrl}/platform/api/updates/download/${version}`;
+        finalDownloadUrl = `${baseUrl}/platform/api/updates/download/${app}/${version}`;
       }
     }
 
     const id = crypto.randomBytes(16).toString('hex');
     const update = await Q.createAppUpdate({
-      id, version, title, changelog,
+      id, app, version, title, changelog,
       download_url: finalDownloadUrl, force_update: !!force_update, min_version,
       channel: channel === 'beta' ? 'beta' : 'stable',
+      platform: platform || null,
+      file_size: file_size || null,
       published_by: req.admin.email,
     });
 
-    // Store platform-specific info if provided
-    if (platforms) {
-      try {
-        await db.run(`UPDATE app_updates SET changelog = json_set(COALESCE(changelog,'{}'), '$.platforms', ?) WHERE id = ?`,
-          [JSON.stringify(platforms), id]);
-      } catch (e) { /* non-critical */ }
-    }
-
-    // Update current_app_version in config
-    await Q.setConfig('current_app_version', version, req.admin.email);
+    // Update current_app_version in config (per-app key)
+    await Q.setConfig(`current_${app.replace(/-/g, '_')}_version`, version, req.admin.email);
 
     // Also push to updates table for /platform/update page
     try {
@@ -573,13 +634,13 @@ router.post('/app-updates', MW.adminOrAbove, MW.auditLog('app_updates'), async (
       await db.run(`
         INSERT OR IGNORE INTO updates (id, title, version, type, content, created_by)
         VALUES (?, ?, ?, 'major', ?, ?)
-      `, [id, title, version, changelog || '', req.admin.id]);
+      `, [id, `[${app}] ${title}`, version, changelog || '', req.admin.id]);
     } catch (e) { /* non-critical */ }
 
-    await Q.logAudit({ admin_id: req.admin.id, admin_email: req.admin.email, action: 'push_app_update', category: 'app_updates', target_type: 'update', target_id: id, new_value: { version, title }, ip_address: MW.getClientIP(req) });
+    await Q.logAudit({ admin_id: req.admin.id, admin_email: req.admin.email, action: 'push_app_update', category: 'app_updates', target_type: 'update', target_id: id, new_value: { app, version, title }, ip_address: MW.getClientIP(req) });
     res.json({ success: true, update });
   } catch (err) {
-    if (err.message?.includes('UNIQUE')) return res.status(400).json({ success: false, error: 'Version already exists' });
+    if (err.message?.includes('UNIQUE')) return res.status(400).json({ success: false, error: 'Version already exists for this app' });
     console.error('[Admin v4] Create update error:', err);
     res.status(500).json({ success: false, error: 'Failed to create update' });
   }
@@ -600,6 +661,166 @@ router.delete('/app-updates/:id', MW.ownerOrCoowner, MW.sensitiveActionLimiter, 
   } catch (err) {
     res.status(500).json({ success: false, error: 'Failed to delete update' });
   }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  5b) PI5 INFRASTRUCTURE
+// ═══════════════════════════════════════════════════════════════════════════════
+const { execFile } = require('child_process');
+const PI5_DEPLOY_SCRIPT = path.join(__dirname, '../scripts/deploy-pi5.sh');
+const PI5_UPDATE_SCRIPT = path.join(__dirname, '../scripts/update.sh');
+
+// Shared state for deploy jobs (in-memory — single process)
+const pi5Jobs = new Map();
+
+/** Run a shell script and track its progress */
+function runPi5Job(jobId, scriptPath, args, adminInfo) {
+  const job = {
+    id: jobId,
+    script: path.basename(scriptPath),
+    args,
+    status: 'running',
+    startedAt: new Date().toISOString(),
+    startedBy: adminInfo.email,
+    output: '',
+    exitCode: null,
+  };
+  pi5Jobs.set(jobId, job);
+
+  const child = execFile('bash', [scriptPath, ...args], {
+    cwd: path.join(__dirname, '..'),
+    timeout: 300_000, // 5 min max
+    maxBuffer: 2 * 1024 * 1024,
+    env: { ...process.env, FORCE_COLOR: '0' },
+  }, (err, stdout, stderr) => {
+    job.output = (stdout || '') + (stderr ? `\n[stderr]\n${stderr}` : '');
+    if (err) {
+      job.status = 'failed';
+      job.exitCode = err.code ?? 1;
+      job.error = err.message;
+    } else {
+      job.status = 'success';
+      job.exitCode = 0;
+    }
+    job.completedAt = new Date().toISOString();
+  });
+
+  child.stdout?.on('data', chunk => { job.output += chunk; });
+  child.stderr?.on('data', chunk => { job.output += chunk; });
+
+  return job;
+}
+
+// Check Pi5 health — SSH into Pi and hit local health endpoint
+router.get('/pi5/status', MW.adminOrAbove, async (req, res) => {
+  try {
+    const config = {
+      host: process.env.PI_HOST || '192.168.50.150',
+      user: process.env.PI_USER || 'darklock',
+    };
+    // Quick SSH command to check if Pi is reachable + get uptime + bot health
+    execFile('ssh', [
+      '-o', 'ConnectTimeout=5',
+      '-o', 'StrictHostKeyChecking=no',
+      `${config.user}@${config.host}`,
+      'echo "REACHABLE"; uptime -p; curl -s --connect-timeout 3 http://localhost:3001/health || echo "BOT_DOWN"',
+    ], { timeout: 15_000 }, (err, stdout) => {
+      if (err) {
+        return res.json({
+          success: true,
+          pi5: { reachable: false, host: config.host, error: 'Cannot reach Pi5 via SSH' },
+        });
+      }
+      const lines = (stdout || '').trim().split('\n');
+      const reachable = lines[0] === 'REACHABLE';
+      const uptime = lines[1] || 'unknown';
+      const healthRaw = lines.slice(2).join('');
+      let botHealthy = false;
+      try {
+        const h = JSON.parse(healthRaw);
+        botHealthy = h.status === 'ok';
+      } catch { /* not JSON = down */ }
+      res.json({
+        success: true,
+        pi5: { reachable, host: config.host, uptime, botHealthy },
+      });
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Status check failed' });
+  }
+});
+
+// Deploy to Pi5 (sync files + restart)
+router.post('/pi5/deploy', MW.adminOrAbove, MW.sensitiveActionLimiter, async (req, res) => {
+  try {
+    const mode = req.body.mode || 'full'; // full | sync-only | dry-run
+    const args = [];
+    if (mode === 'sync-only') args.push('--sync-only');
+    if (mode === 'dry-run') args.push('--dry-run');
+
+    if (!fs.existsSync(PI5_DEPLOY_SCRIPT)) {
+      return res.status(404).json({ success: false, error: 'deploy-pi5.sh not found' });
+    }
+
+    const jobId = crypto.randomBytes(8).toString('hex');
+    const job = runPi5Job(jobId, PI5_DEPLOY_SCRIPT, args, req.admin);
+
+    await Q.logAudit({
+      admin_id: req.admin.id, admin_email: req.admin.email,
+      action: 'pi5_deploy', category: 'infrastructure',
+      target_type: 'pi5', target_id: jobId,
+      new_value: { mode },
+      ip_address: MW.getClientIP(req),
+    });
+
+    res.json({ success: true, jobId, mode, message: 'Deploy started' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Deploy failed to start' });
+  }
+});
+
+// Run update.sh on Pi5 (git pull + npm install + health check)
+router.post('/pi5/update', MW.adminOrAbove, MW.sensitiveActionLimiter, async (req, res) => {
+  try {
+    const branch = req.body.branch || 'main';
+    const skipBackup = !!req.body.skipBackup;
+    const args = ['--branch', branch];
+    if (skipBackup) args.push('--skip-backup');
+
+    if (!fs.existsSync(PI5_UPDATE_SCRIPT)) {
+      return res.status(404).json({ success: false, error: 'update.sh not found' });
+    }
+
+    const jobId = crypto.randomBytes(8).toString('hex');
+    const job = runPi5Job(jobId, PI5_UPDATE_SCRIPT, args, req.admin);
+
+    await Q.logAudit({
+      admin_id: req.admin.id, admin_email: req.admin.email,
+      action: 'pi5_update', category: 'infrastructure',
+      target_type: 'pi5', target_id: jobId,
+      new_value: { branch, skipBackup },
+      ip_address: MW.getClientIP(req),
+    });
+
+    res.json({ success: true, jobId, branch, message: 'Update started' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Update failed to start' });
+  }
+});
+
+// Check job status
+router.get('/pi5/job/:jobId', MW.adminOrAbove, (req, res) => {
+  const job = pi5Jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ success: false, error: 'Job not found' });
+  res.json({ success: true, job });
+});
+
+// List recent jobs
+router.get('/pi5/jobs', MW.adminOrAbove, (req, res) => {
+  const jobs = [...pi5Jobs.values()]
+    .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+    .slice(0, 20);
+  res.json({ success: true, jobs });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1040,5 +1261,9 @@ router.post('/maintenance/toggle-all', MW.adminOrAbove, MW.auditLog('maintenance
 // ── Analytics sub-router ────────────────────────────────────────────────────────
 const analyticsRoutes = require('./analytics-routes');
 router.use('/analytics', MW.requireAuth, MW.auditLog('analytics'), analyticsRoutes);
+
+// ── Tickets sub-router ─────────────────────────────────────────────────────────
+const ticketRoutes = require('./tickets-routes');
+router.use('/tickets', MW.helperOrAbove, ticketRoutes);
 
 module.exports = router;
