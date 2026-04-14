@@ -735,7 +735,7 @@ class DarklockPlatform {
         // Darklock Secure Channel - Version check API (for in-app updates)
         this.app.get('/platform/api/secure-channel/version', (req, res) => {
             res.json({
-                version: '1.2.1',
+                version: '1.2.2',
                 releaseDate: '2026-04-14',
                 downloadUrl: 'https://admin.darklock.net/platform/download/secure-channel',
                 changelog: [
@@ -763,7 +763,7 @@ class DarklockPlatform {
         this.app.get('/platform/api/download/secure-channel-installer', (req, res) => {
             const format = (req.query.format || 'deb').toLowerCase();
             const fs = require('fs');
-            const version = '1.2.1';
+            const version = '1.2.2';
 
             console.log(`[SecureChannel] Download request for format: ${format} from IP: ${req.ip}`);
 
@@ -2295,7 +2295,7 @@ class DarklockPlatform {
         // Darklock Secure Channel - Version check API (existingApp, for in-app updates)
         existingApp.get('/platform/api/secure-channel/version', (req, res) => {
             res.json({
-                version: '1.2.1',
+                version: '1.2.2',
                 releaseDate: '2026-04-14',
                 downloadUrl: 'https://admin.darklock.net/platform/download/secure-channel',
                 changelog: [
@@ -2538,7 +2538,7 @@ class DarklockPlatform {
         existingApp.get('/platform/api/download/secure-channel-installer', (req, res) => {
             const format = (req.query.format || 'deb').toLowerCase();
             const fs = require('fs');
-            const version = '1.2.1';
+            const version = '1.2.2';
 
             console.log(`[SecureChannel] (existingApp) Download request for format: ${format} from IP: ${req.ip}`);
 
