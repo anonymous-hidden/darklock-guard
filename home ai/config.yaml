@@ -78,6 +78,13 @@ commands:
     - name: "smart_home_control"
       risk: "medium"
       description: "Control smart home devices"
+    - name: "get_weather"
+      risk: "low"
+      description: "Get weather forecast or alerts from the National Weather Service"
+      params:
+        # type: "forecast" | "hourly" | "alerts"
+        # lat/lon required for forecast and hourly; state required for alerts
+        type: "forecast"
 
 # Whitelisted directories for file operations
 filesystem:

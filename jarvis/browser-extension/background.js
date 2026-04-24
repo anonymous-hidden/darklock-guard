@@ -1,322 +1,411 @@
 /**
- * Nova Browser Bridge — Background Service Worker
- * =================================================
- * Maintains a persistent WebSocket connection to the Jarvis backend.
- * Routes commands to the active tab's content script and relays results back.
+ * Nova Browser Bridge v2.0 — Background Service Worker
+ * =====================================================
+ * Persistent WebSocket to Nova Terminal AI.
+ * Normal pages: content script.  Google Docs: Chrome DevTools Protocol.
  */
 
-const JARVIS_WS_URL = "ws://localhost:8950/browser-bridge";
-const RECONNECT_DELAY = 3000;
-const HEARTBEAT_INTERVAL = 15000;
+// ═════════════════════════════════════════════════════════════════
+//  CONFIG
+// ═════════════════════════════════════════════════════════════════
+
+const WS_URL = "ws://localhost:8950/browser-bridge";
+const RECONNECT_MS = 3000;
+const HEARTBEAT_MS = 15000;
 
 let ws = null;
-let heartbeatTimer = null;
+let heartbeat = null;
 let connected = false;
 
-// ── WebSocket connection ─────────────────────────────
+// ═════════════════════════════════════════════════════════════════
+//  WEBSOCKET
+// ═════════════════════════════════════════════════════════════════
 
 function connect() {
-  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
-    return;
-  }
-
-  ws = new WebSocket(JARVIS_WS_URL);
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+  ws = new WebSocket(WS_URL);
 
   ws.onopen = () => {
     connected = true;
-    console.log("[Nova Bridge] Connected to Jarvis backend");
-    updateBadge("ON", "#4CAF50");
-
-    // Start heartbeat
-    heartbeatTimer = setInterval(() => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "heartbeat" }));
-      }
-    }, HEARTBEAT_INTERVAL);
-
-    // Send initial tab info
-    sendActiveTabInfo();
+    console.log("[Nova v2] Connected to terminal");
+    badge("ON", "#34d399");
+    heartbeat = setInterval(() => {
+      if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "heartbeat" }));
+    }, HEARTBEAT_MS);
+    sendActiveTab();
+    injectAllTabs();
   };
 
-  ws.onmessage = async (event) => {
+  ws.onmessage = async (e) => {
     let msg;
-    try {
-      msg = JSON.parse(event.data);
-    } catch {
-      return;
-    }
-
-    if (msg.type === "command") {
-      const result = await handleCommand(msg);
-      ws.send(JSON.stringify({
-        type: "command_result",
-        id: msg.id,
-        result,
-      }));
-    }
+    try { msg = JSON.parse(e.data); } catch { return; }
+    if (msg.type !== "command") return;
+    const result = await runCommand(msg.action, msg.args || {});
+    ws.send(JSON.stringify({ type: "command_result", id: msg.id, result }));
   };
 
   ws.onclose = () => {
     connected = false;
-    clearInterval(heartbeatTimer);
-    updateBadge("OFF", "#F44336");
-    console.log("[Nova Bridge] Disconnected. Reconnecting...");
-    setTimeout(connect, RECONNECT_DELAY);
+    clearInterval(heartbeat);
+    badge("OFF", "#f87171");
+    setTimeout(connect, RECONNECT_MS);
   };
 
-  ws.onerror = (err) => {
-    console.error("[Nova Bridge] WebSocket error:", err);
-    ws.close();
-  };
+  ws.onerror = () => ws.close();
 }
 
-// ── Command handler ──────────────────────────────────
+// ═════════════════════════════════════════════════════════════════
+//  COMMAND ROUTER
+// ═════════════════════════════════════════════════════════════════
 
-async function handleCommand(msg) {
-  const { action, args } = msg;
-
+async function runCommand(action, args) {
   try {
+    const tab = await activeTab();
+
     switch (action) {
+      // Read
       case "get_page_content":
-        return await sendToContentScript("get_page_content", args);
-
+        return isGDocs(tab) ? await gdocsRead(tab.id) : await toContent(action, args);
       case "get_page_text":
-        return await sendToContentScript("get_page_text", args);
-
       case "get_selected_text":
-        return await sendToContentScript("get_selected_text", args);
-
       case "get_input_values":
-        return await sendToContentScript("get_input_values", args);
-
-      case "type_text":
-        return await sendToContentScript("type_text", args);
-
-      case "click_element":
-        return await sendToContentScript("click_element", args);
-
-      case "scroll_page":
-        return await sendToContentScript("scroll_page", args);
-
-      case "fill_form":
-        return await sendToContentScript("fill_form", args);
-
       case "get_links":
-        return await sendToContentScript("get_links", args);
+        return await toContent(action, args);
 
-      case "get_tabs":
-        return await getTabsList();
-
-      case "switch_tab":
-        return await switchTab(args.tabId || args.index);
-
-      case "new_tab":
-        return await openNewTab(args.url);
-
-      case "close_tab":
-        return await closeTab(args.tabId);
-
-      case "navigate":
-        return await navigateTo(args.url);
-
-      case "back":
-        return await sendToContentScript("go_back", args);
-
-      case "forward":
-        return await sendToContentScript("go_forward", args);
-
-      case "screenshot":
-        return await takeScreenshot();
-
-      case "execute_js":
-        return await executeScript(args.code);
-
-      case "get_active_tab":
-        return await getActiveTabInfo();
-
+      // Type / Click / Key
+      case "type_text":
+        return isGDocs(tab) ? await gdocsType(tab.id, args.text) : await toContent(action, args);
+      case "click_element":
+        if (isGDocs(tab) && args.selector?.includes("kix-appview-editor"))
+          return await cdpClick(tab.id, 400, 400);
+        return await toContent(action, args);
       case "press_key":
-        return await sendToContentScript("press_key", args);
+        return isGDocs(tab) ? await cdpKey(tab.id, args.key, args.modifiers) : await toContent(action, args);
 
+      // Navigation
+      case "navigate":       return await doNavigate(args.url);
+      case "get_tabs":       return await listTabs();
+      case "get_active_tab": return await activeTabInfo();
+      case "switch_tab":     return await switchTab(args.tabId || args.index);
+      case "new_tab":        return await newTab(args.url);
+      case "close_tab":      return await closeTab(args.tabId);
+      case "back":           return await toContent("go_back", args);
+      case "forward":        return await toContent("go_forward", args);
+
+      // Other
+      case "scroll_page":
+      case "fill_form":
       case "focus_element":
-        return await sendToContentScript("focus_element", args);
-
       case "wait_for_element":
-        return await sendToContentScript("wait_for_element", args);
+        return await toContent(action, args);
+      case "screenshot":     return await screenshot();
+      case "execute_js":     return await execJS(args.code);
 
       default:
-        return { success: false, error: `Unknown action: ${action}` };
+        return { success: false, error: `Unknown: ${action}` };
     }
   } catch (err) {
     return { success: false, error: err.message };
   }
 }
 
-// ── Content script communication ─────────────────────
+// ═════════════════════════════════════════════════════════════════
+//  GOOGLE DOCS — CDP (Chrome DevTools Protocol)
+//  Google Docs renders on <canvas>. No DOM text exists.
+//  We use trusted browser events via the debugger API.
+// ═════════════════════════════════════════════════════════════════
 
-async function sendToContentScript(action, args = {}) {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab) {
-    return { success: false, error: "No active tab" };
+const _attached = new Set();
+
+function isGDocs(tab) {
+  return tab?.url?.includes("docs.google.com/document");
+}
+
+async function cdpAttach(tabId) {
+  if (_attached.has(tabId)) return;
+  try {
+    await chrome.debugger.attach({ tabId }, "1.3");
+    _attached.add(tabId);
+  } catch (err) {
+    if (err.message?.includes("Already attached")) _attached.add(tabId);
+    else throw err;
   }
+}
+
+function cdp(tabId, method, params) {
+  return chrome.debugger.sendCommand({ tabId }, method, params);
+}
+
+chrome.tabs.onRemoved.addListener((id) => {
+  if (_attached.has(id)) { _attached.delete(id); chrome.debugger.detach({ tabId: id }).catch(() => {}); }
+});
+chrome.tabs.onUpdated.addListener((id, info) => {
+  if (_attached.has(id) && info.url && !info.url.includes("docs.google.com/document")) {
+    _attached.delete(id); chrome.debugger.detach({ tabId: id }).catch(() => {});
+  }
+});
+
+async function gdocsRead(tabId) {
+  try {
+    await cdpAttach(tabId);
+
+    // Click editor to focus
+    await cdp(tabId, "Input.dispatchMouseEvent", { type: "mousePressed", x: 400, y: 400, button: "left", clickCount: 1 });
+    await cdp(tabId, "Input.dispatchMouseEvent", { type: "mouseReleased", x: 400, y: 400, button: "left", clickCount: 1 });
+    await wait(400);
+
+    // Ctrl+A (select all)
+    await cdp(tabId, "Input.dispatchKeyEvent", { type: "keyDown", key: "a", code: "KeyA", windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65, modifiers: 2 });
+    await cdp(tabId, "Input.dispatchKeyEvent", { type: "keyUp", key: "a", code: "KeyA", windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65, modifiers: 2 });
+    await wait(400);
+
+    // Ctrl+C (copy)
+    await cdp(tabId, "Input.dispatchKeyEvent", { type: "keyDown", key: "c", code: "KeyC", windowsVirtualKeyCode: 67, nativeVirtualKeyCode: 67, modifiers: 2 });
+    await cdp(tabId, "Input.dispatchKeyEvent", { type: "keyUp", key: "c", code: "KeyC", windowsVirtualKeyCode: 67, nativeVirtualKeyCode: 67, modifiers: 2 });
+    await wait(400);
+
+    // Read clipboard via CDP Runtime.evaluate
+    const clip = await cdp(tabId, "Runtime.evaluate", {
+      expression: "navigator.clipboard.readText()",
+      awaitPromise: true,
+      returnByValue: true,
+    });
+    let text = clip?.result?.value || "";
+
+    // Fallback: scripting API
+    if (!text) {
+      try {
+        const r = await chrome.scripting.executeScript({
+          target: { tabId },
+          func: async () => { try { return await navigator.clipboard.readText(); } catch { return ""; } },
+        });
+        text = r[0]?.result || "";
+      } catch {}
+    }
+
+    // Deselect
+    await cdp(tabId, "Input.dispatchMouseEvent", { type: "mousePressed", x: 400, y: 300, button: "left", clickCount: 1 });
+    await cdp(tabId, "Input.dispatchMouseEvent", { type: "mouseReleased", x: 400, y: 300, button: "left", clickCount: 1 });
+
+    // Get title & URL
+    const tRes = await cdp(tabId, "Runtime.evaluate", { expression: "document.title", returnByValue: true });
+    const uRes = await cdp(tabId, "Runtime.evaluate", { expression: "location.href", returnByValue: true });
+
+    text = text.trim();
+    return {
+      success: true,
+      title: tRes?.result?.value || "",
+      url: uRes?.result?.value || "",
+      text: text || "(Document appears empty — no text found)",
+      word_count: text ? text.split(/\s+/).length : 0,
+      method: "cdp-clipboard",
+      is_google_docs: true,
+    };
+  } catch (err) {
+    _attached.delete(tabId);
+    return { success: false, error: `GDocs read: ${err.message}`, is_google_docs: true };
+  }
+}
+
+async function gdocsType(tabId, text) {
+  try {
+    await cdpAttach(tabId);
+    // Click to focus
+    await cdp(tabId, "Input.dispatchMouseEvent", { type: "mousePressed", x: 400, y: 400, button: "left", clickCount: 1 });
+    await cdp(tabId, "Input.dispatchMouseEvent", { type: "mouseReleased", x: 400, y: 400, button: "left", clickCount: 1 });
+    await wait(300);
+    // Insert text (trusted)
+    await cdp(tabId, "Input.insertText", { text });
+    return { success: true, typed: text, chars: text.length, method: "cdp" };
+  } catch (err) {
+    _attached.delete(tabId);
+    return { success: false, error: err.message };
+  }
+}
+
+async function cdpClick(tabId, x, y) {
+  try {
+    await cdpAttach(tabId);
+    await cdp(tabId, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
+    await cdp(tabId, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
+    return { success: true, clicked: `(${x}, ${y})`, method: "cdp" };
+  } catch (err) {
+    _attached.delete(tabId);
+    return { success: false, error: err.message };
+  }
+}
+
+async function cdpKey(tabId, key, modifiers) {
+  const mods = modifiers || [];
+  const modBit = (mods.includes("alt") ? 1 : 0) | (mods.includes("ctrl") ? 2 : 0)
+    | (mods.includes("meta") ? 4 : 0) | (mods.includes("shift") ? 8 : 0);
+
+  const KEYS = {
+    Enter: [13, "\r"], Tab: [9, "\t"], Backspace: [8, ""], Delete: [46, ""],
+    Escape: [27, ""], ArrowUp: [38, ""], ArrowDown: [40, ""], ArrowLeft: [37, ""],
+    ArrowRight: [39, ""], Space: [32, " "], End: [35, ""], Home: [36, ""],
+  };
+
+  const spec = KEYS[key];
+  const kc = spec ? spec[0] : (key.length === 1 ? key.toUpperCase().charCodeAt(0) : 0);
+  const code = spec ? key : (key.length === 1 ? `Key${key.toUpperCase()}` : key);
+  const text = spec ? spec[1] : (modBit ? "" : key);
 
   try {
-    const response = await chrome.tabs.sendMessage(tab.id, { action, args });
-    return response || { success: true };
+    await cdpAttach(tabId);
+    await cdp(tabId, "Input.dispatchKeyEvent", {
+      type: "keyDown", modifiers: modBit, key, code,
+      windowsVirtualKeyCode: kc, nativeVirtualKeyCode: kc, text,
+    });
+    await cdp(tabId, "Input.dispatchKeyEvent", {
+      type: "keyUp", modifiers: modBit, key, code,
+      windowsVirtualKeyCode: kc, nativeVirtualKeyCode: kc,
+    });
+    return { success: true, key, modifiers: mods, method: "cdp" };
   } catch (err) {
-    // Content script might not be injected yet — inject it
+    _attached.delete(tabId);
+    return { success: false, error: err.message };
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════
+//  CONTENT SCRIPT MESSAGING
+// ═════════════════════════════════════════════════════════════════
+
+async function toContent(action, args = {}) {
+  const tab = await activeTab();
+  if (!tab) return { success: false, error: "No active tab" };
+  try {
+    return (await chrome.tabs.sendMessage(tab.id, { action, args })) || { success: true };
+  } catch {
     try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ["content.js"],
-      });
-      const response = await chrome.tabs.sendMessage(tab.id, { action, args });
-      return response || { success: true };
-    } catch (injectErr) {
-      return { success: false, error: `Cannot access this page: ${injectErr.message}` };
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content.js"] });
+      return (await chrome.tabs.sendMessage(tab.id, { action, args })) || { success: true };
+    } catch (err) {
+      return { success: false, error: `Cannot access page: ${err.message}` };
     }
   }
 }
 
-// ── Tab management ───────────────────────────────────
-
-async function getTabsList() {
-  const tabs = await chrome.tabs.query({});
-  return {
-    success: true,
-    tabs: tabs.map((t) => ({
-      id: t.id,
-      title: t.title,
-      url: t.url,
-      active: t.active,
-      index: t.index,
-    })),
-  };
+async function injectAllTabs() {
+  try {
+    for (const tab of await chrome.tabs.query({})) {
+      if (tab.url?.startsWith("http")) {
+        try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content.js"] }); }
+        catch { /* chrome:// etc */ }
+      }
+    }
+  } catch {}
 }
 
-async function switchTab(tabIdOrIndex) {
-  if (typeof tabIdOrIndex === "number" && tabIdOrIndex < 100) {
-    // Treat as index
+// ═════════════════════════════════════════════════════════════════
+//  TAB MANAGEMENT
+// ═════════════════════════════════════════════════════════════════
+
+async function activeTab() {
+  const [t] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return t || null;
+}
+
+async function activeTabInfo() {
+  const t = await activeTab();
+  return t ? { success: true, tab: { id: t.id, title: t.title, url: t.url, index: t.index } }
+    : { success: false, error: "No active tab" };
+}
+
+async function listTabs() {
+  return { success: true, tabs: (await chrome.tabs.query({})).map(t =>
+    ({ id: t.id, title: t.title, url: t.url, active: t.active, index: t.index })) };
+}
+
+async function switchTab(v) {
+  if (typeof v === "number" && v < 100) {
     const tabs = await chrome.tabs.query({ currentWindow: true });
-    const tab = tabs[tabIdOrIndex];
-    if (!tab) return { success: false, error: `No tab at index ${tabIdOrIndex}` };
-    await chrome.tabs.update(tab.id, { active: true });
-    return { success: true, tab: { id: tab.id, title: tab.title, url: tab.url } };
+    const t = tabs[v];
+    if (!t) return { success: false, error: `No tab at index ${v}` };
+    await chrome.tabs.update(t.id, { active: true });
+    return { success: true, tab: { id: t.id, title: t.title, url: t.url } };
   }
-  await chrome.tabs.update(tabIdOrIndex, { active: true });
-  const tab = await chrome.tabs.get(tabIdOrIndex);
-  return { success: true, tab: { id: tab.id, title: tab.title, url: tab.url } };
+  await chrome.tabs.update(v, { active: true });
+  const t = await chrome.tabs.get(v);
+  return { success: true, tab: { id: t.id, title: t.title, url: t.url } };
 }
 
-async function openNewTab(url) {
-  const tab = await chrome.tabs.create({ url: url || "about:blank" });
-  return { success: true, tab: { id: tab.id, title: tab.title, url: tab.url } };
+async function newTab(url) {
+  const t = await chrome.tabs.create({ url: url || "about:blank" });
+  return { success: true, tab: { id: t.id, title: t.title, url: t.url } };
 }
 
-async function closeTab(tabId) {
-  if (tabId) {
-    await chrome.tabs.remove(tabId);
-  } else {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab) await chrome.tabs.remove(tab.id);
-  }
+async function closeTab(id) {
+  if (id) await chrome.tabs.remove(id);
+  else { const t = await activeTab(); if (t) await chrome.tabs.remove(t.id); }
   return { success: true };
 }
 
-async function navigateTo(url) {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab) return { success: false, error: "No active tab" };
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    url = "https://" + url;
-  }
-  await chrome.tabs.update(tab.id, { url });
+async function doNavigate(url) {
+  const t = await activeTab();
+  if (!t) return { success: false, error: "No active tab" };
+  if (!url.startsWith("http://") && !url.startsWith("https://")) url = "https://" + url;
+  await chrome.tabs.update(t.id, { url });
   return { success: true, url };
 }
 
-async function takeScreenshot() {
-  const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: "png" });
-  return { success: true, screenshot: dataUrl };
+// ═════════════════════════════════════════════════════════════════
+//  UTILITIES
+// ═════════════════════════════════════════════════════════════════
+
+async function screenshot() {
+  return { success: true, screenshot: await chrome.tabs.captureVisibleTab(null, { format: "png" }) };
 }
 
-async function executeScript(code) {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab) return { success: false, error: "No active tab" };
-
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    func: (c) => {
-      try { return { success: true, result: eval(c) }; }
-      catch (e) { return { success: false, error: e.message }; }
-    },
+async function execJS(code) {
+  const t = await activeTab();
+  if (!t) return { success: false, error: "No active tab" };
+  const r = await chrome.scripting.executeScript({
+    target: { tabId: t.id },
+    func: (c) => { try { return { success: true, result: eval(c) }; } catch (e) { return { success: false, error: e.message }; } },
     args: [code],
   });
-  return results[0]?.result || { success: false, error: "Script execution failed" };
+  return r[0]?.result || { success: false, error: "Script failed" };
 }
 
-async function getActiveTabInfo() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab) return { success: false, error: "No active tab" };
-  return {
-    success: true,
-    tab: {
-      id: tab.id,
-      title: tab.title,
-      url: tab.url,
-      index: tab.index,
-    },
-  };
-}
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// ── Active tab tracker ───────────────────────────────
-
-function sendActiveTabInfo() {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0] && ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: "tab_update",
-        tab: {
-          id: tabs[0].id,
-          title: tabs[0].title,
-          url: tabs[0].url,
-        },
-      }));
-    }
-  });
-}
-
-// Track tab changes
-chrome.tabs.onActivated.addListener(() => {
-  if (connected) sendActiveTabInfo();
-});
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.status === "complete" && connected) sendActiveTabInfo();
-});
-
-// ── Badge helper ─────────────────────────────────────
-
-function updateBadge(text, color) {
+function badge(text, color) {
   chrome.action.setBadgeText({ text });
   chrome.action.setBadgeBackgroundColor({ color });
 }
 
-// ── Message handler from popup ───────────────────────
+// ═════════════════════════════════════════════════════════════════
+//  TAB TRACKING
+// ═════════════════════════════════════════════════════════════════
 
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+function sendActiveTab() {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0] && ws?.readyState === WebSocket.OPEN)
+      ws.send(JSON.stringify({ type: "tab_update", tab: { id: tabs[0].id, title: tabs[0].title, url: tabs[0].url } }));
+  });
+}
+
+chrome.tabs.onActivated.addListener(() => { if (connected) sendActiveTab(); });
+chrome.tabs.onUpdated.addListener((_, info) => { if (info.status === "complete" && connected) sendActiveTab(); });
+
+// ═════════════════════════════════════════════════════════════════
+//  POPUP / SETTINGS
+// ═════════════════════════════════════════════════════════════════
+
+chrome.runtime.onMessage.addListener((msg, _, respond) => {
   if (msg.action === "reconnect") {
-    // Close existing socket and reconnect
-    if (ws) {
-      try { ws.close(); } catch {}
-    }
-    ws = null;
-    connected = false;
-    connect();
-    sendResponse({ ok: true });
+    try { ws?.close(); } catch {} ws = null; connected = false; connect();
+    respond({ ok: true });
   } else if (msg.action === "settings_updated") {
-    // Settings updated from popup — store for reference
     chrome.storage.local.set({ nova_bridge_settings: msg.settings });
-    sendResponse({ ok: true });
+    respond({ ok: true });
+  } else if (msg.action === "get_status") {
+    respond({ connected, version: "2.0.0" });
   }
   return false;
 });
 
-// ── Start ────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════
 connect();

@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    :root {
+      --bg-primary: #0f0f1a;
+      --bg-secondary: #161625;
+      --bg-card: #1c1c30;
+      --bg-hover: #24243d;
+      --accent: #00d4ff;
+      --accent-dim: rgba(0, 212, 255, 0.12);
+      --accent-glow: rgba(0, 212, 255, 0.25);
+      --green: #34d399;
+      --green-dim: rgba(52, 211, 153, 0.12);
+      --red: #f87171;
+      --red-dim: rgba(248, 113, 113, 0.12);
+      --yellow: #fbbf24;
+      --text-primary: #e8e8f0;
+      --text-secondary: #8888a8;
+      --text-dim: #55556e;
+      --border: rgba(255, 255, 255, 0.06);
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 340px;
+      max-height: 520px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    body::-webkit-scrollbar { width: 4px; }
+    body::-webkit-scrollbar-track { background: transparent; }
+    body::-webkit-scrollbar-thumb { background: var(--text-dim); border-radius: 4px; }
+
+    /* ── Header ────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--bg-primary);
+      z-index: 10;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #00d4ff 0%, #0066ff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .header-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.3px;
+    }
+    .header-version {
+      font-size: 10px;
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+    .header-actions {
+      display: flex;
+      gap: 4px;
+    }
+    .icon-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      font-size: 16px;
+    }
+    .icon-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .icon-btn.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    /* ── Content area ──────────────────────── */
+    .content { padding: 12px 14px 14px; }
+
+    /* ── Connection card ───────────────────── */
+    .connection-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: var(--radius);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      margin-bottom: 10px;
+    }
+    .connection-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--red);
+      box-shadow: 0 0 6px var(--red);
+      flex-shrink: 0;
+      transition: all 0.3s;
+    }
+    .connection-dot.connected {
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+    }
+    .connection-info { flex: 1; min-width: 0; }
+    .connection-label {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 1px;
+    }
+    .connection-sub {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    .reconnect-btn {
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .reconnect-btn:hover {
+      background: var(--accent-dim);
+    }
+    .reconnect-btn.spin svg {
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* ── Tab info ──────────────────────────── */
+    .tab-card {
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      margin-bottom: 10px;
+    }
+    .tab-card-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .tab-card-title {
+      font-size: 12px;
+      color: var(--text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .tab-card-url {
+      font-size: 11px;
+      color: var(--text-secondary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-top: 2px;
+    }
+
+    /* ── Quick actions ─────────────────────── */
+    .section-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      padding: 0 2px;
+    }
+    .quick-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .action-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .action-btn:hover {
+      background: var(--bg-hover);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+    .action-btn .icon {
+      font-size: 14px;
+      width: 18px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Capabilities ──────────────────────── */
+    .capabilities {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 12px;
+    }
+    .cap-tag {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* ── Settings panel ────────────────────── */
+    .panel {
+      display: none;
+    }
+    .panel.visible {
+      display: block;
+    }
+    .setting-group {
+      margin-bottom: 12px;
+    }
+    .setting-group-title {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      padding: 0 2px;
+    }
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 12px;
+      border-radius: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      margin-bottom: 5px;
+    }
+    .setting-row-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 0;
+    }
+    .setting-icon {
+      font-size: 14px;
+      width: 18px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .setting-label {
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .setting-desc {
+      font-size: 10px;
+      color: var(--text-secondary);
+      margin-top: 1px;
+    }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--text-dim);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      top: 2px;
+      left: 2px;
+      transition: 0.2s;
+    }
+    .toggle input:checked + .toggle-slider {
+      background: var(--accent);
+    }
+    .toggle input:checked + .toggle-slider::before {
+      transform: translateX(16px);
+    }
+
+    /* Input field */
+    .setting-input {
+      width: 120px;
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font-size: 11px;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .setting-input:focus {
+      border-color: var(--accent);
+    }
+
+    /* ── Footer ────────────────────────────── */
+    .footer {
+      padding: 10px 14px 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .footer-text {
+      font-size: 10px;
+      color: var(--text-dim);
+    }
+    .footer-link {
+      font-size: 10px;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .footer-link:hover { text-decoration: underline; }
+
+    /* ── Animations ────────────────────────── */
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeIn 0.2s ease; }
+
+    /* ── Notification toast ────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 12px;
+      left: 14px;
+      right: 14px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--accent);
+      color: var(--text-primary);
+      font-size: 11px;
+      text-align: center;
+      z-index: 100;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: all 0.25s;
+      pointer-events: none;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">N</div>
+      <div>
+        <div class="header-title">Nova Bridge</div>
+        <div class="header-version">v1.0.0</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="btnMain" title="Home">&#8962;</button>
+      <button class="icon-btn" id="btnSettings" title="Settings">&#9881;</button>
+    </div>
+  </div>
+
+  <!-- Main Panel -->
+  <div class="panel visible" id="panelMain">
+    <div class="content">
+
+      <!-- Connection Status -->
+      <div class="connection-card">
+        <div class="connection-dot" id="dot"></div>
+        <div class="connection-info">
+          <div class="connection-label" id="statusText">Checking...</div>
+          <div class="connection-sub" id="statusSub">ws://localhost:8950</div>
+        </div>
+        <button class="reconnect-btn" id="reconnect">
+          Reconnect
+        </button>
+      </div>
+
+      <!-- Active Tab -->
+      <div class="tab-card">
+        <div class="tab-card-label">Active Tab</div>
+        <div class="tab-card-title" id="tabTitle">-</div>
+        <div class="tab-card-url" id="tabUrl">-</div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="section-label">Quick Actions</div>
+      <div class="quick-actions">
+        <button class="action-btn" id="actReadPage" title="Read page content">
+          <span class="icon">&#128196;</span> Read Page
+        </button>
+        <button class="action-btn" id="actScreenshot" title="Capture screenshot">
+          <span class="icon">&#128247;</span> Screenshot
+        </button>
+        <button class="action-btn" id="actGetLinks" title="Extract all links">
+          <span class="icon">&#128279;</span> Get Links
+        </button>
+        <button class="action-btn" id="actGetInputs" title="List form inputs">
+          <span class="icon">&#9998;</span> Get Inputs
+        </button>
+      </div>
+
+      <!-- Capabilities -->
+      <div class="section-label">Capabilities</div>
+      <div class="capabilities">
+        <span class="cap-tag">Read pages</span>
+        <span class="cap-tag">Type text</span>
+        <span class="cap-tag">Click elements</span>
+        <span class="cap-tag">Navigate</span>
+        <span class="cap-tag">Fill forms</span>
+        <span class="cap-tag">Screenshots</span>
+        <span class="cap-tag">Tab control</span>
+        <span class="cap-tag">Execute JS</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Settings Panel -->
+  <div class="panel" id="panelSettings">
+    <div class="content fade-in">
+
+      <!-- Connection -->
+      <div class="setting-group">
+        <div class="setting-group-title">Connection</div>
+        <div class="setting-row">
+          <div class="setting-row-left">
+            <span class="setting-icon">&#127760;</span>
+            <div>
+              <div class="setting-label">Backend URL</div>
+              <div class="setting-desc">Jarvis WebSocket endpoint</div>
+            </div>
+          </div>
+          <input class="setting-input" id="settingBackendUrl" type="text" value="ws://localhost:8950" spellcheck="false">
+        </div>
+        <div class="setting-row">
+          <div class="setting-row-left">
+            <span class="setting-icon">&#128260;</span>
+            <div>
+              <div class="setting-label">Auto-Reconnect</div>
+              <div class="setting-desc">Reconnect when disconnected</div>
+            </div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="settingAutoReconnect" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Permissions -->
+      <div class="setting-group">
+        <div class="setting-group-title">Permissions</div>
+        <div class="setting-row">
+          <div class="setting-row-left">
+            <span class="setting-icon">&#128196;</span>
+            <div>
+              <div class="setting-label">Page Reading</div>
+              <div class="setting-desc">Allow reading page content</div>
+            </div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="settingPageRead" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-row-left">
+            <span class="setting-icon">&#9000;</span>
+            <div>
+              <div class="setting-label">Typing & Clicks</div>
+              <div class="setting-desc">Allow input interaction</div>
+            </div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="settingInteract" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-row-left">
+            <span class="setting-icon">&#128444;</span>
+            <div>
+              <div class="setting-label">Tab Management</div>
+              <div class="setting-desc">Allow opening/closing tabs</div>
+            </div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="settingTabs" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-row-left">
+            <span class="setting-icon">&#128247;</span>
+            <div>
+              <div class="setting-label">Screenshots</div>
+              <div class="setting-desc">Allow visible tab capture</div>
+            </div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="settingScreenshots" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-row-left">
+            <span class="setting-icon">&#9889;</span>
+            <div>
+              <div class="setting-label">Execute JavaScript</div>
+              <div class="setting-desc">Allow running scripts in page</div>
+            </div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="settingExecuteJs" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Notifications -->
+      <div class="setting-group">
+        <div class="setting-group-title">Notifications</div>
+        <div class="setting-row">
+          <div class="setting-row-left">
+            <span class="setting-icon">&#128276;</span>
+            <div>
+              <div class="setting-label">Action Alerts</div>
+              <div class="setting-desc">Show when Jarvis acts on page</div>
+            </div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="settingNotify" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span class="footer-text">Nova Browser Bridge</span>
+    <span class="footer-link" id="footerHelp">Keyboard: Alt+N</span>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

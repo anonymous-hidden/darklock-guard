@@ -1,494 +1,252 @@
 /**
- * Nova Browser Bridge — Content Script
- * ======================================
- * Injected into every page. Handles DOM reading, typing, clicking,
- * form filling, and other page-level interactions.
+ * Nova Browser Bridge v2.0 — Content Script
+ * ===========================================
+ * Handles normal web pages. Google Docs is handled by CDP in background.js.
  */
 
 (() => {
-  // Prevent double injection
-  if (window.__novaBridgeInjected) return;
-  window.__novaBridgeInjected = true;
+  if (window.__novaBridge === "2.0") return;
+  window.__novaBridge = "2.0";
 
-  // ── Message handler ──────────────────────────────
+  // ═════════════════════════════════════════════════════════════════
+  //  MESSAGE HANDLER
+  // ═════════════════════════════════════════════════════════════════
 
-  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    handleAction(msg.action, msg.args || {})
-      .then(sendResponse)
-      .catch((err) => sendResponse({ success: false, error: err.message }));
-    return true; // async response
-  });
+  function handler(msg, _sender, respond) {
+    (async () => {
+      try {
+        const r = await dispatch(msg.action, msg.args || {});
+        respond(r);
+      } catch (err) {
+        respond({ success: false, error: err.message });
+      }
+    })();
+    return true; // async
+  }
 
-  // ── Action router ────────────────────────────────
+  // Remove old listener if present, set new one
+  if (window.__novaBridgeHandler) chrome.runtime.onMessage.removeListener(window.__novaBridgeHandler);
+  window.__novaBridgeHandler = handler;
+  chrome.runtime.onMessage.addListener(handler);
 
-  async function handleAction(action, args) {
+  // ═════════════════════════════════════════════════════════════════
+  //  DISPATCH
+  // ═════════════════════════════════════════════════════════════════
+
+  async function dispatch(action, args) {
     switch (action) {
-      case "get_page_content":
-        return getPageContent(args);
-      case "get_page_text":
-        return getPageText(args);
-      case "get_selected_text":
-        return getSelectedText();
-      case "get_input_values":
-        return getInputValues();
-      case "type_text":
-        return typeText(args);
-      case "click_element":
-        return clickElement(args);
-      case "scroll_page":
-        return scrollPage(args);
-      case "fill_form":
-        return fillForm(args);
-      case "get_links":
-        return getLinks(args);
-      case "press_key":
-        return pressKey(args);
-      case "focus_element":
-        return focusElement(args);
-      case "wait_for_element":
-        return waitForElement(args);
-      case "go_back":
-        history.back();
-        return { success: true };
-      case "go_forward":
-        history.forward();
-        return { success: true };
-      default:
-        return { success: false, error: `Unknown content action: ${action}` };
+      case "get_page_content":  return getPageContent(args);
+      case "get_page_text":     return getPageText();
+      case "get_selected_text": return getSelectedText();
+      case "get_input_values":  return getInputValues();
+      case "get_links":         return getLinks(args);
+      case "type_text":         return typeText(args);
+      case "click_element":     return clickElement(args);
+      case "press_key":         return pressKey(args);
+      case "scroll_page":       return scrollPage(args);
+      case "fill_form":         return fillForm(args);
+      case "focus_element":     return focusElement(args);
+      case "wait_for_element":  return waitForElement(args);
+      case "go_back":           history.back(); return { success: true };
+      case "go_forward":        history.forward(); return { success: true };
+      default:                  return { success: false, error: `Unknown: ${action}` };
     }
   }
 
-  // ── Page reading ─────────────────────────────────
+  // ═════════════════════════════════════════════════════════════════
+  //  READ
+  // ═════════════════════════════════════════════════════════════════
 
-  function getPageContent(args) {
-    const maxChars = args.max_chars || 15000;
+  function getPageContent({ maxLength = 8000 } = {}) {
+    const title = document.title;
+    const url = location.href;
 
-    // Try to get main content area
-    const main = document.querySelector(
-      "main, article, [role='main'], .content, #content, .post-content, .entry-content"
-    );
-    const target = main || document.body;
+    // Remove noisy elements
+    const skipTags = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "SVG", "IMG", "VIDEO", "AUDIO", "IFRAME", "CANVAS"]);
+    const blocks = [];
 
-    // Clone and strip non-content elements
-    const clone = target.cloneNode(true);
-    clone.querySelectorAll("script, style, noscript, nav, footer, header, .sidebar, .ad, .advertisement, iframe")
-      .forEach((el) => el.remove());
-
-    let text = clone.innerText || clone.textContent || "";
-    text = text.replace(/\n{3,}/g, "\n\n").trim();
-
-    if (text.length > maxChars) {
-      text = text.slice(0, maxChars) + "\n\n... [truncated]";
+    function walk(el) {
+      if (skipTags.has(el.tagName)) return;
+      const style = getComputedStyle(el);
+      if (style.display === "none" || style.visibility === "hidden") return;
+      for (const ch of el.childNodes) {
+        if (ch.nodeType === 3) {
+          const t = ch.textContent.trim();
+          if (t) blocks.push(t);
+        } else if (ch.nodeType === 1) walk(ch);
+      }
     }
+    walk(document.body);
 
-    // Get headings
-    const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4"))
-      .slice(0, 20)
-      .map((h) => `${h.tagName}: ${(h.innerText || "").trim()}`)
-      .filter((h) => h.length > 4);
-
-    // Get forms info
-    const forms = document.querySelectorAll("form").length;
-
-    // Get meta description
-    const metaDesc = document.querySelector('meta[name="description"]');
+    let text = blocks.join("\n").replace(/\n{3,}/g, "\n\n");
+    if (text.length > maxLength) text = text.slice(0, maxLength) + "\n...(truncated)";
 
     return {
       success: true,
-      url: location.href,
-      title: document.title,
+      title,
+      url,
       text,
-      headings,
-      forms,
-      meta_description: metaDesc ? metaDesc.content : "",
       word_count: text.split(/\s+/).length,
+      is_google_docs: false,
     };
   }
 
-  function getPageText(args) {
-    const maxChars = args.max_chars || 10000;
-    const main = document.querySelector(
-      "main, article, [role='main'], .content, #content"
-    );
-    const target = main || document.body;
-    let text = (target.innerText || target.textContent || "").trim();
-    if (text.length > maxChars) {
-      text = text.slice(0, maxChars) + "\n... [truncated]";
-    }
-    return { success: true, text, url: location.href, title: document.title };
+  function getPageText() {
+    const text = document.body?.innerText?.trim() || "";
+    return { success: true, text, word_count: text.split(/\s+/).length };
   }
 
   function getSelectedText() {
-    const selection = window.getSelection();
-    return {
-      success: true,
-      text: selection ? selection.toString() : "",
-    };
+    const text = window.getSelection()?.toString() || "";
+    return { success: true, text };
   }
 
   function getInputValues() {
-    const inputs = Array.from(document.querySelectorAll(
-      "input, textarea, select, [contenteditable='true']"
-    ));
-    const values = inputs.slice(0, 50).map((el, i) => ({
-      index: i,
-      tag: el.tagName.toLowerCase(),
-      type: el.type || "",
-      name: el.name || "",
-      id: el.id || "",
-      placeholder: el.placeholder || "",
-      value: el.value || el.innerText || "",
-      label: findLabel(el),
-    }));
-    return { success: true, inputs: values };
+    const inputs = [];
+    document.querySelectorAll("input, textarea, select").forEach((el) => {
+      inputs.push({
+        tag: el.tagName.toLowerCase(),
+        type: el.type || "",
+        name: el.name || "",
+        id: el.id || "",
+        value: el.value || "",
+        placeholder: el.placeholder || "",
+      });
+    });
+    return { success: true, inputs };
   }
 
-  function getLinks(args) {
-    const maxLinks = args.max || 50;
-    const links = Array.from(document.querySelectorAll("a[href]"))
-      .slice(0, maxLinks)
-      .map((a, i) => ({
-        index: i,
-        text: (a.innerText || "").trim().slice(0, 100),
-        href: a.href,
-      }))
-      .filter((l) => l.text && l.href.startsWith("http"));
+  function getLinks({ maxLinks = 30 } = {}) {
+    const links = [];
+    document.querySelectorAll("a[href]").forEach((a) => {
+      const text = a.textContent.trim();
+      if (text && links.length < maxLinks) {
+        links.push({ text: text.slice(0, 100), href: a.href, id: a.id || "" });
+      }
+    });
     return { success: true, links };
   }
 
-  // ── Typing & Input ──────────────────────────────
+  // ═════════════════════════════════════════════════════════════════
+  //  INTERACT
+  // ═════════════════════════════════════════════════════════════════
 
-  function typeText(args) {
-    const { text, selector, index, clear, delay } = args;
-
-    let el = findTargetElement(selector, index);
-    if (!el) {
-      // Try to find the currently focused element
-      el = document.activeElement;
-      if (!el || el === document.body) {
-        return { success: false, error: "No input element found. Specify a selector or focus an input first." };
-      }
+  function typeText({ text, selector }) {
+    const el = selector ? find(selector) : document.activeElement;
+    if (!el) return { success: false, error: `Element not found: ${selector}` };
+    el.focus();
+    if ("value" in el) {
+      el.value += text;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    } else {
+      document.execCommand("insertText", false, text);
     }
+    return { success: true, typed: text, chars: text.length };
+  }
 
-    // Focus the element
+  function clickElement({ selector, text, index = 0 }) {
+    let el;
+    if (selector) {
+      el = find(selector, index);
+    } else if (text) {
+      el = findByText(text);
+    }
+    if (!el) return { success: false, error: `Element not found: ${selector || text}` };
+    el.scrollIntoView({ block: "center" });
     el.focus();
     el.click();
+    return { success: true, clicked: selector || text };
+  }
 
-    // Clear existing content if requested
-    if (clear) {
-      if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
-        el.value = "";
-      } else if (el.isContentEditable) {
-        el.innerHTML = "";
-      }
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-    }
+  function pressKey({ key, modifiers = [] }) {
+    const target = document.activeElement || document.body;
+    const opts = {
+      key,
+      code: key.length === 1 ? `Key${key.toUpperCase()}` : key,
+      bubbles: true,
+      ctrlKey: modifiers.includes("ctrl"),
+      shiftKey: modifiers.includes("shift"),
+      altKey: modifiers.includes("alt"),
+      metaKey: modifiers.includes("meta"),
+    };
+    target.dispatchEvent(new KeyboardEvent("keydown", opts));
+    target.dispatchEvent(new KeyboardEvent("keypress", opts));
+    target.dispatchEvent(new KeyboardEvent("keyup", opts));
+    return { success: true, key };
+  }
 
-    // Type character by character for realistic input
-    if (delay && delay > 0) {
-      return typeWithDelay(el, text, delay);
-    }
+  function scrollPage({ direction = "down", amount = 500 }) {
+    const px = direction === "up" ? -amount : direction === "top" ? -document.body.scrollHeight
+      : direction === "bottom" ? document.body.scrollHeight : amount;
+    window.scrollBy({ top: px, behavior: "smooth" });
+    return { success: true, scrolled: direction, amount: Math.abs(px) };
+  }
 
-    // Instant type
-    if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
-      // Use execCommand for better compatibility with React/Angular
-      el.focus();
-      document.execCommand("insertText", false, text);
-      // Fallback if execCommand doesn't work
-      if (!el.value.includes(text)) {
-        el.value += text;
+  function fillForm({ fields }) {
+    if (!fields) return { success: false, error: "No fields" };
+    const filled = [];
+    for (const [sel, val] of Object.entries(fields)) {
+      const el = find(sel);
+      if (el) {
+        el.value = val;
         el.dispatchEvent(new Event("input", { bubbles: true }));
         el.dispatchEvent(new Event("change", { bubbles: true }));
+        filled.push(sel);
       }
-    } else if (el.isContentEditable) {
-      document.execCommand("insertText", false, text);
     }
-
-    return { success: true, typed: text, element: describeElement(el) };
+    return { success: true, filled };
   }
 
-  async function typeWithDelay(el, text, delay) {
-    for (const char of text) {
-      if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
-        document.execCommand("insertText", false, char);
-      } else if (el.isContentEditable) {
-        document.execCommand("insertText", false, char);
-      }
-      await sleep(delay);
-    }
-    return { success: true, typed: text, element: describeElement(el) };
-  }
-
-  function pressKey(args) {
-    const { key, modifiers } = args;
-    const target = document.activeElement || document.body;
-
-    const eventInit = {
-      key,
-      code: `Key${key.toUpperCase()}`,
-      bubbles: true,
-      cancelable: true,
-      ctrlKey: modifiers?.includes("ctrl") || false,
-      shiftKey: modifiers?.includes("shift") || false,
-      altKey: modifiers?.includes("alt") || false,
-      metaKey: modifiers?.includes("meta") || false,
-    };
-
-    // Special key codes
-    const specialCodes = {
-      Enter: "Enter", Tab: "Tab", Escape: "Escape", Backspace: "Backspace",
-      Delete: "Delete", ArrowUp: "ArrowUp", ArrowDown: "ArrowDown",
-      ArrowLeft: "ArrowLeft", ArrowRight: "ArrowRight", Space: "Space",
-    };
-    if (specialCodes[key]) {
-      eventInit.code = specialCodes[key];
-    }
-
-    target.dispatchEvent(new KeyboardEvent("keydown", eventInit));
-    target.dispatchEvent(new KeyboardEvent("keypress", eventInit));
-    target.dispatchEvent(new KeyboardEvent("keyup", eventInit));
-
-    return { success: true, key, modifiers: modifiers || [] };
-  }
-
-  // ── Clicking ─────────────────────────────────────
-
-  function clickElement(args) {
-    const { selector, index, text, x, y } = args;
-
-    let el = null;
-
-    // By coordinates
-    if (x !== undefined && y !== undefined) {
-      el = document.elementFromPoint(x, y);
-    }
-    // By text content
-    else if (text) {
-      el = findElementByText(text);
-    }
-    // By selector or index
-    else {
-      el = findTargetElement(selector, index);
-    }
-
-    if (!el) {
-      return { success: false, error: "Element not found" };
-    }
-
-    // Scroll into view
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
-
-    // Simulate realistic click
-    el.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
-    el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-    el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
-    el.click();
-
-    return { success: true, clicked: describeElement(el) };
-  }
-
-  function focusElement(args) {
-    const el = findTargetElement(args.selector, args.index);
-    if (!el) return { success: false, error: "Element not found" };
+  function focusElement({ selector }) {
+    const el = find(selector);
+    if (!el) return { success: false, error: `Not found: ${selector}` };
     el.focus();
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
-    return { success: true, focused: describeElement(el) };
+    el.scrollIntoView({ block: "center" });
+    return { success: true, focused: selector };
   }
 
-  // ── Scrolling ────────────────────────────────────
-
-  function scrollPage(args) {
-    const { direction, amount } = args;
-    const px = amount || 500;
-
-    switch (direction) {
-      case "up":
-        window.scrollBy(0, -px);
-        break;
-      case "down":
-        window.scrollBy(0, px);
-        break;
-      case "top":
-        window.scrollTo(0, 0);
-        break;
-      case "bottom":
-        window.scrollTo(0, document.body.scrollHeight);
-        break;
-      default:
-        window.scrollBy(0, px);
-    }
-    return { success: true, scrollY: window.scrollY };
-  }
-
-  // ── Form filling ─────────────────────────────────
-
-  function fillForm(args) {
-    const { fields } = args;
-    // fields: [{ selector: "...", value: "..." }, ...]
-    // or: [{ name: "...", value: "..." }, ...]
-    // or: [{ label: "...", value: "..." }, ...]
-
-    const results = [];
-    for (const field of fields) {
-      let el = null;
-
-      if (field.selector) {
-        el = document.querySelector(field.selector);
-      } else if (field.name) {
-        el = document.querySelector(`[name="${field.name}"]`);
-      } else if (field.label) {
-        el = findElementByLabel(field.label);
-      } else if (field.id) {
-        el = document.getElementById(field.id);
-      }
-
-      if (!el) {
-        results.push({ field: field.selector || field.name || field.label, success: false, error: "Not found" });
-        continue;
-      }
-
-      el.focus();
-      if (el.tagName === "SELECT") {
-        el.value = field.value;
-        el.dispatchEvent(new Event("change", { bubbles: true }));
-      } else {
-        el.value = "";
-        document.execCommand("insertText", false, field.value);
-        if (!el.value) {
-          el.value = field.value;
-          el.dispatchEvent(new Event("input", { bubbles: true }));
-        }
-      }
-      results.push({ field: field.selector || field.name || field.label, success: true });
-    }
-    return { success: true, results };
-  }
-
-  // ── Wait for element ─────────────────────────────
-
-  function waitForElement(args) {
-    const { selector, timeout } = args;
-    const maxWait = timeout || 5000;
-
+  function waitForElement({ selector, timeout = 5000 }) {
     return new Promise((resolve) => {
-      const existing = document.querySelector(selector);
-      if (existing) {
-        return resolve({ success: true, found: true });
-      }
+      const el = find(selector);
+      if (el) return resolve({ success: true, found: true });
 
       const observer = new MutationObserver(() => {
-        if (document.querySelector(selector)) {
-          observer.disconnect();
-          clearTimeout(timer);
-          resolve({ success: true, found: true });
-        }
+        const el = find(selector);
+        if (el) { observer.disconnect(); clearTimeout(t); resolve({ success: true, found: true }); }
       });
-
       observer.observe(document.body, { childList: true, subtree: true });
-
-      const timer = setTimeout(() => {
+      const t = setTimeout(() => {
         observer.disconnect();
-        resolve({ success: true, found: false, timeout: true });
-      }, maxWait);
+        resolve({ success: false, error: "Timeout" });
+      }, timeout);
     });
   }
 
-  // ── Helpers ──────────────────────────────────────
+  // ═════════════════════════════════════════════════════════════════
+  //  HELPERS
+  // ═════════════════════════════════════════════════════════════════
 
-  function findTargetElement(selector, index) {
-    if (selector) {
-      return document.querySelector(selector);
+  function find(selector, index = 0) {
+    try {
+      const all = document.querySelectorAll(selector);
+      return all[index] || null;
+    } catch {
+      return document.getElementById(selector) || document.querySelector(`[name="${selector}"]`) || null;
     }
-    if (index !== undefined) {
-      const inputs = document.querySelectorAll(
-        "input, textarea, select, button, a, [contenteditable='true']"
-      );
-      return inputs[index] || null;
-    }
-    return null;
   }
 
-  function findElementByText(text) {
+  function findByText(text) {
     const lower = text.toLowerCase();
-
-    // Check buttons first
-    for (const btn of document.querySelectorAll("button, [role='button'], input[type='submit'], input[type='button']")) {
-      const btnText = (btn.innerText || btn.value || "").toLowerCase();
-      if (btnText.includes(lower)) return btn;
+    // Buttons & links first
+    for (const el of document.querySelectorAll("button, a, [role='button'], input[type='submit']")) {
+      if ((el.textContent || el.value || "").toLowerCase().includes(lower)) return el;
     }
-
-    // Check links
-    for (const a of document.querySelectorAll("a")) {
-      if ((a.innerText || "").toLowerCase().includes(lower)) return a;
-    }
-
-    // Check any visible element with matching text
-    const walker = document.createTreeWalker(
-      document.body,
-      NodeFilter.SHOW_ELEMENT,
-      {
-        acceptNode: (node) => {
-          const t = (node.innerText || "").toLowerCase();
-          if (t.includes(lower) && node.offsetParent !== null) {
-            return NodeFilter.FILTER_ACCEPT;
-          }
-          return NodeFilter.FILTER_SKIP;
-        },
-      }
-    );
-    // Get the deepest matching element (most specific)
-    let best = null;
-    let node;
-    while ((node = walker.nextNode())) {
-      best = node;
-    }
-    return best;
-  }
-
-  function findElementByLabel(labelText) {
-    const lower = labelText.toLowerCase();
-    for (const label of document.querySelectorAll("label")) {
-      if ((label.innerText || "").toLowerCase().includes(lower)) {
-        if (label.htmlFor) {
-          return document.getElementById(label.htmlFor);
-        }
-        return label.querySelector("input, textarea, select");
-      }
-    }
-    // Try placeholder match
-    for (const input of document.querySelectorAll("input, textarea")) {
-      if ((input.placeholder || "").toLowerCase().includes(lower)) {
-        return input;
-      }
-    }
-    return null;
-  }
-
-  function findLabel(el) {
-    // Check for associated label
-    if (el.id) {
-      const label = document.querySelector(`label[for="${el.id}"]`);
-      if (label) return (label.innerText || "").trim();
-    }
-    // Check parent label
-    const parentLabel = el.closest("label");
-    if (parentLabel) return (parentLabel.innerText || "").trim();
-    // Check aria-label
-    if (el.getAttribute("aria-label")) return el.getAttribute("aria-label");
-    return "";
-  }
-
-  function describeElement(el) {
-    const tag = el.tagName.toLowerCase();
-    const id = el.id ? `#${el.id}` : "";
-    const cls = el.className && typeof el.className === "string"
-      ? `.${el.className.split(" ").filter(Boolean).slice(0, 2).join(".")}`
-      : "";
-    const text = (el.innerText || el.value || "").trim().slice(0, 50);
-    return `<${tag}${id}${cls}> "${text}"`;
-  }
-
-  function sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    // Then any visible element
+    const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => n.textContent.toLowerCase().includes(lower) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT,
+    });
+    const node = tw.nextNode();
+    return node?.parentElement || null;
   }
 })();

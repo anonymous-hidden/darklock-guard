@@ -35,7 +35,7 @@
         .feat-text{font-size:13px;color:#e2e8f0;line-height:1.4}
         .feat-text strong{color:#fff;display:block;font-size:13px}
         .section-label{font-size:12px;font-weight:700;letter-spacing:1.2px;color:#4b5563;text-transform:uppercase;margin:0 0 18px}
-        .platforms{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:32px}
+        .platforms{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px}
         .plat-card{background:rgba(255,255,255,.02);border:1px solid rgba(124,77,255,.2);border-radius:16px;
             padding:28px 22px 24px;text-align:center;transition:all .25s;position:relative}
         .plat-card:hover{border-color:rgba(124,77,255,.5);transform:translateY(-3px);box-shadow:0 12px 32px rgba(124,77,255,.15)}
@@ -191,28 +191,47 @@
                 </div>
             </div>
 
+            <!-- Android -->
+            <div class="plat-card" data-platform="android">
+                <svg class="plat-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24a11.463 11.463 0 00-8.94 0L5.65 5.67c-.19-.29-.58-.38-.87-.2-.28.18-.37.54-.22.83L6.4 9.48A10.78 10.78 0 002 18h20a10.78 10.78 0 00-4.4-8.52zM7 15.25a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5zm10 0a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5z"/></svg>
+                <div class="plat-name">Android</div>
+                <div class="plat-desc">Android 8.0+ · ARM / x86</div>
+                <div class="dl-btns">
+                    <a href="/platform/api/download/secure-channel-installer?format=apk" class="dl-btn primary">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                        Download .apk
+                        <div class="dl-meta">Sideload · ~4 MB</div>
+                    </a>
+                </div>
+                <div class="snippet">
+                    <div class="snippet-title">Sideload Instructions</div>
+                    <code>Settings → Security → Install unknown apps
+Enable for your browser, then open APK.</code>
+                </div>
+            </div>
+
             <!-- iOS -->
             <div class="plat-card" data-platform="ios">
                 <svg class="plat-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-                <div class="plat-name">iOS</div>
-                <div class="plat-desc">iPhone · iPad · Safari</div>
+                <div class="plat-name">iOS / Safari</div>
+                <div class="plat-desc">iPhone · iPad · any browser</div>
                 <div class="dl-btns">
-                    <span class="dl-btn disabled">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-                        Coming Soon
-                        <div class="dl-meta">Web app in development</div>
-                    </span>
+                    <a href="/app/secure-channel/" class="dl-btn ios-btn">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                        Open Web App
+                        <div class="dl-meta">PWA · Add to Home Screen</div>
+                    </a>
                 </div>
                 <div class="snippet">
-                    <div class="snippet-title">Planned</div>
-                    <code>Safari web app with E2E encryption.
-Add to Home Screen for native feel.</code>
+                    <div class="snippet-title">Install on iPhone</div>
+                    <code>Open link in Safari → tap Share ↗
+→ "Add to Home Screen" → Add</code>
                 </div>
             </div>
 
         </div>
 
-        <div class="sysreq">
+        <div class="sysreq" style="grid-template-columns:1fr 1fr 1fr 1fr">
             <div class="sysreq-item">
                 <strong>Linux</strong>
                 Ubuntu 20.04+ / Debian 11+<br>
@@ -224,6 +243,12 @@ Add to Home Screen for native feel.</code>
                 Windows 10 / 11<br>
                 x86_64 · ~80 MB disk<br>
                 NSIS Installer
+            </div>
+            <div class="sysreq-item">
+                <strong>Android</strong>
+                Android 8.0+ (API 26)<br>
+                ARM / x86 · ~4 MB<br>
+                Sideload APK
             </div>
             <div class="sysreq-item">
                 <strong>Network</strong>
@@ -247,6 +272,7 @@ Add to Home Screen for native feel.</code>
     (function(){
         var ua=navigator.userAgent.toLowerCase(),p=null;
         if(/iphone|ipad|ipod/.test(ua))p='ios';
+        else if(/android/.test(ua))p='android';
         else if(/win/.test(ua))p='windows';
         else if(/linux/.test(ua))p='linux';
         if(!p)return;

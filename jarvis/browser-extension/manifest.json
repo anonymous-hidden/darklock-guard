@@ -1,19 +1,20 @@
 {
   "manifest_version": 3,
   "name": "Nova Browser Bridge",
-  "version": "1.0.0",
-  "description": "Connects your browser to Nova/Jarvis AI — enables reading, typing, clicking, and full page interaction.",
+  "version": "2.0.0",
+  "description": "Bridge between Nova Terminal AI and Chrome — v2.0",
   "permissions": [
     "activeTab",
     "tabs",
     "scripting",
-    "storage"
+    "storage",
+    "debugger",
+    "clipboardRead"
   ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "host_permissions": ["<all_urls>"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
@@ -24,11 +25,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
+    "default_title": "Nova Browser Bridge"
   },
   "icons": {
     "16": "icons/icon16.png",

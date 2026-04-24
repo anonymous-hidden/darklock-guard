@@ -1,18 +1,3 @@
-/*
- * DARKLOCK Display Module — Elegoo Mega 2560
- * LCD + RGB LEDs display controller (simplified version)
- *
- * Pin Map:
- *   LCD 16×2:  RS=P7  EN=P8  D4=P9  D5=P10  D6=P11  D7=P12
- *   RGB-LED 1: R=D29  G=D31  B=D33
- *   RGB-LED 2: R=D23  G=D25  B=D27
- *   Tamper:    R=D32
- *   RFID LEDs: G=D28  R=D30
- *
- * Protocol: 115200 baud, newline-delimited
- *   LCD:line1|line2    LED1:r,g,b    LED2:r,g,b
- *   TAMPER:0/1         RFID:GREEN/RED/OFF    PING
- */
 
 #include <LiquidCrystal.h>
 

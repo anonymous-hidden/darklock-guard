@@ -106,7 +106,7 @@ class SettingsPanel {
         if (key.startsWith('clock'))       return this._applyClockSettings();
         if (key.startsWith('bobble'))      return this._applyBobbleSettings();
         if (key === 'theme')               return (this._applyTheme(), this._updateThemeBadge());
-        if (key === 'accentColor')         return document.documentElement.style.setProperty('--cyber-accent', value);
+        if (key === 'accentColor')         return this._applyAccentColor(value);
         if (key === 'compactMode')         return document.body.classList.toggle('compact-mode', value);
         if (key === 'animations')          return document.body.classList.toggle('no-animations', !value);
         if (key === 'glassEffects')        return document.body.classList.toggle('no-glass', !value);
@@ -605,7 +605,11 @@ class SettingsPanel {
             t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
         document.documentElement.setAttribute('data-theme', t);
-        document.body.classList.remove('christmas-mode', 'halloween-mode', 'valentine-mode', 'independence-mode', 'stpatrick-mode', 'easter-mode');
+        // Strip any previously-applied seasonal theme classes.
+        const seasonalSuffix = '-mode';
+        [...document.body.classList].forEach(cls => {
+            if (cls.endsWith(seasonalSuffix)) document.body.classList.remove(cls);
+        });
     }
 
     _updateThemeBadge() {
@@ -619,7 +623,7 @@ class SettingsPanel {
     setAccentColor(color) {
         this.settings.accentColor = color;
         localStorage.setItem('dashboardSettings', JSON.stringify(this.settings));
-        document.documentElement.style.setProperty('--cyber-accent', color);
+        this._applyAccentColor(color);
         const inp = document.querySelector('.sp-color-input');
         if (inp) inp.value = color;
         document.querySelectorAll('.sp-color-dot').forEach(d => {
@@ -627,11 +631,22 @@ class SettingsPanel {
         });
     }
 
+    // Apply the accent color to every CSS variable the dashboard reads from.
+    // Previously only --cyber-accent was set, so --ds-primary / --color-primary
+    // never updated and the color picker appeared to do nothing on most pages.
+    _applyAccentColor(color) {
+        const root = document.documentElement.style;
+        root.setProperty('--cyber-accent', color);
+        root.setProperty('--color-primary', color);
+        root.setProperty('--ds-primary', color);
+        root.setProperty('--ds-accent', color);
+    }
+
     /* ─── Apply All Settings ─────────────────────────────────── */
     _applyAll() {
         this._applyTheme();
         this._updateThemeBadge();
-        document.documentElement.style.setProperty('--cyber-accent', this.settings.accentColor);
+        this._applyAccentColor(this.settings.accentColor);
         document.body.classList.toggle('compact-mode', this.settings.compactMode);
         document.body.classList.toggle('no-animations', !this.settings.animations);
         document.body.classList.toggle('no-glass', !this.settings.glassEffects);
@@ -930,12 +945,27 @@ class SettingsPanel {
     }
 
     /* ─── Data Methods ───────────────────────────────────────── */
-    _deleteData() {
+    async _deleteData() {
         const msg = 'Type DELETE to permanently erase all your data.';
         const input = prompt(msg);
         if (input !== 'DELETE') return;
-        this._toast('Data deletion request submitted', 'success');
-        // Future: POST /api/user/delete
+        try {
+            const res = await fetch('/api/user/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': this._csrf() },
+                credentials: 'include',
+                body: JSON.stringify({ confirm: 'DELETE' })
+            });
+            if (res.ok) {
+                this._toast('Data deleted — signing out...', 'success');
+                setTimeout(() => { window.location.href = '/logout'; }, 1500);
+            } else {
+                const err = await res.json().catch(() => ({}));
+                this._toast(err.error || 'Delete failed', 'error');
+            }
+        } catch (e) {
+            this._toast('Delete failed', 'error');
+        }
     }
 
     async _requestNotifPerm(checkbox) {

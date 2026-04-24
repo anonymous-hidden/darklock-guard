@@ -20,7 +20,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="">
-    <title>Access Share - DarkLock Dashboard</title>
+    <title>Access Management - DarkLock Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -269,26 +269,29 @@
         <div class="breadcrumb">
             <a href="/dashboard"><i class="fas fa-home"></i> Dashboard</a>
             <i class="fas fa-chevron-right"></i>
-            <span class="breadcrumb-current">Access Share</span>
+            <span class="breadcrumb-current">Access Management</span>
         </div>
     </nav>
 
     <div class="page-container">
         <div class="page-header">
             <div class="page-header-icon">
-                <i class="fas fa-share-alt"></i>
+                <i class="fas fa-key"></i>
             </div>
-            <h1>Access Share</h1>
-            <p>Share dashboard access directly with users or roles</p>
+            <h1>Access Management</h1>
+            <p>Share dashboard access with users, roles, or one-time access codes</p>
         </div>
 
         <!-- Tabs -->
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('users')">
-                <i class="fas fa-user"></i> Share with Users
+            <button class="tab active" data-tab="users" onclick="switchTab(event, 'users')">
+                <i class="fas fa-user"></i> Users
             </button>
-            <button class="tab" onclick="switchTab('roles')">
-                <i class="fas fa-users"></i> Share with Roles
+            <button class="tab" data-tab="roles" onclick="switchTab(event, 'roles')">
+                <i class="fas fa-users"></i> Roles
+            </button>
+            <button class="tab" data-tab="codes" onclick="switchTab(event, 'codes')">
+                <i class="fas fa-key"></i> Access Codes
             </button>
         </div>
 
@@ -426,8 +429,94 @@
                 </div>
             </div>
         </div>
-    </div>
 
+        <!-- Codes Tab -->
+        <div class="tab-content" id="codesTab">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Generate Access Code</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">Permission Level</label>
+                        <div class="permission-selector">
+                            <div class="perm-option viewer active" onclick="selectCodePerm(event, 'viewer')">
+                                <i class="fas fa-eye"></i><div>Viewer</div>
+                            </div>
+                            <div class="perm-option moderator" onclick="selectCodePerm(event, 'moderator')">
+                                <i class="fas fa-user-shield"></i><div>Moderator</div>
+                            </div>
+                            <div class="perm-option admin" onclick="selectCodePerm(event, 'admin')">
+                                <i class="fas fa-crown"></i><div>Admin</div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="codePermLevel" value="viewer">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Code Type</label>
+                        <select class="form-select" id="codeType">
+                            <option value="single">Single Use</option>
+                            <option value="multi">Multi Use (Max 10)</option>
+                            <option value="unlimited">Unlimited Uses</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Expiration</label>
+                        <select class="form-select" id="codeExpiry">
+                            <option value="1h">1 Hour</option>
+                            <option value="24h">24 Hours</option>
+                            <option value="7d" selected>7 Days</option>
+                            <option value="30d">30 Days</option>
+                            <option value="never">Never</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Note (Optional)</label>
+                        <input type="text" class="form-input" id="codeNote" placeholder="e.g., For John - Moderator Team">
+                    </div>
+
+                    <button class="btn-primary" id="generateBtn" onclick="generateCode()">
+                        <i class="fas fa-key"></i> Generate Access Code
+                    </button>
+
+                    <div id="codeDisplay" style="display:none; margin-top: var(--ds-space-lg); padding: var(--ds-space-lg); background: var(--ds-surface-2); border: 1px solid var(--ds-primary-border); border-radius: var(--ds-radius-md); text-align: center;">
+                        <div style="color: var(--ds-success); font-weight: 600; margin-bottom: var(--ds-space-md);">
+                            <i class="fas fa-check-circle"></i> Code Generated
+                        </div>
+                        <div id="codeValue" style="font-family: monospace; font-size: 20px; letter-spacing: 2px; padding: var(--ds-space-md); background: var(--ds-surface-0); border-radius: var(--ds-radius-sm); user-select: all; margin-bottom: var(--ds-space-md);"></div>
+                        <div style="display:flex; gap: var(--ds-space-md); justify-content: center;">
+                            <button class="btn-primary" style="width:auto;" onclick="copyCode()"><i class="fas fa-copy"></i> Copy Code</button>
+                            <button class="btn-primary" style="width:auto; background: var(--ds-surface-2); color: var(--ds-text-primary); border: 1px solid var(--ds-border);" onclick="shareLink()"><i class="fas fa-share-alt"></i> Copy Link</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-list"></i>
+                        <span>Active Access Codes</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="access-list" id="codesList">
+                        <div class="empty-state">
+                            <i class="fas fa-key"></i>
+                            <h4>No Active Codes</h4>
+                            <p>Generate a code above to get started</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="/js/secure-auth.js"></script>
     <script>
         // Get guild ID from URL or localStorage
@@ -470,13 +559,26 @@
         }
 
         // Tab switching
-        function switchTab(tab) {
+        function switchTab(evt, tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            
-            event.target.classList.add('active');
+
+            // Resolve to the button even when the click lands on a child <i>
+            const btn = (evt && evt.currentTarget) || document.querySelector(`.tab[data-tab="${tab}"]`);
+            btn?.classList.add('active');
             document.getElementById(tab + 'Tab').classList.add('active');
+
+            if (tab === 'codes' && !window._codesLoaded) { window._codesLoaded = true; loadCodes(); }
         }
+
+        // Allow deep-link via #codes / #roles
+        window.addEventListener('DOMContentLoaded', () => {
+            const hash = (location.hash || '').replace('#', '');
+            if (['users', 'roles', 'codes'].includes(hash)) {
+                const btn = document.querySelector(`.tab[data-tab="${hash}"]`);
+                if (btn) btn.click();
+            }
+        });
 
         // Member search
         document.getElementById('memberSearchInput').addEventListener('input', (e) => {
@@ -810,6 +912,109 @@
             } catch (e) {
                 console.error('Failed to load roles:', e);
             }
+        }
+
+        // ===== Access codes (merged from /access-generator) =====
+        let generatedCode = '';
+
+        function selectCodePerm(evt, level) {
+            document.querySelectorAll('#codesTab .perm-option').forEach(o => o.classList.remove('active'));
+            evt.currentTarget.classList.add('active');
+            document.getElementById('codePermLevel').value = level;
+        }
+
+        async function generateCode() {
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+            try {
+                const res = await SecureAuth.fetch('/api/access-codes/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        guildId,
+                        type: document.getElementById('codeType').value,
+                        permission: document.getElementById('codePermLevel').value,
+                        expiry: document.getElementById('codeExpiry').value,
+                        note: document.getElementById('codeNote').value
+                    })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    generatedCode = data.code;
+                    document.getElementById('codeValue').textContent = data.code;
+                    document.getElementById('codeDisplay').style.display = 'block';
+                    loadCodes();
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    alert('Failed to generate code: ' + (err.error || 'Unknown error'));
+                }
+            } catch (e) {
+                console.error('Failed to generate code:', e);
+                alert('Failed to generate code. Please try again.');
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-key"></i> Generate Access Code';
+        }
+
+        function copyCode() {
+            navigator.clipboard.writeText(generatedCode);
+        }
+
+        function shareLink() {
+            const link = `${window.location.origin}/access?code=${generatedCode}`;
+            navigator.clipboard.writeText(link);
+        }
+
+        async function loadCodes() {
+            const list = document.getElementById('codesList');
+            try {
+                const res = await SecureAuth.fetch(`/api/guild/${guildId}/access-codes`, { method: 'GET', credentials: 'include' });
+                if (!res.ok) throw new Error('load failed');
+                const data = await res.json();
+                const codes = Array.isArray(data) ? data : (data?.codes || []);
+                if (!codes.length) {
+                    list.innerHTML = '<div class="empty-state"><i class="fas fa-key"></i><h4>No Active Codes</h4><p>Generate a code above to get started</p></div>';
+                    return;
+                }
+                list.innerHTML = codes.map(code => {
+                    const isExpired = code.expiresAt && new Date(code.expiresAt) < new Date();
+                    const isUsed = code.usesRemaining === 0;
+                    let status = 'active', badge = 'badge-viewer';
+                    if (isExpired) { status = 'expired'; badge = 'badge-admin'; }
+                    else if (isUsed) { status = 'used'; badge = 'badge-moderator'; }
+                    return `
+                        <div class="access-item">
+                            <div class="access-avatar"><i class="fas fa-key"></i></div>
+                            <div class="access-info">
+                                <div class="access-name" style="font-family: monospace;">${escapeHtml(code.code)}</div>
+                                <div class="access-meta">
+                                    <span class="access-badge ${badge}">${status.toUpperCase()}</span>
+                                    <span>${escapeHtml(code.permission || 'viewer')}</span>
+                                    <span>${code.expiresAt ? new Date(code.expiresAt).toLocaleDateString() : 'No expiry'}</span>
+                                    ${code.note ? `<span>${escapeHtml(code.note)}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="access-actions">
+                                <button onclick="revokeCode('${encodeURIComponent(code.code)}')"><i class="fas fa-times"></i> Revoke</button>
+                            </div>
+                        </div>`;
+                }).join('');
+            } catch (e) {
+                list.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to load codes</p></div>';
+            }
+        }
+
+        async function revokeCode(code) {
+            if (!confirm('Revoke this access code?')) return;
+            try {
+                const res = await SecureAuth.fetch(`/api/access-codes/${code}/revoke`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                if (res.ok) loadCodes();
+            } catch (e) { console.error('Failed to revoke code:', e); }
         }
 
         // Initialize

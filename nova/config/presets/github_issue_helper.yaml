@@ -1,0 +1,17 @@
+name: github_issue_helper
+description: Read GitHub issues, cluster them, and draft a work brief.
+modes: [agent]
+risk: low
+approval_required: false
+tools: [log_event]
+connectors: [github]
+steps:
+  - agent: connector_router
+    task: "Use github connector to list open issues for: {input}."
+  - agent: researcher
+    task: "Cluster issues by theme. Identify quick wins vs deep work."
+  - agent: summarizer
+    task: "Produce a prioritized work brief with links."
+validation:
+  require_final_summary: true
+retries: 1

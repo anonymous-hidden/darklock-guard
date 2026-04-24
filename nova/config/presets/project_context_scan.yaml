@@ -1,0 +1,18 @@
+name: project_context_scan
+description: Build a mental model of the current project from configs, READMEs, and entry points.
+modes: [normal, agent]
+risk: low
+approval_required: false
+tools: [read_file, list_dir, search_files, inspect_repo]
+connectors: [local_files]
+steps:
+  - id: s1
+    agent: researcher
+    task: "Identify package manifests, READMEs, and main entry points in: {input}."
+  - id: s2
+    agent: summarizer
+    task: "Using the researcher findings above, describe the REAL project structure, stack, and how to run it. Only use the actual file paths and content provided — do not invent file names."
+    depends_on: [s1]
+validation:
+  require_final_summary: true
+retries: 1

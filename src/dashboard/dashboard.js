@@ -57,6 +57,7 @@ class SecurityDashboard {
             const cspDirectives = {
                 'default-src': ["'self'"],
                 'script-src': ["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'", "https://js.stripe.com", "https://cdn.jsdelivr.net", "https://static.cloudflareinsights.com", "'unsafe-hashes'"],
+                'script-src-elem': ["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'", "https://js.stripe.com", "https://cdn.jsdelivr.net", "https://static.cloudflareinsights.com", "'unsafe-hashes'"],
                 'script-src-attr': ["'unsafe-inline'"],
                 'frame-src': ["https://js.stripe.com", "https://hooks.stripe.com", "https://accounts.google.com"],
                 'connect-src': ["'self'", "https://api.stripe.com", "https://cdn.jsdelivr.net", "https://accounts.google.com", "https://oauth2.googleapis.com", "https://www.googleapis.com", wsUrl],
@@ -969,11 +970,27 @@ The GuardianBot Team`
         });
 
         // Bot Console API: fetch per-guild logs (SECURITY: auth + guild access required)
-        this.app.get('/api/logs/:guildId', this.authenticateToken.bind(this), this._requireGuildAccess(), (req, res) => {
+        this.app.get('/api/logs/:guildId', this.authenticateToken.bind(this), this._requireGuildAccess(), async (req, res) => {
             try {
                 const guildId = req.guildId;
-                if (!this.bot || !this.bot.consoleBuffer) return res.json([]);
-                const buf = this.bot.consoleBuffer.get(guildId) || [];
+                let buf = [];
+                if (this.bot && this.bot.consoleBuffer) {
+                    buf = this.bot.consoleBuffer.get(guildId) || [];
+                }
+                // Hydrate from persistent store so history survives restarts
+                // and is visible on other devices.
+                if (buf.length === 0 && this.bot?.database?.all) {
+                    try {
+                        const rows = await this.bot.database.all(
+                            'SELECT entry FROM console_logs WHERE guild_id = ? ORDER BY created_at DESC LIMIT 500',
+                            [guildId]
+                        );
+                        buf = rows.reverse().map(r => {
+                            try { return JSON.parse(r.entry); } catch { return { message: r.entry, timestamp: Date.now() }; }
+                        });
+                        if (this.bot.consoleBuffer) this.bot.consoleBuffer.set(guildId, [...buf]);
+                    } catch (e) { /* non-fatal */ }
+                }
                 res.json(buf);
             } catch (e) {
                 res.status(500).json({ error: 'Failed to fetch logs' });
@@ -981,11 +998,13 @@ The GuardianBot Team`
         });
 
         // Bot Console API: clear per-guild logs (SECURITY: auth + guild access required)
-        this.app.post('/api/logs/:guildId/clear', this.authenticateToken.bind(this), this._requireGuildAccess(), (req, res) => {
+        this.app.post('/api/logs/:guildId/clear', this.authenticateToken.bind(this), this._requireGuildAccess(), async (req, res) => {
             try {
                 const guildId = req.guildId;
-                if (!this.bot || !this.bot.consoleBuffer) return res.json({ success: true });
-                this.bot.consoleBuffer.set(guildId, []);
+                if (this.bot?.consoleBuffer) this.bot.consoleBuffer.set(guildId, []);
+                if (this.bot?.database?.run) {
+                    try { await this.bot.database.run('DELETE FROM console_logs WHERE guild_id = ?', [guildId]); } catch (_) {}
+                }
                 res.json({ success: true });
             } catch (e) {
                 res.status(500).json({ error: 'Failed to clear logs' });
@@ -1230,12 +1249,12 @@ The GuardianBot Team`
             res.sendFile(path.join(__dirname, 'views/setup-autorole.html'));
         });
 
-        // Access Generator page (PREMIUM)
+        // Access Generator page (PREMIUM) — merged into /access-share#codes
         this.app.get('/access-generator', this.authenticateToken.bind(this), this.requirePremium, (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/access-generator.html'));
+            res.redirect('/access-share#codes');
         });
 
-        // Access Share page (PREMIUM)
+        // Access Share page (PREMIUM) — unified access management (users, roles, codes)
         this.app.get('/access-share', this.authenticateToken.bind(this), this.requirePremium, (req, res) => {
             res.sendFile(path.join(__dirname, 'views/access-share.html'));
         });
@@ -2470,6 +2489,51 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         this.app.post('/api/redeem-access-code', this.authenticateToken.bind(this), this.redeemAccessCodeSimple.bind(this));
         this.app.get('/api/user', this.authenticateToken.bind(this), this.getCurrentUser.bind(this));
 
+        // User data self-service (Data & Privacy panel)
+        this.app.get('/api/user/export', this.authenticateToken.bind(this), async (req, res) => {
+            try {
+                const userId = req.user?.discordId || req.user?.userId || req.user?.id;
+                if (!userId) return res.status(401).json({ error: 'unauthenticated' });
+                const db = this.bot?.database;
+                const safe = async (q, p) => { try { return await db.all(q, p); } catch (_) { return []; } };
+                const data = {
+                    exportedAt: new Date().toISOString(),
+                    user: req.user || null,
+                    userSettings: await safe('SELECT * FROM user_settings WHERE user_id = ?', [userId]),
+                    actionLogs: await safe('SELECT * FROM action_logs WHERE moderator_id = ? OR target_user_id = ? LIMIT 5000', [userId, userId]),
+                    commandLogs: await safe('SELECT * FROM command_logs WHERE user_id = ? LIMIT 5000', [userId]),
+                    accessGrants: await safe('SELECT * FROM shared_access_users WHERE user_id = ?', [userId])
+                };
+                res.setHeader('Content-Type', 'application/json');
+                res.setHeader('Content-Disposition', `attachment; filename="darklock-export-${userId}.json"`);
+                res.send(JSON.stringify(data, null, 2));
+            } catch (e) {
+                this.bot?.logger?.error?.('user export failed:', e?.message || e);
+                res.status(500).json({ error: 'export failed' });
+            }
+        });
+
+        this.app.post('/api/user/delete', this.authenticateToken.bind(this), async (req, res) => {
+            try {
+                const userId = req.user?.discordId || req.user?.userId || req.user?.id;
+                const confirm = req.body?.confirm;
+                if (!userId) return res.status(401).json({ error: 'unauthenticated' });
+                if (confirm !== 'DELETE') {
+                    return res.status(400).json({ error: 'confirmation required (send { confirm: "DELETE" })' });
+                }
+                const db = this.bot?.database;
+                const tryRun = async (q, p) => { try { await db.run(q, p); } catch (_) {} };
+                await tryRun('DELETE FROM user_settings WHERE user_id = ?', [userId]);
+                await tryRun('DELETE FROM command_logs WHERE user_id = ?', [userId]);
+                await tryRun('DELETE FROM shared_access_users WHERE user_id = ?', [userId]);
+                await tryRun('DELETE FROM sessions WHERE user_id = ?', [userId]);
+                res.json({ success: true });
+            } catch (e) {
+                this.bot?.logger?.error?.('user delete failed:', e?.message || e);
+                res.status(500).json({ error: 'delete failed' });
+            }
+        });
+
         // Staff roles and advanced permissions routes
         this.app.get('/api/dashboard/:guildId/staff-roles', this.authenticateToken.bind(this), this.getStaffRoles.bind(this));
         this.app.post('/api/dashboard/:guildId/staff-roles', this.authenticateToken.bind(this), this.saveStaffRoles.bind(this));
@@ -3355,7 +3419,9 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             }
             const ua = req.headers['user-agent'] || '';
             if (decodedState.ua && ua && decodedState.ua !== ua) {
-                return res.status(403).send('OAuth state user-agent mismatch');
+                // User-Agent can legitimately change during OAuth hops (mobile app -> browser, proxy normalization).
+                // Keep CSRF protection via signed, short-lived state token and log mismatches for visibility.
+                this.bot?.logger?.warn?.('[OAuth] State user-agent mismatch detected; continuing with JWT state validation');
             }
             
             if (!code) {
@@ -12356,6 +12422,10 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 if (this.bot.wordFilter?.configCache) {
                     this.bot.wordFilter.configCache.delete(guildId);
                     this.bot.wordFilter.cacheExpiry?.delete(guildId);
+                }
+                // 4. Invalidate Discord logger cache so log-channel changes apply immediately
+                if (typeof this.bot.discordLogger?.invalidateCache === 'function') {
+                    this.bot.discordLogger.invalidateCache(guildId);
                 }
             } catch (e) {
                 this.bot.logger?.warn('Cache invalidation failed:', e.message || e);

@@ -51,7 +51,7 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('add')
-                .setDescription('Add a role to the panel')
+                .setDescription('Add a role to a panel')
                 .addRoleOption(option =>
                     option
                         .setName('role')
@@ -66,6 +66,12 @@ module.exports = {
                 )
                 .addStringOption(option =>
                     option
+                        .setName('panel')
+                        .setDescription('Panel id (use /reactionroles list to find; omit if only one panel)')
+                        .setRequired(false)
+                )
+                .addStringOption(option =>
+                    option
                         .setName('description')
                         .setDescription('Description for this role')
                         .setRequired(false)
@@ -74,13 +80,24 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('delete')
-                .setDescription('Delete a role or entire panel')
+                .setDescription('Delete a role or an entire panel')
                 .addRoleOption(option =>
                     option
                         .setName('role')
-                        .setDescription('Role to remove (leave empty to delete entire panel)')
+                        .setDescription('Role to remove (leave empty to delete the whole panel)')
                         .setRequired(false)
                 )
+                .addStringOption(option =>
+                    option
+                        .setName('panel')
+                        .setDescription('Panel id (use /reactionroles list to find; omit if only one panel)')
+                        .setRequired(false)
+                )
+        )
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('list')
+                .setDescription('List all reaction role panels in this server')
         ),
 
     async execute(interaction) {
@@ -96,6 +113,61 @@ module.exports = {
             case 'delete':
                 await this.deleteRole(interaction);
                 break;
+            case 'list':
+                await this.listPanels(interaction);
+                break;
+        }
+    },
+
+    async resolvePanel(interaction, panelIdOpt) {
+        const db = interaction.client.database;
+        if (panelIdOpt) {
+            const panel = await db.get(
+                'SELECT * FROM reaction_role_panels WHERE panel_id = ? AND guild_id = ?',
+                [panelIdOpt, interaction.guild.id]
+            );
+            if (!panel) return { error: `No panel found with id \`${panelIdOpt}\`. Use \`/reactionroles list\` to see panels.` };
+            return { panel };
+        }
+        const panels = await db.all(
+            'SELECT * FROM reaction_role_panels WHERE guild_id = ? ORDER BY created_at DESC',
+            [interaction.guild.id]
+        );
+        if (panels.length === 0) return { error: 'No reaction role panels exist yet. Create one with `/reactionroles setup`.' };
+        if (panels.length > 1) {
+            const list = panels.map(p => `- \`${p.panel_id}\` - ${p.title}`).join('\n');
+            return { error: `Multiple panels exist. Specify one with the \`panel\` option:\n${list}` };
+        }
+        return { panel: panels[0] };
+    },
+
+    async listPanels(interaction) {
+        try {
+            await interaction.deferReply({ ephemeral: true });
+            const panels = await interaction.client.database.all(
+                'SELECT * FROM reaction_role_panels WHERE guild_id = ? ORDER BY created_at DESC',
+                [interaction.guild.id]
+            );
+            if (!panels.length) {
+                return await interaction.editReply({ content: 'No reaction role panels yet. Create one with `/reactionroles setup`.' });
+            }
+            const lines = [];
+            for (const p of panels) {
+                const roleCount = await interaction.client.database.get(
+                    'SELECT COUNT(*) AS c FROM reaction_role_mappings WHERE panel_id = ?',
+                    [p.panel_id]
+                );
+                const channel = interaction.guild.channels.cache.get(p.channel_id);
+                lines.push(`**${p.title}**\n> id: \`${p.panel_id}\`\n> channel: ${channel ? channel.toString() : '(deleted)'}\n> mode: ${p.mode}  •  type: ${p.type}  •  roles: ${roleCount?.c || 0}`);
+            }
+            const embed = new EmbedBuilder()
+                .setTitle('Reaction Role Panels')
+                .setColor(0x00D4FF)
+                .setDescription(lines.join('\n\n'));
+            await interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+            console.error('Error listing panels:', error);
+            await interaction.editReply({ content: 'Failed to list panels.' });
         }
     },
 
@@ -110,19 +182,27 @@ module.exports = {
             const mode = interaction.options.getString('mode') || 'multiple';
             const description = interaction.options.getString('description') || `React to get your roles! ${mode === 'single' ? '⚠️ You can only have ONE role from this panel.' : ''}`;
 
-            // Check if server already has a panel
-            const existing = await interaction.client.database.get(
-                'SELECT * FROM reaction_role_panels WHERE guild_id = ?',
-                [interaction.guild.id]
-            );
-
-            if (existing) {
-                return await interaction.editReply({ 
-                    content: `❌ This server already has a reaction role panel!\n\nTo add more roles: \`/reactionroles add\`\nTo delete and start over: \`/reactionroles delete\`` 
-                });
+            // Free tier = 1 panel per guild. Extra panels require premium.
+            try {
+                const existing = await interaction.client.database.get(
+                    'SELECT COUNT(*) AS n FROM reaction_role_panels WHERE guild_id = ?',
+                    [interaction.guild.id]
+                );
+                if ((existing?.n || 0) >= 1) {
+                    const plan = await interaction.client.getGuildPlan?.(interaction.guild.id);
+                    if (!plan || plan.plan === 'free' || !plan.is_active) {
+                        return await interaction.editReply({
+                            content: '🔒 The free plan allows **1 reaction role panel** per server. Upgrade to Premium for unlimited panels.\nDelete the existing panel with `/reactionroles delete` or upgrade at the dashboard.'
+                        });
+                    }
+                }
+            } catch (e) {
+                // Non-fatal — if the plan check fails, fall through and allow creation.
+                console.warn('[reactionrole] plan check failed:', e?.message);
             }
 
-            const panelId = `rr_${interaction.guild.id}`;
+            // Unique id per panel; no underscores so button customIds parse reliably.
+            const panelId = `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
             // Create panel in database
             await interaction.client.database.run(`
@@ -136,18 +216,18 @@ module.exports = {
                 .setColor(0x06FFA5)
                 .setDescription(`Successfully created a **${type === 'reaction' ? 'Reaction' : 'Button'}** panel in ${channel}!`)
                 .addFields(
-                    { name: '📝 Title', value: title, inline: true },
-                    { name: '🎯 Mode', value: mode === 'single' ? 'Single Role' : 'Multiple Roles', inline: true },
-                    { name: '\u200b', value: '\u200b', inline: false },
-                    { name: '📖 Next Steps', value: `**1.** Add roles with \`/reactionroles add role:@Role emoji:🎮\`\n**2.** Panel will auto-update in ${channel}\n**3.** That's it! Users can now get roles!`, inline: false }
+                    { name: 'Title', value: title, inline: true },
+                    { name: 'Mode', value: mode === 'single' ? 'Single Role' : 'Multiple Roles', inline: true },
+                    { name: 'Panel ID', value: `\`${panelId}\``, inline: true },
+                    { name: 'Next Steps', value: `**1.** Add roles with \`/reactionroles add role:@Role emoji:🎮\`\n**2.** If you have multiple panels, pass \`panel:${panelId}\` to target this one\n**3.** Use \`/reactionroles list\` to see all panels`, inline: false }
                 )
                 .setTimestamp();
 
             await interaction.editReply({ embeds: [embed] });
-            
+
             // Create initial empty panel message
             await this.updatePanelMessage(interaction.client, panelId);
-            
+
         } catch (error) {
             console.error('Error creating panel:', error);
             await interaction.editReply({ content: '❌ Failed to create panel.' });
@@ -158,19 +238,12 @@ module.exports = {
         try {
             const role = interaction.options.getRole('role');
             const emoji = interaction.options.getString('emoji');
+            const panelIdOpt = interaction.options.getString('panel');
             const roleDescription = interaction.options.getString('description') || role.name;
 
-            // Check if server has a panel
-            const panel = await interaction.client.database.get(
-                'SELECT * FROM reaction_role_panels WHERE guild_id = ?',
-                [interaction.guild.id]
-            );
-
-            if (!panel) {
-                return await interaction.reply({ 
-                    content: '❌ No reaction role panel found! Create one first with `/reactionroles setup`', 
-                    ephemeral: true 
-                });
+            const { panel, error } = await this.resolvePanel(interaction, panelIdOpt);
+            if (error) {
+                return await interaction.reply({ content: `❌ ${error}`, ephemeral: true });
             }
 
             // Security checks
@@ -178,7 +251,7 @@ module.exports = {
                 return await interaction.reply({ content: '❌ Cannot assign managed roles (bot roles, boosts, etc).', ephemeral: true });
             }
 
-            if (role.permissions.has(PermissionFlagsBits.Administrator) || 
+            if (role.permissions.has(PermissionFlagsBits.Administrator) ||
                 role.permissions.has(PermissionFlagsBits.ManageGuild) ||
                 role.permissions.has(PermissionFlagsBits.ManageRoles)) {
                 return await interaction.reply({ content: '⚠️ Cannot assign roles with dangerous permissions!', ephemeral: true });
@@ -186,12 +259,12 @@ module.exports = {
 
             const botMember = interaction.guild.members.me;
             const botHighestRole = botMember.roles.highest;
-            
+
             if (role.position >= botHighestRole.position) {
                 return await interaction.reply({ content: '❌ Cannot assign roles higher than or equal to my highest role!', ephemeral: true });
             }
 
-            // Check if role already exists
+            // Check if role already exists in this panel
             const existing = await interaction.client.database.get(
                 'SELECT * FROM reaction_role_mappings WHERE panel_id = ? AND role_id = ?',
                 [panel.panel_id, role.id]
@@ -201,7 +274,6 @@ module.exports = {
                 return await interaction.reply({ content: '❌ This role is already in the panel!', ephemeral: true });
             }
 
-            // Add role to panel
             await interaction.client.database.run(`
                 INSERT INTO reaction_role_mappings (
                     panel_id, role_id, emoji, description
@@ -211,7 +283,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setTitle('✅ Role Added')
                 .setColor(0x06FFA5)
-                .setDescription(`Successfully added ${role} to the reaction role panel!`)
+                .setDescription(`Successfully added ${role} to panel **${panel.title}** (\`${panel.panel_id}\`).`)
                 .addFields(
                     { name: 'Emoji/Label', value: emoji, inline: true },
                     { name: 'Description', value: roleDescription, inline: true }
@@ -221,9 +293,8 @@ module.exports = {
 
             await interaction.reply({ embeds: [embed], ephemeral: true });
 
-            // Update the panel message
             await this.updatePanelMessage(interaction.client, panel.panel_id);
-            
+
         } catch (error) {
             console.error('Error adding role:', error);
             await interaction.reply({ content: '❌ Failed to add role. Make sure the emoji is valid!', ephemeral: true });
@@ -233,18 +304,11 @@ module.exports = {
     async deleteRole(interaction) {
         try {
             const role = interaction.options.getRole('role');
+            const panelIdOpt = interaction.options.getString('panel');
 
-            // Get panel
-            const panel = await interaction.client.database.get(
-                'SELECT * FROM reaction_role_panels WHERE guild_id = ?',
-                [interaction.guild.id]
-            );
-
-            if (!panel) {
-                return await interaction.reply({ 
-                    content: '❌ No reaction role panel found in this server!', 
-                    ephemeral: true 
-                });
+            const { panel, error } = await this.resolvePanel(interaction, panelIdOpt);
+            if (error) {
+                return await interaction.reply({ content: `❌ ${error}`, ephemeral: true });
             }
 
             if (!role) {
@@ -262,9 +326,9 @@ module.exports = {
                 await interaction.client.database.run('DELETE FROM reaction_role_mappings WHERE panel_id = ?', [panel.panel_id]);
                 await interaction.client.database.run('DELETE FROM reaction_role_panels WHERE panel_id = ?', [panel.panel_id]);
 
-                return await interaction.reply({ 
-                    content: '✅ Deleted the entire reaction role panel and all its roles.', 
-                    ephemeral: true 
+                return await interaction.reply({
+                    content: `✅ Deleted panel **${panel.title}** (\`${panel.panel_id}\`) and all its roles.`,
+                    ephemeral: true
                 });
             }
 
@@ -278,14 +342,13 @@ module.exports = {
                 return await interaction.reply({ content: '❌ Role not found in the panel!', ephemeral: true });
             }
 
-            await interaction.reply({ 
-                content: `✅ Removed ${role} from the panel. The panel has been updated automatically!`, 
-                ephemeral: true 
+            await interaction.reply({
+                content: `✅ Removed ${role} from panel \`${panel.panel_id}\`. The panel has been updated automatically!`,
+                ephemeral: true
             });
 
-            // Update the panel message
             await this.updatePanelMessage(interaction.client, panel.panel_id);
-            
+
         } catch (error) {
             console.error('Error deleting role:', error);
             await interaction.reply({ content: '❌ Failed to delete role/panel.', ephemeral: true });

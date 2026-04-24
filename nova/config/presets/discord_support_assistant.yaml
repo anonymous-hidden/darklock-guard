@@ -1,0 +1,15 @@
+name: discord_support_assistant
+description: Draft a Discord response to a support question; posting requires approval.
+modes: [agent]
+risk: medium
+approval_required: true
+tools: [retrieve_memory_notes]
+connectors: [discord]
+steps:
+  - agent: researcher
+    task: "Find FAQ/memory entries relevant to: {input}."
+  - agent: summarizer
+    task: "Draft a concise, friendly Discord reply with code fences where needed."
+validation:
+  require_final_summary: true
+retries: 1

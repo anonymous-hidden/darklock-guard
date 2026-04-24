@@ -1,0 +1,15 @@
+name: email_draft_assistant
+description: Compose an email draft. Never sends without explicit approval.
+modes: [agent]
+risk: medium
+approval_required: true
+tools: [retrieve_memory_notes]
+connectors: [email, contacts]
+steps:
+  - agent: researcher
+    task: "Pull relevant context for recipient and topic: {input}."
+  - agent: summarizer
+    task: "Produce a subject line and 3 tone variants (concise / warm / formal)."
+validation:
+  require_final_summary: true
+retries: 1

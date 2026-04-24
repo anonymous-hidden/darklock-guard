@@ -1,0 +1,15 @@
+name: connector_health_check
+description: Ping each enabled connector, report configured/unconfigured and latency.
+modes: [agent]
+risk: low
+approval_required: false
+tools: [log_event]
+connectors: "*"
+steps:
+  - agent: connector_router
+    task: "Call health() on every enabled connector and collect structured results."
+  - agent: summarizer
+    task: "Render a status table; call out failures and missing creds."
+validation:
+  require_final_summary: true
+retries: 0

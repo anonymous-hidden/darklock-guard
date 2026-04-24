@@ -481,6 +481,13 @@
                                 <button class="filter-btn" data-status="escalated" onclick="filterTickets('escalated')">Escalated</button>
                                 <button class="filter-btn" data-status="closed" onclick="filterTickets('closed')">Closed</button>
                             </div>
+                            <div style="margin-top: 8px; display: flex; gap: 8px;">
+                                <input type="search" id="ticketSearch" placeholder="Search by subject, user, or description..." oninput="renderTickets()"
+                                    style="flex: 1; padding: 8px 12px; background: var(--ds-surface-2); color: var(--ds-text-primary); border: 1px solid var(--ds-border); border-radius: 6px; font-size: 13px;">
+                                <button onclick="loadTickets()" title="Refresh tickets" style="padding: 8px 12px; background: var(--ds-surface-2); color: var(--ds-text-primary); border: 1px solid var(--ds-border); border-radius: 6px; cursor: pointer;">
+                                    <i class="fas fa-sync"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="tickets-list-content" id="ticketsListContent">
                             <div class="loading">
@@ -529,6 +536,33 @@
                 if (e.key === 'selectedGuildId' && e.newValue !== e.oldValue) {
                     loadTickets();
                     loadServerInfo();
+                }
+            });
+
+            // Auto-refresh every 30s so new tickets show without a manual reload.
+            // Pause refresh while a ticket is open to avoid disturbing the reader.
+            setInterval(() => {
+                if (!currentTicketId && document.visibilityState === 'visible') {
+                    loadTickets();
+                    if (userRole === 'administration') loadAnalytics();
+                }
+            }, 30000);
+
+            // Keyboard shortcuts: Esc clears ticket detail, "/" focuses search
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && currentTicketId) {
+                    currentTicketId = null;
+                    renderTickets();
+                    const panel = document.getElementById('ticketDetailPanel');
+                    if (panel) panel.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-title">Select a ticket</div>
+                            <div class="empty-description">Click on a ticket from the list to view details and respond.</div>
+                        </div>`;
+                }
+                if (e.key === '/' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    document.getElementById('ticketSearch')?.focus();
                 }
             });
         });
@@ -725,7 +759,7 @@
         // Render tickets list
         function renderTickets() {
             const container = document.getElementById('ticketsListContent');
-            
+
             let filtered = allTickets;
             if (currentFilter !== 'all') {
                 if (currentFilter === 'escalated') {
@@ -733,6 +767,19 @@
                 } else {
                     filtered = allTickets.filter(t => t.status === currentFilter);
                 }
+            }
+
+            // Apply free-text search across subject/user/description
+            const q = (document.getElementById('ticketSearch')?.value || '').trim().toLowerCase();
+            if (q) {
+                filtered = filtered.filter(t => {
+                    const haystack = [
+                        t.title, t.subject, t.category,
+                        t.userName, t.user,
+                        t.description
+                    ].filter(Boolean).join(' ').toLowerCase();
+                    return haystack.includes(q);
+                });
             }
 
             if (filtered.length === 0) {

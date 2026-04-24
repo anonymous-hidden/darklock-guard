@@ -1,11 +1,19 @@
 module.exports = async function handleReactionRoleButton(interaction) {
     if (!interaction.isButton() || !interaction.customId.startsWith('rr_')) return;
-    
+
     try {
         await interaction.deferReply({ ephemeral: true });
 
-        const [, panelId, roleId] = interaction.customId.split('_');
-        
+        // customId format: rr_<panelId>_<roleId>
+        // roleId is always a numeric Discord snowflake, so split it off from the end.
+        const body = interaction.customId.slice(3); // strip 'rr_'
+        const lastSep = body.lastIndexOf('_');
+        if (lastSep === -1) {
+            return await interaction.editReply({ content: '❌ Invalid button.' });
+        }
+        const panelId = body.slice(0, lastSep);
+        const roleId = body.slice(lastSep + 1);
+
         // Get panel
         const panel = await interaction.client.database.get(
             'SELECT * FROM reaction_role_panels WHERE panel_id = ? AND guild_id = ?',

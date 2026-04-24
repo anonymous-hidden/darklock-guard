@@ -1,0 +1,17 @@
+name: local_file_audit
+description: Scan a folder for sensitive files, large files, and stale artifacts.
+modes: [normal, agent]
+risk: low
+approval_required: false
+tools: [list_dir, search_files, read_file]
+connectors: [local_files]
+steps:
+  - agent: researcher
+    task: "Enumerate target paths from: {input}. Flag .env, keys, certs, large files."
+  - agent: security
+    task: "Rank findings by sensitivity and recommended action."
+  - agent: summarizer
+    task: "Report with counts, paths, and next steps."
+validation:
+  require_final_summary: true
+retries: 0

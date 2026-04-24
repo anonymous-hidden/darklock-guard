@@ -1,0 +1,15 @@
+name: system_status_check
+description: Run safe diagnostics (uptime, disk, mem, load, running services).
+modes: [agent]
+risk: low
+approval_required: false
+tools: [run_shell_command, log_event]
+connectors: [shell, server_monitor]
+steps:
+  - agent: execution
+    task: "Run: uptime; free -h; df -h; uname -a; ps aux --sort=-%mem | head -15."
+  - agent: summarizer
+    task: "Summarize system health and flag anything unusual."
+validation:
+  require_final_summary: true
+retries: 0

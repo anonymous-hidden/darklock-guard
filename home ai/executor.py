@@ -59,6 +59,7 @@ class CommandExecutor:
             "restart_service": self._handle_restart_service,
             "send_notification": self._handle_send_notification,
             "smart_home_control": self._handle_smart_home,
+            "get_weather": self._handle_get_weather,
         }
         # Note: ssh_command is handled by ssh_module.py, not here
 
@@ -305,3 +306,48 @@ class CommandExecutor:
             "action": action,
             "status": "executed (placeholder)",
         }
+
+    async def _handle_get_weather(self, params: dict) -> dict:
+        """Fetch weather from the National Weather Service API.
+
+        params:
+            lat (float): Latitude — required unless `state_alerts` is used.
+            lon (float): Longitude — required unless `state_alerts` is used.
+            type (str): "forecast" | "hourly" | "alerts" (default: "forecast")
+            hours (int): Number of hours for hourly forecast (default: 12, max: 24)
+            state (str): Two-letter US state code, required for type="alerts"
+        """
+        from weather import NWSClient, NWSWeatherError
+
+        weather_type = params.get("type", "forecast")
+
+        if weather_type == "alerts":
+            state = params.get("state", "").strip().upper()
+            if not state or len(state) != 2 or not state.isalpha():
+                return {"error": "state must be a two-letter US state code (e.g. 'VA')"}
+            try:
+                async with NWSClient() as client:
+                    return await client.get_alerts(state)
+            except NWSWeatherError as e:
+                return {"error": str(e)}
+
+        # lat/lon required for forecast and hourly
+        try:
+            lat = float(params["lat"])
+            lon = float(params["lon"])
+        except (KeyError, ValueError, TypeError):
+            return {"error": "lat and lon are required numeric parameters"}
+
+        # Rough bounds check — NWS only covers the US and territories
+        if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
+            return {"error": "lat/lon out of valid range"}
+
+        try:
+            async with NWSClient() as client:
+                if weather_type == "hourly":
+                    hours = min(int(params.get("hours", 12)), 24)
+                    return await client.get_hourly_forecast(lat, lon, hours=hours)
+                else:
+                    return await client.get_forecast(lat, lon)
+        except NWSWeatherError as e:
+            return {"error": str(e)}

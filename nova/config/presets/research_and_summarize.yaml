@@ -1,0 +1,15 @@
+name: research_and_summarize
+description: Research a topic across local notes + web and produce a concise, cited summary.
+modes: [normal, agent]
+risk: low
+approval_required: false
+tools: [retrieve_memory_notes, read_file, search_files, log_event]
+connectors: [local_files, web_search]
+steps:
+  - agent: researcher
+    task: "Gather relevant info for: {input}. Use local notes and up to 5 web results."
+  - agent: summarizer
+    task: "Summarize findings with inline source tags and a 5-bullet TL;DR."
+validation:
+  require_final_summary: true
+retries: 1

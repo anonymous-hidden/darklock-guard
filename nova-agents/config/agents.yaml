@@ -1,0 +1,64 @@
+# nova-agents: agents.yaml
+# Per-agent configuration. model: null means "use ollama.default_model".
+# tools: names must exist in the tool registry (see config/tools.yaml).
+
+supervisor:
+  model: null
+  temperature: 0.2
+  prompt_file: "supervisor.txt"
+  # Supervisor does not call tools directly; it delegates.
+  tools: []
+
+planner:
+  model: null
+  temperature: 0.1
+  prompt_file: "planner.txt"
+  tools: []
+
+researcher:
+  model: null
+  temperature: 0.3
+  prompt_file: "researcher.txt"
+  tools:
+    - "read_file"
+    - "list_dir"
+    - "search_files"
+    - "retrieve_memory_notes"
+    - "recall_ai_terminal_memory"
+
+coder:
+  model: null
+  temperature: 0.1
+  prompt_file: "coder.txt"
+  tools:
+    - "read_file"
+    - "write_file"
+    - "list_dir"
+    - "search_files"
+
+security:
+  model: null
+  temperature: 0.0
+  prompt_file: "security.txt"
+  tools:
+    - "read_file"
+    - "search_files"
+
+memory:
+  model: null
+  temperature: 0.1
+  prompt_file: "memory.txt"
+  tools:
+    - "append_memory_note"
+    - "retrieve_memory_notes"
+    - "recall_ai_terminal_memory"
+
+summarizer:
+  model: null
+  temperature: 0.2
+  prompt_file: "summarizer.txt"
+  tools: []
+
+# Shell/automation is intentionally a *tool* available to agents that
+# earn it, not a free-standing agent. To grant it, add "run_shell_command"
+# to an agent's tools list and review safety settings in config.yaml.

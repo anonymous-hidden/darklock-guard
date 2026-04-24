@@ -1,0 +1,17 @@
+name: shell_diagnostics
+description: Targeted shell diagnostics for a specific issue, with approvals as needed.
+modes: [agent]
+risk: medium
+approval_required: true
+tools: [run_shell_command, log_event]
+connectors: [shell]
+steps:
+  - agent: planner
+    task: "Propose up to 6 diagnostic commands for: {input}. Classify each."
+  - agent: execution
+    task: "Execute approved commands, capture output."
+  - agent: summarizer
+    task: "Diagnose root cause and propose fixes."
+validation:
+  require_final_summary: true
+retries: 1

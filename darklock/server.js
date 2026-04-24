@@ -107,7 +107,7 @@ class DarklockPlatform {
                     styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
                     fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
                     imgSrc: ["'self'", "data:", "https:"],
-                    connectSrc: ["'self'"],
+                    connectSrc: ["'self'", "https://ids.darklock.net", "wss://rly.darklock.net", "https://rly.darklock.net", "https://static.cloudflareinsights.com", "https://admin.darklock.net"],
                     frameSrc: ["'none'"],
                     objectSrc: ["'none'"],
                     baseUri: ["'self'"],
@@ -280,7 +280,16 @@ class DarklockPlatform {
                 !req.path.startsWith('/js/') &&
                 !req.path.startsWith('/platform/notes/assets/') &&
                 !req.path.startsWith('/platform/notes/manifest') &&
-                !req.path.startsWith('/platform/notes/favicon')) {
+                !req.path.startsWith('/platform/notes/favicon') &&
+                !req.path.startsWith('/app/secure-channel/assets/') &&
+                !req.path.startsWith('/app/secure-channel/icons/') &&
+                !req.path.endsWith('.js') &&
+                !req.path.endsWith('.css') &&
+                !req.path.endsWith('.png') &&
+                !req.path.endsWith('.json') &&
+                !req.path.endsWith('.jpg') &&
+                !req.path.endsWith('.webp') &&
+                !req.path.endsWith('.wasm')) {
                 res.setHeader('Content-Type', 'text/html; charset=utf-8');
             }
             next();
@@ -537,10 +546,11 @@ class DarklockPlatform {
         this.app.use('/platform/downloads/files', express.static(path.join(__dirname, 'downloads')));
         
         // Secure Channel PWA (mobile web app)
-        this.app.use('/app/secure-channel', express.static(path.join(__dirname, 'pwa/secure-channel')));
+        const scPwaDist = path.join(__dirname, '../secure-channel/apps/dl-secure-channel-mobile/dist-pwa');
+        this.app.use('/app/secure-channel', express.static(scPwaDist));
         // SPA fallback — serve index.html for all sub-routes
         this.app.get('/app/secure-channel/*', (req, res) => {
-            res.sendFile(path.join(__dirname, 'pwa/secure-channel/index.html'));
+            res.sendFile(path.join(scPwaDist, 'index.html'));
         });
         
         // Avatars folder for user avatars
@@ -560,9 +570,8 @@ class DarklockPlatform {
                 res.redirect('/login');
             }
         });
-        this.app.get('/signin', (req, res) => {
-            res.redirect(302, 'https://admin.darklock.net/signin');
-        });
+        // /signin is handled by admin-auth routes (mounted below)
+        // No redirect needed here — the admin-auth router serves signin.html directly
 
         // Login page — serves the bot dashboard login UI
         this.app.get('/login', (req, res) => {
@@ -789,6 +798,10 @@ class DarklockPlatform {
                     path.join(electronRelease, `DarklockSecureChannel-${version}-win-x64.exe`),
                     path.join(__dirname, 'downloads/DarklockSecureChannel-1.0.0-win-x64.exe'),
                     path.join(electronRelease, 'DarklockSecureChannel-1.0.0-win-x64.exe')
+                ],
+                apk: [
+                    path.join(__dirname, `downloads/DarklockSecureChannel-${version}-android.apk`),
+                    path.join(__dirname, 'downloads/DarklockSecureChannel-1.0.0-android.apk')
                 ]
             };
 
@@ -799,6 +812,8 @@ class DarklockPlatform {
                 searchFormats = ['appimage'];
             } else if (format === 'exe' || format === 'windows') {
                 searchFormats = ['exe'];
+            } else if (format === 'apk' || format === 'android') {
+                searchFormats = ['apk'];
             } else {
                 searchFormats = ['deb'];
             }
@@ -2564,10 +2579,19 @@ class DarklockPlatform {
                     path.join(electronRelease, `DarklockSecureChannel-${version}-win-x64.exe`),
                     path.join(__dirname, 'downloads/DarklockSecureChannel-1.0.0-win-x64.exe'),
                     path.join(electronRelease, 'DarklockSecureChannel-1.0.0-win-x64.exe')
+                ],
+                apk: [
+                    path.join(__dirname, `downloads/DarklockSecureChannel-${version}-android.apk`),
+                    path.join(__dirname, 'downloads/DarklockSecureChannel-1.0.0-android.apk')
                 ]
             };
 
-            const fmtKey = format === 'appimage' ? 'appimage' : format === 'exe' || format === 'windows' ? 'exe' : 'deb';
+            let fmtKey;
+            if (format === 'apk' || format === 'android') fmtKey = 'apk';
+            else if (format === 'appimage') fmtKey = 'appimage';
+            else if (format === 'exe' || format === 'windows') fmtKey = 'exe';
+            else fmtKey = 'deb';
+
             for (const filePath of (fileLocations[fmtKey] || [])) {
                 if (fs.existsSync(filePath)) {
                     return res.download(filePath, path.basename(filePath));

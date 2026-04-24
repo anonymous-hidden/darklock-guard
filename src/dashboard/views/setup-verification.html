@@ -185,8 +185,10 @@
                         <label for="verificationType">Verification Type</label>
                         <select id="verificationType" class="form-control">
                             <option value="button">Button Verification</option>
+                            <option value="reaction">Emoji Challenge</option>
+                            <option value="web">Web Portal</option>
+                            <option value="auto">Auto (Risk-based)</option>
                             <option value="captcha">CAPTCHA (Coming Soon)</option>
-                            <option value="questions">Security Questions (Coming Soon)</option>
                         </select>
                         <small class="form-text">Choose how members verify themselves</small>
                     </div>
@@ -376,7 +378,7 @@
                     const enabled = data.verification_enabled || false;
 
                     document.getElementById('verificationEnabled').checked = enabled;
-                    document.getElementById('verificationType').value = data.verification_type || 'button';
+                    document.getElementById('verificationType').value = data.verification_method || data.verification_type || 'button';
                     document.getElementById('verifiedRole').value = data.verified_role_id || '';
                     document.getElementById('unverifiedRole').value = data.unverified_role_id || '';
                     document.getElementById('verificationChannel').value = data.verification_channel_id || '';
@@ -431,6 +433,7 @@
             try {
                 const settings = {
                     verification_enabled: document.getElementById('verificationEnabled').checked ? 1 : 0,
+                    verification_method: document.getElementById('verificationType').value,
                     verification_type: document.getElementById('verificationType').value,
                     verified_role_id: document.getElementById('verifiedRole').value || null,
                     unverified_role_id: document.getElementById('unverifiedRole').value || null,

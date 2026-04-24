@@ -16,6 +16,7 @@ module.exports = {
                 { name: 'Button Click', value: 'button' },
                 { name: 'CAPTCHA Code', value: 'captcha' },
                 { name: 'Emoji Challenge', value: 'reaction' },
+                { name: 'Web Portal', value: 'web' },
                 { name: 'Auto (Risk-based)', value: 'auto' }
             ).setRequired(true))
         ),

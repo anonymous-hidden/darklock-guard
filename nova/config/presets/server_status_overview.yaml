@@ -1,0 +1,15 @@
+name: server_status_overview
+description: Query server_monitor endpoints and summarize uptime / latency / errors.
+modes: [agent]
+risk: low
+approval_required: false
+tools: [log_event]
+connectors: [server_monitor]
+steps:
+  - agent: connector_router
+    task: "Hit each configured endpoint and collect status + latency."
+  - agent: summarizer
+    task: "Traffic-light table + top 3 issues."
+validation:
+  require_final_summary: true
+retries: 1

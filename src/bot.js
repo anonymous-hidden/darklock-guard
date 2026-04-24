@@ -460,13 +460,25 @@ class SecurityBot {
                 }
             };
 
-            // Append to per-guild console buffer and broadcast
+            // Append to per-guild console buffer, persist to DB, and broadcast
             this.appendConsoleLog = (guildId, entry) => {
                 if (!guildId) return;
                 if (!this.consoleBuffer.has(guildId)) this.consoleBuffer.set(guildId, []);
                 const buf = this.consoleBuffer.get(guildId);
                 buf.push(entry);
                 if (buf.length > 5000) buf.shift();
+
+                // Persist so console history survives restarts and is visible cross-device.
+                try {
+                    if (this.database && typeof this.database.run === 'function') {
+                        const payload = JSON.stringify(entry);
+                        this.database.run(
+                            'INSERT INTO console_logs (guild_id, entry, created_at) VALUES (?, ?, ?)',
+                            [guildId, payload, entry.timestamp || Date.now()]
+                        ).catch(() => {});
+                    }
+                } catch (_) {}
+
                 if (this.dashboard && typeof this.dashboard.broadcastToGuild === 'function') {
                     this.dashboard.broadcastToGuild(guildId, { type: 'botConsole', ...entry });
                 }
@@ -1204,6 +1216,13 @@ class SecurityBot {
                             }
                             return true;
                         }
+                        // Handle security scan decision buttons (scanaction:<action>:<decisionId>)
+                        else if (interaction.customId.startsWith('scanaction:') ||
+                                 interaction.customId.startsWith('scanreview:')) {
+                            const { getActionExecutor } = require('./security');
+                            await getActionExecutor(this).handleInteraction(interaction);
+                            return true;
+                        }
                         // NOTE: verify_allow_ and verify_deny_ already handled above - removed duplicate
                         // Handle settings buttons
                         else if (interaction.customId.startsWith('toggle_') || 
@@ -1638,84 +1657,75 @@ class SecurityBot {
         // Bot added to new server
         this.client.on('guildCreate', async (guild) => {
             try {
-                this.logger.info(`✅ Bot added to new server: ${guild.name} (${guild.id})`);
-                
-                // Initialize guild configuration
+                this.logger.info(`Bot added to new server: ${guild.name} (${guild.id})`);
+
                 if (this.database) {
                     await this.database.getGuildConfig(guild.id);
                 }
-                
-                // Send welcome DM to server owner
+
+                let owner = null;
                 try {
-                    const owner = await guild.fetchOwner();
-
-                    const welcomeDM = new EmbedBuilder()
-                        .setTitle('👋 Welcome to DarkLock!')
-                        .setDescription(
-                            `DarkLock is your all-in-one Discord security bot — protecting your server from raids, nukes, phishing, spam, and more.\n\n` +
-                            `🎯 I'm currently performing an initial security scan of your server to check for existing threats. This will complete in a few minutes.`
-                        )
-                        .setColor(0x6366f1)
-                        .setThumbnail(this.client.user.displayAvatarURL())
-                        .setTimestamp();
-
-                    await owner.send({ embeds: [welcomeDM] });
-
-                    this.logger.info(`📧 Sent welcome DM to ${owner.user.username}`);
-                } catch (dmError) {
-                    this.logger.error('Could not send DM to server owner:', dmError);
-                    // Fallback: send basic message in server
-                }
-                
-                // Send welcome message in server channel
-                const welcomeEmbed = new EmbedBuilder()
-                    .setTitle('🛡️ DarkLock Security Bot is now online!')
-                    .setDescription(`
-Thank you for adding me to **${guild.name}**!
-
-I'm performing an initial security scan to check for threats. **This scan is report-only** — no messages will be auto-deleted.
-
-**Server owner:** Check your DMs for a complete feature guide!
-**Quick start:** Use \`/wizard\` to configure the bot
-**Server setup:** Use \`/serversetup\` to create a complete server structure
-                    `)
-                    .setColor('#00d4ff')
-                    .addFields(
-                        { name: '🔧 Setup', value: '`/wizard` or `/setup`', inline: true },
-                        { name: '❓ Help', value: '`/help`', inline: true },
-                        { name: '🌐 Dashboard', value: process.env.DASHBOARD_URL || 'See DM', inline: true }
-                    )
-                    .setTimestamp();
-
-                const firstChannel = guild.channels.cache.find(c => 
-                    c.type === 0 && 
-                    c.permissionsFor(guild.members.me).has(PermissionFlagsBits.SendMessages)
-                );
-
-                if (firstChannel) {
-                    await firstChannel.send({ embeds: [welcomeEmbed] });
+                    owner = await guild.fetchOwner();
+                } catch (err) {
+                    this.logger.warn(`Could not fetch owner of ${guild.name}: ${err.message}`);
                 }
 
-                // Start security scan in background using the safe pipeline
-                // (ScanEngine → DecisionLayer → admin confirmation required)
+                // Welcome DM to owner only. No public channel post — that was causing
+                // users to see unsolicited security messages in the first text channel.
+                if (owner) {
+                    try {
+                        const dashboardURL = process.env.DASHBOARD_URL || 'https://darklock.xyz/dashboard';
+                        const welcomeDM = new EmbedBuilder()
+                            .setTitle('Welcome to DarkLock')
+                            .setDescription(
+                                `Thanks for adding DarkLock to **${guild.name}**.\n\n` +
+                                `Quick start:\n` +
+                                `• Run \`/wizard\` for guided setup\n` +
+                                `• Run \`/help\` for the command list\n` +
+                                `• Dashboard: ${dashboardURL}\n\n` +
+                                `A silent background scan is running. I'll DM you the summary when it finishes.`
+                            )
+                            .setColor(0x6366f1)
+                            .setThumbnail(this.client.user.displayAvatarURL())
+                            .setTimestamp();
+
+                        await owner.send({ embeds: [welcomeDM] });
+                    } catch (dmError) {
+                        this.logger.warn(`Could not DM owner of ${guild.name}: ${dmError.message}`);
+                    }
+                }
+
+                // Initial scan results go to the owner's DM, not a public channel.
                 setTimeout(async () => {
                     try {
-                        const { createScanEngine, getDecisionLayer } = require('./security');
-                        const scanEngine    = createScanEngine(this);
-                        const decisionLayer = getDecisionLayer();
-
+                        const { createScanEngine } = require('./security');
+                        const scanEngine = createScanEngine(this);
                         const report = await scanEngine.scan(guild, { maxMessagesPerChannel: 100 });
-                        const channel = guild.channels.cache.find(c =>
-                            c.type === 0 &&
-                            c.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.SendMessages)
-                        );
-                        if (channel) await decisionLayer.present(guild, report, channel);
-                        this.logger.info(`✅ Initial security scan complete for ${guild.name}: ${report.flaggedItems.length} flagged`);
+                        const flagged = report.flaggedItems?.length || 0;
+
+                        this.logger.info(`Initial security scan complete for ${guild.name}: ${flagged} flagged`);
+
+                        if (!owner) return;
+
+                        const summary = new EmbedBuilder()
+                            .setTitle('Initial Security Scan Complete')
+                            .setDescription(
+                                flagged === 0
+                                    ? `No threats found in **${guild.name}**.`
+                                    : `Found **${flagged}** item${flagged === 1 ? '' : 's'} to review in **${guild.name}**.\n\n` +
+                                      `Use \`/security scan\` or open the dashboard to act on flagged content. ` +
+                                      `No messages were auto-deleted.`
+                            )
+                            .setColor(flagged === 0 ? 0x51cf66 : 0xffd43b)
+                            .setFooter({ text: 'DarkLock • Report Only mode' })
+                            .setTimestamp();
+
+                        await owner.send({ embeds: [summary] }).catch(() => {});
                     } catch (error) {
                         this.logger.error('Error during initial security scan:', error);
                     }
-                }, 5000); // Wait 5 seconds before starting scan
-                
+                }, 5000);
+
             } catch (error) {
                 this.logger.error('Error in guildCreate handler:', error);
             }

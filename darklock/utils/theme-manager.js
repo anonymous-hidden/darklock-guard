@@ -758,14 +758,7 @@ function isDateInRange(date, start, end) {
 }
 
 function getCurrentHolidayTheme() {
-    const now = new Date();
-    
-    for (const [holiday, range] of Object.entries(HOLIDAY_RANGES)) {
-        if (isDateInRange(now, range.start, range.end)) {
-            return holiday;
-        }
-    }
-    
+    // Holiday auto-switching is disabled.
     return null;
 }
 
@@ -781,25 +774,22 @@ async function getActiveTheme() {
         `);
 
         if (!settings) {
-            return { name: 'darklock', theme: THEMES.darklock, autoHoliday: true };
+            return { name: 'darklock', theme: THEMES.darklock, autoHoliday: false };
         }
 
         let themeName = settings.theme_name || 'darklock';
-        const autoHoliday = settings.auto_holiday_themes !== 0;
+        const theme = THEMES[themeName] || THEMES.darklock;
 
-        // Check for holiday theme override
-        if (autoHoliday) {
-            const holidayTheme = getCurrentHolidayTheme();
-            if (holidayTheme) {
-                themeName = holidayTheme;
-            }
+        // Ignore any previously-selected holiday themes.
+        if (theme.category === 'holiday') {
+            themeName = 'darklock';
         }
 
         return {
             name: themeName,
             theme: THEMES[themeName] || THEMES.darklock,
-            autoHoliday: autoHoliday,
-            currentHoliday: getCurrentHolidayTheme()
+            autoHoliday: false,
+            currentHoliday: null
         };
     } catch (err) {
         console.error('[ThemeManager] Error getting active theme:', err);
@@ -812,6 +802,10 @@ async function setTheme(themeName) {
         throw new Error('Invalid theme name');
     }
 
+    // Refuse to set a holiday theme.
+    if (THEMES[themeName].category === 'holiday') {
+        throw new Error('Holiday themes are disabled');
+    }
     try {
         await db.run(`
             INSERT OR REPLACE INTO theme_settings (id, theme_name, updated_at)
@@ -825,13 +819,13 @@ async function setTheme(themeName) {
     }
 }
 
-async function setAutoHolidayThemes(enabled) {
+async function setAutoHolidayThemes(_enabled) {
+    // Auto holiday themes are permanently disabled.
     try {
         await db.run(`
             INSERT OR REPLACE INTO theme_settings (id, auto_holiday_themes, updated_at)
-            VALUES (1, ?, datetime('now'))
-        `, [enabled ? 1 : 0]);
-
+            VALUES (1, 0, datetime('now'))
+        `);
         return true;
     } catch (err) {
         console.error('[ThemeManager] Error setting auto holiday themes:', err);
@@ -840,20 +834,20 @@ async function setAutoHolidayThemes(enabled) {
 }
 
 function getAllThemes() {
-    return Object.entries(THEMES).map(([key, theme]) => {
-        const holidayRange = theme.holiday ? HOLIDAY_RANGES[theme.holiday] : null;
-        return {
+    // Holiday themes are hidden from the picker.
+    return Object.entries(THEMES)
+        .filter(([, theme]) => (theme.category || 'standard') !== 'holiday')
+        .map(([key, theme]) => ({
             id: key,
             name: theme.name,
             description: theme.description,
             category: theme.category || 'standard',
-            holiday: theme.holiday || null,
-            emoji: theme.emoji || null,
-            holidayDateRange: holidayRange ? holidayRange.description : null,
+            holiday: null,
+            emoji: null,
+            holidayDateRange: null,
             preview: theme.colors['--accent-primary'],
             previewSecondary: theme.colors['--accent-secondary']
-        };
-    });
+        }));
 }
 
 function getHolidayRanges() {

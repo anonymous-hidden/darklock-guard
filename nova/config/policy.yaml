@@ -1,0 +1,134 @@
+# Access policy — enforced in code, not just in prompts.
+
+fs:
+  allowed_roots:
+    - "~"
+    - "."
+  denied_patterns:
+    - "**/.env"
+    - "**/.env.*"
+    - "**/id_rsa*"
+    - "**/*.pem"
+    - "**/*.key"
+    - "/etc/shadow"
+    - "/etc/sudoers"
+
+shell:
+  # Commands auto-allowed in AGENT mode; still denied by default in NORMAL mode.
+  safe_allowlist:
+    - ls
+    - pwd
+    - cat
+    - head
+    - tail
+    - grep
+    - find
+    - wc
+    - stat
+    - file
+    - ps
+    - df
+    - free
+    - uname
+    - whoami
+    - date
+    - uptime
+    - git status
+    - git log
+    - git diff
+    - git branch
+    - docker ps
+    - systemctl status
+  # Elevated — must ask y/N even in AGENT mode.
+  elevated_patterns:
+    - "^git (add|commit|checkout|merge|rebase|stash|pull|fetch)\\b"
+    - "^pip (install|uninstall)\\b"
+    - "^pip3 (install|uninstall)\\b"
+    - "^npm (install|uninstall|run|ci)\\b"
+    - "^pnpm\\b"
+    - "^yarn\\b"
+    - "^cargo (build|install|run)\\b"
+    - "^docker (compose |)(up|down|build|run|stop|start|restart)\\b"
+    - "^systemctl (start|stop|restart|reload|enable|disable)\\b"
+    - "^service \\w+ (start|stop|restart)\\b"
+    - "^chmod\\b"
+    - "^chown\\b"
+    - "^ln\\b"
+    - "^mv\\b"
+    - "^cp\\b"
+    - "^touch\\b"
+    - "^tee\\b"
+    - "^echo .* > "
+    - "^cat .* > "
+  # High-impact / destructive — confirmation MANDATORY, dry-run preferred.
+  destructive_patterns:
+    - "\\brm\\b"
+    - "\\brmdir\\b"
+    - "\\bshred\\b"
+    - "\\bdd\\b"
+    - "\\bmkfs\\b"
+    - "\\bfdisk\\b"
+    - "\\bparted\\b"
+    - "^sudo\\b"
+    - "^apt(-get)? (install|remove|purge|autoremove)\\b"
+    - "^yum\\b"
+    - "^dnf\\b"
+    - "^pacman\\b"
+    - "^git push .*--force"
+    - "^git push -f"
+    - "^git reset --hard"
+    - "^git clean -fd"
+    - "^:\\(\\)\\{"        # fork bomb
+    - ">\\s*/dev/sd"
+    - ">\\s*/dev/nvme"
+    - "^kill -9 1\\b"
+    - "^reboot\\b"
+    - "^shutdown\\b"
+    - "^halt\\b"
+    - "^poweroff\\b"
+  hard_deny_patterns:                # never run, even with approval
+    - "^:\\(\\)\\{ :\\|:& \\};:"
+    - "rm -rf /(\\s|$)"
+    - "rm -rf --no-preserve-root"
+
+# Per-mode capability matrix.
+modes:
+  normal:
+    tools_allowed:
+      - read_file
+      - list_dir
+      - search_files
+      - retrieve_memory_notes
+      - append_memory_note
+      - log_event
+      - parse_json
+      - validate_output
+      - inspect_repo
+    connectors_allowed:
+      - local_files
+      - web_search       # read-only
+    shell_allowed: false
+    shell_categories_auto: []        # nothing runs automatically
+    presets_allowed:
+      - research_and_summarize
+      - local_file_audit
+      - project_context_scan
+      - memory_refresh
+      - repo_overview
+      - multi_source_summary
+    approval_required_for:
+      - elevated
+      - destructive
+      - external_write
+
+  agent:
+    tools_allowed: "*"
+    connectors_allowed: "*"
+    shell_allowed: true
+    shell_categories_auto:
+      - safe
+    presets_allowed: "*"
+    approval_required_for:
+      - elevated
+      - destructive
+      - external_write

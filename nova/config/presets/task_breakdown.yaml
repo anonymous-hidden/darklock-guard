@@ -1,0 +1,15 @@
+name: task_breakdown
+description: Break a fuzzy goal into an actionable plan with owners and rough effort.
+modes: [normal, agent]
+risk: low
+approval_required: false
+tools: []
+connectors: []
+steps:
+  - agent: planner
+    task: "Turn goal into ordered, atomic tasks with effort (S/M/L) and deps."
+  - agent: summarizer
+    task: "Render as a checklist with a critical-path note."
+validation:
+  require_final_summary: true
+retries: 1

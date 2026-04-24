@@ -1,0 +1,583 @@
+#!/usr/bin/env python3
+"""
+DarkLock AI Terminal — Clean chat interface for local Ollama models.
+
+Usage:
+    python3 ai-terminal.py              # Start with default model (qwen2.5:32b)
+    python3 ai-terminal.py llama3.1:8b  # Start with specific model
+"""
+
+import sys
+import os
+import re
+import json
+import time
+import signal
+import datetime
+import subprocess
+import webbrowser
+import requests
+import shutil
+from typing import Optional
+
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.text import Text
+from rich.rule import Rule
+from rich.table import Table
+from rich.theme import Theme
+from rich.columns import Columns
+from rich.padding import Padding
+
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.keys import Keys
+from prompt_toolkit.styles import Style as PTStyle
+
+# ─── Config ───────────────────────────────────────────────────────────────────
+
+OLLAMA_URL = "http://localhost:11434"
+HISTORY_FILE = os.path.expanduser("~/.ai_terminal_history")
+SAVE_DIR = os.path.expanduser("~/ai-conversations")
+DEFAULT_MODEL = "qwen2.5:32b"
+DEFAULT_TEMP = 0.7
+
+# ─── Theme ────────────────────────────────────────────────────────────────────
+
+theme = Theme({
+    "info": "bright_cyan",
+    "warning": "yellow",
+    "error": "red",
+    "success": "green",
+    "muted": "bright_black",
+    "accent": "#a78bfa",
+    "thinking": "bright_black italic",
+    "bar": "bright_black",
+})
+
+REASONING_SYSTEM = (
+    "You must structure EVERY response using this exact format:\n"
+    "1. First, wrap your step-by-step internal reasoning inside <thinking>...</thinking> tags.\n"
+    "2. After the closing </thinking> tag, provide ONLY your clean final answer.\n"
+    "Always include the <thinking> block. Never skip it.\n"
+    "Example:\n"
+    "<thinking>\n"
+    "Let me analyze this step by step...\n"
+    "</thinking>\n"
+    "Here is my answer."
+)
+
+AGENT_SYSTEM = (
+    "You have access to tools that let you control the user's computer. "
+    "To use a tool, output the command on its own line exactly as shown below:\n\n"
+    "  OPEN_URL: https://example.com    — opens a URL in the browser\n"
+    "  RUN_CMD: ls -la                  — runs a shell command (user must confirm)\n\n"
+    "Use these tools whenever the user asks you to open a website, app, or run something. "
+    "After issuing the command, explain what you did in plain text."
+)
+
+console = Console(theme=theme, highlight=False)
+
+# ─── Model colors ─────────────────────────────────────────────────────────────
+
+MODEL_COLORS = {
+    "qwen2.5:32b": "#c084fc",
+    "llama3.1:8b": "#34d399",
+    "llama3.2:3b": "#22d3ee",
+}
+
+def model_color(name: str) -> str:
+    return MODEL_COLORS.get(name, "white")
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+
+def _rule(style="bar"):
+    w = min(shutil.get_terminal_size().columns, 90)
+    console.print(f"[{style}]{'─' * w}[/{style}]")
+
+def _dim(text: str):
+    console.print(f"[muted]{text}[/muted]")
+
+# ─── Ollama API ───────────────────────────────────────────────────────────────
+
+def ollama_list_models() -> list[dict]:
+    try:
+        r = requests.get(f"{OLLAMA_URL}/api/tags", timeout=5)
+        r.raise_for_status()
+        return r.json().get("models", [])
+    except Exception:
+        return []
+
+def ollama_chat_stream(model: str, messages: list[dict], temperature: float):
+    """Yields content chunks from Ollama streaming API."""
+    payload = {
+        "model": model,
+        "messages": messages,
+        "stream": True,
+        "options": {"temperature": temperature},
+    }
+    try:
+        with requests.post(
+            f"{OLLAMA_URL}/api/chat",
+            json=payload,
+            stream=True,
+            timeout=300,
+        ) as r:
+            r.raise_for_status()
+            for line in r.iter_lines():
+                if line:
+                    chunk = json.loads(line)
+                    if "message" in chunk and "content" in chunk["message"]:
+                        yield chunk["message"]["content"]
+                    if chunk.get("done"):
+                        meta = {
+                            "total_duration": chunk.get("total_duration"),
+                            "eval_count": chunk.get("eval_count"),
+                            "eval_duration": chunk.get("eval_duration"),
+                        }
+                        yield {"__meta__": meta}
+    except requests.ConnectionError:
+        yield "\n\n**Error:** Cannot connect to Ollama. Is it running?"
+    except Exception as e:
+        yield f"\n\n**Error:** {e}"
+
+# ─── Terminal App ─────────────────────────────────────────────────────────────
+
+class AITerminal:
+    def __init__(self, model: str = DEFAULT_MODEL):
+        self.model = model
+        self.temperature = DEFAULT_TEMP
+        self.messages: list[dict] = []
+        self.system_prompt: Optional[str] = None
+        self.last_response: str = ""
+        self.running = True
+        self.token_stats: dict = {}
+        self.reasoning = False
+        self.agent_mode = False
+
+        os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
+
+        bindings = KeyBindings()
+
+        @bindings.add(Keys.Escape, Keys.Enter)
+        def _(event):
+            event.current_buffer.insert_text("\n")
+
+        pt_style = PTStyle.from_dict({
+            "prompt": "#a78bfa bold",
+            "": "#d4d4d4",
+        })
+
+        self.session = PromptSession(
+            history=FileHistory(HISTORY_FILE),
+            auto_suggest=AutoSuggestFromHistory(),
+            key_bindings=bindings,
+            style=pt_style,
+            multiline=False,
+        )
+
+    # ── Prompt ────────────────────────────────────────────────────────────
+
+    def get_prompt_text(self):
+        short = self.model.split(":")[0]
+        return [("class:prompt", f" {short} ❯ ")]
+
+    # ── Header ────────────────────────────────────────────────────────────
+
+    def print_header(self):
+        console.clear()
+        w = min(shutil.get_terminal_size().columns, 90)
+        console.print()
+        console.print(f"[bold white]  DarkLock AI Terminal[/bold white]")
+        tags = [self.model, f"temp {self.temperature}"]
+        if self.reasoning:
+            tags.append("think")
+        if self.agent_mode:
+            tags.append("agent")
+        _dim(f"  {' · '.join(tags)}")
+        _rule()
+        console.print()
+
+    # ── Help ──────────────────────────────────────────────────────────────
+
+    def print_help(self):
+        console.print()
+        commands = [
+            ("/model <name>", "Switch model"),
+            ("/models", "List models"),
+            ("/clear", "Clear conversation"),
+            ("/system <msg>", "Set system prompt"),
+            ("/temp <0-2>", "Set temperature"),
+            ("/think", "Toggle reasoning mode"),
+            ("/agent", "Toggle agent mode (open URLs, run commands)"),
+            ("/copy", "Copy last response"),
+            ("/save", "Save conversation"),
+            ("/stats", "Token stats"),
+            ("/context", "Conversation length"),
+            ("/exit", "Quit"),
+        ]
+        for cmd, desc in commands:
+            console.print(f"  [accent]{cmd:<20}[/accent] [muted]{desc}[/muted]")
+        console.print()
+        _dim("  Multi-line: end with \\ or Alt+Enter")
+        console.print()
+
+    # ── Commands ──────────────────────────────────────────────────────────
+
+    def handle_command(self, text: str) -> bool:
+        parts = text.strip().split(None, 1)
+        cmd = parts[0].lower()
+        arg = parts[1] if len(parts) > 1 else ""
+
+        if cmd in ("/exit", "/quit"):
+            self.running = False
+            return True
+
+        elif cmd == "/help":
+            self.print_help()
+            return True
+
+        elif cmd == "/models":
+            models = ollama_list_models()
+            if not models:
+                console.print("  [error]No models found. Is Ollama running?[/error]")
+                return True
+            console.print()
+            for m in models:
+                name = m.get("name", "?")
+                size_gb = f"{m.get('size', 0) / (1024**3):.1f}GB"
+                color = model_color(name)
+                marker = " ●" if name == self.model else "  "
+                console.print(f"  [{color}]{marker} {name}[/{color}]  [muted]{size_gb}[/muted]")
+            console.print()
+            return True
+
+        elif cmd == "/model":
+            if not arg:
+                color = model_color(self.model)
+                console.print(f"  [{color}]{self.model}[/{color}]")
+                return True
+            models = ollama_list_models()
+            names = [m["name"] for m in models]
+            if arg in names:
+                self.model = arg
+                self.messages.clear()
+                console.print(f"  [success]Switched to {self.model}[/success]")
+            else:
+                console.print(f"  [error]Model '{arg}' not found[/error]")
+            return True
+
+        elif cmd == "/clear":
+            self.messages.clear()
+            console.print("  [muted]Conversation cleared[/muted]")
+            return True
+
+        elif cmd == "/system":
+            if not arg:
+                if self.system_prompt:
+                    console.print(f"  [muted]System:[/muted] {self.system_prompt}")
+                else:
+                    _dim("  No system prompt set")
+                return True
+            self.system_prompt = arg
+            self.messages.clear()
+            console.print("  [success]System prompt set[/success]")
+            return True
+
+        elif cmd == "/temp":
+            if not arg:
+                console.print(f"  [muted]Temperature:[/muted] {self.temperature}")
+                return True
+            try:
+                val = float(arg)
+                if 0.0 <= val <= 2.0:
+                    self.temperature = val
+                    console.print(f"  [success]Temperature: {self.temperature}[/success]")
+                else:
+                    console.print("  [error]Must be 0.0-2.0[/error]")
+            except ValueError:
+                console.print("  [error]Invalid number[/error]")
+            return True
+
+        elif cmd == "/copy":
+            if not self.last_response:
+                _dim("  Nothing to copy")
+                return True
+            try:
+                import subprocess
+                proc = subprocess.Popen(["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE)
+                proc.communicate(self.last_response.encode())
+                console.print("  [success]Copied[/success]")
+            except FileNotFoundError:
+                try:
+                    import subprocess
+                    proc = subprocess.Popen(["xsel", "--clipboard", "--input"], stdin=subprocess.PIPE)
+                    proc.communicate(self.last_response.encode())
+                    console.print("  [success]Copied[/success]")
+                except FileNotFoundError:
+                    console.print("  [warning]Install xclip or xsel[/warning]")
+            return True
+
+        elif cmd == "/save":
+            os.makedirs(SAVE_DIR, exist_ok=True)
+            ts = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            fname = os.path.join(SAVE_DIR, f"chat_{self.model.replace(':', '-')}_{ts}.md")
+            with open(fname, "w") as f:
+                f.write(f"# AI Conversation — {self.model}\n")
+                f.write(f"Date: {datetime.datetime.now().isoformat()}\n")
+                f.write(f"Temperature: {self.temperature}\n\n---\n\n")
+                if self.system_prompt:
+                    f.write(f"**System:** {self.system_prompt}\n\n---\n\n")
+                for msg in self.messages:
+                    role = msg["role"].capitalize()
+                    f.write(f"### {role}\n\n{msg['content']}\n\n---\n\n")
+            console.print(f"  [success]Saved → {fname}[/success]")
+            return True
+
+        elif cmd == "/stats":
+            if not self.token_stats:
+                _dim("  No stats yet")
+                return True
+            total_ns = self.token_stats.get("total_duration", 0)
+            eval_count = self.token_stats.get("eval_count", 0)
+            eval_ns = self.token_stats.get("eval_duration", 0)
+            total_s = total_ns / 1e9 if total_ns else 0
+            tok_per_s = eval_count / (eval_ns / 1e9) if eval_ns else 0
+            console.print(f"  [muted]{eval_count} tokens · {tok_per_s:.1f} tok/s · {total_s:.1f}s[/muted]")
+            return True
+
+        elif cmd == "/context":
+            n = len(self.messages)
+            chars = sum(len(m["content"]) for m in self.messages)
+            console.print(f"  [muted]{n} messages · {chars:,} chars[/muted]")
+            return True
+
+        elif cmd == "/think":
+            self.reasoning = not self.reasoning
+            state = "on" if self.reasoning else "off"
+            console.print(f"  [success]Reasoning {state}[/success]")
+            return True
+
+        elif cmd == "/agent":
+            self.agent_mode = not self.agent_mode
+            state = "on" if self.agent_mode else "off"
+            console.print(f"  [success]Agent mode {state}[/success]")
+            return True
+
+        return False
+
+    # ── Reasoning parser ──────────────────────────────────────────────────
+
+    def _parse_thinking(self, text: str) -> tuple[str, str]:
+        m = re.search(r"<thinking>(.*?)</thinking>", text, re.DOTALL)
+        if m:
+            thinking = m.group(1).strip()
+            answer = (text[:m.start()] + text[m.end():]).strip()
+            return thinking, answer
+        return "", text
+
+    # ── Tool execution ────────────────────────────────────────────────────
+
+    def _handle_tools(self, text: str):
+        """Parse and execute any tool calls embedded in the response."""
+        acted = False
+        for m in re.finditer(r'^OPEN_URL:\s*(\S+)', text, re.MULTILINE):
+            url = m.group(1)
+            webbrowser.open(url)
+            console.print(f"  [success]Opened {url}[/success]")
+            acted = True
+        for m in re.finditer(r'^RUN_CMD:\s*(.+)', text, re.MULTILINE):
+            cmd = m.group(1).strip()
+            console.print(f"\n  [warning]Run command:[/warning] {cmd}")
+            try:
+                confirm = self.session.prompt(
+                    [("class:prompt", "  Confirm? [y/N] ")],
+                    default="",
+                )
+            except (KeyboardInterrupt, EOFError):
+                confirm = ""
+            if confirm.strip().lower() == "y":
+                try:
+                    result = subprocess.run(
+                        cmd, shell=True, capture_output=True, text=True, timeout=30
+                    )
+                    output = (result.stdout + result.stderr).strip()
+                    if output:
+                        console.print(f"  [muted]{output}[/muted]")
+                    acted = True
+                except subprocess.TimeoutExpired:
+                    console.print("  [error]Command timed out[/error]")
+            else:
+                console.print("  [muted]Skipped[/muted]")
+        return acted
+
+    # ── Stream response ───────────────────────────────────────────────────
+
+    def stream_response(self, user_input: str):
+        api_messages = []
+        if self.system_prompt:
+            api_messages.append({"role": "system", "content": self.system_prompt})
+        if self.reasoning:
+            api_messages.append({"role": "system", "content": REASONING_SYSTEM})
+        if self.agent_mode:
+            api_messages.append({"role": "system", "content": AGENT_SYSTEM})
+        api_messages.extend(self.messages)
+        api_messages.append({"role": "user", "content": user_input})
+
+        self.messages.append({"role": "user", "content": user_input})
+
+        full_response = ""
+        self.token_stats = {}
+        start = time.time()
+
+        try:
+            if self.reasoning:
+                # Phase 1: buffer thinking silently, show indicator
+                # Phase 2: once </thinking> appears, stream response tokens normally
+                thinking_done = False
+                answer_printed_len = 0
+                console.print("[muted]  thinking...[/muted]")
+
+                for chunk in ollama_chat_stream(self.model, api_messages, self.temperature):
+                    if isinstance(chunk, dict) and "__meta__" in chunk:
+                        self.token_stats = chunk["__meta__"]
+                        continue
+                    full_response += chunk
+
+                    if not thinking_done:
+                        if "</thinking>" in full_response:
+                            thinking_done = True
+                            _, answer_so_far = self._parse_thinking(full_response)
+                            # Erase "thinking..." line, start streaming response
+                            sys.stdout.write("\x1b[A\x1b[2K")
+                            sys.stdout.flush()
+                            print(answer_so_far, end="", flush=True)
+                            answer_printed_len = len(answer_so_far)
+                    else:
+                        _, current_answer = self._parse_thinking(full_response)
+                        new_part = current_answer[answer_printed_len:]
+                        if new_part:
+                            print(new_part, end="", flush=True)
+                            answer_printed_len = len(current_answer)
+            else:
+                # Normal mode: stream raw tokens directly
+                for chunk in ollama_chat_stream(self.model, api_messages, self.temperature):
+                    if isinstance(chunk, dict) and "__meta__" in chunk:
+                        self.token_stats = chunk["__meta__"]
+                        continue
+                    full_response += chunk
+                    print(chunk, end="", flush=True)
+
+            print()
+        except KeyboardInterrupt:
+            print()
+            console.print("  [warning]Interrupted[/warning]")
+
+        elapsed = time.time() - start
+
+        if full_response:
+            self.messages.append({"role": "assistant", "content": full_response})
+            self.last_response = full_response
+
+            # Show thinking panel (reasoning mode only, response already streamed)
+            if self.reasoning:
+                thinking, _ = self._parse_thinking(full_response)
+                if thinking:
+                    console.print()
+                    console.print(Panel(
+                        Markdown(thinking),
+                        border_style="bright_black",
+                        title="[bright_black]thinking[/bright_black]",
+                        title_align="left",
+                        padding=(1, 2),
+                        expand=False,
+                    ))
+
+            # Execute any tool calls from agent mode
+            if self.agent_mode:
+                self._handle_tools(full_response)
+
+            # Stats
+            eval_count = self.token_stats.get("eval_count", 0)
+            eval_ns = self.token_stats.get("eval_duration", 0)
+            tok_per_s = eval_count / (eval_ns / 1e9) if eval_ns else 0
+            parts = []
+            if eval_count:
+                parts.append(f"{eval_count} tokens")
+            if tok_per_s:
+                parts.append(f"{tok_per_s:.1f} tok/s")
+            parts.append(f"{elapsed:.1f}s")
+            console.print(f"\n  [muted]{' · '.join(parts)}[/muted]")
+            _rule()
+            console.print()
+
+    # ── Main loop ─────────────────────────────────────────────────────────
+
+    def run(self):
+        self.print_header()
+
+        models = ollama_list_models()
+        if not models:
+            console.print("  [error]Cannot connect to Ollama at localhost:11434[/error]")
+            _dim("  Start it with: ollama serve")
+            return
+
+        names = [m["name"] for m in models]
+        if self.model not in names:
+            console.print(f"  [warning]'{self.model}' not found, using {names[0]}[/warning]")
+            self.model = names[0]
+
+        _dim(f"  {len(names)} model(s) · /help for commands")
+        console.print()
+
+        while self.running:
+            try:
+                user_input = self.session.prompt(self.get_prompt_text(), default="")
+            except KeyboardInterrupt:
+                console.print()
+                continue
+            except EOFError:
+                break
+
+            text = user_input.strip()
+            if not text:
+                continue
+
+            while text.endswith("\\"):
+                text = text[:-1] + "\n"
+                try:
+                    continuation = self.session.prompt([("class:prompt", "   ... ")])
+                    text += continuation
+                except (KeyboardInterrupt, EOFError):
+                    break
+
+            text = text.strip()
+            if not text:
+                continue
+
+            if text.startswith("/"):
+                if self.handle_command(text):
+                    continue
+
+            console.print()
+            self.stream_response(text)
+
+        console.print("\n  [muted]Goodbye[/muted]\n")
+
+
+def main():
+    model = DEFAULT_MODEL
+    if len(sys.argv) > 1:
+        model = sys.argv[1]
+
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+    app = AITerminal(model=model)
+    app.run()
+
+
+if __name__ == "__main__":
+    main()

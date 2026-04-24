@@ -1,0 +1,17 @@
+name: repo_overview
+description: High-level summary of a local git repository.
+modes: [normal, agent]
+risk: low
+approval_required: false
+tools: [read_file, list_dir, inspect_repo, run_shell_command]
+connectors: [local_files, shell]
+steps:
+  - agent: execution
+    task: "Run: git -C {input} log --oneline -20; git -C {input} status; git -C {input} branch -a."
+  - agent: researcher
+    task: "Read README and manifests in the repo."
+  - agent: summarizer
+    task: "Produce overview: purpose, stack, entry points, recent activity."
+validation:
+  require_final_summary: true
+retries: 1

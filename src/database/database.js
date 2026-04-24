@@ -1677,7 +1677,15 @@ class Database {
                 expires_at DATETIME,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )`,
-            
+
+            // Persistent dashboard console log (survives restarts, visible cross-device)
+            `CREATE TABLE IF NOT EXISTS console_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id TEXT NOT NULL,
+                entry TEXT NOT NULL,
+                created_at INTEGER NOT NULL
+            )`,
+
             // Command Logs for Dashboard
             `CREATE TABLE IF NOT EXISTS command_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2166,6 +2174,7 @@ class Database {
             'CREATE INDEX IF NOT EXISTS idx_action_logs_guild ON action_logs(guild_id)',
             'CREATE INDEX IF NOT EXISTS idx_action_logs_category ON action_logs(action_category)',
             'CREATE INDEX IF NOT EXISTS idx_action_logs_can_undo ON action_logs(can_undo, undone)',
+            'CREATE INDEX IF NOT EXISTS idx_console_logs_guild_time ON console_logs(guild_id, created_at)',
             // Advanced security indexes
             'CREATE INDEX IF NOT EXISTS idx_audit_logs_guild_event ON audit_logs(guild_id, event_type)',
             'CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp)',

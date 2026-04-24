@@ -1,0 +1,17 @@
+# nova-agents: tools.yaml
+# Declarative permission level per tool. Enforced by the registry.
+# Levels:
+#   read     - safe, no side effects
+#   write    - modifies local files / memory
+#   exec     - runs arbitrary-ish commands; subject to safety policy
+
+permissions:
+  read_file: read
+  list_dir: read
+  search_files: read
+  retrieve_memory_notes: read
+  recall_ai_terminal_memory: read
+  log_event: read
+  write_file: write
+  append_memory_note: write
+  run_shell_command: exec

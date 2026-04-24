@@ -20,7 +20,6 @@
  *  14.  Confetti celebration
  *  15.  Command palette hint (Ctrl+K)
  *  16.  Ambient sound toggle (muted by default)
- *  17.  Easter egg: Konami code → Matrix rain
  *  18.  Skeleton → content shimmer transition
  *  19.  Smooth anchor scrolling
  *  20.  Keyboard shortcuts help overlay
@@ -706,70 +705,6 @@
     }
 
     // ==========================================
-    // 14. KONAMI CODE → MATRIX RAIN
-    // ==========================================
-    function initKonami() {
-        const code = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
-        let idx = 0;
-
-        document.addEventListener('keydown', e => {
-            if (e.key === code[idx]) {
-                idx++;
-                if (idx === code.length) {
-                    idx = 0;
-                    triggerMatrixRain();
-                }
-            } else {
-                idx = 0;
-            }
-        });
-
-        function triggerMatrixRain() {
-            if (document.getElementById('dl-matrix')) return;
-            const canvas = document.createElement('canvas');
-            canvas.id = 'dl-matrix';
-            canvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:100000;opacity:0.8;';
-            document.body.appendChild(canvas);
-            const ctx = canvas.getContext('2d');
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
-            const cols = Math.floor(canvas.width / 16);
-            const drops = Array(cols).fill(1);
-            const chars = 'DARKLOCK01アイウエオカキクケコ░▒▓';
-
-            let frame = 0;
-            function draw() {
-                ctx.fillStyle = 'rgba(0,0,0,0.05)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = BRAND.cyan;
-                ctx.font = '14px monospace';
-
-                for (let i = 0; i < drops.length; i++) {
-                    const text = chars[Math.floor(Math.random() * chars.length)];
-                    ctx.fillStyle = Math.random() > 0.5 ? BRAND.cyan : BRAND.green;
-                    ctx.globalAlpha = Math.random() * 0.5 + 0.5;
-                    ctx.fillText(text, i * 16, drops[i] * 16);
-                    if (drops[i] * 16 > canvas.height && Math.random() > 0.975) drops[i] = 0;
-                    drops[i]++;
-                }
-
-                frame++;
-                if (frame < 300) {
-                    requestAnimationFrame(draw);
-                } else {
-                    canvas.style.transition = 'opacity 1s ease';
-                    canvas.style.opacity = '0';
-                    setTimeout(() => canvas.remove(), 1000);
-                    window.dlToast?.('🔓 DarkLock Matrix Mode deactivated', 'info');
-                }
-            }
-            draw();
-            window.dlToast?.('🟢 Matrix Mode activated!', 'success');
-        }
-    }
-
-    // ==========================================
     // 15. INTERACTIVE SAVE FEEDBACK
     // ==========================================
     function initSaveFeedback() {
@@ -953,7 +888,6 @@
         initConfetti();
         initSmoothScroll();
         initKeyboardShortcuts();
-        initKonami();
         initSaveFeedback();
         initSidebarTrail();
         initProgressBar();

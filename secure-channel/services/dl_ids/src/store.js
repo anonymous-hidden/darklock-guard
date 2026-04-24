@@ -169,6 +169,12 @@ export function createStore(dbPath) {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   db.pragma('secure_delete = ON');
+  // Checkpoint to main DB every 64 WAL pages (~256 KB) instead of the default 1000.
+  // Prevents large uncheckpointed WAL files that can lose committed data on crash.
+  db.pragma('wal_autocheckpoint = 64');
+  // Force a full WAL checkpoint on startup to ensure any un-checkpointed committed
+  // data from the previous run is flushed to the main DB file before we proceed.
+  db.pragma('wal_checkpoint(TRUNCATE)');
 
   // ── Schema ──────────────────────────────────────────────
   db.exec(`
@@ -266,6 +272,17 @@ export function createStore(dbPath) {
     );
   `);
 
+  // ── Cross-device sync: user data key-value store ────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_data (
+      user_id TEXT NOT NULL REFERENCES auth_users(user_id) ON DELETE CASCADE,
+      data_key TEXT NOT NULL,
+      data_value TEXT NOT NULL DEFAULT '{}',
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+      PRIMARY KEY (user_id, data_key)
+    );
+  `);
+
   // ── Prepared statements ─────────────────────────────────
   const stmts = {
     upsertUser: db.prepare(`
@@ -300,6 +317,8 @@ export function createStore(dbPath) {
       SELECT COUNT(*) as count FROM one_time_prekeys WHERE user_id = ? AND consumed = 0
     `),
     deleteUser: db.prepare(`DELETE FROM users WHERE user_id = ?`),
+    deleteSPKs: db.prepare(`DELETE FROM signed_prekeys WHERE user_id = ?`),
+    deleteOTPKs: db.prepare(`DELETE FROM one_time_prekeys WHERE user_id = ?`),
 
     // ── Auth statements ─────────────────────────────────
     insertAuthUser: db.prepare(`
@@ -406,6 +425,24 @@ export function createStore(dbPath) {
     deleteExpiredPending2fa: db.prepare(`
       DELETE FROM pending_2fa WHERE expires_at <= ?
     `),
+
+    // ── User data (cross-device sync) statements ────
+    getAllUserData: db.prepare(`
+      SELECT data_key, data_value, updated_at FROM user_data WHERE user_id = ?
+    `),
+    getUserDataByKey: db.prepare(`
+      SELECT data_value, updated_at FROM user_data WHERE user_id = ? AND data_key = ?
+    `),
+    upsertUserData: db.prepare(`
+      INSERT INTO user_data (user_id, data_key, data_value, updated_at)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(user_id, data_key) DO UPDATE SET
+        data_value = excluded.data_value,
+        updated_at = excluded.updated_at
+    `),
+    deleteUserData: db.prepare(`
+      DELETE FROM user_data WHERE user_id = ? AND data_key = ?
+    `),
   };
 
   // Purge expired sessions on startup
@@ -430,6 +467,13 @@ export function createStore(dbPath) {
     registerUser(userId, identityKey, signedPreKey, oneTimePreKeys) {
       const tx = db.transaction(() => {
         stmts.upsertUser.run(userId, identityKey);
+        // Clear stale SPKs/OTPKs so getLatestSPK always returns the bundle
+        // consistently paired with the current identity key. Without this,
+        // a re-registration with a new identity key leaves old SPK rows whose
+        // signatures were made with the previous identity key, causing X3DH
+        // signature verification to fail on the sender side.
+        stmts.deleteSPKs.run(userId);
+        stmts.deleteOTPKs.run(userId);
         stmts.upsertSPK.run(
           userId,
           signedPreKey.keyId,
@@ -748,6 +792,48 @@ export function createStore(dbPath) {
         token,
         expiresAt,
       };
+    },
+
+    // ── Cross-device sync methods ───────────────────────
+
+    /** Get all synced data for a user. Returns { key: { value, updatedAt } } */
+    getAllUserData(userId) {
+      const rows = stmts.getAllUserData.all(userId);
+      const result = {};
+      for (const row of rows) {
+        result[row.data_key] = {
+          value: JSON.parse(row.data_value),
+          updatedAt: row.updated_at,
+        };
+      }
+      return result;
+    },
+
+    /** Get a single data key for a user. Returns { value, updatedAt } or null. */
+    getUserDataByKey(userId, key) {
+      const row = stmts.getUserDataByKey.get(userId, key);
+      if (!row) return null;
+      return { value: JSON.parse(row.data_value), updatedAt: row.updated_at };
+    },
+
+    /** Set a data key for a user. Value is any JSON-serializable object. */
+    setUserData(userId, key, value) {
+      const json = JSON.stringify(value);
+      // Limit value size to 512KB to prevent abuse
+      if (json.length > 5 * 1024 * 1024) throw new Error('data_too_large');
+      stmts.upsertUserData.run(userId, key, json, Date.now());
+    },
+
+    /** Bulk set multiple data keys in a single transaction. */
+    setUserDataBulk(userId, entries) {
+      const tx = db.transaction(() => {
+        for (const [key, value] of Object.entries(entries)) {
+          const json = JSON.stringify(value);
+          if (json.length > 5 * 1024 * 1024) continue; // skip oversized entries
+          stmts.upsertUserData.run(userId, key, json, Date.now());
+        }
+      });
+      tx();
     },
 
     close() {

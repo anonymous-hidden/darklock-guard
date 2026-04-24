@@ -1,0 +1,15 @@
+name: weather_plus_schedule_brief
+description: Morning brief — weather + calendar + priority notes.
+modes: [agent]
+risk: low
+approval_required: false
+tools: [retrieve_memory_notes]
+connectors: [weather, calendar]
+steps:
+  - agent: connector_router
+    task: "Fetch today's weather and today's events."
+  - agent: summarizer
+    task: "Produce a 6am-style brief: weather, schedule, top 3 priorities."
+validation:
+  require_final_summary: true
+retries: 1
