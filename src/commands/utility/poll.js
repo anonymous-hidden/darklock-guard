@@ -27,13 +27,17 @@ module.exports = {
                 .setRequired(false))
         .addIntegerOption(option =>
             option.setName('duration')
-                .setDescription('Poll duration in minutes (default: 60)')
+                .setDescription('Poll duration in hours (default: 1)')
                 .setMinValue(1)
-                .setMaxValue(10080)),
+                .setMaxValue(336)) // 2 weeks
+        .addBooleanOption(option =>
+            option.setName('multiselect')
+                .setDescription('Allow multiple answers? (default: false)')
+                .setRequired(false)),
 
     async execute(interaction) {
         await interaction.deferReply();
-        
+
         const question = interaction.options.getString('question');
         const options = [
             interaction.options.getString('option1'),
@@ -42,35 +46,20 @@ module.exports = {
             interaction.options.getString('option4')
         ].filter(o => o !== null);
 
-        const duration = interaction.options.getInteger('duration') || 60;
-        const endTime = new Date(Date.now() + duration * 60000);
+        const duration = interaction.options.getInteger('duration') || 1;
+        const multiselect = interaction.options.getBoolean('multiselect') || false;
 
-        const embed = new EmbedBuilder()
-            .setTitle('📊 ' + question)
-            .setColor('#5865F2')
-            .setDescription(options.map((opt, i) => `${['1️⃣', '2️⃣', '3️⃣', '4️⃣'][i]} ${opt}`).join('\n\n'))
-            .setFooter({ text: `Poll ends at ${endTime.toLocaleTimeString()} | ${duration} minutes` })
-            .setTimestamp();
-
-        const msg = await interaction.editReply({
-            embeds: [embed],
-            fetchReply: true
+        await interaction.followUp({
+            poll: {
+                allowMultiselect: multiselect,
+                answers: options.map(opt => {
+                    return { text: opt };
+                }),
+                duration: duration,
+                question: {
+                    text: question
+                },
+            }
         });
-
-        const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣'].slice(0, options.length);
-        for (const emoji of emojis) {
-            await msg.react(emoji);
-        }
-
-        // Store poll in database
-        const bot = interaction.client.bot;
-        try {
-            await bot.database.run(`
-                INSERT INTO polls (guild_id, channel_id, message_id, question, options, creator_id, ends_at, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-            `, [interaction.guild.id, interaction.channel.id, msg.id, question, JSON.stringify(options), interaction.user.id, endTime.toISOString()]);
-        } catch (error) {
-            console.error('Failed to store poll:', error);
-        }
     }
 };

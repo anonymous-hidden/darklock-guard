@@ -59,12 +59,12 @@ module.exports = {
             await channel.send({ embeds: [embed] });
 
             await interaction.editReply({
-                content: `✅ Embed sent to ${channel}`,
+                content: ` Embed sent to ${channel}`,
                 ephemeral: true
             });
         } catch (error) {
             await interaction.editReply({
-                content: '❌ Failed to send embed. Check URLs and permissions.',
+                content: ' Failed to send embed. Check URLs and permissions.',
                 ephemeral: true
             });
         }

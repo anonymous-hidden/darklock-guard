@@ -66,9 +66,49 @@ const TIER_LIMITS = {
 /**
  * Resolve the effective tier for a guild.
  * Returns 'free' | 'pro' | 'enterprise'
+ *
+ * Reads from guild_subscriptions and validates the subscription is active.
+ * Returns 'free' on any error or if no row / inactive subscription.
  */
 async function resolveGuildTier(bot, guildId) {
-    return 'enterprise'; // all features unlocked for all guilds
+    if (!guildId) return 'free';
+
+    // Optional kill switch / global override (e.g. for free promo periods)
+    const override = (process.env.TIER_OVERRIDE || '').toLowerCase();
+    if (override === 'enterprise' || override === 'pro' || override === 'free') {
+        return override;
+    }
+
+    try {
+        const db = bot?.database;
+        if (!db || typeof db.get !== 'function') return 'free';
+
+        const row = await db.get(
+            'SELECT plan, status, current_period_end FROM guild_subscriptions WHERE guild_id = ?',
+            [guildId]
+        );
+        if (!row) return 'free';
+
+        const plan = String(row.plan || 'free').toLowerCase();
+        const status = String(row.status || 'inactive').toLowerCase();
+        const validStatus = status === 'active' || status === 'trialing';
+        if (!validStatus) return 'free';
+
+        // current_period_end stored as unix seconds; if set and in the past => expired
+        if (row.current_period_end) {
+            const endSec = Number(row.current_period_end);
+            if (Number.isFinite(endSec) && endSec > 0 && endSec * 1000 < Date.now()) {
+                return 'free';
+            }
+        }
+
+        if (plan === 'enterprise' || plan === 'pro') return plan;
+        return 'free';
+    } catch (e) {
+        // Fail closed: degrade to free on lookup failure rather than granting paid features
+        try { bot?.logger?.warn?.('[tier-enforcement] resolveGuildTier failed:', e.message); } catch (_) {}
+        return 'free';
+    }
 }
 
 /**

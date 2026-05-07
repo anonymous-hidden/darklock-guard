@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = {
+    premium: 'pro',
     data: new SlashCommandBuilder()
         .setName('trustscore')
         .setDescription('View your trust score or another user\'s')

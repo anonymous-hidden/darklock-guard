@@ -32,6 +32,7 @@ kill_process "guard-service run" "Guard Service Daemon"
 kill_process "vite dev" "Tauri Vite Dev Server"
 kill_process "darklock-guard-ui" "Tauri App"
 kill_process "tauri dev" "Tauri Dev"
+kill_process "darklock/services/room-control-bridge.js" "Room Control Bridge"
 # Free Vite's port in case of orphaned processes
 lsof -ti:5173 | xargs kill -9 2>/dev/null || true
 

@@ -66,9 +66,6 @@ const uploadUpdate = multer({
   },
 });
 
-// ── Apply auth + rate limit to all routes ───────────────────────────────────────
-router.use(MW.apiLimiter);
-
 // ── Public endpoint (no auth) — app update polling ──────────────────────────────
 router.get('/app/latest-update', async (req, res) => {
   try {
@@ -167,6 +164,14 @@ router.get('/theme/css', async (req, res) => {
 //  ALL ROUTES BELOW REQUIRE ADMIN AUTH + CSRF
 // ═══════════════════════════════════════════════════════════════════════════════
 router.use(MW.requireAuth);
+// Never cache authenticated API responses (browser or Cloudflare edge)
+router.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  next();
+});
+// Rate limit AFTER auth so key = admin ID, never a shared proxy/tunnel IP
+router.use(MW.apiLimiter);
 router.use(MW.setCSRFCookie);    // Sets csrf_token cookie on every GET
 router.use(MW.requireCSRF);      // Validates X-CSRF-Token on POST/PUT/PATCH/DELETE
 

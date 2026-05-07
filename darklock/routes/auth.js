@@ -208,7 +208,7 @@ router.get('/login', async (req, res) => {
         const secret = getJwtSecret();
         const decoded = await verifyToken(token, secret);
         if (decoded) {
-            return res.redirect('/platform/dashboard');
+            return res.redirect('https://admin.darklock.net/dashboard');
         }
         res.clearCookie('darklock_token');
     }
@@ -225,7 +225,7 @@ router.get('/signup', async (req, res) => {
         const secret = getJwtSecret();
         const decoded = await verifyToken(token, secret);
         if (decoded) {
-            return res.redirect('/platform/dashboard');
+            return res.redirect('https://admin.darklock.net/dashboard');
         }
         res.clearCookie('darklock_token');
     }
@@ -360,7 +360,7 @@ router.post('/signup', rateLimitMiddleware('signup'), async (req, res) => {
         res.json({
             success: true,
             message: 'Account created successfully',
-            redirect: '/platform/dashboard'
+            redirect: 'https://admin.darklock.net/dashboard'
         });
         
     } catch (err) {
@@ -475,7 +475,7 @@ router.post('/login', rateLimitMiddleware('login'), async (req, res) => {
         res.json({
             success: true,
             message: 'Login successful',
-            redirect: '/platform/dashboard'
+            redirect: 'https://admin.darklock.net/dashboard'
         });
         
     } catch (err) {
@@ -1001,7 +1001,7 @@ router.get('/discord/callback', async (req, res) => {
         });
 
         console.log(`[Darklock Auth] Discord OAuth login: ${user.username}`);
-        res.redirect('/platform/dashboard');
+        res.redirect('https://admin.darklock.net/dashboard');
 
     } catch (err) {
         console.error('[Darklock Auth] Discord OAuth error:', err.response?.data || err.message);
@@ -1160,7 +1160,7 @@ router.get('/google/callback', async (req, res) => {
         });
 
         console.log(`[Darklock Auth] Google OAuth login: ${user.username}`);
-        res.redirect('/platform/dashboard');
+        res.redirect('https://admin.darklock.net/dashboard');
 
     } catch (err) {
         console.error('[Darklock Auth] Google OAuth error:', err.response?.data || err.message);

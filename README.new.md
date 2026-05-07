@@ -11,6 +11,8 @@ All apps, services, ports, and troubleshooting in one place.
 | Discord Bot Dashboard | 3001 | http://localhost:3001 |
 | Unified Admin Dashboard | 3001 | http://localhost:3001/admin |
 | Darklock Platform API | 3002 | http://localhost:3002 |
+| **Room Control Panel** | **3002** | **https://darklock.net/r/\<slug\>** |
+| Room Control Bridge (Pico + Govee) | 3099 | localhost only |
 | Darklock Notes (dev) | 5173 | http://localhost:5173 |
 | Darklock Notes Sync Server | 3003 | http://localhost:3003 |
 | Secure Channel IDS | 4100 | http://localhost:4100 |
@@ -36,6 +38,7 @@ cd "/home/cayden/discord bot/discord bot" && ./stop-all.sh
 2. Darklock Platform Server (port 3002)
 3. Secure Channel IDS (port 4100) + Relay (port 4101)
 4. Darklock Guard Service daemon + Guard UI (Tauri)
+5. Room Control Bridge (localhost:3099) — Pico serial + Govee LAN
 
 ---
 
@@ -112,12 +115,116 @@ npm run db:backup                          # Backup first
 npm run db:init                            # Reinitialize
 
 # Clear logs
-> logs/combined.log && > logs/error.log
+> I
+
 ```
 
 ---
 
-## App 2 — Darklock Platform Server
+## App 2 — Room Control Panel (Hidden)
+
+Hidden page on darklock.net for trusted friends to control your room remotely. Invisible from all public navigation, sitemaps, and search engines. Served under a secret random slug on the same port as the Darklock Platform (3002).
+
+**Features:**
+- 250-char one-time-per-IP access passwords (bcrypt-hashed)
+- Password is bound to the first IP that redeems it — can't be shared
+- Username prompt after auth — every action is logged with IP + username
+- **Active buzzer** (loud, capped at 3 seconds)
+- **10 passive buzzer songs** via 2 PWM buzzers: `alert, doorbell, jingle, rise, fall, birthday, march, tetris, siren, shave`
+- **Govee LAN control** — auto-discovers lights; supports on/off, RGB, brightness, 10 scene presets
+- Full action audit log (timestamp, IP, username, action, params)
+
+### Govee Scene Presets
+
+`chill, focus, movie, sunset, forest, party, sleep, cyber, blood, ocean`
+
+### Pico Pin Layout
+
+| Pin | Accessory |
+|-----|-----------|
+| GP21 | White LED — network heartbeat |
+| GP22 | Green LED — reserved |
+| GP24 | Blue LED — active buzzer indicator |
+| GP25 | Red LED — passive song indicator |
+| GP20 | Active buzzer (digital on/off) |
+| GP19 | Passive buzzer A (PWM) |
+| GP17 | Passive buzzer B (PWM) |
+
+> GP24 / GP25 are not on the standard Pico header. If the blue/red LEDs don't work, remap `PIN_LED_BLUE` / `PIN_LED_RED` in `pico_room_control.py` to GP14 / GP15.
+
+### Flash Pico Firmware
+
+1. Disconnect Pico from Pi5, hold BOOTSEL, connect to a computer with Thonny or `mpremote`
+2. Copy `pico_room_control.py` onto the Pico as `main.py`
+3. Plug Pico back into Pi5 — bridge auto-reconnects within seconds
+
+```bash
+# Verify firmware is running (on Pi5)
+journalctl -u darklock-room-bridge --no-pager -n 20
+# Look for: [RoomBridge] Pico firmware ready
+```
+
+### Admin CLI (Pi5 only)
+
+```bash
+ssh darklock@192.168.50.151
+cd ~/discord-bot
+
+# Generate a new 250-char password (plaintext shown ONCE, never again)
+node darklock/scripts/room-control-cli.js gen
+node darklock/scripts/room-control-cli.js gen --label="for Alex"
+
+# List all passwords (no plaintext)
+node darklock/scripts/room-control-cli.js list
+
+# Revoke a password by ID (e.g. if IP changes / wrong person got it)
+node darklock/scripts/room-control-cli.js revoke 3
+
+# Print the current hidden URL
+node darklock/scripts/room-control-cli.js url
+
+# Rotate the URL slug (invalidates all existing bookmarks)
+node darklock/scripts/room-control-cli.js rotate-url
+
+# View recent action log
+node darklock/scripts/room-control-cli.js logs
+node darklock/scripts/room-control-cli.js logs --limit=100
+```
+
+### Services (Pi5 systemd)
+
+```bash
+# Bridge daemon — Pico serial + Govee LAN discovery
+sudo systemctl status darklock-room-bridge
+sudo systemctl restart darklock-room-bridge
+journalctl -u darklock-room-bridge -f
+
+# Panel is embedded in the platform server
+sudo systemctl status darklock-platform
+```
+
+### Troubleshooting
+
+```bash
+# Bridge not connecting to Pico
+ls -la /dev/ttyACM0
+journalctl -u darklock-room-bridge -n 30
+
+# Govee lights not discovered — enable "LAN Control" in the Govee Home app
+journalctl -u darklock-room-bridge | grep -i govee
+
+# Panel returns bridge_unreachable
+curl -H "Authorization: Bearer $(cat data/room-bridge-token.txt)" \
+  http://127.0.0.1:3099/health
+
+# Friend's IP changed (mobile hotspot etc.) — revoke their password and gen a new one
+node darklock/scripts/room-control-cli.js revoke <id>
+node darklock/scripts/room-control-cli.js gen --label="new for them"
+```
+
+---
+
+## App 3 — Darklock Platform Server
 
 Web platform for Discord server administration — RBAC, team management, device management, user profiles, downloads.
 
@@ -141,6 +248,13 @@ node darklock/start.js                     # Start platform server (port 3002)
 node darklock/create-admin.js              # Create admin user
 node darklock/migrate-maintenance.js       # Migrate maintenance mode
 node darklock/check-downloads.js           # Check download availability
+
+# Room Control Panel passwords
+node darklock/scripts/room-control-cli.js gen [--label=...]
+node darklock/scripts/room-control-cli.js list
+node darklock/scripts/room-control-cli.js revoke <id>
+node darklock/scripts/room-control-cli.js url
+node darklock/scripts/room-control-cli.js logs
 ```
 
 ### Environment
@@ -160,7 +274,7 @@ tail -f logs/darklock-startup.log
 
 ---
 
-## App 3 — Jarvis Nova (AI Assistant)
+## App 4 — Jarvis Nova (AI Assistant)
 
 Personal AI assistant with emotional engine, persistent memory, command execution, project indexing, Google Calendar/Docs, smart home (Govee), and health monitoring. Python FastAPI backend + Electron desktop frontend.
 
@@ -243,7 +357,7 @@ lsof -ti:8950 | xargs kill -9
 
 ---
 
-## App 4 — Nova Terminal (AI Terminal v2)
+## App 5 — Nova Terminal (AI Terminal v2)
 
 Nova-grade terminal AI with web browsing, persistent memory, auto model routing, Nova identity, weather, system tools, and agent tool loop. Can actually search the web, read pages, click links, and research topics autonomously.
 
@@ -252,14 +366,15 @@ Nova-grade terminal AI with web browsing, persistent memory, auto model routing,
 ```bash
 cd "/home/cayden/discord bot/discord bot"
 
-python3 ai-terminal.py                 # Default model (qwen2.5:32b)
+python3 ai-terminal.py   # Default model (qwen2.5:32b)
 python3 ai-terminal.py llama3.1:8b         # Start with specific model
 python3 ai-terminal.py llama3.2:3b         # Lightweight model
-```
 
-### Features
+./nova-widget nova-chat
+./nova-widget spotify
+./nova-widget notes
 
-- **Web Browsing** — Search DuckDuckGo, read pages, click links, follow results autonomously
+fix try t 
 - **Tool Loop** — AI uses tools, gets results back, then uses more tools until done (up to 6 rounds)
 - **Persistent Memory** — SQLite memory at `~/.ai-terminal/memory.db` with auto-extraction
 - **Auto Model Routing** — Simple messages → fast model, complex → deep model
@@ -343,7 +458,7 @@ pip3 install --user --break-system-packages rich prompt_toolkit requests beautif
 
 ---
 
-## App 5 — Darklock Guard (Tauri + Rust)
+## App 6 — Darklock Guard (Tauri + Rust)
 
 Desktop security app — hardware-backed vault for secrets & encryption keys, tamper protection, file integrity monitoring.
 
@@ -401,11 +516,17 @@ export GUARD_VAULT_PASSWORD=your_password
 
 ---
 
-## App 6 — Darklock Secure Channel (E2E Encrypted Messenger)
+## App 7 — Darklock Secure Channel (E2E Encrypted Messenger)
 
 End-to-end encrypted messenger using Signal protocol (X3DH + Double Ratchet). Electron desktop app with IDS (identity/key server) and RLY (message relay) backend services.
 
 ### Start — Full Stack (Recommended)
+
+Username: ridgeline.user.one
+Password: RidgelineTest!2026A
+Username: ridgeline.user.two
+Password: RidgelineTest!2026B
+
 
 ```bash
 cd "/home/cayden/discord bot/discord bot/secure-channel"
@@ -488,77 +609,7 @@ cat /tmp/dl-rly.log
 
 ---
 
-## App 7 — Darklock Secure Notes (E2E Encrypted Notes)
-
-Zero-knowledge encrypted note-taking app. Tauri v2 desktop + web + sync server. Uses libsodium (Argon2id, XChaCha20-Poly1305).
-
-### Start — Desktop App (Tauri v2)
-
-```bash
-cd ~/discord\ bot/discord\ bot/darklock-notes/apps/desktop
-npm run tauri dev                          # Tauri hot-reload
-
-# Or from monorepo root:
-cd "/home/cayden/discord bot/discord bot/darklock-notes"
-npm run dev:desktop
-```
-
-### Start — Web App Only (Browser)
-
-```bash
-cd "/home/cayden/discord bot/discord bot/darklock-notes"
-npm run dev:web                            # http://localhost:5173
-```
-
-### Start — Sync Server (Optional, for Cloud Sync)
-
-```bash
-cd "/home/cayden/discord bot/discord bot/darklock-notes"
-cp apps/server/.env.example apps/server/.env
-nano apps/server/.env                      # Set JWT_SECRET, PORT, etc.
-npm run dev:server                         # Dev mode (hot-reload)
-```
-
-### First-Time Setup
-
-```bash
-cd "/home/cayden/discord bot/discord bot/darklock-notes"
-npm install                                # Install all workspace deps
-```
-
-### Build Production
-
-```bash
-cd "/home/cayden/discord bot/discord bot/darklock-notes"
-npm run build:desktop                      # Desktop installer → apps/desktop/src-tauri/target/release/bundle/
-npm run build:web                          # Web app
-npm run build:server                       # Server
-npm run build:all                          # Everything
-```
-
-### Prerequisites
-
-- Node.js v18+
-- Rust + Cargo: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
-- Linux deps: `sudo apt install libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev`
-
-### Troubleshooting
-
-```bash
-# Tauri build fails — missing Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Missing Linux build deps
-sudo apt install libwebkit2gtk-4.1-dev build-essential libssl-dev \
-  libayatana-appindicator3-dev librsvg2-dev
-
-# Port 5173 in use
-lsof -ti:5173 | xargs kill -9 2>/dev/null
-```
-
----
-
-## App 8 — Darklock App (Encrypted Desktop Messenger)
+## App 9 — Darklock App (Encrypted Desktop Messenger)
 
 Zero-knowledge encrypted desktop messenger with Express/WebSocket backend. Separate from Secure Channel — uses electron-vite.
 
@@ -581,7 +632,7 @@ npm run build                              # Build + package with electron-build
 
 ---
 
-## App 9 — Jarvis Calendar App (Desktop)
+## App 10 — Jarvis Calendar App (Desktop)
 
 Desktop calendar app synced with Google Calendar. Electron + React + Vite.
 
@@ -601,7 +652,7 @@ npm run build                              # Production build
 
 ---
 
-## App 10 — Pico Hardware Watchdog (MicroPython)
+## App 11 — Pico Hardware Watchdog (MicroPython)
 
 Runs on a Raspberry Pi Pico — monitors server health, controls status LEDs, sends Discord webhook alerts on failure. Independent from the main system.
 
@@ -772,6 +823,7 @@ grep "keyword" logs/combined.log           # Search by keyword
 # Service-specific logs
 cat logs/bot-startup.log                   # Bot startup
 cat logs/darklock-startup.log              # Platform startup
+journalctl -u darklock-room-bridge -f      # Room Control Bridge (Pi5)
 cat logs/guard-service.log                 # Guard service
 cat logs/dl-ids.log                        # Secure Channel IDS
 cat logs/dl-rly.log                        # Secure Channel Relay
@@ -801,6 +853,7 @@ ps aux | grep guard
 # Check port usage
 lsof -i :3001                              # Bot dashboard
 lsof -i :3002                              # Darklock platform
+lsof -i :3099                              # Room Control Bridge
 lsof -i :4100                              # Secure Channel IDS
 lsof -i :4101                              # Secure Channel Relay
 lsof -i :5173                              # Vite dev server
@@ -815,6 +868,7 @@ lsof -ti:5173 | xargs kill -9             # Free port 5173
 # Kill by name
 pkill -f "node src/bot.js"                # Kill bot
 pkill -f "node darklock/start.js"         # Kill platform
+pkill -f "room-control-bridge"            # Kill room control bridge
 pkill -f "guard-service"                  # Kill guard
 pkill -f "electron"                       # Kill Electron apps
 ```
@@ -985,6 +1039,14 @@ discord bot/
 ├── darklock/                   # Darklock Platform (port 3002)
 │   ├── server.js / start.js    # Platform server
 │   ├── routes/                 # API routes
+│   │   └── room-control.js     # Hidden room control panel (/r/<slug>)
+│   ├── scripts/
+│   │   └── room-control-cli.js # Admin CLI: gen/list/revoke/url/logs
+│   ├── services/
+│   │   ├── room-control-bridge.js  # localhost:3099 Pico + Govee bridge
+│   │   └── govee-lan.js            # Govee LAN UDP client
+│   ├── utils/
+│   │   └── room-control-store.js   # DB schema + password/session helpers
 │   ├── views/                  # Dashboard templates
 │   └── admin-v4/               # Enterprise RBAC admin
 ├── jarvis/                     # Jarvis AI Assistant
@@ -1014,6 +1076,7 @@ discord bot/
 │   └── desktop/                # Tauri frontend
 ├── file-protection/            # Anti-tampering system
 ├── cloudflare-worker/          # Fallback proxy worker
+├── pico_room_control.py        # Pico Room Control firmware (flash as main.py)
 ├── ai-terminal.py              # Terminal AI chat
 ├── data/                       # Databases & backups
 ├── logs/                       # Application logs
@@ -1056,6 +1119,28 @@ GET  /api/device/:id           Device details
 POST /api/device/:id/action    Device action
 GET  /api/downloads            Available downloads
 GET  /api/admin/*              Admin endpoints
+```
+
+### Room Control Panel (port 3002, hidden slug)
+
+```
+GET  /r/<slug>                           Password entry page
+POST /r/<slug>/auth                      Authenticate with 250-char password
+GET  /r/<slug>/setup                     Username form
+POST /r/<slug>/setup                     Set username for session
+GET  /r/<slug>/panel                     Control panel UI
+POST /r/<slug>/logout                    Invalidate session
+
+POST /r/<slug>/api/buzzer/active         { ms }             — active buzzer (50–3000ms)
+POST /r/<slug>/api/buzzer/active/stop                       — stop active buzzer
+POST /r/<slug>/api/buzzer/song           { name }           — play passive-buzzer song
+POST /r/<slug>/api/buzzer/song/stop                         — stop song
+GET  /r/<slug>/api/lights                                   — list Govee devices
+POST /r/<slug>/api/lights/refresh                           — rescan LAN
+POST /r/<slug>/api/lights/power          { on, device? }    — power on/off
+POST /r/<slug>/api/lights/color          { r, g, b, device? } — set RGB
+POST /r/<slug>/api/lights/brightness     { value, device? } — brightness 1–100
+POST /r/<slug>/api/lights/scene          { scene, device? } — mood preset
 ```
 
 ### Jarvis API (port 8950)

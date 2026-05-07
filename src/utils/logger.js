@@ -1,3 +1,7 @@
+const fs = require('fs');
+const path = require('path');
+const winston = require('winston');
+
 /**
  * Centralized Logging System for DarkLock
  * Captures all bot actions, dashboard changes, and security events
@@ -8,6 +12,39 @@ class Logger {
         this.bot = bot;
         this.db = bot.database;
         this.dashboard = null; // Set later by dashboard
+        this.fileLogger = this._createFileLogger();
+    }
+
+    _createFileLogger() {
+        const logDir = path.join(process.cwd(), 'logs');
+        fs.mkdirSync(logDir, { recursive: true });
+
+        return winston.createLogger({
+            level: process.env.LOG_LEVEL || 'info',
+            defaultMeta: { service: 'darklock-bot', pid: process.pid },
+            format: winston.format.combine(
+                winston.format.timestamp(),
+                winston.format.errors({ stack: true }),
+                winston.format.splat(),
+                winston.format.json()
+            ),
+            transports: [
+                new winston.transports.File({ filename: path.join(logDir, 'bot-error.log'), level: 'error', maxsize: 10 * 1024 * 1024, maxFiles: 5 }),
+                new winston.transports.File({ filename: path.join(logDir, 'bot-combined.log'), maxsize: 10 * 1024 * 1024, maxFiles: 8 })
+            ],
+            exitOnError: false
+        });
+    }
+
+    writeStructured(level, message, meta = {}) {
+        try {
+            this.fileLogger?.log({
+                level,
+                message: String(message || ''),
+                ...meta,
+                loggedAt: new Date().toISOString()
+            });
+        } catch (_) {}
     }
 
     /**
@@ -20,6 +57,8 @@ class Logger {
                 CREATE TABLE IF NOT EXISTS bot_logs (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     type TEXT NOT NULL,
+                    severity TEXT DEFAULT 'info',
+                    event_id TEXT,
                     user_id TEXT,
                     user_tag TEXT,
                     guild_id TEXT,
@@ -50,16 +89,21 @@ class Logger {
                 )
             `);
 
+            try { await this.db.run(`ALTER TABLE bot_logs ADD COLUMN severity TEXT DEFAULT 'info'`); } catch (_) {}
+            try { await this.db.run(`ALTER TABLE bot_logs ADD COLUMN event_id TEXT`); } catch (_) {}
+
             // Create indexes for faster queries
             await this.db.run(`CREATE INDEX IF NOT EXISTS idx_bot_logs_type ON bot_logs(type)`);
             await this.db.run(`CREATE INDEX IF NOT EXISTS idx_bot_logs_guild ON bot_logs(guild_id)`);
             await this.db.run(`CREATE INDEX IF NOT EXISTS idx_bot_logs_user ON bot_logs(user_id)`);
             await this.db.run(`CREATE INDEX IF NOT EXISTS idx_bot_logs_created ON bot_logs(created_at)`);
+            await this.db.run(`CREATE INDEX IF NOT EXISTS idx_bot_logs_event_id ON bot_logs(event_id)`);
             await this.db.run(`CREATE INDEX IF NOT EXISTS idx_dashboard_audit_guild ON dashboard_audit(guild_id)`);
             await this.db.run(`CREATE INDEX IF NOT EXISTS idx_dashboard_audit_admin ON dashboard_audit(admin_id)`);
             await this.db.run(`CREATE INDEX IF NOT EXISTS idx_dashboard_audit_created ON dashboard_audit(created_at)`);
 
             console.log('[Logger] Database tables initialized successfully');
+            this.writeStructured('info', 'logger_initialized', { eventType: 'logger_initialized' });
             return true;
         } catch (error) {
             console.error('[Logger] Failed to initialize database:', error);
@@ -101,6 +145,10 @@ class Logger {
                 INSERT INTO bot_logs (type, user_id, user_tag, guild_id, channel_id, command, payload, success, duration_ms, error)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, ['command', userId, userTag, guildId, channelId, commandName, payload, success ? 1 : 0, duration, error]);
+
+            this.writeStructured(success ? 'info' : 'warn', `command:${commandName}`, {
+                eventType: 'command', commandName, userId, userTag, guildId, channelId, success, duration, error
+            });
 
             // Broadcast to dashboard via WebSocket
             this._broadcastLog({
@@ -153,6 +201,10 @@ class Logger {
                 INSERT INTO bot_logs (type, user_id, user_tag, guild_id, channel_id, command, payload, success, error)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, ['button', userId, userTag, guildId, channelId, customId, payload, success ? 1 : 0, error]);
+
+            this.writeStructured(success ? 'info' : 'warn', `button:${customId}`, {
+                eventType: 'button', customId, userId, userTag, guildId, channelId, messageId, action, success, error
+            });
 
             this._broadcastLog({
                 type: 'button',
@@ -213,6 +265,10 @@ class Logger {
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             `, ['dashboard', adminId, adminTag, guildId, eventType, payload, 1]);
 
+            this.writeStructured('info', `dashboard:${eventType}`, {
+                eventType: 'dashboard', adminId, adminTag, guildId, ip, userAgent
+            });
+
             this._broadcastLog({
                 type: 'dashboard',
                 adminId,
@@ -265,6 +321,10 @@ class Logger {
                 INSERT INTO bot_logs (type, user_id, user_tag, guild_id, channel_id, command, payload, success)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `, ['security', targetId, targetTag, guildId, channelId, eventType, payload, 1]);
+
+            this.writeStructured('warn', `security:${eventType}`, {
+                eventType: 'security', guildId, channelId, moderatorId, moderatorTag, targetId, targetTag, reason, details
+            });
 
             this._broadcastLog({
                 type: 'security',
@@ -319,6 +379,10 @@ class Logger {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, ['error', userId, userTag, guildId, channelId, context, payload, 0, errorMessage]);
 
+            this.writeStructured('error', `error:${context || 'unknown'}`, {
+                eventType: 'error', context, userId, userTag, guildId, channelId, error: errorMessage, stack: stackTrace
+            });
+
             this._broadcastLog({
                 type: 'error',
                 context,
@@ -364,6 +428,8 @@ class Logger {
                 INSERT INTO bot_logs (type, command, payload, success)
                 VALUES (?, ?, ?, ?)
             `, ['internal', eventType, payload, 1]);
+
+            this.writeStructured('info', `internal:${eventType}`, { eventType: 'internal', message, details });
 
             this._broadcastLog({
                 type: 'internal',
@@ -522,6 +588,7 @@ class Logger {
      */
     info(message, meta = {}) {
         console.log(`[INFO] ${message}`, meta);
+        this.writeStructured('info', message, meta);
         this.logInternal({
             eventType: 'info',
             message: String(message),
@@ -534,6 +601,7 @@ class Logger {
      */
     warn(message, meta = {}) {
         console.warn(`[WARN] ${message}`, meta);
+        this.writeStructured('warn', message, meta);
         this.logInternal({
             eventType: 'warning',
             message: String(message),
@@ -546,6 +614,7 @@ class Logger {
      */
     error(message, meta = {}) {
         console.error(`[ERROR] ${message}`, meta);
+        this.writeStructured('error', message, meta instanceof Error ? { error: meta.message, stack: meta.stack } : meta);
         this.logError({
             error: meta instanceof Error ? meta : new Error(String(message)),
             context: 'legacy_error_log',

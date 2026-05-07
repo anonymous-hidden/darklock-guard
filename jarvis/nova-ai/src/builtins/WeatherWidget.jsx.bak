@@ -1,0 +1,204 @@
+import React, { useEffect, useState, useCallback } from 'react';
+
+const ICONS = { 0: '☀', 1: '🌤', 2: '⛅', 3: '☁', 45: '🌫', 48: '🌫', 51: '🌦', 53: '🌦', 55: '🌧',
+  61: '🌧', 63: '🌧', 65: '⛈', 71: '🌨', 73: '🌨', 75: '❄', 80: '🌦', 81: '🌧', 82: '⛈', 95: '⛈', 96: '⛈', 99: '⛈' };
+const DESC = { 0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Overcast', 45: 'Fog', 48: 'Rime fog',
+  51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle', 61: 'Light rain', 63: 'Rain', 65: 'Heavy rain',
+  71: 'Snow', 80: 'Showers', 95: 'Thunderstorm' };
+const DEFAULT_CITY = 'Kansas City, MO';
+const CHAT_WS_URL = 'ws://127.0.0.1:8951/ws/chat';
+
+function fallbackWeeklyOverview(place, daily) {
+  if (!daily?.time?.length) return `Nova overview for ${place}: forecast data is unavailable right now.`;
+  const highs = daily.temperature_2m_max.map((n) => Math.round(n));
+  const lows = daily.temperature_2m_min.map((n) => Math.round(n));
+  const rainDays = daily.weather_code.filter((c) => [51, 53, 55, 61, 63, 65, 80, 81, 82].includes(c)).length;
+  const stormDays = daily.weather_code.filter((c) => [95, 96, 99].includes(c)).length;
+  const warmest = Math.max(...highs);
+  const coolest = Math.min(...lows);
+  return `Nova weekly outlook for ${place}: highs around ${warmest}°, lows near ${coolest}°. ` +
+    `${rainDays ? `${rainDays} day(s) with rain expected.` : 'Mostly dry conditions expected.'} ` +
+    `${stormDays ? `Storm risk on ${stormDays} day(s), so keep an umbrella handy.` : 'No major storm signal this week.'}`;
+}
+
+export default function WeatherWidget() {
+  const [coords, setCoords] = useState(null);
+  const [data, setData] = useState(null);
+  const [err, setErr]   = useState(null);
+  const [city, setCity] = useState(DEFAULT_CITY);
+  const [overview, setOverview] = useState('');
+  const [loadingOverview, setLoadingOverview] = useState(false);
+
+  const fetchWeather = useCallback(async (lat, lon, place) => {
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=7&timezone=auto`;
+      const res = await fetch(url);
+      const j = await res.json();
+      setData({ ...j, place });
+      setErr(null);
+      try {
+        window.nova?.bus?.publish?.('widget:event', {
+          widget: 'weather', action: 'updated', summary: `Weather updated for ${place}`,
+        });
+      } catch {}
+    } catch (e) { setErr(String(e?.message || e)); }
+  }, []);
+
+  const buildOverview = useCallback(async (place, daily) => {
+    if (!daily?.time?.length) return;
+    setLoadingOverview(true);
+    try {
+      const compact = daily.time.slice(0, 7).map((d, i) => ({
+        day: new Date(d).toLocaleDateString([], { weekday: 'short' }),
+        code: daily.weather_code[i],
+        desc: DESC[daily.weather_code[i]] || `Code ${daily.weather_code[i]}`,
+        hi: Math.round(daily.temperature_2m_max[i]),
+        lo: Math.round(daily.temperature_2m_min[i]),
+      }));
+      const ws = new WebSocket(CHAT_WS_URL);
+      const prompt = [
+        `You are Nova. Write a concise weekly weather overview for ${place}.`,
+        'Style: 3 short bullets + one practical tip. Avoid markdown headings.',
+        `Forecast data: ${JSON.stringify(compact)}`,
+      ].join('\n');
+
+      const summary = await new Promise((resolve) => {
+        let done = false;
+        let fallback = null;
+        const timer = setTimeout(() => {
+          if (!done) {
+            done = true;
+            try { ws.close(); } catch {}
+            resolve(fallbackWeeklyOverview(place, daily));
+          }
+        }, 12000);
+
+        ws.onopen = () => {
+          ws.send(JSON.stringify({ type: 'message', content: prompt }));
+        };
+        ws.onmessage = (ev) => {
+          if (done) return;
+          let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+          if (msg.type === 'done') {
+            done = true;
+            clearTimeout(timer);
+            fallback = (msg.full_response || '').trim();
+            try { ws.close(); } catch {}
+            resolve(fallback || fallbackWeeklyOverview(place, daily));
+          }
+        };
+        ws.onerror = () => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve(fallbackWeeklyOverview(place, daily));
+        };
+      });
+
+      setOverview(String(summary || '').trim());
+    } catch {
+      setOverview(fallbackWeeklyOverview(place, daily));
+    } finally {
+      setLoadingOverview(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Default to Kansas City, MO so this widget is useful immediately.
+    (async () => {
+      try {
+        const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(DEFAULT_CITY)}&count=1`);
+        const j = await res.json();
+        if (j.results?.length) {
+          const r = j.results[0];
+          setCoords({ lat: r.latitude, lon: r.longitude });
+          fetchWeather(r.latitude, r.longitude, `${r.name}${r.admin1 ? ', ' + r.admin1 : ''}`);
+        } else {
+          setErr('default city not found');
+        }
+      } catch (e) {
+        setErr(String(e?.message || e));
+      }
+    })();
+  }, [fetchWeather]);
+
+  const searchCity = async () => {
+    if (!city.trim()) return;
+    try {
+      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`);
+      const j = await res.json();
+      if (!j.results?.length) { setErr('city not found'); return; }
+      const r = j.results[0];
+      setCoords({ lat: r.latitude, lon: r.longitude });
+      fetchWeather(r.latitude, r.longitude, `${r.name}${r.country_code ? ', ' + r.country_code : ''}`);
+    } catch (e) { setErr(String(e?.message || e)); }
+  };
+
+  const cur = data?.current;
+  const daily = data?.daily;
+
+  useEffect(() => {
+    if (!daily || !data?.place) return;
+    buildOverview(data.place, daily);
+  }, [daily, data?.place, buildOverview]);
+
+  return (
+    <div className="h-full p-3 flex flex-col gap-2 bg-nova-bg text-nova-text">
+      <div className="flex gap-1.5">
+        <input
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && searchCity()}
+          placeholder="Search a city…"
+          className="nova-input text-xs flex-1"
+        />
+        <button onClick={searchCity} className="nova-btn text-[11px]">Search</button>
+      </div>
+
+      {err && !data && <div className="text-[11px] text-nova-err">{err}</div>}
+      {!data && !err && <div className="text-[11px] text-nova-muted">Loading…</div>}
+
+      {data && cur && (
+        <>
+          <div className="bg-nova-panel rounded p-3 flex items-center gap-3">
+            <div className="text-5xl">{ICONS[cur.weather_code] || '·'}</div>
+            <div className="flex-1">
+              <div className="font-display text-3xl">{Math.round(cur.temperature_2m)}°</div>
+              <div className="text-xs text-nova-muted">{DESC[cur.weather_code] || 'Code ' + cur.weather_code}</div>
+              <div className="text-[10.5px] text-nova-muted mt-1 font-mono">
+                wind {cur.wind_speed_10m} km/h · {cur.relative_humidity_2m}% rh
+              </div>
+            </div>
+            <div className="text-[10.5px] text-nova-muted">{data.place}</div>
+          </div>
+
+          {daily && (
+            <>
+              <div className="bg-nova-panel border border-nova-border rounded p-2.5">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-[11px] font-display tracking-wide text-nova-accent">Nova Weekly Overview</div>
+                  {loadingOverview && <div className="text-[10px] font-mono text-nova-muted animate-pulse">thinking…</div>}
+                </div>
+                <div className="text-[11.5px] leading-relaxed whitespace-pre-wrap text-nova-text">
+                  {overview || 'Generating weekly outlook…'}
+                </div>
+              </div>
+              <div className="grid grid-cols-7 gap-1 text-center">
+                {daily.time.slice(0, 7).map((day, i) => (
+                  <div key={day} className="bg-nova-panel rounded py-1.5 px-1">
+                  <div className="text-[10.5px] text-nova-muted">{new Date(day).toLocaleDateString([], { weekday: 'short' })}</div>
+                  <div className="text-lg leading-tight">{ICONS[daily.weather_code[i]] || '·'}</div>
+                  <div className="text-[10.5px] font-mono">
+                    <span className="text-nova-text">{Math.round(daily.temperature_2m_max[i])}°</span>
+                    <span className="text-nova-muted">/{Math.round(daily.temperature_2m_min[i])}°</span>
+                  </div>
+                </div>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

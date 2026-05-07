@@ -1,0 +1,475 @@
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+
+/**
+ * NovaCallWidget — voice "call" UI for talking to Nova.
+ *
+ * Pipeline (UPDATED):
+ *   mic → Web SpeechRecognition (STT)
+ *   → terminal-AI WebSocket (ws://127.0.0.1:8951/ws/chat) — SAME brain as
+ *     the chat widget, so Nova can use every tool (lights, spotify, gdocs,
+ *     weather, calendar, browser, code search, memory, etc.) on a call
+ *   → speechSynthesis (TTS)
+ *
+ * Cross-widget bus integration:
+ *   • Every user/Nova turn is published on `voice-call:turn`
+ *     so any open Nova-Chat window can render it inline.
+ *   • Call state is published on `voice-call:state`.
+ *
+ * Auto-start:
+ *   When the popout URL contains `?call=1` (used when Nova herself opens
+ *   the call from the chat widget), the call begins as soon as the page
+ *   mounts.
+ */
+
+const WS_URL = 'ws://127.0.0.1:8951/ws/chat';
+
+const CALL_SYSTEM_HINT =
+  '[VOICE CALL — keep replies to 1-2 short conversational sentences, no markdown, no bullets, ' +
+  'no code, sound like a person speaking. Tools are still allowed if absolutely needed.]';
+
+const STATES = {
+  IDLE:       { label: 'Tap to call',    color: 'text-nova-muted',  ring: 'border-nova-border' },
+  CONNECTING: { label: 'Connecting…',    color: 'text-nova-warn',   ring: 'border-nova-warn' },
+  LISTENING:  { label: 'Listening',      color: 'text-nova-accent', ring: 'border-nova-accent' },
+  THINKING:   { label: 'Thinking…',      color: 'text-nova-accent2',ring: 'border-nova-accent2' },
+  SPEAKING:   { label: 'Speaking',       color: 'text-nova-ok',     ring: 'border-nova-ok' },
+  ERROR:      { label: 'Error',          color: 'text-nova-err',    ring: 'border-nova-err' },
+};
+
+function getRecognition() {
+  const Cls = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Cls) return null;
+  const r = new Cls();
+  r.continuous = false;
+  r.interimResults = true;
+  r.lang = navigator.language || 'en-US';
+  return r;
+}
+
+const publish = (channel, payload) => {
+  try { window.nova?.bus?.publish?.(channel, payload); } catch {}
+};
+
+export default function NovaCallWidget() {
+  const [state, setState]       = useState('IDLE');
+  const [error, setError]       = useState('');
+  const [transcript, setTranscript] = useState([]); // {role, text}
+  const [partial, setPartial]   = useState('');
+  const [muted, setMuted]       = useState(false);
+  const [voices, setVoices]     = useState([]);
+  const [voiceURI, setVoiceURI] = useState('');
+  const [level, setLevel]       = useState(0);
+  const [wsState, setWsState]   = useState('connecting');
+  const [convId, setConvId]     = useState(null);
+  const [sttBroken, setSttBroken] = useState(false);
+  const [typeDraft, setTypeDraft] = useState('');
+
+  const recogRef     = useRef(null);
+  const audioCtxRef  = useRef(null);
+  const analyserRef  = useRef(null);
+  const streamRef    = useRef(null);
+  const rafRef       = useRef(0);
+  const inCallRef    = useRef(false);
+  const startedAtRef = useRef(0);
+  const wsRef        = useRef(null);
+  const replyBufRef  = useRef('');
+  const pendingResolveRef = useRef(null);
+  const [, forceTick] = useState(0);
+
+  /* ── ws to terminal AI ─────────────────────────────────────────────── */
+  useEffect(() => {
+    let disposed = false;
+    let reconn = null;
+    const connect = () => {
+      if (disposed) return;
+      let ws;
+      try { ws = new WebSocket(WS_URL); }
+      catch { reconn = setTimeout(connect, 1000); return; }
+      wsRef.current = ws;
+      setWsState('connecting');
+      ws.onopen  = () => setWsState('open');
+      ws.onerror = () => setWsState('error');
+      ws.onclose = () => {
+        if (wsRef.current === ws) wsRef.current = null;
+        setWsState('closed');
+        if (!disposed) reconn = setTimeout(connect, 1000);
+      };
+      ws.onmessage = (ev) => {
+        let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+        if (msg.type === 'token') {
+          replyBufRef.current += msg.content || '';
+        } else if (msg.type === 'conversation_created') {
+          setConvId(msg.conversation_id);
+        } else if (msg.type === 'done') {
+          const text = (msg.full_response || replyBufRef.current || '').trim();
+          replyBufRef.current = '';
+          const resolve = pendingResolveRef.current;
+          pendingResolveRef.current = null;
+          resolve?.(text);
+        } else if (msg.type === 'error') {
+          replyBufRef.current = '';
+          const resolve = pendingResolveRef.current;
+          pendingResolveRef.current = null;
+          resolve?.('');
+          setError(msg.message || 'AI error');
+        } else if (msg.type === 'widget_action') {
+          // Server asked to open another widget (e.g. notes) during call
+          try {
+            if (msg.action === 'open' && msg.widget) {
+              window.nova?.widgets?.popout?.({
+                id: `call:${msg.widget}:${Date.now()}`,
+                name: msg.widget,
+                builtinId: msg.widget,
+              });
+            }
+          } catch {}
+        }
+      };
+    };
+    connect();
+    return () => {
+      disposed = true;
+      clearTimeout(reconn);
+      try { wsRef.current?.close(); } catch {}
+      wsRef.current = null;
+    };
+  }, []);
+
+  /* ── tts voices ───────────────────────────────────────────────────── */
+  useEffect(() => {
+    const load = () => {
+      const v = window.speechSynthesis?.getVoices?.() || [];
+      setVoices(v);
+      if (!voiceURI && v.length) {
+        const pick =
+          v.find((x) => /en[-_](US|GB)/i.test(x.lang) && /female|samantha|google.*us/i.test(x.name)) ||
+          v.find((x) => /^en/i.test(x.lang)) ||
+          v[0];
+        if (pick) setVoiceURI(pick.voiceURI);
+      }
+    };
+    load();
+    window.speechSynthesis?.addEventListener?.('voiceschanged', load);
+    return () => window.speechSynthesis?.removeEventListener?.('voiceschanged', load);
+  }, [voiceURI]);
+
+  /* ── duration tick ─────────────────────────────────────────────────── */
+  useEffect(() => {
+    if (state === 'IDLE') return;
+    const t = setInterval(() => forceTick((x) => x + 1), 1000);
+    return () => clearInterval(t);
+  }, [state]);
+
+  /* ── mic level meter ───────────────────────────────────────────────── */
+  const startMeter = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      audioCtxRef.current = ctx;
+      const src = ctx.createMediaStreamSource(stream);
+      const an  = ctx.createAnalyser();
+      an.fftSize = 512;
+      src.connect(an);
+      analyserRef.current = an;
+      const buf = new Uint8Array(an.frequencyBinCount);
+      const loop = () => {
+        an.getByteTimeDomainData(buf);
+        let sum = 0;
+        for (let i = 0; i < buf.length; i++) {
+          const v = (buf[i] - 128) / 128;
+          sum += v * v;
+        }
+        setLevel(Math.min(1, Math.sqrt(sum / buf.length) * 3.5));
+        rafRef.current = requestAnimationFrame(loop);
+      };
+      loop();
+    } catch (e) {
+      setError('Mic access denied');
+      throw e;
+    }
+  }, []);
+
+  const stopMeter = useCallback(() => {
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = 0;
+    streamRef.current?.getTracks?.().forEach((t) => t.stop());
+    streamRef.current = null;
+    audioCtxRef.current?.close?.();
+    audioCtxRef.current = null;
+    analyserRef.current = null;
+    setLevel(0);
+  }, []);
+
+  /* ── ask terminal AI over ws and await full reply ──────────────────── */
+  const askNova = (text) => new Promise((resolve) => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) { resolve(''); return; }
+    replyBufRef.current = '';
+    pendingResolveRef.current = resolve;
+    const payload = {
+      type: 'message',
+      content: `${CALL_SYSTEM_HINT}\n${text}`,
+      conversation_id: convId || undefined,
+    };
+    try { ws.send(JSON.stringify(payload)); }
+    catch { pendingResolveRef.current = null; resolve(''); }
+  });
+
+  /* ── recognition cycle ─────────────────────────────────────────────── */
+  const startListening = useCallback(() => {
+    if (!inCallRef.current) return;
+    const r = getRecognition();
+    if (!r) { setError('Speech recognition not supported'); setState('ERROR'); return; }
+    recogRef.current = r;
+    setPartial('');
+    setState('LISTENING');
+    publish('voice-call:state', { state: 'LISTENING' });
+    let finalText = '';
+    r.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const seg = e.results[i];
+        if (seg.isFinal) finalText += seg[0].transcript;
+        else interim += seg[0].transcript;
+      }
+      setPartial(interim);
+    };
+    r.onerror = (e) => {
+      if (e.error === 'no-speech' || e.error === 'aborted') return;
+      // Network/service errors mean Chromium's online STT is unavailable
+      // (common in Electron on Linux). Stop the auto-listen loop and tell
+      // the user to use the type-to-Nova box.
+      if (e.error === 'network' || e.error === 'service-not-allowed' ||
+          e.error === 'not-allowed' || e.error === 'language-not-supported') {
+        setSttBroken(true);
+        setError(`Mic STT unavailable (${e.error}) — type instead`);
+      } else {
+        setError(`Speech: ${e.error}`);
+      }
+    };
+    r.onend = () => {
+      if (!inCallRef.current) return;
+      setPartial('');
+      const t = finalText.trim();
+      if (t) { handleUtterance(t); return; }
+      // If STT looks broken, don't busy-loop the recognizer — just stay
+      // ready for the user to type into the fallback input box.
+      if (sttBroken) return;
+      setTimeout(() => { if (inCallRef.current) startListening(); }, 200);
+    };
+    try { r.start(); } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convId]);
+
+  const handleUtterance = async (text) => {
+    setTranscript((t) => [...t, { role: 'user', text }]);
+    publish('voice-call:turn', { role: 'user', text });
+    setState('THINKING');
+    publish('voice-call:state', { state: 'THINKING' });
+    try {
+      const reply = await askNova(text);
+      if (reply) {
+        setTranscript((t) => [...t, { role: 'assistant', text: reply }]);
+        publish('voice-call:turn', { role: 'assistant', text: reply });
+        await speak(reply);
+      }
+    } catch (e) {
+      setError(String(e?.message || e));
+      setState('ERROR');
+    } finally {
+      if (inCallRef.current && state !== 'ERROR' && !sttBroken) startListening();
+      else if (inCallRef.current) {
+        // STT is broken — sit in LISTENING-ish state but don't actually
+        // re-arm the recognizer. The user types in the fallback input.
+        setState('LISTENING');
+        publish('voice-call:state', { state: 'LISTENING' });
+      }
+    }
+  };
+
+  /* Manual text turn — used by the type-to-Nova fallback input. */
+  const submitTyped = () => {
+    const t = typeDraft.trim();
+    if (!t || !inCallRef.current) return;
+    setTypeDraft('');
+    handleUtterance(t);
+  };
+
+  const speak = (text) => new Promise((resolve) => {
+    if (!text || muted) { resolve(); return; }
+    setState('SPEAKING');
+    publish('voice-call:state', { state: 'SPEAKING' });
+    const u = new SpeechSynthesisUtterance(text);
+    const v = voices.find((x) => x.voiceURI === voiceURI);
+    if (v) u.voice = v;
+    u.rate = 1.0; u.pitch = 1.0;
+    u.onend = () => resolve();
+    u.onerror = () => resolve();
+    window.speechSynthesis.speak(u);
+  });
+
+  /* ── start/end call ────────────────────────────────────────────────── */
+  const startCall = useCallback(async () => {
+    if (wsState !== 'open') { setError('Bridge not connected'); setState('ERROR'); return; }
+    setError('');
+    setTranscript([]);
+    inCallRef.current = true;
+    startedAtRef.current = Date.now();
+    setState('CONNECTING');
+    publish('voice-call:state', { state: 'CONNECTING' });
+    try {
+      await startMeter();
+      startListening();
+    } catch {
+      inCallRef.current = false;
+      setState('ERROR');
+    }
+  }, [wsState, startMeter, startListening]);
+
+  const endCall = useCallback(() => {
+    inCallRef.current = false;
+    try { recogRef.current?.abort(); } catch {}
+    recogRef.current = null;
+    window.speechSynthesis?.cancel?.();
+    stopMeter();
+    setState('IDLE');
+    publish('voice-call:state', { state: 'ENDED' });
+    setPartial('');
+  }, [stopMeter]);
+
+  /* ── auto-start when ?call=1 ───────────────────────────────────────── */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('call') === '1') {
+      // Wait for ws to open before triggering the call
+      const t = setInterval(() => {
+        if (wsState === 'open' && !inCallRef.current) {
+          clearInterval(t);
+          startCall();
+        }
+      }, 250);
+      return () => clearInterval(t);
+    }
+  }, [wsState, startCall]);
+
+  useEffect(() => () => { endCall(); }, [endCall]);
+
+  const meta = STATES[state] || STATES.IDLE;
+  const elapsed = state === 'IDLE' ? 0 : Math.floor((Date.now() - startedAtRef.current) / 1000);
+  const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
+  const ss = String(elapsed % 60).padStart(2, '0');
+  const ringScale = state === 'LISTENING' ? 1 + level * 0.3 :
+                    state === 'SPEAKING'  ? 1 + 0.08 * Math.sin(Date.now() / 180) :
+                    state === 'THINKING'  ? 1 + 0.05 * Math.sin(Date.now() / 250) : 1;
+
+  return (
+    <div className="h-full flex flex-col bg-gradient-to-b from-nova-bg to-nova-panel text-nova-text">
+      <header className="flex items-center justify-between px-3 py-1.5 border-b border-nova-border bg-nova-panel/60 backdrop-blur">
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${state === 'IDLE' ? 'bg-nova-muted' : 'bg-nova-accent animate-pulse'}`} />
+          <span className="font-display text-xs">Call Nova</span>
+          <span className={`text-[9px] font-mono px-1 rounded border ${
+            wsState === 'open'
+              ? 'text-nova-accent border-nova-accent/30'
+              : 'text-nova-warn border-nova-warn/30'
+          }`}>{wsState === 'open' ? 'terminal-ai' : wsState}</span>
+        </div>
+        <div className="text-[10.5px] font-mono text-nova-muted">{state !== 'IDLE' ? `${mm}:${ss}` : '—'}</div>
+      </header>
+
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 px-4 py-3 min-h-0">
+        <div className="relative" style={{ width: 132, height: 132 }}>
+          <div
+            className={`absolute inset-0 rounded-full border-2 ${meta.ring} transition-transform`}
+            style={{ transform: `scale(${ringScale.toFixed(3)})`, transitionDuration: '120ms' }}
+          />
+          <div className="absolute inset-2 rounded-full bg-gradient-to-br from-nova-accent/25 via-nova-accent2/25 to-nova-bg border border-nova-border flex items-center justify-center">
+            <span className="font-display text-5xl text-nova-accent">✦</span>
+          </div>
+          {state === 'LISTENING' && (
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex items-end gap-0.5 h-4">
+              {Array.from({ length: 9 }).map((_, i) => {
+                const phase = (i - 4) / 4;
+                const h = Math.max(2, level * 16 * (1 - Math.abs(phase) * 0.6) + 2);
+                return <div key={i} className="w-0.5 bg-nova-accent rounded" style={{ height: h }} />;
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="text-center">
+          <div className={`font-display text-base ${meta.color}`}>{meta.label}</div>
+          <div className="text-[11px] text-nova-muted font-mono truncate max-w-[280px]">
+            {state === 'LISTENING' && partial ? `"${partial}"` :
+             state === 'ERROR'     ? error :
+             ''}
+          </div>
+        </div>
+
+        {transcript.length > 0 && (
+          <div className="w-full max-h-28 overflow-y-auto bg-nova-panel/60 border border-nova-border rounded p-1.5 space-y-1 text-[11px]">
+            {transcript.slice(-6).map((m, i) => (
+              <div key={i} className="flex gap-1.5">
+                <span className={m.role === 'user' ? 'text-nova-accent shrink-0' : 'text-nova-accent2 shrink-0'}>
+                  {m.role === 'user' ? 'You' : 'Nova'}:
+                </span>
+                <span className="text-nova-text flex-1">{m.text}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {state !== 'IDLE' && (
+          <div className="w-full flex gap-1.5">
+            <input
+              type="text"
+              value={typeDraft}
+              onChange={(e) => setTypeDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitTyped(); } }}
+              placeholder={sttBroken ? 'Type to Nova (mic STT unavailable)…' : 'Or type to Nova…'}
+              className="nova-input text-[11px] flex-1"
+            />
+            <button
+              onClick={submitTyped}
+              disabled={!typeDraft.trim() || state === 'THINKING'}
+              className="nova-btn text-[11px] px-2"
+            >Send</button>
+          </div>
+        )}
+      </div>
+
+      <footer className="border-t border-nova-border p-2.5 bg-nova-panel/60 backdrop-blur flex items-center gap-2">
+        <button
+          onClick={() => setMuted((m) => !m)}
+          title={muted ? 'Unmute Nova' : 'Mute Nova'}
+          className={`nova-btn text-xs px-2 ${muted ? 'border-nova-warn text-nova-warn' : ''}`}
+        >
+          {muted ? '🔇' : '🔊'}
+        </button>
+        <select
+          value={voiceURI}
+          onChange={(e) => setVoiceURI(e.target.value)}
+          className="nova-input text-[10.5px] flex-1 min-w-0"
+          title="Voice"
+        >
+          {voices.length === 0 && <option>system default</option>}
+          {voices.map((v) => (
+            <option key={v.voiceURI} value={v.voiceURI}>{v.name} · {v.lang}</option>
+          ))}
+        </select>
+        {state === 'IDLE' ? (
+          <button onClick={startCall} disabled={wsState !== 'open'}
+            className="bg-nova-ok hover:bg-nova-ok/80 disabled:opacity-40 text-nova-bg font-display text-xs px-3 py-1.5 rounded">
+            ☎ Call
+          </button>
+        ) : (
+          <button onClick={endCall}
+            className="bg-nova-err hover:bg-nova-err/80 text-white font-display text-xs px-3 py-1.5 rounded">
+            ✕ End
+          </button>
+        )}
+      </footer>
+    </div>
+  );
+}

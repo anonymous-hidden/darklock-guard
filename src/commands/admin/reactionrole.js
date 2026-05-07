@@ -67,8 +67,9 @@ module.exports = {
                 .addStringOption(option =>
                     option
                         .setName('panel')
-                        .setDescription('Panel id (use /reactionroles list to find; omit if only one panel)')
+                        .setDescription('Panel to add the role to')
                         .setRequired(false)
+                        .setAutocomplete(true)
                 )
                 .addStringOption(option =>
                     option
@@ -90,8 +91,9 @@ module.exports = {
                 .addStringOption(option =>
                     option
                         .setName('panel')
-                        .setDescription('Panel id (use /reactionroles list to find; omit if only one panel)')
+                        .setDescription('Panel to delete from')
                         .setRequired(false)
+                        .setAutocomplete(true)
                 )
         )
         .addSubcommand(subcommand =>
@@ -99,6 +101,28 @@ module.exports = {
                 .setName('list')
                 .setDescription('List all reaction role panels in this server')
         ),
+
+    async autocomplete(interaction) {
+        const focusedOption = interaction.options.getFocused(true);
+        if (focusedOption.name !== 'panel') return interaction.respond([]);
+
+        try {
+            const panels = await interaction.client.database.all(
+                'SELECT panel_id, title FROM reaction_role_panels WHERE guild_id = ? ORDER BY created_at DESC',
+                [interaction.guild.id]
+            );
+
+            const typed = focusedOption.value.toLowerCase();
+            const choices = panels
+                .filter(p => p.title.toLowerCase().includes(typed) || p.panel_id.toLowerCase().includes(typed))
+                .map(p => ({ name: p.title, value: p.panel_id }))
+                .slice(0, 25);
+
+            await interaction.respond(choices);
+        } catch {
+            await interaction.respond([]);
+        }
+    },
 
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
@@ -181,25 +205,6 @@ module.exports = {
             const type = interaction.options.getString('type');
             const mode = interaction.options.getString('mode') || 'multiple';
             const description = interaction.options.getString('description') || `React to get your roles! ${mode === 'single' ? '⚠️ You can only have ONE role from this panel.' : ''}`;
-
-            // Free tier = 1 panel per guild. Extra panels require premium.
-            try {
-                const existing = await interaction.client.database.get(
-                    'SELECT COUNT(*) AS n FROM reaction_role_panels WHERE guild_id = ?',
-                    [interaction.guild.id]
-                );
-                if ((existing?.n || 0) >= 1) {
-                    const plan = await interaction.client.getGuildPlan?.(interaction.guild.id);
-                    if (!plan || plan.plan === 'free' || !plan.is_active) {
-                        return await interaction.editReply({
-                            content: '🔒 The free plan allows **1 reaction role panel** per server. Upgrade to Premium for unlimited panels.\nDelete the existing panel with `/reactionroles delete` or upgrade at the dashboard.'
-                        });
-                    }
-                }
-            } catch (e) {
-                // Non-fatal — if the plan check fails, fall through and allow creation.
-                console.warn('[reactionrole] plan check failed:', e?.message);
-            }
 
             // Unique id per panel; no underscores so button customIds parse reliably.
             const panelId = `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;

@@ -1,9 +1,53 @@
+// === ANTI-TAMPER PRE-FLIGHT (auto-generated, do not edit by hand) ===
+// Regenerate via: node scripts/update-antitamper-manifest.js
+(function antiTamperPreflight() {
+    const _fs = require('fs');
+    const _path = require('path');
+    const _crypto = require('crypto');
+    const REQUIRED = {
+        "../file-protection/index.js": "48eab394765491a34ef7c8d8de4504c7b887f1aedf0c36f0203e247cb880eab6",
+        "../file-protection/agent/watcher.js": "a468e4d3d470ff5dda094bbe83b251b811c07f6f01048961bf4f3078c2badeee",
+        "../file-protection/agent/validator.js": "df803b1329264fb28b26f1772392a98aa25ff6dd0a62329fdf96ce6769124ec6",
+        "../file-protection/agent/baseline-manager.js": "7a1d2ef23cab7de954279f2cd3a7045a0e6ebcba260fe60e8587b43173ac68be",
+        "../file-protection/agent/protector.js": "baec13203d3efbf16d8a80cfdcf3edd60f54c27f6dbb72510e09d37667ff80f7",
+        "../file-protection/agent/response-handler.js": "39473a827e2982901b725abd42698002292ad5b2f74cad10799196d41a310e17",
+        "../file-protection/agent/file-enumerator.js": "ec90cb0812b7a1fba628e03ebf3faa57c66db18f0e6268f10f386dab54ec2752",
+        "../file-protection/agent/environment-guard.js": "80779afb4f2173fb95e13ec6f3d074f3adcb5ca4a1868cd0832a33373ae6d6f1",
+        "../file-protection/agent/hasher.js": "34ad46b31b89b845f300c7548b8d1da161df0aa78b65c919536bc058c55145ca",
+        "../file-protection/agent/constants.js": "ec37c4e3e5c2801e4f0d01167d7617874df0cc2ba31e06aa2a95dbee73ec54d4",
+        "utils/antiTamperGuard.js": "57afe060518fcaa913688e5b4cd8c0a03791faab4df3da0f3fa6b89bbf226054"
+    };
+    const failures = [];
+    for (const rel of Object.keys(REQUIRED)) {
+        const abs = _path.join(__dirname, rel);
+        if (!_fs.existsSync(abs)) { failures.push(`MISSING: ${rel}`); continue; }
+        try {
+            const h = _crypto.createHash('sha256').update(_fs.readFileSync(abs)).digest('hex');
+            if (h !== REQUIRED[rel]) failures.push(`MODIFIED: ${rel} (expected ${REQUIRED[rel].slice(0,12)}.., got ${h.slice(0,12)}..)`);
+        } catch (e) { failures.push(`UNREADABLE: ${rel} - ${e.message}`); }
+    }
+    if (failures.length) {
+        process.stderr.write('\n\x1b[1;31m╔══════════════════════════════════════════════════════════════╗\n');
+        process.stderr.write('║   ANTI-TAMPER PRE-FLIGHT FAILED — REFUSING TO START BOT      ║\n');
+        process.stderr.write('╚══════════════════════════════════════════════════════════════╝\x1b[0m\n');
+        for (const f of failures) process.stderr.write(`  • ${f}\n`);
+        process.stderr.write('\nThe file-integrity protection system has been tampered with or removed.\n');
+        process.stderr.write('If this change was intentional, run:\n');
+        process.stderr.write('   node scripts/update-antitamper-manifest.js\n');
+        process.stderr.write('and restart.\n\n');
+        process.exit(7);
+    }
+})();
+// === END ANTI-TAMPER PRE-FLIGHT ===
+
 const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, REST, Routes, PermissionFlagsBits } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-// Initialize Tamper Protection System
+// Initialize Tamper Protection System (with embedded anti-tamper guard)
+const AntiTamperGuard = require('./utils/antiTamperGuard');
+const antiTamperGuard = new AntiTamperGuard();
 const TamperProtectionSystem = require('../file-protection/index');
 const tamperProtection = new TamperProtectionSystem();
 
@@ -73,6 +117,7 @@ const TicketManager = require('./utils/ticket-manager');
 const DMTicketManager = require('./utils/DMTicketManager');
 const EventEmitter = require('./utils/EventEmitter');
 const HelpTicketSystem = require('./utils/HelpTicketSystem');
+const TrustScore = require('./utils/TrustScore');
 
 // Import new enhanced modules
 const SecurityManager = require('./utils/SecurityManager');
@@ -184,6 +229,7 @@ class SecurityBot {
         this.backupManager = null;
         this.dashboard = null;
         this.ticketManager = null;
+        this.trustScore = null;
         
         // Initialize new enhanced systems
         this.securityManager = null;
@@ -251,6 +297,11 @@ class SecurityBot {
             
             this.config = new ConfigManager();
             await this.config.loadConfig();
+
+            this.trustScore = new TrustScore(this);
+            await this.trustScore.initialize();
+            this.client.trustScore = this.trustScore;
+            this.logger.info('   ✅ Trust Score system initialized');
             
             // Load commands
             await this.loadCommands();
@@ -1054,6 +1105,29 @@ class SecurityBot {
                             await this.logger.logError({
                                 error: e,
                                 context: 'feature_gate_check',
+                                guildId: interaction.guild.id,
+                                userId: interaction.user.id
+                            });
+                        }
+                    }
+
+                    // Premium tier gating: command.premium = 'pro' | 'enterprise' | true (= 'pro')
+                    if (interaction.guild && command.premium) {
+                        try {
+                            const { resolveGuildTier } = require('./services/tier-enforcement');
+                            const tier = await resolveGuildTier(this, interaction.guild.id);
+                            const required = command.premium === true ? 'pro' : String(command.premium);
+                            const rank = { free: 0, pro: 1, enterprise: 2 };
+                            if ((rank[tier] || 0) < (rank[required] || 0)) {
+                                return await interaction.reply({
+                                    content: `🔒 **\`/${interaction.commandName}\` is a ${required === 'enterprise' ? 'Enterprise' : 'Premium'} command.**\nUpgrade your server's plan at https://admin.darklock.net/payment to unlock it.`,
+                                    ephemeral: true
+                                });
+                            }
+                        } catch (e) {
+                            await this.logger.logError({
+                                error: e,
+                                context: 'premium_gate_check',
                                 guildId: interaction.guild.id,
                                 userId: interaction.user.id
                             });
@@ -2460,6 +2534,7 @@ class SecurityBot {
             console.log('🔒 Initializing tamper protection...');
             await tamperProtection.initialize();
             await tamperProtection.start();
+            antiTamperGuard.attach(tamperProtection);
             console.log('✅ Tamper protection active - monitoring critical files');
         } catch (e) {
             console.error('❌ Discord login failed:', e?.message || e);

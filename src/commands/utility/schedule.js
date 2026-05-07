@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
+    premium: 'pro',
     data: new SlashCommandBuilder()
         .setName('schedule')
         .setDescription('Schedule actions to be executed later')

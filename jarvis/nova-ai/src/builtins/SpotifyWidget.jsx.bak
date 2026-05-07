@@ -1,0 +1,168 @@
+import React, { useEffect, useState, useCallback } from 'react';
+
+/**
+ * SpotifyWidget — now-playing display + transport controls.
+ * Uses window.nova.control.spotify() IPC → playerctl on Linux.
+ */
+export default function SpotifyWidget() {
+  const [track, setTrack] = useState(null);
+  const [err,   setErr]   = useState(null);
+  const [busy,  setBusy]  = useState(false);
+
+  /* Check IPC availability */
+  const hasIpc = typeof window !== 'undefined' && !!window.nova?.isElectron;
+
+  const refresh = useCallback(async () => {
+    if (!hasIpc) {
+      setErr('no-ipc');
+      return;
+    }
+    try {
+      const r = await window.nova.control.spotify('now-playing');
+      if (r?.ok && (r.track?.title || r.track?.artist)) {
+        setTrack(r.track);
+        setErr(null);
+      } else {
+        setTrack(null);
+        setErr(r?.error || 'no-player');
+      }
+    } catch (e) {
+      setTrack(null);
+      setErr(String(e?.message || e));
+    }
+  }, [hasIpc]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    if (!hasIpc) return;
+    const t = setInterval(refresh, 3000);
+    return () => clearInterval(t);
+  }, [refresh, hasIpc]);
+
+  const cmd = async (action) => {
+    if (!hasIpc) return;
+    setBusy(true);
+    try { await window.nova.control.spotify(action); }
+    catch {}
+    finally { setBusy(false); refresh(); }
+  };
+
+  const launch = async () => {
+    if (!hasIpc) return;
+    setBusy(true);
+    try { await window.nova.control.openApp('spotify'); }
+    catch {}
+    finally { setTimeout(() => { setBusy(false); refresh(); }, 1500); }
+  };
+
+  const playing = track && (track.status === 'Playing' || track.status === 'playing');
+
+  /* ── No IPC bridge ─────────────────────────────────── */
+  if (!hasIpc) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6 bg-nova-bg text-nova-text">
+        <div className="w-14 h-14 rounded-full bg-nova-panel border border-nova-border flex items-center justify-center text-2xl text-nova-err">!</div>
+        <div>
+          <div className="font-display text-sm text-nova-err">IPC bridge unavailable</div>
+          <div className="text-[11px] text-nova-muted mt-1">
+            window.nova not found — Electron preload didn't run.<br />
+            Re-launch with <code className="bg-nova-panel px-1 rounded">nova-widget spotify</code>.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── No player running ─────────────────────────────── */
+  if (!track) {
+    const isPlayerctlError = err && err !== 'no-player' && err !== 'no-ipc';
+    return (
+      <div className="h-full p-5 flex flex-col items-center justify-center gap-4 bg-nova-bg text-nova-text">
+        <div className="w-20 h-20 rounded-full bg-nova-panel border border-nova-border flex items-center justify-center text-4xl text-nova-ok shadow-lg">
+          ♫
+        </div>
+        <div className="text-center">
+          <div className="font-display text-base">Spotify isn't running</div>
+          <div className="text-[11px] text-nova-muted mt-0.5 max-w-[260px]">
+            Launch it to see now-playing and transport controls here.
+          </div>
+        </div>
+        {isPlayerctlError && (
+          <div className="text-[10px] text-nova-err font-mono max-w-[280px] text-center bg-nova-err/10 border border-nova-err/30 rounded px-2 py-1">
+            {err}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <button disabled={busy} onClick={launch} className="nova-btn-primary text-xs">
+            {busy ? 'Launching…' : 'Launch Spotify'}
+          </button>
+          <button onClick={refresh} className="nova-btn text-xs">Retry</button>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Now playing ───────────────────────────────────── */
+  return (
+    <div className="h-full p-4 flex flex-col gap-3 bg-nova-bg text-nova-text">
+      {/* Album + info */}
+      <div className="flex gap-3 items-center">
+        <div className="relative w-24 h-24 rounded-md bg-nova-panel2 border border-nova-border overflow-hidden shrink-0 shadow-lg">
+          {track?.art ? (
+            <img src={track.art} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-4xl text-nova-ok">♫</div>
+          )}
+          {playing && (
+            <div className="absolute bottom-1 left-1 flex gap-0.5 items-end h-3">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="w-1 bg-nova-ok rounded-sm origin-bottom"
+                  style={{ animation: `nova-eq 0.9s ease-in-out ${i * 0.15}s infinite`, height: '100%' }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="font-display text-base leading-tight truncate" title={track.title}>
+            {track.title || 'Unknown title'}
+          </div>
+          <div className="text-xs text-nova-muted truncate mt-0.5" title={track.artist}>
+            {track.artist || 'Unknown artist'}
+          </div>
+          <div className="text-[10.5px] text-nova-muted truncate mt-1">{track.album || ''}</div>
+          <div className={`mt-1.5 inline-flex items-center gap-1 text-[10px] font-mono ${playing ? 'text-nova-ok' : 'text-nova-muted'}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${playing ? 'bg-nova-ok' : 'bg-nova-muted'}`} />
+            {playing ? 'PLAYING' : (track.status || 'PAUSED').toUpperCase()}
+          </div>
+        </div>
+      </div>
+
+      {/* Transport */}
+      <div className="flex justify-center gap-2 mt-1">
+        <button disabled={busy} onClick={() => cmd('previous')} className="nova-btn text-base px-4" title="Previous">⏮</button>
+        <button disabled={busy} onClick={() => cmd('toggle')}
+          className="nova-btn-primary text-xl px-5 min-w-[56px]" title={playing ? 'Pause' : 'Play'}>
+          {playing ? '⏸' : '⏵'}
+        </button>
+        <button disabled={busy} onClick={() => cmd('next')} className="nova-btn text-base px-4" title="Next">⏭</button>
+      </div>
+
+      {/* Footer */}
+      <div className="flex gap-2 mt-auto">
+        <button onClick={launch} className="nova-btn text-[11px] flex-1">Open Spotify</button>
+        <button onClick={refresh} className="nova-btn text-[11px] flex-1">Refresh</button>
+      </div>
+
+      <style>{`
+        @keyframes nova-eq {
+          0%, 100% { transform: scaleY(0.3); }
+          50% { transform: scaleY(1); }
+        }
+      `}</style>
+    </div>
+  );
+}

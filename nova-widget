@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# nova-widget — Launch one or more standalone Nova widgets.
+#
+# Usage:
+#   nova-widget <id> [<id>...]
+#   nova-widget list
+#
+# Available widgets:
+#   nova-call, nova-chat, clock, calculator, notes, todo, sysmon,
+#   spotify, weather, calendar, map, news, room-control
+#
+# Examples:
+#   nova-widget clock
+#   nova-widget calculator notes
+#   nova-widget nova-chat
+set -e
+
+NOVA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/jarvis/nova-ai"
+
+if [[ "$1" == "list" || "$1" == "--list" || "$1" == "-l" ]]; then
+  cat <<EOF
+Nova widgets:
+  nova-call      Voice call with Nova (mic + TTS)
+  nova-chat      Quick chat with Nova
+  clock          Live clock + zones + stopwatch
+  calculator     Scientific calc + grapher
+  notes          Markdown notes
+  todo           Task list
+  sysmon         CPU / RAM / disk monitor
+  spotify        Spotify now-playing + transport
+  weather        Hourly + 7-day forecast
+  calendar       Calendar and reminders
+  map            World map, location search, directions
+  news           Daily Nova news brief
+  room-control   Lights, buzzer, sensor, and bridge health
+EOF
+  exit 0
+fi
+
+if [[ $# -eq 0 ]]; then
+  echo "Usage: nova-widget <id> [<id>...]    (try: nova-widget list)" >&2
+  exit 2
+fi
+
+cd "$NOVA_DIR"
+exec node scripts/launch-widgets.mjs "$@"

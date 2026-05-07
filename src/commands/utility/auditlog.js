@@ -131,7 +131,7 @@ module.exports = {
         }
 
         const embed = new EmbedBuilder()
-            .setTitle('📋 Recent Audit Log Entries')
+            .setTitle(' Recent Audit Log Entries')
             .setColor(0x5865F2)
             .setTimestamp();
 
@@ -171,7 +171,7 @@ module.exports = {
         }
 
         const embed = new EmbedBuilder()
-            .setTitle('🔍 Audit Log Search Results')
+            .setTitle(' Audit Log Search Results')
             .setColor(0x5865F2)
             .setTimestamp();
 
@@ -208,7 +208,7 @@ module.exports = {
         const entries = await auditLog.getUserHistory(interaction.guildId, user.id, 25);
 
         const embed = new EmbedBuilder()
-            .setTitle(`📋 Audit History: ${user.username}`)
+            .setTitle(` Audit History: ${user.username}`)
             .setColor(0x5865F2)
             .setThumbnail(user.displayAvatarURL())
             .setTimestamp();
@@ -225,7 +225,7 @@ module.exports = {
                     const f = auditLog.formatEntry(e);
                     return `**#${f.id}** ${f.action} → <@${f.target}>`;
                 }).join('\n');
-                embed.addFields({ name: `📤 Actions Taken (${asModerator.length})`, value: modActions.substring(0, 1000), inline: false });
+                embed.addFields({ name: ` Actions Taken (${asModerator.length})`, value: modActions.substring(0, 1000), inline: false });
             }
 
             if (asTarget.length > 0) {
@@ -234,7 +234,7 @@ module.exports = {
                     const mod = f.moderator ? `<@${f.moderator}>` : 'System';
                     return `**#${f.id}** ${f.action} by ${mod}`;
                 }).join('\n');
-                embed.addFields({ name: `📥 Actions Received (${asTarget.length})`, value: targetActions.substring(0, 1000), inline: false });
+                embed.addFields({ name: ` Actions Received (${asTarget.length})`, value: targetActions.substring(0, 1000), inline: false });
             }
         }
 
@@ -249,7 +249,7 @@ module.exports = {
         const stats = await auditLog.getStats(interaction.guildId, days);
 
         const embed = new EmbedBuilder()
-            .setTitle(`📊 Audit Log Statistics (${days} days)`)
+            .setTitle(` Audit Log Statistics (${days} days)`)
             .setColor(0x5865F2)
             .addFields(
                 { name: 'Total Actions', value: `${stats.totalActions}`, inline: true }
@@ -295,13 +295,13 @@ module.exports = {
         const entry = await auditLog.getEntry(interaction.guildId, id);
 
         if (!entry) {
-            return interaction.editReply({ content: '❌ Entry not found.' });
+            return interaction.editReply({ content: ' Entry not found.' });
         }
 
         const f = auditLog.formatEntry(entry);
 
         const embed = new EmbedBuilder()
-            .setTitle(`📋 Audit Log Entry #${f.id}`)
+            .setTitle(` Audit Log Entry #${f.id}`)
             .setColor(f.color)
             .addFields(
                 { name: 'Action', value: f.action, inline: true },
@@ -325,7 +325,7 @@ module.exports = {
 
     async handleSetup(interaction, auditLog) {
         if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
-            return interaction.reply({ content: '❌ Only administrators can setup the audit log.', ephemeral: true });
+            return interaction.reply({ content: ' Only administrators can setup the audit log.', ephemeral: true });
         }
 
         const channel = interaction.options.getChannel('channel');
@@ -339,7 +339,7 @@ module.exports = {
         });
 
         const embed = new EmbedBuilder()
-            .setTitle('✅ Audit Log Viewer Setup')
+            .setTitle(' Audit Log Viewer Setup')
             .setColor(0x00FF00)
             .addFields(
                 { name: 'Log Channel', value: channel ? `<#${channel.id}>` : 'Not set', inline: true },
@@ -353,7 +353,7 @@ module.exports = {
 
     async handleTracking(interaction, auditLog) {
         if (!interaction.memberPermissions.has(PermissionFlagsBits.Administrator)) {
-            return interaction.reply({ content: '❌ Only administrators can modify tracking settings.', ephemeral: true });
+            return interaction.reply({ content: ' Only administrators can modify tracking settings.', ephemeral: true });
         }
 
         const category = interaction.options.getString('category');
@@ -365,9 +365,9 @@ module.exports = {
         await auditLog.updateTracking(interaction.guildId, settings);
 
         const embed = new EmbedBuilder()
-            .setTitle('⚙️ Tracking Updated')
+            .setTitle(' Tracking Updated')
             .setColor(enabled ? 0x00FF00 : 0xFF6600)
-            .setDescription(`**${category.charAt(0).toUpperCase() + category.slice(1)}** tracking is now ${enabled ? '✅ Enabled' : '❌ Disabled'}`)
+            .setDescription(`**{category.charAt(0).toUpperCase() + category.slice(1)}** tracking is now ${enabled ? '✅ Enabled' : '❌ Disabled'}`)
             .setTimestamp();
 
         return interaction.editReply({ embeds: [embed] });

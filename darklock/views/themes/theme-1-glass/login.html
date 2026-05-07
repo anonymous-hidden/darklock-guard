@@ -152,7 +152,7 @@
             const data = await res.json();
             if (data.success) {
                 showAlert('Login successful! Redirecting...', 'success');
-                setTimeout(() => window.location.href = data.redirect || '/platform/dashboard', 500);
+                setTimeout(() => window.location.href = data.redirect || 'https://admin.darklock.net/dashboard', 500);
             } else {
                 showAlert(data.error || 'Login failed');
             }

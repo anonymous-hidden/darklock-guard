@@ -238,7 +238,7 @@ function generateAdminToken(admin) {
             type: 'admin' // Distinguishes from regular user tokens
         },
         ADMIN_JWT_SECRET,
-        { expiresIn: '1h' }
+        { expiresIn: '8h' }
     );
 }
 
@@ -514,7 +514,7 @@ router.post('/signin', signinLimiter, async (req, res) => {
             secure: process.env.NODE_ENV === 'production', // HTTPS only in production
             sameSite: 'lax', // Use 'lax' to allow cookies in same-site navigations and API calls
             domain: process.env.NODE_ENV === 'production' ? '.darklock.net' : undefined,
-            maxAge: 60 * 60 * 1000, // 1 hour (matches JWT expiry)
+            maxAge: 8 * 60 * 60 * 1000, // 8 hours (matches JWT expiry)
             path: '/'
         });
 

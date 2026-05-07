@@ -26,7 +26,7 @@ function isApiRequest(req) {
   return req.xhr ||
     req.headers.accept?.includes('application/json') ||
     req.headers['content-type']?.includes('application/json') ||
-    req.path.startsWith('/api/');
+    (req.originalUrl || req.path).startsWith('/api/');
 }
 
 // ── Authentication middleware ───────────────────────────────────────────────────
@@ -36,6 +36,7 @@ async function requireAuth(req, res, next) {
   try {
     const token = req.cookies?.admin_token;
     if (!token) {
+      console.log(`[Admin v4] requireAuth: no token for ${req.originalUrl}`);
       if (isApiRequest(req)) return res.status(401).json({ success: false, error: 'Authentication required' });
       return res.redirect('/signin');
     }
@@ -44,6 +45,7 @@ async function requireAuth(req, res, next) {
     const decoded = jwt.verify(token, secret);
 
     if (!decoded.adminId || decoded.type !== 'admin') {
+      console.log(`[Admin v4] requireAuth: invalid token payload (adminId=${decoded.adminId}, type=${decoded.type})`);
       if (isApiRequest(req)) return res.status(401).json({ success: false, error: 'Invalid token' });
       return res.redirect('/signin');
     }
@@ -51,7 +53,8 @@ async function requireAuth(req, res, next) {
     // Confirm admin still exists and is active
     const admin = await db.get(`SELECT id, email, role, active FROM admins WHERE id = ?`, [decoded.adminId]);
     if (!admin || !admin.active) {
-      res.clearCookie('admin_token', { domain: process.env.NODE_ENV === 'production' ? '.darklock.net' : undefined, path: '/' });
+      console.log(`[Admin v4] requireAuth: admin not found or inactive (id=${decoded.adminId}, found=${!!admin})`);
+      res.clearCookie('admin_token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', domain: process.env.NODE_ENV === 'production' ? '.darklock.net' : undefined, path: '/' });
       if (isApiRequest(req)) return res.status(401).json({ success: false, error: 'Account disabled' });
       return res.redirect('/signin');
     }
@@ -67,7 +70,8 @@ async function requireAuth(req, res, next) {
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError' || err.name === 'JsonWebTokenError') {
-      res.clearCookie('admin_token', { domain: process.env.NODE_ENV === 'production' ? '.darklock.net' : undefined, path: '/' });
+      console.log(`[Admin v4] requireAuth: token error (${err.name}) for ${req.originalUrl}`);
+      res.clearCookie('admin_token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', domain: process.env.NODE_ENV === 'production' ? '.darklock.net' : undefined, path: '/' });
       if (isApiRequest(req)) return res.status(401).json({ success: false, error: 'Session expired' });
       return res.redirect('/signin');
     }
@@ -155,6 +159,7 @@ const apiLimiter = rateLimit({
   max: 500,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'GET', // GETs are read-only; only rate-limit mutations
   keyGenerator: (req) => req.admin?.id || getClientIP(req),
   message: { success: false, error: 'Too many requests' },
 });

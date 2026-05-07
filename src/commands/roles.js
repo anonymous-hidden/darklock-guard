@@ -110,19 +110,7 @@ module.exports = {
             const mode = interaction.options.getString('mode') || 'multiple';
             const description = interaction.options.getString('description') || `React to get your roles! ${mode === 'single' ? '⚠️ You can only have ONE role from this panel.' : ''}`;
 
-            // Check if server already has a panel
-            const existing = await interaction.client.database.get(
-                'SELECT * FROM reaction_role_panels WHERE guild_id = ?',
-                [interaction.guild.id]
-            );
-
-            if (existing) {
-                return await interaction.editReply({ 
-                    content: `❌ This server already has a reaction role panel!\n\nTo add more roles: \`/reactionroles add\`\nTo delete and start over: \`/reactionroles delete\`` 
-                });
-            }
-
-            const panelId = `rr_${interaction.guild.id}`;
+            const panelId = `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
             // Create panel in database
             await interaction.client.database.run(`

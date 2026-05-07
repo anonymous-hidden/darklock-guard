@@ -142,6 +142,20 @@ else
 fi
 echo ""
 
+echo "4. Starting Pico Room Control Bridge..."
+if ! check_running "darklock/services/room-control-bridge.js" "Room Control Bridge"; then
+    cd "$SCRIPT_DIR"
+    mkdir -p logs data
+    nohup node darklock/services/room-control-bridge.js > logs/room-bridge.log 2>&1 &
+    sleep 2
+    if pgrep -f "darklock/services/room-control-bridge.js" > /dev/null; then
+        echo "✓ Room Control Bridge started (localhost:3099)"
+    else
+        echo "✗ Room Control Bridge failed to start (check logs/room-bridge.log)"
+    fi
+fi
+echo ""
+
 echo "=========================================="
 echo "  Services Status Check"
 echo "=========================================="
@@ -156,6 +170,7 @@ ss -tlnp 2>/dev/null | grep -q ':4100 ' && echo "✓ Secure Channel IDS: Running
 ss -tlnp 2>/dev/null | grep -q ':4101 ' && echo "✓ Secure Channel Relay: Running (port 4101)" || echo "✗ Secure Channel Relay: Not running"
 pgrep -f "guard-service run" > /dev/null && echo "✓ Guard Service Daemon: Running" || echo "✗ Guard Service Daemon: Not running"
 pgrep -f "darklock-guard-ui" > /dev/null && echo "✓ Darklock Guard App: Running" || (pgrep -f "vite dev" > /dev/null && echo "✓ Darklock Guard App: Building/running (dev mode)" || echo "✗ Darklock Guard App: Not running — check logs/guard-startup.log")
+pgrep -f "darklock/services/room-control-bridge.js" > /dev/null && echo "✓ Room Control Bridge: Running (localhost:3099)" || echo "✗ Room Control Bridge: Not running"
 
 echo ""
 echo "=========================================="

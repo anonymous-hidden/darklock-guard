@@ -62,15 +62,6 @@ module.exports = {
                 }
             }
             
-            // Alt account detection
-            if (bot.altDetector) {
-                try {
-                    await bot.altDetector.checkNewMember(member);
-                } catch (err) {
-                    bot.logger.debug('Alt detection error:', err.message);
-                }
-            }
-            
             // Analytics tracking
             if (bot.analyticsManager) {
                 await bot.analyticsManager.trackMemberJoin(member);

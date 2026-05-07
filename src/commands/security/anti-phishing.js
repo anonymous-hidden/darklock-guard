@@ -13,6 +13,7 @@ function analyzeLink(link) {
 
 // DEPRECATED: Use /automod phishing instead
 module.exports = {
+    premium: 'pro',
     deprecated: true,
     newCommand: '/automod phishing',
     data: new SlashCommandBuilder()

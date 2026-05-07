@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #23232f; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #2e2e3d; }
+
+/* Selection */
+::selection { background: rgba(0, 212, 255, 0.35); }
+
+/* Frameless window drag region — add .drag-region to any header that
+   should be draggable (the whole element becomes a window drag handle).
+   Any interactive child (button, select, input, a) is automatically
+   excluded via -webkit-app-region: no-drag. */
+.drag-region { -webkit-app-region: drag; user-select: none; }
+.drag-region button,
+.drag-region select,
+.drag-region input,
+.drag-region textarea,
+.drag-region a { -webkit-app-region: no-drag; }
+
+/* Layer: components */
+@layer components {
+  .nova-btn {
+    @apply inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium
+           bg-nova-panel2 border border-nova-border text-nova-text
+           hover:bg-nova-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .nova-btn-primary {
+    @apply nova-btn border-nova-accent/40 text-nova-accent hover:bg-nova-accent/10;
+  }
+  .nova-btn-danger {
+    @apply nova-btn border-nova-err/40 text-nova-err hover:bg-nova-err/10;
+  }
+  .nova-input {
+    @apply w-full bg-nova-panel border border-nova-border rounded-md px-3 py-2 text-sm
+           text-nova-text placeholder-nova-muted focus:outline-none focus:border-nova-accent;
+  }
+  .nova-card {
+    @apply bg-nova-panel border border-nova-border rounded-lg;
+  }
+  .nova-tab {
+    @apply flex items-center gap-2 px-3 py-2 rounded-md text-sm
+           text-nova-muted hover:text-nova-text hover:bg-nova-panel2 transition-colors;
+  }
+  .nova-tab-active {
+    @apply bg-nova-panel2 text-nova-accent border border-nova-accent/30;
+  }
+}
+
+/* Code blocks */
+pre code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12.5px; }
+
+/* Nova chat markdown — keeps tight rhythm in the bubbles */
+.prose-nova p           { margin: 0.15rem 0; }
+.prose-nova ul,
+.prose-nova ol          { padding-left: 1.1rem; }
+.prose-nova li          { margin: 0.1rem 0; }
+.prose-nova strong      { color: #e6edf3; }
+.prose-nova a           { word-break: break-word; }
+.prose-nova img         { display: inline-block; }
+.prose-nova table       { border-spacing: 0; }
+.prose-nova pre         { white-space: pre; }
+.prose-nova blockquote  { margin: 0.25rem 0; }
+
+/* Token-by-token typing cursor pulse for streaming bubbles */
+@keyframes nova-cursor { 0%,100% { opacity: 1 } 50% { opacity: 0.2 } }

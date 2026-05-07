@@ -2,6 +2,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const MigrationRunner = require('./MigrationRunner');
+const UserPrivacy = require('../utils/UserPrivacy');
 
 class Database {
     constructor() {
@@ -12,6 +13,7 @@ class Database {
         this.configCache = new Map();
         this.cacheExpiry = new Map();
         this.cacheTTL = 5 * 60 * 1000; // 5 minutes default TTL
+        this.userPrivacy = new UserPrivacy();
     }
 
     async initialize() {
@@ -896,7 +898,15 @@ class Database {
                 guild_id TEXT NOT NULL,
                 user_id TEXT NOT NULL,
                 username TEXT,
+                display_name TEXT,
                 discriminator TEXT,
+                username_encrypted TEXT,
+                username_hash TEXT,
+                display_name_encrypted TEXT,
+                display_name_hash TEXT,
+                discriminator_encrypted TEXT,
+                account_metadata_encrypted TEXT,
+                privacy_version INTEGER DEFAULT 1,
                 avatar_url TEXT,
                 join_date DATETIME,
                 account_created DATETIME,
@@ -2140,19 +2150,6 @@ class Database {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )`,
 
-            // Anti-Alt Enhanced Detection
-            `CREATE TABLE IF NOT EXISTS alt_detection (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                guild_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                suspected_main_account TEXT,
-                detection_method TEXT NOT NULL,
-                confidence REAL DEFAULT 0,
-                evidence TEXT,
-                action_taken TEXT,
-                false_positive INTEGER DEFAULT 0,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )`
         ];
 
         for (const tableSQL of tables) {
@@ -2204,7 +2201,6 @@ class Database {
             'CREATE INDEX IF NOT EXISTS idx_hardening_scans_guild ON hardening_scans(guild_id)',
             'CREATE INDEX IF NOT EXISTS idx_hardening_issues_scan ON hardening_issues(scan_id)',
             'CREATE INDEX IF NOT EXISTS idx_captcha_challenges_guild_user ON captcha_challenges(guild_id, user_id)',
-            'CREATE INDEX IF NOT EXISTS idx_alt_detection_guild_user ON alt_detection(guild_id, user_id)',
             'CREATE INDEX IF NOT EXISTS idx_guild_subscriptions_customer ON guild_subscriptions(stripe_customer_id)',
             'CREATE INDEX IF NOT EXISTS idx_guild_subscriptions_subscription ON guild_subscriptions(stripe_subscription_id)'
         ];
@@ -2747,8 +2743,12 @@ class Database {
 
     async createOrUpdateUserRecord(guildId, userId, userData) {
         // SECURITY FIX: Column name allowlist to prevent SQL injection via object keys
+        const protectedUserData = this.userPrivacy.protectUserRecord(userData, userId);
         const ALLOWED_COLUMNS = new Set([
             'username', 'display_name', 'avatar', 'discriminator',
+            'username_encrypted', 'username_hash', 'display_name_encrypted',
+            'display_name_hash', 'discriminator_encrypted', 'account_metadata_encrypted',
+            'privacy_version', 'avatar_url', 'account_created', 'last_activity',
             'trust_score', 'risk_level', 'flags', 'notes',
             'verification_status', 'verified_at', 'verified_by',
             'join_count', 'last_join', 'last_leave',
@@ -2759,7 +2759,7 @@ class Database {
 
         // Filter userData to only allowed columns
         const safeData = {};
-        for (const [key, value] of Object.entries(userData)) {
+        for (const [key, value] of Object.entries(protectedUserData)) {
             if (ALLOWED_COLUMNS.has(key)) {
                 safeData[key] = value;
             } else {

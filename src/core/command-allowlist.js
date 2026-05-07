@@ -20,7 +20,6 @@ const SECURITY_COMMANDS = new Set([
     // Complex standalone features
     'antinuke',
     'wordfilter',
-    'altdetect',
     
     // Security visibility
     'security',

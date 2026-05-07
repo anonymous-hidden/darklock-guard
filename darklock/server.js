@@ -55,6 +55,20 @@ const { initializeDefaultAdmins } = require('./default-admin');
 // Admin v4 - Enterprise RBAC Dashboard
 const adminV4Routes = require('./admin-v4/routes');
 const { initializeV4Schema } = require('./admin-v4/db/schema');
+// Room Control - hidden room control panel for trusted friends
+const roomControlStore = require('./utils/room-control-store');
+const { buildRouter: buildRoomControlRouter } = require('./routes/room-control');
+
+function registerDiscordAuthAliases(app) {
+    const redirectWithQuery = (targetPath) => (req, res) => {
+        const queryIndex = req.originalUrl.indexOf('?');
+        const query = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : '';
+        res.redirect(302, `${targetPath}${query}`);
+    };
+
+    app.get(['/auth/discord', '/auth/discord/'], redirectWithQuery('/platform/auth/discord'));
+    app.get(['/auth/discord/callback', '/auth/discord/callback/'], redirectWithQuery('/platform/auth/discord/callback'));
+}
 
 class DarklockPlatform {
     constructor(options = {}) {
@@ -181,6 +195,8 @@ class DarklockPlatform {
                     'http://127.0.0.1:3000',
                     'http://localhost:3002',  // Darklock server itself
                     'http://127.0.0.1:3002',
+                    'https://darklock.net',   // Production domain (covers Pi5 when NODE_ENV not set)
+                    'https://www.darklock.net',
                     'http://localhost:5173',  // Vite dev server
                     'http://localhost:5174',  // Vite dev alt port
                     'http://localhost:1420',  // Tauri default dev port
@@ -192,7 +208,9 @@ class DarklockPlatform {
         this.app.use(cors({
             origin: function(origin, callback) {
                 // Allow requests with no origin (same-origin, Postman, mobile apps, Tauri)
-                if (!origin) return callback(null, true);
+                // Also allow Origin: null — browsers send this string when proxied through
+                // Cloudflare Tunnel for same-origin fetch requests from the room control panel.
+                if (!origin || origin === 'null') return callback(null, true);
                 
                 // Allow Tauri origins
                 if (origin.startsWith('tauri://')) return callback(null, true);
@@ -573,12 +591,9 @@ class DarklockPlatform {
         // /signin is handled by admin-auth routes (mounted below)
         // No redirect needed here — the admin-auth router serves signin.html directly
 
-        // Login page — serves the bot dashboard login UI
+        // Login page — redirect to admin dashboard login
         this.app.get('/login', (req, res) => {
-            const loginPage = path.join(__dirname, '../src/dashboard/views/login.html');
-            res.sendFile(loginPage, (err) => {
-                if (err) res.redirect('/platform/auth/login');
-            });
+            res.redirect('https://admin.darklock.net/login');
         });
 
         // Main homepage (with user state)
@@ -1862,7 +1877,15 @@ class DarklockPlatform {
         });
         
         // Auth routes
+        registerDiscordAuthAliases(this.app);
         this.app.use('/platform/auth', authRoutes);
+        
+        // Room Control admin management page
+        this.app.use('/admin/room-control', requireAdminAuth, require('./routes/room-control-admin'));
+
+        // Room Control (hidden panel) — mounted at /r/<random-slug>
+        // Slug guard inside the router 404s anything that isn't the secret slug.
+        this.app.use('/r', buildRoomControlRouter());
         
         // Admin auth routes (/signin, /signout)
         this.app.use('/', adminAuthRoutes);
@@ -1899,6 +1922,12 @@ class DarklockPlatform {
         this.app.use('/api/admin/team', teamManagementRoutes);
         
         // Admin v4 API routes (Enterprise RBAC dashboard)
+        // Never cache — prevents 304 loops where browser/Cloudflare serves stale redirects
+        this.app.use('/api/v4/admin', (req, res, next) => {
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+            res.setHeader('Pragma', 'no-cache');
+            next();
+        });
         this.app.use('/api/v4/admin', adminV4Routes);
 
         // Backward-compat redirect: old V3 theme CSS path → V4
@@ -1906,6 +1935,7 @@ class DarklockPlatform {
         
         // Admin dashboard v4 - Serve the new SPA
         this.app.get('/admin', requireAdminAuth, (req, res) => {
+            res.setHeader('Cache-Control', 'no-store');
             res.sendFile(path.join(__dirname, 'admin-v4', 'views', 'dashboard.html'));
         });
         
@@ -2029,6 +2059,9 @@ class DarklockPlatform {
         });
         this.app.get('/site/sitemap', (req, res) => {
             res.sendFile(path.join(siteViewsDir, 'sitemap.html'));
+        });
+        this.app.get('/site/dashboard', (req, res) => {
+            res.redirect('/dashboard');
         });
         this.app.get('/site/features', (req, res) => {
             res.sendFile(path.join(siteViewsDir, 'features.html'));
@@ -2770,6 +2803,7 @@ class DarklockPlatform {
         });
         
         // Auth routes
+        registerDiscordAuthAliases(existingApp);
         existingApp.use('/platform/auth', authRoutes);
         
         // Admin auth routes (/signin, /signout, /admin)
@@ -2786,6 +2820,12 @@ class DarklockPlatform {
         existingApp.use('/api/admin/team', teamManagementRoutes);
         
 // Admin v4 API routes (Enterprise RBAC dashboard)
+        // Never cache — prevents 304 loops where browser/Cloudflare serves stale redirects
+        existingApp.use('/api/v4/admin', (req, res, next) => {
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+            res.setHeader('Pragma', 'no-cache');
+            next();
+        });
         existingApp.use('/api/v4/admin', adminV4Routes);
 
         // Admin v4 public bug report submission (must be before requireAdminAuth middleware)
@@ -2808,6 +2848,7 @@ class DarklockPlatform {
 
         // Admin v4 dashboard (main admin dashboard)
         existingApp.get('/admin', requireAdminAuth, (req, res) => {
+            res.setHeader('Cache-Control', 'no-store');
             res.sendFile(path.join(__dirname, 'admin-v4', 'views', 'dashboard.html'));
         });
         existingApp.get('/admin/v3', requireAdminAuth, (req, res) => res.redirect('/admin'));
@@ -3011,6 +3052,10 @@ class DarklockPlatform {
                 // Initialize Admin v4 schema
                 console.log('[Darklock Platform] Initializing Admin v4 schema...');
                 await initializeV4Schema();
+
+                // Initialize Room Control schema (hidden panel)
+                console.log('[Darklock Platform] Initializing Room Control schema...');
+                await roomControlStore.init();
                 
                 // Run session cleanup on startup
                 await db.cleanupExpiredSessions();

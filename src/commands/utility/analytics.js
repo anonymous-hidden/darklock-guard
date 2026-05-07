@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = {
+    premium: 'pro',
     data: new SlashCommandBuilder()
         .setName('analytics')
         .setDescription('View detailed server analytics and statistics')

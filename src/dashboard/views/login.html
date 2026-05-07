@@ -356,7 +356,7 @@
                     loginButtonText.textContent = 'Redirecting...';
                     loginButtonText.style.display = 'inline';
                     loginSpinner.style.display = 'none';
-                    setTimeout(function() { window.location.href = '/dashboard'; }, 500);
+                    setTimeout(function() { window.location.href = 'https://admin.darklock.net/dashboard'; }, 500);
                 } else {
                     throw new Error(data.error || 'Login failed');
                 }

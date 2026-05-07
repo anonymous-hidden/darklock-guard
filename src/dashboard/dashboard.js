@@ -412,6 +412,26 @@ class SecurityDashboard {
                     );
                 }
 
+                // Bind subscription to a guild so /commands and dashboard tier checks work
+                if (metadataGuildId && this.bot?.database?.setGuildSubscription) {
+                    try {
+                        const priceId = session.line_items?.data?.[0]?.price?.id || null;
+                        const plan = priceId === this.billingConfig.enterprisePriceId ? 'enterprise' : 'pro';
+                        await this.bot.database.setGuildSubscription(metadataGuildId, {
+                            plan,
+                            status: 'active',
+                            current_period_end: session.subscription?.current_period_end || null,
+                            stripe_customer_id: customerId,
+                            stripe_subscription_id: subscriptionId
+                        });
+                        // Bust cached plan lookups
+                        if (this._userPlanCache) this._userPlanCache.delete(userId);
+                        console.log('[Stripe] Guild subscription set:', metadataGuildId, '->', plan);
+                    } catch (e) {
+                        console.error('[Stripe] Failed to set guild subscription:', e.message);
+                    }
+                }
+
                 // Send email
                 console.log('[Stripe Session] Attempting to send email to:', customerEmail);
                 try {
@@ -506,6 +526,26 @@ The GuardianBot Team`
                             }
                         );
                     }
+                    // Mirror to guild_subscriptions if the subscription has guild metadata
+                    try {
+                        const guildId = subscription.metadata?.guild_id || subscription.metadata?.guildId;
+                        if (guildId && this.bot?.database?.setGuildSubscription) {
+                            const priceId = subscription.items?.data?.[0]?.price?.id || null;
+                            const plan = priceId === this.billingConfig.enterprisePriceId ? 'enterprise' : 'pro';
+                            const validStatuses = new Set(['active', 'trialing', 'past_due', 'canceled', 'unpaid', 'incomplete']);
+                            const status = validStatuses.has(subscription.status) ? subscription.status : 'inactive';
+                            await this.bot.database.setGuildSubscription(guildId, {
+                                plan: status === 'canceled' || status === 'unpaid' ? 'free' : plan,
+                                status: status === 'trialing' ? 'active' : status,
+                                current_period_end: subscription.current_period_end || null,
+                                stripe_customer_id: subscription.customer,
+                                stripe_subscription_id: subscription.id
+                            });
+                            console.log('[Stripe Webhook] Guild subscription mirrored:', guildId, plan, status);
+                        }
+                    } catch (e) {
+                        console.error('[Stripe Webhook] Failed to mirror guild subscription:', e.message);
+                    }
                     break;
 
                 case 'customer.subscription.deleted':
@@ -519,6 +559,15 @@ The GuardianBot Team`
                                 else console.log('[Stripe Webhook] Subscription canceled:', deletedSub.id);
                             }
                         );
+                    }
+                    try {
+                        const guildId = deletedSub.metadata?.guild_id || deletedSub.metadata?.guildId;
+                        if (guildId && this.bot?.database?.setPlanFree) {
+                            await this.bot.database.setPlanFree(guildId);
+                            console.log('[Stripe Webhook] Guild downgraded to free:', guildId);
+                        }
+                    } catch (e) {
+                        console.error('[Stripe Webhook] Failed to downgrade guild:', e.message);
                     }
                     break;
 
@@ -624,6 +673,17 @@ The GuardianBot Team`
             '/access-share'                 // Premium: Access sharing
             // FREE: tickets, analytics, help, all setup pages (anti-raid, anti-spam, moderation, antinuke, anti-phishing, verification, autorole)
         ]);
+
+        // Pre-gate rate limiter: catch runaway browser polling BEFORE hitting auth/DB
+        this._consolePollBucket = new Map();
+        this.app.use('/api/console/logs', (req, res, next) => {
+            const uid = req.ip;
+            const now = Date.now();
+            const last = this._consolePollBucket.get(uid) || 0;
+            if (now - last < 4000) return res.status(429).json({ error: 'Too many requests', retryAfter: 4 });
+            this._consolePollBucket.set(uid, now);
+            next();
+        });
 
         this.app.use((req, res, next) => {
             if (!premiumPaths.has(req.path)) return next();
@@ -848,6 +908,11 @@ The GuardianBot Team`
     async getUserPlan(userId) {
         if (!userId) return { plan: 'free', isPremium: false };
 
+        // Cache results for 30s to prevent DB saturation from rapid polls
+        if (!this._userPlanCache) this._userPlanCache = new Map();
+        const cached = this._userPlanCache.get(userId);
+        if (cached && Date.now() < cached.expires) return cached.result;
+
         let subscription = null;
         let user = null;
 
@@ -888,7 +953,9 @@ The GuardianBot Team`
         }
 
         const isPremium = Boolean(subscription) || Boolean(user && user.is_pro);
-        return { plan: isPremium ? 'premium' : 'free', isPremium };
+        const result = { plan: isPremium ? 'premium' : 'free', isPremium };
+        this._userPlanCache.set(userId, { result, expires: Date.now() + 30000 });
+        return result;
     }
 
     // Simple cookie parser (avoid extra dependency)

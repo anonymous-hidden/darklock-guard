@@ -484,6 +484,7 @@ async function api(path, opts = {}) {
   const res = await fetch(`${API}${path}`, {
     credentials: 'include',
     headers: {
+      'Accept': 'application/json',
       ...(opts.body && { 'Content-Type': 'application/json' }),
       ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
       ...opts.headers,
@@ -492,7 +493,9 @@ async function api(path, opts = {}) {
   });
 
   if (res.status === 401) {
-    location.href = '/signin';
+    // Only navigate to /signin if this isn't the initial boot call
+    // (boot handles its own failure — avoids infinite redirect loops)
+    if (!window._booting) location.href = '/signin';
     return null;
   }
 
@@ -500,8 +503,15 @@ async function api(path, opts = {}) {
     throw new Error('Forbidden: auth, CSRF, or permissions issue');
   }
 
-  let data = null;
+  // If we get HTML back instead of JSON, a redirect was followed (usually a /signin redirect).
+  // Treat it as an auth failure.
   const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    if (!window._booting) location.href = '/signin';
+    return null;
+  }
+
+  let data = null;
 
   if (contentType.includes('application/json')) {
     try {
@@ -560,8 +570,16 @@ function toggleSidebar() {
 
 // ── Boot ────────────────────────────────────────────────────────────────────────
 async function boot() {
+  window._booting = true;
   try {
     shellData = await api('/shell');
+    window._booting = false;
+    if (!shellData || !Array.isArray(shellData.tabs)) {
+      // Auth failed — show sign-in prompt, do NOT navigate (causes infinite loop)
+      document.getElementById('content').innerHTML =
+        '<div class="empty-state"><h4>Session Expired</h4><p>Your session has expired. Please sign in again.</p><a href="/signin" class="btn btn-primary mt-2">Sign In</a></div>';
+      return;
+    }
     renderSidebar(shellData.tabs);
     document.getElementById('adminAvatar').textContent = (shellData.admin.name || '?')[0].toUpperCase();
     document.getElementById('adminName').textContent = shellData.admin.name;

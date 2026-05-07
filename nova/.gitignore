@@ -1,8 +1,0 @@
-__pycache__/
-*.py[cod]
-*.egg-info/
-.venv/
-.env
-data/*.sqlite
-data/*.db
-logs/*.jsonl

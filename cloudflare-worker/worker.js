@@ -321,7 +321,16 @@ export default {
         });
       }
 
-      return response;
+      // Strip the report-only CSP that Cloudflare injects automatically —
+      // it sets connect-src 'none' which blocks our own API calls on /admin.
+      const newHeaders = new Headers(response.headers);
+      newHeaders.delete('Content-Security-Policy-Report-Only');
+
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders,
+      });
 
     } catch (err) {
       // Network / tunnel error — Pi 5 is unreachable

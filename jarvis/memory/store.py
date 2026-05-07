@@ -2,16 +2,81 @@
 Nova — Memory Store
 ============================
 SQLite-backed persistent memory: preferences, tasks, conversations, knowledge.
+
+SHARED BRAIN: preferences are mirrored to/from the canonical ai-terminal
+memory database (~/.ai-terminal/memory.db) so all Nova surfaces (desktop
+chat, Jarvis, nova-agents) share the same facts about Cayden.
 """
 
+import os
 import sqlite3
 import threading
 from datetime import datetime
 from pathlib import Path
 
+# Canonical shared memory — same file ai-terminal.py and the desktop chat use.
+_SHARED_MEMORY_DB = os.path.expanduser("~/.ai-terminal/memory.db")
+
 
 def _now() -> str:
     return datetime.now().isoformat()
+
+
+# ── Shared memory helpers (ai-terminal schema: key/value/category/importance) ──
+
+def _shared_write(key: str, value: str, category: str = "preference") -> None:
+    """Write a key-value fact to the shared ai-terminal memory database."""
+    try:
+        con = sqlite3.connect(_SHARED_MEMORY_DB)
+        con.execute("PRAGMA journal_mode=WAL")
+        con.execute(
+            """INSERT INTO memory (key, value, category, importance, created_at, updated_at)
+               VALUES (?, ?, ?, 5, datetime('now'), datetime('now'))
+               ON CONFLICT(key) DO UPDATE SET value=excluded.value,
+               updated_at=excluded.updated_at""",
+            (key, value, category),
+        )
+        con.commit()
+        con.close()
+    except Exception:
+        pass  # Never crash the calling system; shared db may not exist yet
+
+
+def _shared_read_all(limit: int = 200) -> list[dict]:
+    """Read all facts from the shared ai-terminal memory database."""
+    if not os.path.exists(_SHARED_MEMORY_DB):
+        return []
+    try:
+        con = sqlite3.connect(_SHARED_MEMORY_DB)
+        con.row_factory = sqlite3.Row
+        rows = con.execute(
+            "SELECT key, value, category FROM memory ORDER BY importance DESC, updated_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        con.close()
+        return [dict(r) for r in rows]
+    except Exception:
+        return []
+
+
+def _shared_search(query: str, limit: int = 20) -> list[dict]:
+    """Search shared memory by key or value."""
+    if not os.path.exists(_SHARED_MEMORY_DB):
+        return []
+    try:
+        like = f"%{query.lower()}%"
+        con = sqlite3.connect(_SHARED_MEMORY_DB)
+        con.row_factory = sqlite3.Row
+        rows = con.execute(
+            """SELECT key, value, category FROM memory
+               WHERE LOWER(key) LIKE ? OR LOWER(value) LIKE ?
+               ORDER BY importance DESC, updated_at DESC LIMIT ?""",
+            (like, like, limit),
+        ).fetchall()
+        con.close()
+        return [dict(r) for r in rows]
+    except Exception:
+        return []
 
 
 class MemoryStore:
@@ -79,14 +144,33 @@ class MemoryStore:
         c.execute("INSERT OR REPLACE INTO preferences (key, value, updated_at) VALUES (?, ?, ?)",
                   (key, value, _now()))
         c.commit()
+        # Mirror to shared brain so all Nova surfaces see the same facts.
+        _shared_write(key, value, category="preference")
 
     def get_preference(self, key: str) -> str | None:
         row = self._conn().execute("SELECT value FROM preferences WHERE key = ?", (key,)).fetchone()
-        return row["value"] if row else None
+        if row:
+            return row["value"]
+        # Fall back to shared brain (desktop chat / ai-terminal may have set it).
+        facts = _shared_search(key, limit=1)
+        if facts and facts[0].get("key") == key:
+            return facts[0]["value"]
+        return None
 
     def get_preferences(self) -> dict[str, str]:
+        """Return all preferences, merging local jarvis store with the shared brain."""
         rows = self._conn().execute("SELECT key, value FROM preferences").fetchall()
-        return {r["key"]: r["value"] for r in rows}
+        prefs: dict[str, str] = {r["key"]: r["value"] for r in rows}
+        # Merge in shared brain facts (shared values win on conflict so desktop-chat
+        # writes are always authoritative — avoids stale jarvis-local overrides).
+        for fact in _shared_read_all():
+            if fact["key"] not in prefs:
+                prefs[fact["key"]] = fact["value"]
+        return prefs
+
+    def get_shared_memory_facts(self, limit: int = 100) -> list[dict]:
+        """Return raw facts from the shared ai-terminal memory database."""
+        return _shared_read_all(limit)
 
     # ── Tasks ──────────────────────────────────────────
 

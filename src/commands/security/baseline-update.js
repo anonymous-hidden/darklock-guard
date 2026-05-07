@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
+    premium: 'pro',
     data: new SlashCommandBuilder()
         .setName('baseline-update')
         .setDescription('Regenerate and sign the tamper-protection baseline (OWNER_ID only)'),

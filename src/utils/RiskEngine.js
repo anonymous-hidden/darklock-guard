@@ -1,7 +1,7 @@
 /**
  * RiskEngine
- * Lightweight, explainable risk scoring for new joins and alt detection.
- * Stores scores in `user_risk_scores` and can flag suspected alts in `alt_detection`.
+ * Lightweight, explainable risk scoring for new joins.
+ * Stores scores in `user_risk_scores`.
  */
 class RiskEngine {
     constructor(bot) {
@@ -113,17 +113,6 @@ class RiskEngine {
         );
     }
 
-    async flagAlt(guildId, userId, detectionMethod, confidence = 0.5, evidence = {}) {
-        if (!this.bot?.database) return;
-        await this.bot.database.run(
-            `
-            INSERT INTO alt_detection (
-                guild_id, user_id, detection_method, confidence, evidence
-            ) VALUES (?, ?, ?, ?, ?)
-        `,
-            [guildId, userId, detectionMethod, confidence, JSON.stringify(evidence)]
-        );
-    }
 }
 
 module.exports = RiskEngine;

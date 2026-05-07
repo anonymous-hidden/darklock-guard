@@ -318,27 +318,6 @@ class MigrationFramework {
                 }
             },
             {
-                version: '20251230_010',
-                name: 'add_alt_detection_tables',
-                up: async () => {
-                    if (!await this.tableExists('alt_accounts')) {
-                        await this.db.run(`
-                            CREATE TABLE alt_accounts (
-                                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                guild_id TEXT NOT NULL,
-                                main_user_id TEXT NOT NULL,
-                                alt_user_id TEXT NOT NULL,
-                                confidence REAL DEFAULT 0.5,
-                                detection_method TEXT,
-                                detected_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                            )
-                        `);
-                    }
-                    await this.safeAddColumn('guild_configs', 'alt_detection_enabled', 'INTEGER DEFAULT 0');
-                    await this.safeAddColumn('guild_configs', 'alt_detection_action', "TEXT DEFAULT 'notify'");
-                }
-            },
-            {
                 version: '20251230_011',
                 name: 'add_word_filter_tables',
                 up: async () => {

@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 
 module.exports = {
+    premium: 'pro',
     data: new SlashCommandBuilder()
         .setName('antinuke')
         .setDescription('Advanced anti-nuke protection settings')

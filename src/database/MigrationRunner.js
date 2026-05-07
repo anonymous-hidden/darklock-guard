@@ -431,25 +431,6 @@ class MigrationRunner {
                 }
             },
             {
-                version: '010_alt_detection',
-                name: 'Create alt detection table',
-                up: async () => {
-                    await this.safeCreateTable('alt_accounts', `
-                        CREATE TABLE alt_accounts (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            guild_id TEXT NOT NULL,
-                            main_user_id TEXT NOT NULL,
-                            alt_user_id TEXT NOT NULL,
-                            confidence REAL DEFAULT 0.5,
-                            detection_method TEXT,
-                            detected_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                        )
-                    `);
-                    await this.safeAddColumn('guild_configs', 'alt_detection_enabled', 'INTEGER DEFAULT 0');
-                    await this.safeAddColumn('guild_configs', 'alt_detection_action', "TEXT DEFAULT 'notify'");
-                }
-            },
-            {
                 version: '011_word_filter',
                 name: 'Create word filter table',
                 up: async () => {
@@ -664,6 +645,23 @@ class MigrationRunner {
                 name: 'Ensure guild_configs.verification_method column exists (patch)',
                 up: async () => {
                     await this.safeAddColumn('guild_configs', 'verification_method', 'TEXT');
+                }
+            },
+            {
+                version: '021_user_privacy_fields',
+                name: 'Add encrypted user account fields',
+                up: async () => {
+                    await this.safeAddColumn('user_records', 'display_name', 'TEXT');
+                    await this.safeAddColumn('user_records', 'avatar', 'TEXT');
+                    await this.safeAddColumn('user_records', 'username_encrypted', 'TEXT');
+                    await this.safeAddColumn('user_records', 'username_hash', 'TEXT');
+                    await this.safeAddColumn('user_records', 'display_name_encrypted', 'TEXT');
+                    await this.safeAddColumn('user_records', 'display_name_hash', 'TEXT');
+                    await this.safeAddColumn('user_records', 'discriminator_encrypted', 'TEXT');
+                    await this.safeAddColumn('user_records', 'account_metadata_encrypted', 'TEXT');
+                    await this.safeAddColumn('user_records', 'privacy_version', 'INTEGER DEFAULT 1');
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_user_records_username_hash ON user_records(username_hash)`).catch(() => {});
+                    await this.execSQL(`CREATE INDEX IF NOT EXISTS idx_user_records_display_name_hash ON user_records(display_name_hash)`).catch(() => {});
                 }
             }
         ];

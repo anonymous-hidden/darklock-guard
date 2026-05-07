@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..utils.approval import ApprovalGate
-from .ai_terminal_bridge import build_ai_terminal_memory_tool
+from .ai_terminal_bridge import build_ai_terminal_memory_tool, build_ai_terminal_write_tool
 from .file_tools import FsPolicy, build_fs_tools
 from .memory_tools import build_log_tool, build_memory_tools
 from .registry import ToolRegistry
@@ -29,6 +29,7 @@ def build_registry(cfg, memory_store, logger, approval: ApprovalGate, project_ro
 
     reg.register(build_log_tool(logger))
     reg.register(build_ai_terminal_memory_tool())
+    reg.register(build_ai_terminal_write_tool())
 
     shell_policy = ShellPolicy(
         mode=cfg.get("safety.shell_mode", "approval"),

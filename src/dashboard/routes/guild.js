@@ -294,7 +294,6 @@ class GuildRoutes {
                     automod: !!config?.auto_mod_enabled,
                     autorole: !!config?.autorole_enabled,
                     wordFilter: !!config?.word_filter_enabled,
-                    altDetection: !!config?.alt_detection_enabled,
                     modmail: !!config?.modmail_enabled
                 }
             });
@@ -324,7 +323,6 @@ class GuildRoutes {
                 automod: 'auto_mod_enabled',
                 autorole: 'autorole_enabled',
                 wordFilter: 'word_filter_enabled',
-                altDetection: 'alt_detection_enabled',
                 modmail: 'modmail_enabled'
             };
 

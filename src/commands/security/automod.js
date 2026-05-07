@@ -22,6 +22,7 @@ const {
 } = require('../handlers/automod');
 
 module.exports = {
+    premium: 'pro',
     data: new SlashCommandBuilder()
         .setName('automod')
         .setDescription('🤖 Unified auto-moderation settings')

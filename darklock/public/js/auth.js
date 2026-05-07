@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 
                 if (data.success) {
-                    window.location.href = data.redirect || '/platform/dashboard';
+                    window.location.href = data.redirect || '/site/dashboard';
                 } else if (data.requires2FA) {
                     requires2FA = true;
                     twoFactorSection.classList.remove('hidden');
@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 
                 if (data.success) {
-                    window.location.href = data.redirect || '/platform/dashboard';
+                    window.location.href = data.redirect || '/site/dashboard';
                 } else {
                     showError(data.error || 'Signup failed');
                     setLoading(false);

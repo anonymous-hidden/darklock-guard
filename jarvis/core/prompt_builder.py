@@ -252,6 +252,22 @@ class PromptBuilder:
             if mem_ctx:
                 parts.append(mem_ctx)
 
+        # ── Shared brain: facts from the ai-terminal / desktop chat ──
+        # All three Nova surfaces (desktop chat, Jarvis, nova-agents) write to
+        # ~/.ai-terminal/memory.db. Pull the most important ones in so Jarvis
+        # knows everything the user told the desktop chat and vice versa.
+        try:
+            shared_facts = self._memory.get_shared_memory_facts(limit=60)
+            if shared_facts:
+                lines = [f"  [{f.get('category','general')}] {f['key']}: {f['value']}"
+                         for f in shared_facts]
+                parts.append(
+                    "## Shared Memory (from all Nova surfaces — treat as your own memory)\n"
+                    + "\n".join(lines)
+                )
+        except Exception:
+            pass
+
         # Supervised learning
         if self._supervised_learning:
             fb_ctx = self._supervised_learning.build_feedback_context()

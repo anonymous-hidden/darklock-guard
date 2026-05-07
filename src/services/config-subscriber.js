@@ -12,7 +12,7 @@
  * 
  * Modules fall into 3 categories:
  *   1. guild_configs consumers (AntiSpam, AntiRaid, AntiNuke, etc.) → handled via ConfigService cache
- *   2. Isolated-table modules (WebhookProtection, EmojiSpam, AltDetector) → separate invalidation
+ *   2. Isolated-table modules (WebhookProtection, EmojiSpam) → separate invalidation
  *   3. Bot-level state (feature flags, log channels) → direct bot property updates
  * 
  * @module ConfigSubscriber

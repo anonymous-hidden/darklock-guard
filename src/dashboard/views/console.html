@@ -581,6 +581,9 @@
         let warningCount = 0;
         let consoleLines = [];
         let ws = null;
+        let pollingStarted = false;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 10;
 
         // Storage keys
         const STORAGE_KEY = 'darklock_console_data';
@@ -601,13 +604,14 @@
             
             // Try WebSocket connection
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws/console`;
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
             
             try {
                 ws = new WebSocket(wsUrl);
                 
                 ws.onopen = () => {
                     updateStatus('live');
+                    reconnectAttempts = 0;
                     addLine('info', 'Connected to bot console');
                 };
                 
@@ -623,24 +627,37 @@
                 
                 ws.onclose = () => {
                     updateStatus('disconnected');
-                    addLine('warn', 'Connection closed. Attempting to reconnect...');
-                    setTimeout(connectWebSocket, 5000);
+                    if (reconnectAttempts < maxReconnectAttempts) {
+                        reconnectAttempts++;
+                        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+                        addLine('warn', `Connection closed. Reconnecting in ${delay/1000}s... (${reconnectAttempts}/${maxReconnectAttempts})`);
+                        setTimeout(connectWebSocket, delay);
+                    } else {
+                        addLine('warn', 'Max reconnection attempts reached. Switching to polling mode.');
+                        startPolling();
+                    }
                 };
                 
                 ws.onerror = () => {
                     updateStatus('disconnected');
-                    addLine('error', 'WebSocket connection failed. Using polling mode.');
-                    startPolling();
+                    // onerror is always followed by onclose — do not call startPolling here
                 };
             } catch (e) {
                 updateStatus('disconnected');
                 addLine('error', 'Failed to connect: ' + e.message);
-                startPolling();
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    setTimeout(connectWebSocket, 5000);
+                } else {
+                    startPolling();
+                }
             }
         }
 
         function startPolling() {
-            // Fallback to polling if WebSocket fails
+            // Fallback to polling if WebSocket fails — guard against multiple calls
+            if (pollingStarted) return;
+            pollingStarted = true;
             setInterval(async () => {
                 if (isPaused) return;
                 try {
