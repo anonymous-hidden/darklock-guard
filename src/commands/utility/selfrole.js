@@ -261,7 +261,5 @@ module.exports = {
             INSERT INTO reaction_role_messages (guild_id, channel_id, message_id, title, description)
             VALUES (?, ?, ?, ?, ?)
         `, [interaction.guild.id, interaction.channel.id, message.id, title, description]);
-
-        console.log(`Self-role panel created in ${interaction.guild.name}`);
     }
 };

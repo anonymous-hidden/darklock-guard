@@ -120,11 +120,13 @@ class SecurityDashboard {
         this.consoleMessages = [];
 
         // Stripe billing configuration
-        this.stripe = process.env.STRIPE_SECRET ? new Stripe(process.env.STRIPE_SECRET, { apiVersion: '2024-06-20' }) : null;
+        const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET;
+        this.stripe = stripeSecretKey ? new Stripe(stripeSecretKey, { apiVersion: '2024-06-20' }) : null;
         this.billingConfig = {
             proPriceId: process.env.STRIPE_PRO_PRICE_ID,
             enterprisePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID,
-            domain: process.env.DOMAIN
+            domain: process.env.DOMAIN,
+            publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLISHABLE || ''
         };
 
         // In-memory rate limit tracking for dashboard endpoints
@@ -164,6 +166,31 @@ class SecurityDashboard {
 
         // Enable cookie parsing for all routes
         this.app.use(cookieParser());
+
+        // ── Maintenance enforcement (shared with Darklock admin v4) ───────────
+        // Reads from maintenance_state table that the admin panel writes to.
+        // Both this process and the admin v4 process share the same SQLite DB,
+        // so toggling maintenance in /admin gates /site/* on darklock.net here.
+        try {
+            const maintenance = require('../../darklock/utils/maintenance');
+            const darklockDb = require('../../darklock/utils/database');
+            // Initialize asynchronously; the middleware itself fails open until
+            // the DB is ready (see getMaintenanceConfig fallback).
+            darklockDb.initialize()
+                .then(() => {
+                    maintenance.init(darklockDb);
+                    console.log('[Maintenance] Public web server hooked into shared maintenance_state');
+                })
+                .catch(err => console.error('[Maintenance] DB init failed:', err.message));
+            this.app.use(maintenance.createMiddleware());
+        } catch (e) {
+            console.error('[Maintenance] Setup failed:', e.message);
+        }
+
+        // Serve maintenance page (target of maintenance middleware redirects)
+        this.app.get('/maintenance', (req, res) => {
+            res.sendFile(path.join(process.cwd(), 'website', 'maintenance.html'));
+        });
 
         // Enable JSON body parsing for API routes (skip webhook which uses raw body)
         this.app.use((req, res, next) => {
@@ -720,6 +747,11 @@ The GuardianBot Team`
             });
         });
 
+        // Canonical status page: redirect legacy static URL to platform status page.
+        this.app.get('/site/status.html', (req, res) => {
+            res.redirect('/platform/status');
+        });
+
         // Static files
         // Serve the marketing website under /site to avoid asset path conflicts with dashboard
         this.app.use('/site', express.static(path.join(process.cwd(), 'website')));
@@ -739,7 +771,7 @@ The GuardianBot Team`
                 const htmlPath = path.join(__dirname, 'public', 'payment.html');
                 let html = fs.readFileSync(htmlPath, 'utf8');
                 // Inject Stripe publishable key
-                html = html.replace('{{ STRIPE_PUBLISHABLE_KEY }}', process.env.STRIPE_PUBLISHABLE_KEY || '');
+                html = html.replace('{{ STRIPE_PUBLISHABLE_KEY }}', this.billingConfig.publishableKey);
                 res.send(html);
             } catch (e) {
                 res.status(404).send('Payment page not found');
@@ -908,6 +940,11 @@ The GuardianBot Team`
     async getUserPlan(userId) {
         if (!userId) return { plan: 'free', isPremium: false };
 
+        // Local admin login is always full-access in the bot dashboard.
+        if (userId === 'admin') {
+            return { plan: 'premium', isPremium: true };
+        }
+
         // Cache results for 30s to prevent DB saturation from rapid polls
         if (!this._userPlanCache) this._userPlanCache = new Map();
         const cached = this._userPlanCache.get(userId);
@@ -1019,8 +1056,10 @@ The GuardianBot Team`
             console.log('[/dashboard] Has dashboardToken?:', !!req.cookies.dashboardToken);
             console.log('[/dashboard] User role:', req.user?.role, '| provider:', req.user?.provider, '| hasAccess:', req.user?.hasAccess);
 
+            const hasPrivilegedDashboardAccess = this.isPrivilegedDashboardUser(req.user);
+
             // Google users and Discord users without server-admin access see a dedicated page
-            if (req.user?.provider === 'google' || (!req.user?.hasAccess && req.user?.role !== 'owner')) {
+            if (req.user?.provider === 'google' || (!req.user?.hasAccess && !hasPrivilegedDashboardAccess)) {
                 console.log('[/dashboard] Redirecting non-admin user to /access-code');
                 console.log('==========================================\n');
                 return res.redirect('/access-code');
@@ -1162,7 +1201,7 @@ The GuardianBot Team`
         });
 
         this.app.get('/site/status', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/site/status.html'));
+            res.redirect('/platform/status');
         });
 
         this.app.get('/site/bug-report', (req, res) => {
@@ -1397,12 +1436,17 @@ The GuardianBot Team`
 
 
         this.app.get('/login', (req, res) => {
+            // Store ?next= redirect destination in a short-lived cookie
+            const next = req.query.next;
+            if (next && /^\/[a-zA-Z0-9\-_/?=&]+$/.test(next)) {
+                res.cookie('auth_next', next, { httpOnly: true, sameSite: 'lax', maxAge: 10 * 60 * 1000, path: '/' });
+            }
             res.sendFile(path.join(__dirname, 'views/login.html'));
         });
         
-        // Redirect /login.html to /signin for consistency with Darklock Platform
+        // Keep legacy /login.html path working for the bot dashboard app
         this.app.get('/login.html', (req, res) => {
-            res.redirect('/signin');
+            res.redirect('/login');
         });
 
         // Admin v4 is the main dashboard — served by Darklock's mountOn() block
@@ -1685,6 +1729,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             console.log('========================================\n');
             
             const entitlement = await this.getUserPlan(req.user?.userId);
+            const hasAccess = req.user?.hasAccess ?? this.isPrivilegedDashboardUser(req.user);
 
             res.json({
                 success: true,
@@ -1695,7 +1740,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     globalName: req.user.globalName,
                     avatar: req.user.avatar,
                     role: req.user.role,
-                    hasAccess: req.user.hasAccess,
+                    hasAccess,
                     accessGuild: req.user.accessGuild,
                     guilds: req.user.guilds || [],
                     plan: entitlement.plan,
@@ -1734,6 +1779,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         this.app.get('/api/auth/me', async (req, res) => {
             if (!req.user?.userId) return res.status(401).json({ error: 'Unauthorized' });
             const entitlement = await this.getUserPlan(req.user.userId);
+            const hasAccess = req.user?.hasAccess ?? this.isPrivilegedDashboardUser(req.user);
             res.json({
                 id: req.user.userId,
                 userId: req.user.userId,
@@ -1741,7 +1787,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 globalName: req.user.globalName,
                 avatar: req.user.avatar,
                 role: req.user.role,
-                hasAccess: req.user.hasAccess,
+                hasAccess,
                 accessGuild: req.user.accessGuild,
                 guilds: req.user.guilds || [],
                 plan: entitlement.plan,
@@ -2905,9 +2951,31 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             const commands = [];
             if (this.bot && this.bot.commands) {
                 for (const [name, cmd] of this.bot.commands) {
-                    commands.push({ name: name, description: cmd.data?.description || '', category: cmd.category || cmd.data?.category || this.bot.permissionManager?.getCommandGroup(name) || 'utility' });
+                    const aliases = this.bot.permissionManager?.getAliasesForCommand?.(name) || [];
+                    const legacyTarget = this.bot.permissionManager?.getLegacyCommandTarget?.(name) || null;
+                    commands.push({
+                        name,
+                        description: cmd.data?.description || '',
+                        category: cmd.category || cmd.data?.category || this.bot.permissionManager?.getCommandGroup(name) || 'utility',
+                        aliases,
+                        legacy: !!legacyTarget,
+                        movedTo: legacyTarget
+                    });
                 }
             }
+
+            // Show high-level commands first to reduce dashboard overwhelm.
+            const priority = ['help', 'setup', 'security', 'mod', 'admin', 'ticket', 'automod', 'status'];
+            commands.sort((a, b) => {
+                const ai = priority.indexOf(a.name);
+                const bi = priority.indexOf(b.name);
+                if (ai !== -1 || bi !== -1) {
+                    if (ai === -1) return 1;
+                    if (bi === -1) return -1;
+                    return ai - bi;
+                }
+                return a.name.localeCompare(b.name);
+            });
 
             res.json({ ok: true, commands });
         } catch (error) {
@@ -3032,12 +3100,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             const guildId = req.params.guildId;
             if (!guildId) return res.status(400).json({ error: 'guildId required' });
 
-            const rows = await this.bot.database.all(
-                `SELECT scope, name, role_ids, created_at, updated_at FROM command_permissions WHERE guild_id = ?`,
-                [guildId]
-            );
-
-            const entries = (rows || []).map(r => ({ scope: r.scope, name: r.name, roles: JSON.parse(r.role_ids || '[]'), created_at: r.created_at, updated_at: r.updated_at }));
+            const entries = await this.bot.permissionManager.list(guildId);
             res.json({ ok: true, entries });
         } catch (error) {
             this.bot.logger?.error('Error getting guild permissions:', error);
@@ -3054,6 +3117,10 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             if (!guildId || !scope || !name || !Array.isArray(roleIds)) {
                 return res.status(400).json({ error: 'guildId, scope, name and roleIds are required' });
             }
+
+            const normalizedName = scope === 'command'
+                ? (this.bot.permissionManager?.normalizeCommandName?.(name) || String(name).toLowerCase())
+                : name;
 
             // Persist via PermissionManager for consistency
             if (!this.bot.permissionManager) {
@@ -3090,9 +3157,9 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             }
 
             // Fetch previous for logging
-            const prevRoles = await this.bot.permissionManager.getRoles(guildId, scope, name);
+            const prevRoles = await this.bot.permissionManager.getRoles(guildId, scope, normalizedName);
 
-            await this.bot.permissionManager.setRoles(guildId, scope, name, roleIds);
+            await this.bot.permissionManager.setRoles(guildId, scope, normalizedName, roleIds);
 
             // Use the previously fetched roles as the "oldRoles" (don't re-query after update)
             const oldRoles = Array.isArray(prevRoles) ? prevRoles : [];
@@ -3102,7 +3169,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     await this.bot.confirmationManager.sendConfirmation(
                         guildId,
                         'permissions',
-                        name,
+                        normalizedName,
                         roleIds,
                         oldRoles,
                         changedBy || (req.user?.id || req.user?.sub) || 'dashboard'
@@ -3114,12 +3181,12 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
             // Broadcast change to connected dashboards
             try {
-                this.broadcastToGuild(guildId, { type: 'permissions_updated', data: { scope, name, roleIds }, timestamp: new Date().toISOString() });
+                this.broadcastToGuild(guildId, { type: 'permissions_updated', data: { scope, name: normalizedName, roleIds }, timestamp: new Date().toISOString() });
             } catch (e) {
                 // ignore
             }
 
-            res.json({ ok: true, scope, name, roleIds });
+            res.json({ ok: true, scope, name: normalizedName, roleIds });
         } catch (error) {
             this.bot.logger?.error('Error saving guild command permissions:', error);
             res.status(500).json({ error: 'Failed to save permissions' });
@@ -3194,9 +3261,11 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             'INTERNAL_API_KEY'
         ];
 
+        const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET;
+
         // Stripe secrets are required only if billing is enabled
-        if (process.env.STRIPE_SECRET || process.env.STRIPE_PRO_PRICE_ID || process.env.STRIPE_ENTERPRISE_PRICE_ID) {
-            requiredSecrets.push('STRIPE_SECRET');
+        if (stripeSecretKey || process.env.STRIPE_PRO_PRICE_ID || process.env.STRIPE_ENTERPRISE_PRICE_ID) {
+            requiredSecrets.push('STRIPE_SECRET_KEY');
         }
 
         // Strongly recommended but not hard-fatal: OAUTH_STATE_SECRET.
@@ -3210,11 +3279,13 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         const weakSecrets = [];
 
         for (const secret of requiredSecrets) {
-            const value = process.env[secret];
+            const value = secret === 'STRIPE_SECRET_KEY'
+                ? (process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET)
+                : process.env[secret];
             
             // Check if secret is missing
             if (!value) {
-                missingSecrets.push(secret);
+                missingSecrets.push(secret === 'STRIPE_SECRET_KEY' ? 'STRIPE_SECRET_KEY (or legacy STRIPE_SECRET)' : secret);
                 continue;
             }
 
@@ -3287,6 +3358,11 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         }
     }
 
+    isPrivilegedDashboardUser(user) {
+        const role = String(user?.role || '').toLowerCase();
+        return user?.userId === 'admin' || role === 'owner' || role === 'admin' || role === 'super_admin';
+    }
+
     async handleLogin(req, res) {
         try {
             const { username, password } = req.body;
@@ -3337,7 +3413,16 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
                 if (isValid) {
                     const token = jwt.sign(
-                        { userId: 'admin', role: 'admin', username: 'admin', plan: 'premium', isPremium: true },
+                        {
+                            userId: 'admin',
+                            role: 'admin',
+                            username: ADMIN_USERNAME,
+                            globalName: ADMIN_USERNAME,
+                            hasAccess: true,
+                            provider: 'local',
+                            plan: 'premium',
+                            isPremium: true
+                        },
                         process.env.JWT_SECRET,
                         { expiresIn: '24h' }
                     );
@@ -3363,7 +3448,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     });
 
                     // SECURITY FIX: Do NOT return token in JSON body — cookie-only delivery
-                    return res.json({ success: true, user: { id: 'admin', role: 'admin', username: 'admin' } });
+                    return res.json({ success: true, user: { id: 'admin', role: 'admin', username: ADMIN_USERNAME } });
                 }
             }
 
@@ -3640,9 +3725,13 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 res.clearCookie?.('oauth_state_ts', { path: '/', sameSite: 'lax' });
             } catch (_) {}
 
+            // Check for post-login redirect destination
+            const authNext = req.cookies?.auth_next;
+            res.clearCookie?.('auth_next', { path: '/' });
+
             // Redirect based on access level
             if (hasAccess) {
-                res.redirect('/dashboard');
+                res.redirect(authNext || '/dashboard');
             } else {
                 res.redirect('/access-code'); // Non-admin users see access code page
             }
@@ -3811,8 +3900,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         res.clearCookie('authToken', { path: '/' });
         res.clearCookie('userId', { path: '/' });
         
-        // Redirect to signin page instead of JSON response
-        res.redirect('/signin');
+        // Keep users in the bot dashboard login flow
+        res.redirect('/login');
     }
 
     async debugDatabase(req, res) {
@@ -4007,7 +4096,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
     async handleBillingPortal(req, res) {
         try {
-            if (!this.stripe || !process.env.STRIPE_SECRET) {
+            if (!this.stripe) {
                 return res.status(500).json({ error: 'Billing is not configured' });
             }
 
@@ -10925,11 +11014,30 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             const guild = this.bot.client.guilds.cache.get(guildId) || this.bot.client.guilds.cache.first();
             if (!guild) return res.status(404).json({ error: 'Guild not found' });
 
-            const commands = Array.from(this.bot.commands.values()).map(cmd => ({
-                name: cmd.data?.name || cmd.name || 'unknown',
-                description: cmd.data?.description || '',
-                category: (cmd.category || cmd.data?.category || this.bot.permissionManager?.getCommandGroup(cmd.data?.name || cmd.name || '') || 'utility')
-            }));
+            const commands = Array.from(this.bot.commands.values()).map(cmd => {
+                const name = cmd.data?.name || cmd.name || 'unknown';
+                const legacyTarget = this.bot.permissionManager?.getLegacyCommandTarget?.(name) || null;
+                return {
+                    name,
+                    description: cmd.data?.description || '',
+                    category: (cmd.category || cmd.data?.category || this.bot.permissionManager?.getCommandGroup(name) || 'utility'),
+                    aliases: this.bot.permissionManager?.getAliasesForCommand?.(name) || [],
+                    legacy: !!legacyTarget,
+                    movedTo: legacyTarget
+                };
+            });
+
+            const priority = ['help', 'setup', 'security', 'mod', 'admin', 'ticket', 'automod', 'status'];
+            commands.sort((a, b) => {
+                const ai = priority.indexOf(a.name);
+                const bi = priority.indexOf(b.name);
+                if (ai !== -1 || bi !== -1) {
+                    if (ai === -1) return 1;
+                    if (bi === -1) return -1;
+                    return ai - bi;
+                }
+                return a.name.localeCompare(b.name);
+            });
 
             res.json({ commands });
         } catch (error) {
@@ -10967,15 +11075,19 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
             if (!name) return res.status(400).json({ error: 'Name required' });
 
+            const normalizedName = scope === 'command'
+                ? (this.bot.permissionManager?.normalizeCommandName?.(name) || String(name).toLowerCase())
+                : name;
+
             // Capture previous roles for confirmation logging
             let prevRoles = [];
             try {
                 if (this.bot.permissionManager && typeof this.bot.permissionManager.getRoles === 'function') {
-                    prevRoles = await this.bot.permissionManager.getRoles(guildId, scope, name);
+                    prevRoles = await this.bot.permissionManager.getRoles(guildId, scope, normalizedName);
                 }
             } catch (e) { this.bot.logger?.warn('Failed to fetch previous roles for permissions:', e.message || e); }
 
-            await this.bot.permissionManager.setRoles(guildId, scope, name, roleIds);
+            await this.bot.permissionManager.setRoles(guildId, scope, normalizedName, roleIds);
 
             // Send confirmation embed in guild logs and broadcast to dashboards
             try {
@@ -10983,7 +11095,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 const logChannelId = cfg?.log_channel_id || cfg?.logs_channel_id;
                 const logChannel = logChannelId ? this.bot.client.channels.cache.get(logChannelId) : null;
                 const embed = this.buildSettingEmbed(
-                    `command_permissions.${scope}.${name}`,
+                    `command_permissions.${scope}.${normalizedName}`,
                     prevRoles?.length ? prevRoles.join(', ') : 'None',
                     roleIds.length ? roleIds.join(', ') : 'None',
                     changedBy || 'dashboard'
@@ -10999,7 +11111,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             if (this.bot.dashboard && this.bot.dashboard.broadcastToGuild) {
                 this.bot.dashboard.broadcastToGuild(guildId, {
                     type: 'dashboard_setting_update',
-                    setting: `command_permissions.${scope}.${name}`,
+                    setting: `command_permissions.${scope}.${normalizedName}`,
                     before: prevRoles,
                     after: roleIds,
                     changedBy: changedBy || 'dashboard'
@@ -11264,8 +11376,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 return res.json({ servers: [], googleUser: true });
             }
 
-            // If user has dashboard admin role (from JWT), return all bot guilds
-            if (req.user?.role === 'owner') {
+            // Privileged dashboard users can manage all bot guilds
+            if (this.isPrivilegedDashboardUser(req.user)) {
                 const botGuilds = Array.from(this.bot.client.guilds.cache.values()).map(guild => ({
                     id: guild.id,
                     name: guild.name,
@@ -11433,8 +11545,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
             const userId = req.user?.discordId || req.user?.userId;
             
-            // For dashboard owner role, allow access to all servers
-            if (req.user?.role === 'owner') {
+            // Privileged dashboard users can access all servers
+            if (this.isPrivilegedDashboardUser(req.user)) {
                 return res.json({ 
                     success: true, 
                     server: {

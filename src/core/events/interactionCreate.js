@@ -415,7 +415,7 @@ async function handleButtonInteraction(interaction, bot) {
         try {
             // Reaction role buttons
             if (interaction.customId.startsWith('rr_')) {
-                const reactionRoleButtonHandler = require('../events/reactionRoleButtons');
+                const reactionRoleButtonHandler = require('../../events/reactionRoleButtons');
                 await reactionRoleButtonHandler(interaction);
                 return true;
             }

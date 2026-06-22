@@ -17,13 +17,16 @@
     "security:fix": "npm audit fix",
     "security:check": "npm audit --audit-level=moderate",
     "tamper:generate": "node file-protection/agent/baseline-generator.js",
-    "tamper:test": "node file-protection/test.js"
+    "tamper:test": "node file-protection/test.js",
+    "secure-channel:update:publish": "node scripts/publish-secure-channel-update.js --channel stable",
+    "secure-channel:update:publish:beta": "node scripts/publish-secure-channel-update.js --channel beta"
   },
   "engines": {
     "node": ">=18",
     "npm": ">=8"
   },
   "dependencies": {
+    "@simplewebauthn/server": "^13.3.0",
     "axios": "^1.6.2",
     "bcrypt": "^5.1.1",
     "canvas": "^2.11.2",

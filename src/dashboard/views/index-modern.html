@@ -44,7 +44,9 @@
     <script src="/js/global-theme.js"></script>
     <script src="/js/theme-effects.js"></script>
     <link rel="stylesheet" href="/css/darklock-fx.css">
+    <link rel="stylesheet" href="/css/dashboard-v2.css?v=1">
     <script src="/js/darklock-fx.js" defer></script>
+    <script src="/js/dashboard-live.js?v=1" defer></script>
     <script src="/js/settings-panel.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
     <script src="/js/chart-manager.js"></script>
@@ -581,15 +583,8 @@ class WidgetSystem {
 
         // Fetch debug mode setting from admin panel
         async function fetchDebugMode() {
-            try {
-                const response = await fetch('/api/v4/admin/settings', { credentials: 'include' });
-                if (response.ok) {
-                    const data = await response.json();
-                    debugMode = data.debug?.enabled === true;
-                }
-            } catch (err) {
-                debugMode = false; // Default to disabled
-            }
+            // Bot dashboard does not require admin-v4 settings.
+            debugMode = false;
         }
 
         // Debug-aware console.log wrapper
@@ -735,10 +730,30 @@ class WidgetSystem {
                     // Apply role-based visibility
                     applyRoleBasedVisibility();
 
-                    if (data.user.avatar) {
-                        document.getElementById('userAvatar').src = `https://cdn.discordapp.com/avatars/${data.user.userId || data.user.id}/${data.user.avatar}.png?size=64`;
+                    // Build avatar URL from Discord CDN. /api/me may return either:
+                    //   - avatarUrl: a ready-to-use absolute URL, or
+                    //   - avatar:    the raw Discord avatar hash (needs userId)
+                    let resolvedAvatarUrl = null;
+                    if (data.user.avatarUrl && /^https?:\/\//i.test(data.user.avatarUrl)) {
+                        resolvedAvatarUrl = data.user.avatarUrl;
+                    } else if (data.user.avatar && (data.user.id || data.user.userId)) {
+                        const uid = data.user.id || data.user.userId;
+                        const hash = data.user.avatar;
+                        const ext = String(hash).startsWith('a_') ? 'gif' : 'png';
+                        resolvedAvatarUrl = `https://cdn.discordapp.com/avatars/${uid}/${hash}.${ext}?size=128`;
+                    }
+                    if (resolvedAvatarUrl) {
+                        document.getElementById('userAvatar').src = resolvedAvatarUrl;
                     } else {
-                        document.getElementById('userAvatar').src = 'https://cdn.discordapp.com/embed/avatars/0.png';
+                        // Default Discord avatar: support both snowflake IDs and UUID-style IDs.
+                        const uid = String(data.user.id || data.user.userId || '0');
+                        let idx = 0;
+                        if (/^\d+$/.test(uid)) {
+                            idx = Number((BigInt(uid) >> 22n) % 6n);
+                        } else {
+                            idx = Array.from(uid).reduce((acc, ch) => (acc + ch.charCodeAt(0)) % 6, 0);
+                        }
+                        document.getElementById('userAvatar').src = `https://cdn.discordapp.com/embed/avatars/${idx}.png`;
                     }
                 }
 

@@ -98,17 +98,11 @@ module.exports = {
         
         .addSubcommand(sub => sub
             .setName('logging')
-            .setDescription('Configure audit logging')
+            .setDescription('Set up one channel for all server logs')
             .addChannelOption(opt => opt
                 .setName('channel')
-                .setDescription('Log channel')
-                .setRequired(true))
-            .addBooleanOption(opt => opt
-                .setName('log_moderation')
-                .setDescription('Log moderation actions'))
-            .addBooleanOption(opt => opt
-                .setName('log_joins')
-                .setDescription('Log member joins/leaves')))
+                .setDescription('Optional existing channel (if omitted, one will be created)')
+                .setRequired(false)))
         
         .addSubcommand(sub => sub
             .setName('view')
@@ -381,26 +375,67 @@ module.exports = {
     },
 
     async handleLogging(interaction, bot) {
-        const channel = interaction.options.getChannel('channel');
-        const logModeration = interaction.options.getBoolean('log_moderation') ?? true;
-        const logJoins = interaction.options.getBoolean('log_joins') ?? true;
+        let channel = interaction.options.getChannel('channel');
         const guildId = interaction.guild.id;
 
+        // Create a default channel when one is not provided.
+        if (!channel) {
+            channel = await interaction.guild.channels.create({
+                name: 'server-logs',
+                reason: 'Automatic setup via /setup logging',
+            });
+        }
+
+        const notificationSettings = {
+            message_log_channel: channel.id,
+            join_leave_channel: channel.id,
+            automod_log_channel: channel.id,
+            server_changes_channel: channel.id,
+        };
+
         await bot.database.run(
-            `UPDATE guild_configs SET log_channel_id = ?, log_moderation = ?, log_joins = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`,
-            [channel.id, logModeration ? 1 : 0, logJoins ? 1 : 0, guildId]
+            `UPDATE guild_configs
+             SET log_channel_id = ?,
+                 mod_log_channel = ?,
+                 notification_settings = ?,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE guild_id = ?`,
+            [channel.id, channel.id, JSON.stringify(notificationSettings), guildId]
         );
+
+        await bot.database.run(
+            `INSERT INTO guild_customization (
+                guild_id,
+                mod_logging,
+                log_edits,
+                log_deletes,
+                log_members,
+                log_roles,
+                log_channels,
+                log_compact,
+                updated_at
+            ) VALUES (?, 1, 1, 1, 1, 1, 1, 1, CURRENT_TIMESTAMP)
+            ON CONFLICT(guild_id) DO UPDATE SET
+                mod_logging = 1,
+                log_edits = 1,
+                log_deletes = 1,
+                log_members = 1,
+                log_roles = 1,
+                log_channels = 1,
+                log_compact = 1,
+                updated_at = CURRENT_TIMESTAMP`,
+            [guildId]
+        );
+
+        bot.discordLogger?.invalidateCache?.(guildId);
 
         return interaction.reply({
             embeds: [new EmbedBuilder()
                 .setColor('#00ff00')
-                .setTitle('✅ Logging Configured')
+                .setTitle('Logging configured')
                 .addFields(
                     { name: 'Log Channel', value: `<#${channel.id}>` },
-                    { name: 'Logging', value: [
-                        logModeration ? '✅ Moderation' : '❌ Moderation',
-                        logJoins ? '✅ Joins/Leaves' : '❌ Joins/Leaves'
-                    ].join('\n') }
+                    { name: 'Scope', value: 'All available Discord log events are enabled in this channel.' }
                 )
                 .setTimestamp()]
         });

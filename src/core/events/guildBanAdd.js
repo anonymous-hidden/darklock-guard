@@ -11,6 +11,15 @@ module.exports = {
             // Log the ban
             bot.logger.info(`[BAN] ${ban.user.username} (${ban.user.id}) was banned from ${ban.guild.name}`);
 
+            // Alt detector - store fingerprint
+            if (bot.altDetector) {
+                try {
+                    await bot.altDetector.storeBannedFingerprint(ban.guild.id, ban.user, ban.reason);
+                } catch (err) {
+                    bot.logger.debug('Alt fingerprint storage error:', err.message);
+                }
+            }
+
             // Appeal system - send DM to banned user
             if (bot.appealSystem) {
                 try {

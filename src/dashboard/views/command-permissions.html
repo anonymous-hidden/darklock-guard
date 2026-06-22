@@ -28,11 +28,72 @@
     <script src="/js/darklock-fx.js" defer></script>
     <link rel="stylesheet" href="/css/settings-panel.css">
     <script src="/js/settings-panel.js"></script>
+    <style>
+      .permissions-toolbar {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: center;
+        margin: 1rem 0;
+      }
+      .permissions-toolbar input[type="search"] {
+        min-width: 260px;
+        padding: 0.5rem 0.7rem;
+      }
+      .toggle-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-weight: 600;
+      }
+      .legacy-help {
+        margin: 0.25rem 0 0.75rem;
+        opacity: 0.85;
+        font-size: 0.95rem;
+      }
+      .hidden-legacy-hint {
+        display: none;
+        margin: 0.35rem 0 0.8rem;
+        color: #f3c97a;
+        font-size: 0.92rem;
+      }
+      .permission-row-legacy {
+        opacity: 0.78;
+        border-left: 3px solid #9b7a3d;
+        padding-left: 0.5rem;
+      }
+      .legacy-badge {
+        display: inline-block;
+        font-size: 0.7rem;
+        background: #5a4a2f;
+        color: #f6ddae;
+        border: 1px solid #9b7a3d;
+        border-radius: 999px;
+        padding: 0.05rem 0.4rem;
+        vertical-align: middle;
+      }
+      .legacy-meta {
+        margin-top: 0.2rem;
+        color: #d7b97a;
+        font-size: 0.86rem;
+        font-style: italic;
+      }
+    </style>
 </head>
 <body>
   <div class="container">
     <h1>Command Permissions</h1>
     <p>Choose which roles can use which commands. Server owners can grant per-command or per-group access.</p>
+
+    <div class="permissions-toolbar">
+      <input id="commandSearch" type="search" placeholder="Search commands, aliases, and moved targets">
+      <label class="toggle-wrap" for="showLegacyCommands">
+        <input id="showLegacyCommands" type="checkbox">
+        Show legacy commands
+      </label>
+    </div>
+    <p class="legacy-help">Legacy commands still work, but have moved to consolidated commands like /mod, /security, /setup, and /ticket.</p>
+    <p id="hiddenLegacyHint" class="hidden-legacy-hint"></p>
 
     <div id="permissions-area">
       <div id="loading">Loading…</div>

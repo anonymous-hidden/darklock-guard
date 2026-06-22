@@ -72,7 +72,8 @@ class HardwareStatusWriter {
                 user_count: this.bot.client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0),
                 ping: this.bot.client.ws.ping,
                 username: this.bot.client.user.username,
-                user_id: this.bot.client.user.id
+                user_id: this.bot.client.user.id,
+                guild_ids: Array.from(this.bot.client.guilds.cache.keys()),
             };
 
             await fs.writeFile(this.statusFile, JSON.stringify(status, null, 2));

@@ -11,7 +11,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="icon" type="image/png" href="images/darklock-logo.png">
 </head>
 <body>
@@ -26,17 +25,12 @@
         </a>
         <div class="site-nav-links" id="siteNavLinks">
             <a href="#features">Features</a>
-            <a href="#security">Security</a>
             <a href="#pricing">Pricing</a>
             <a href="/platform">Platform</a>
             <a href="/login" id="dashboardLink">Dashboard</a>
-            <a href="#" class="site-nav-cta" id="inviteBtn">
-                <i class="fab fa-discord"></i> Add to Discord
-            </a>
+            <a href="#" class="site-nav-cta" id="inviteBtn">Add to Discord</a>
         </div>
-        <button class="site-nav-toggle" id="siteNavToggle" aria-label="Toggle menu">
-            <i class="fas fa-bars"></i>
-        </button>
+        <button class="site-nav-toggle" id="siteNavToggle" aria-label="Toggle menu">Menu</button>
     </div>
 </nav>
 
@@ -61,12 +55,8 @@
                     Enterprise-grade protection for your Discord community. Anti-raid, anti-nuke, automated verification, real-time threat detection, and advanced analytics — all in one bot.
                 </p>
                 <div class="site-hero-actions">
-                    <a href="#" class="site-btn site-btn-primary" id="heroInvite">
-                        <i class="fab fa-discord"></i> Add to Server
-                    </a>
-                    <a href="#features" class="site-btn site-btn-ghost">
-                        <i class="fas fa-arrow-down"></i> Explore Features
-                    </a>
+                    <a href="#" class="site-btn site-btn-primary" id="heroInvite">Add to Server</a>
+                    <a href="#features" class="site-btn site-btn-ghost">Explore Features</a>
                 </div>
                 <div class="site-hero-stats">
                     <div class="site-hero-stat">
@@ -98,14 +88,12 @@
                     <div class="site-mock-body">
                         <div class="site-mock-row">
                             <div class="site-mock-card site-mock-card-accent">
-                                <i class="fas fa-shield-halved"></i>
                                 <div>
                                     <div class="site-mock-val">Active</div>
                                     <div class="site-mock-lbl">Protection Status</div>
                                 </div>
                             </div>
                             <div class="site-mock-card">
-                                <i class="fas fa-ban"></i>
                                 <div>
                                     <div class="site-mock-val" id="mockThreats">247</div>
                                     <div class="site-mock-lbl">Threats Blocked</div>
@@ -139,74 +127,121 @@
 <!-- Features -->
 <section id="features" class="site-features">
     <div class="site-container">
-        <div class="site-sect-head site-reveal">
-            <span class="site-sect-badge">Core Features</span>
-            <h2 class="site-sect-title">Everything Your Server Needs</h2>
-            <p class="site-sect-sub">Six powerful modules working together to keep your community safe around the clock.</p>
+        <div class="site-feat-head-grid">
+            <div class="site-sect-head site-reveal">
+                <span class="site-sect-badge">Core Features</span>
+                <h2 class="site-sect-title">Everything Your Server Needs</h2>
+                <p class="site-sect-sub">Defense-grade modules with real-time enforcement, clear auditability, and practical controls your moderators can trust.</p>
+            </div>
+
+            <aside class="site-feat-ops site-reveal site-reveal-d1" aria-label="Operational profile">
+                <span class="site-feat-ops-kicker">Operational Profile</span>
+                <h3>Built for high-stakes moderation teams</h3>
+                <p>Purpose-built controls for communities that need confident, consistent response under pressure.</p>
+                <div class="site-feat-ops-list">
+                    <span>Continuous policy enforcement</span>
+                    <span>Traceable moderator actions</span>
+                    <span>Live threat intelligence sync</span>
+                </div>
+            </aside>
         </div>
+
+        <div class="site-feat-ribbon site-reveal site-reveal-d1">
+            <div class="site-feat-ribbon-item">
+                <span class="site-feat-ribbon-k">Protected Reach</span>
+                <strong id="featRibbonUsers">--</strong>
+                <span class="site-feat-ribbon-s">users secured</span>
+            </div>
+            <div class="site-feat-ribbon-item">
+                <span class="site-feat-ribbon-k">Active Servers</span>
+                <strong id="featRibbonServers">--</strong>
+                <span class="site-feat-ribbon-s">live communities</span>
+            </div>
+            <div class="site-feat-ribbon-item">
+                <span class="site-feat-ribbon-k">Reaction Window</span>
+                <strong>&lt; 50ms</strong>
+                <span class="site-feat-ribbon-s">median response</span>
+            </div>
+        </div>
+
         <div class="site-feat-grid">
-            <div class="site-feat-card site-reveal site-reveal-d1">
-                <div class="site-feat-icon" style="background:rgba(239,68,68,0.08);color:#ef4444"><i class="fas fa-shield-halved"></i></div>
+            <div class="site-feat-card site-reveal site-reveal-d1" style="--accent-color: #ef4444;">
+                <div class="site-feat-card-top">
+                    <span class="site-feat-chip">Threat Control</span>
+                    <span class="site-feat-chip-sub">Layer 01</span>
+                </div>
                 <h3>Anti-Raid Protection</h3>
                 <p>Automatically detects and neutralizes mass-join raids, bot attacks, and coordinated spam floods in real time.</p>
+                <ul class="site-feat-list">
+                    <li>Join velocity anomaly detection</li>
+                    <li>Instant quarantine and escalation rules</li>
+                </ul>
+                <div class="site-feat-foot">Automated incident containment</div>
             </div>
-            <div class="site-feat-card site-reveal site-reveal-d2">
-                <div class="site-feat-icon" style="background:rgba(245,158,11,0.08);color:#f59e0b"><i class="fas fa-filter"></i></div>
+            <div class="site-feat-card site-reveal site-reveal-d2" style="--accent-color: #f59e0b;">
+                <div class="site-feat-card-top">
+                    <span class="site-feat-chip">Message Defense</span>
+                    <span class="site-feat-chip-sub">Layer 02</span>
+                </div>
                 <h3>Anti-Spam Engine</h3>
                 <p>Advanced pattern recognition identifies and removes spam, repeated messages, invite flooding, and mention abuse.</p>
+                <ul class="site-feat-list">
+                    <li>Adaptive score model per channel</li>
+                    <li>Policy-based mute and cleanup actions</li>
+                </ul>
+                <div class="site-feat-foot">Adaptive behavior-based filtering</div>
             </div>
-            <div class="site-feat-card site-reveal site-reveal-d3">
-                <div class="site-feat-icon" style="background:rgba(6,182,212,0.08);color:#06b6d4"><i class="fas fa-link-slash"></i></div>
+            <div class="site-feat-card site-reveal site-reveal-d3" style="--accent-color: #06b6d4;">
+                <div class="site-feat-card-top">
+                    <span class="site-feat-chip">Link Security</span>
+                    <span class="site-feat-chip-sub">Layer 03</span>
+                </div>
                 <h3>Anti-Phishing</h3>
                 <p>Blocks malicious links, phishing attempts, and scam URLs before users can click them. Updated in real time.</p>
+                <ul class="site-feat-list">
+                    <li>Realtime threat-feed matching</li>
+                    <li>Smart redirects and domain denylisting</li>
+                </ul>
+                <div class="site-feat-foot">Pre-click protection pipeline</div>
             </div>
-            <div class="site-feat-card site-reveal site-reveal-d1">
-                <div class="site-feat-icon" style="background:rgba(99,102,241,0.08);color:#818cf8"><i class="fas fa-chart-mixed"></i></div>
+            <div class="site-feat-card site-reveal site-reveal-d1" style="--accent-color: #818cf8;">
+                <div class="site-feat-card-top">
+                    <span class="site-feat-chip">Visibility</span>
+                    <span class="site-feat-chip-sub">Layer 04</span>
+                </div>
                 <h3>Server Analytics</h3>
                 <p>Detailed insights into server activity, member growth, threat patterns, and moderation statistics.</p>
+                <ul class="site-feat-list">
+                    <li>Risk trend dashboards by timeframe</li>
+                    <li>Moderator action quality indicators</li>
+                </ul>
+                <div class="site-feat-foot">Decision-ready analytics</div>
             </div>
-            <div class="site-feat-card site-reveal site-reveal-d2">
-                <div class="site-feat-icon" style="background:rgba(139,92,246,0.08);color:#a78bfa"><i class="fas fa-gavel"></i></div>
+            <div class="site-feat-card site-reveal site-reveal-d2" style="--accent-color: #a78bfa;">
+                <div class="site-feat-card-top">
+                    <span class="site-feat-chip">Enforcement</span>
+                    <span class="site-feat-chip-sub">Layer 05</span>
+                </div>
                 <h3>Auto-Moderation</h3>
                 <p>Configurable rule engine for automatic warnings, mutes, kicks, and bans. Fair, consistent, and transparent.</p>
+                <ul class="site-feat-list">
+                    <li>Granular per-role moderation policy</li>
+                    <li>Rate-limited response throttles</li>
+                </ul>
+                <div class="site-feat-foot">Consistent and explainable actions</div>
             </div>
-            <div class="site-feat-card site-reveal site-reveal-d3">
-                <div class="site-feat-icon" style="background:rgba(34,197,94,0.08);color:#22c55e"><i class="fas fa-scroll"></i></div>
+            <div class="site-feat-card site-reveal site-reveal-d3" style="--accent-color: #22c55e;">
+                <div class="site-feat-card-top">
+                    <span class="site-feat-chip">Compliance</span>
+                    <span class="site-feat-chip-sub">Layer 06</span>
+                </div>
                 <h3>Audit Logging</h3>
                 <p>Full audit trail of every moderation action, config change, and security event. Exportable and searchable.</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Security Section -->
-<section id="security" class="site-security">
-    <div class="site-container">
-        <div class="site-security-inner site-reveal">
-            <div class="site-security-content">
-                <span class="site-sect-badge">Built Secure</span>
-                <h2 class="site-sect-title" style="text-align:left">Security at Every Layer</h2>
-                <p class="site-security-desc">Darklock is built for teams that refuse to compromise on security. Every component is designed with defense-in-depth principles.</p>
-                <div class="site-security-checks">
-                    <div class="site-check"><i class="fas fa-check-circle"></i> End-to-end encrypted configuration</div>
-                    <div class="site-check"><i class="fas fa-check-circle"></i> Zero data collection — your server stays private</div>
-                    <div class="site-check"><i class="fas fa-check-circle"></i> HMAC-signed file integrity protection</div>
-                    <div class="site-check"><i class="fas fa-check-circle"></i> Role-based access control on all dashboards</div>
-                    <div class="site-check"><i class="fas fa-check-circle"></i> Real-time threat database updates</div>
-                    <div class="site-check"><i class="fas fa-check-circle"></i> Self-hosted infrastructure — no third-party dependencies</div>
-                </div>
-            </div>
-            <div class="site-security-visual">
-                <div class="site-sec-card">
-                    <div class="site-sec-shield">
-                        <img src="images/darklock-logo.png" alt="Darklock Security">
-                    </div>
-                    <div class="site-sec-ring"></div>
-                    <div class="site-sec-ring site-sec-ring-2"></div>
-                    <div class="site-sec-badge-float site-sec-float-1"><i class="fas fa-lock"></i></div>
-                    <div class="site-sec-badge-float site-sec-float-2"><i class="fas fa-key"></i></div>
-                    <div class="site-sec-badge-float site-sec-float-3"><i class="fas fa-fingerprint"></i></div>
-                </div>
+                <ul class="site-feat-list">
+                    <li>Tamper-aware event history</li>
+                    <li>Fast filter, export, and replay tools</li>
+                </ul>
+                <div class="site-feat-foot">Forensics-ready audit evidence</div>
             </div>
         </div>
     </div>
@@ -228,15 +263,13 @@
                     <p>Perfect for small communities</p>
                 </div>
                 <ul class="site-price-features">
-                    <li><i class="fas fa-check"></i> Anti-raid protection</li>
-                    <li><i class="fas fa-check"></i> Basic auto-moderation</li>
-                    <li><i class="fas fa-check"></i> Anti-phishing links</li>
-                    <li><i class="fas fa-check"></i> Audit logging (7 days)</li>
-                    <li><i class="fas fa-check"></i> Community support</li>
+                    <li>Anti-raid protection</li>
+                    <li>Basic auto-moderation</li>
+                    <li>Anti-phishing links</li>
+                    <li>Audit logging (7 days)</li>
+                    <li>Community support</li>
                 </ul>
-                <a href="#" class="site-btn site-btn-ghost site-btn-full" id="priceFreeBtn">
-                    <i class="fab fa-discord"></i> Add to Server
-                </a>
+                <a href="#" class="site-btn site-btn-ghost site-btn-full" id="priceFreeBtn">Add to Server</a>
             </div>
             <div class="site-price-card site-price-card-featured site-reveal site-reveal-d2">
                 <div class="site-price-popular">Most Popular</div>
@@ -246,17 +279,15 @@
                     <p>For serious server admins</p>
                 </div>
                 <ul class="site-price-features">
-                    <li><i class="fas fa-check"></i> Everything in Free</li>
-                    <li><i class="fas fa-check"></i> Advanced threat intelligence</li>
-                    <li><i class="fas fa-check"></i> Custom rule engine</li>
-                    <li><i class="fas fa-check"></i> Analytics dashboard</li>
-                    <li><i class="fas fa-check"></i> Unlimited audit logging</li>
-                    <li><i class="fas fa-check"></i> Priority support</li>
-                    <li><i class="fas fa-check"></i> Webhook integrations</li>
+                    <li>Everything in Free</li>
+                    <li>Advanced threat intelligence</li>
+                    <li>Custom rule engine</li>
+                    <li>Analytics dashboard</li>
+                    <li>Unlimited audit logging</li>
+                    <li>Priority support</li>
+                    <li>Webhook integrations</li>
                 </ul>
-                <a href="#" class="site-btn site-btn-primary site-btn-full" id="priceProBtn">
-                    <i class="fas fa-rocket"></i> Coming Soon
-                </a>
+                <a href="#" class="site-btn site-btn-primary site-btn-full" id="priceProBtn">Coming Soon</a>
             </div>
         </div>
     </div>
@@ -269,12 +300,8 @@
             <h2>Ready to Protect Your Server?</h2>
             <p>Join thousands of Discord communities using Darklock to keep their members safe.</p>
             <div class="site-cta-btns">
-                <a href="#" class="site-btn site-btn-primary site-btn-lg" id="ctaInvite">
-                    <i class="fab fa-discord"></i> Add Darklock to Discord
-                </a>
-                <a href="/platform" class="site-btn site-btn-ghost site-btn-lg">
-                    <i class="fas fa-arrow-right"></i> View Platform
-                </a>
+                <a href="#" class="site-btn site-btn-primary site-btn-lg" id="ctaInvite">Add Darklock to Discord</a>
+                <a href="/platform" class="site-btn site-btn-ghost site-btn-lg">View Platform</a>
             </div>
         </div>
     </div>
@@ -301,19 +328,19 @@
                 <h4>Resources</h4>
                 <a href="/platform">Platform</a>
                 <a href="/platform/dashboard">Dashboard</a>
-                <a href="/site/bug-reports" style="color:#f97316"><i class="fas fa-bug" style="margin-right:4px;font-size:.7rem"></i>Bug Reports</a>
+                <a href="/site/bug-reports" style="color:#f97316">Bug Reports</a>
             </div>
             <div class="site-footer-col">
                 <h4>Community</h4>
-                <a href="https://discord.gg/Vsq9PUTrgb" target="_blank"><i class="fab fa-discord" style="margin-right:4px"></i>Discord Server</a>
+                <a href="https://discord.gg/Vsq9PUTrgb" target="_blank">Discord Server</a>
                 <a href="https://github.com/anonymous-hidden?tab=repositories" target="_blank">GitHub</a>
             </div>
         </div>
         <div class="site-footer-bottom">
             <p>&copy; 2026 Darklock. All rights reserved.</p>
             <div class="site-footer-social">
-                <a href="https://discord.gg/Vsq9PUTrgb" aria-label="Discord"><i class="fab fa-discord"></i></a>
-                <a href="https://github.com/anonymous-hidden?tab=repositories" target="_blank" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                <a href="https://discord.gg/Vsq9PUTrgb" aria-label="Discord" target="_blank">Discord</a>
+                <a href="https://github.com/anonymous-hidden?tab=repositories" target="_blank" aria-label="GitHub">GitHub</a>
             </div>
         </div>
     </div>
@@ -349,11 +376,17 @@
     // Fetch live stats
     function loadStats() {
         fetch('/api/stats').then(function(r) { return r.json(); }).then(function(d) {
-            if (d.servers) {
+            if (typeof d.servers === 'number') {
                 document.getElementById('serverCount').textContent = d.servers;
                 document.getElementById('statServers').textContent = d.servers;
+                var featSrv = document.getElementById('featRibbonServers');
+                if (featSrv) featSrv.textContent = d.servers;
             }
-            if (d.users) document.getElementById('statUsers').textContent = formatNum(d.users);
+            if (typeof d.users === 'number') {
+                document.getElementById('statUsers').textContent = formatNum(d.users);
+                var featUsers = document.getElementById('featRibbonUsers');
+                if (featUsers) featUsers.textContent = formatNum(d.users);
+            }
             if (d.uptime) document.getElementById('statUptime').textContent = d.uptime;
         }).catch(function() {});
     }

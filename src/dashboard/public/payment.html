@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Upgrade to Guardian Pro</title>
+  <title>Upgrade to DarkLock Pro</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13,7 +13,6 @@
     <script src="/js/theme-effects.js"></script>
     <link rel="stylesheet" href="/css/darklock-fx.css">
     <script src="/js/darklock-fx.js" defer></script>
-  <script src="https://js.stripe.com/v3/"></script>
   <style>
     *, *::before, *::after {
       margin: 0;
@@ -391,7 +390,7 @@
         <i class="fas fa-sparkles"></i>
         Simple, Transparent Pricing
       </div>
-      <h1>Upgrade to Guardian Pro</h1>
+      <h1>Upgrade to DarkLock Pro</h1>
       <p>Choose the plan that works best for your server</p>
     </div>
 
@@ -460,8 +459,8 @@
       const data = await res.json();
       if (!data?.success) throw new Error('Unauthorized');
     } catch (_) {
-      alert('Please log in first');
-      window.location.href = '/login';
+      // Not logged in — redirect to login, then return here after auth
+      window.location.href = '/login?next=/payment';
     }
   });
 
@@ -487,16 +486,15 @@
         return;
       }
       
-      const { sessionId } = await response.json();
+      const data = await response.json();
       
-      if (!sessionId) {
+      if (!data.url) {
         alert('Failed to create checkout session. Please try again.');
         return;
       }
       
       // Redirect to Stripe Checkout
-      const stripe = Stripe('{{ STRIPE_PUBLISHABLE_KEY }}');
-      await stripe.redirectToCheckout({ sessionId });
+      window.location.href = data.url;
     } catch (error) {
       console.error('Checkout error:', error);
       alert('Payment system temporarily unavailable. Please try again later.');

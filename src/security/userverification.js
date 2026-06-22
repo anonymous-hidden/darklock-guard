@@ -192,6 +192,13 @@ class UserVerification {
             // Persist final risk score to user_risk_scores
             await this.riskEngine.persistScore(member.guild.id, member.id, risk);
 
+            if (risk.riskLevel === 'high' && risk.reasons.includes('very_new_account')) {
+                await this.riskEngine.flagAlt(member.guild.id, member.id, 'age_velocity', 0.8, {
+                    accountAgeDays: risk.accountAgeDays,
+                    joinVelocity: risk.joinVelocity
+                });
+            }
+            
             // Send risk alert for medium/high risk users
             if (finalRiskLevel === 'medium' || finalRiskLevel === 'high') {
                 try {

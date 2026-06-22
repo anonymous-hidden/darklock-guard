@@ -72,6 +72,15 @@ module.exports = {
                 await bot.behaviorDetection.trackUserBehavior(message);
             }
             
+            // Alt detector behavior fingerprinting
+            if (bot.altDetector) {
+                try {
+                    await bot.altDetector.updateBehaviorFromMessage(message);
+                } catch (err) {
+                    // Silent fail - non-critical
+                }
+            }
+            
             // Security Manager comprehensive check
             if (bot.securityManager) {
                 await bot.securityManager.handleMessage(message);

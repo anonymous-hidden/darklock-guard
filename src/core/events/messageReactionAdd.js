@@ -14,7 +14,7 @@ module.exports = {
             
             // Reaction role handler
             if (!user.bot) {
-                const reactionRoleHandler = require('../events/messageReactionAdd');
+                const reactionRoleHandler = require('../../events/messageReactionAdd');
                 await reactionRoleHandler.execute(reaction, user);
             }
         } catch (error) {

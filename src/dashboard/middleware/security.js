@@ -126,9 +126,11 @@ function createSecurityMiddleware(options = {}) {
             'INTERNAL_API_KEY'
         ];
 
+        const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET;
+
         // Stripe secrets required only if billing is enabled
-        if (process.env.STRIPE_SECRET || process.env.STRIPE_PRO_PRICE_ID || process.env.STRIPE_ENTERPRISE_PRICE_ID) {
-            requiredSecrets.push('STRIPE_SECRET');
+        if (stripeSecretKey || process.env.STRIPE_PRO_PRICE_ID || process.env.STRIPE_ENTERPRISE_PRICE_ID) {
+            requiredSecrets.push('STRIPE_SECRET_KEY');
         }
 
         // Warn about missing OAUTH_STATE_SECRET
@@ -141,10 +143,12 @@ function createSecurityMiddleware(options = {}) {
         const weakSecrets = [];
 
         for (const secret of requiredSecrets) {
-            const value = process.env[secret];
+            const value = secret === 'STRIPE_SECRET_KEY'
+                ? (process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET)
+                : process.env[secret];
             
             if (!value) {
-                missingSecrets.push(secret);
+                missingSecrets.push(secret === 'STRIPE_SECRET_KEY' ? 'STRIPE_SECRET_KEY (or legacy STRIPE_SECRET)' : secret);
                 continue;
             }
 

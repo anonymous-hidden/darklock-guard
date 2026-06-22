@@ -175,6 +175,78 @@ class RiskScoring {
     }
 
     /**
+     * Detect potential alt accounts
+     */
+    async detectAlt(guild, member) {
+        const detectionMethods = [];
+        let confidence = 0;
+        let suspectedMainAccount = null;
+
+        // Method 1: Join time clustering (same IP/location - simulated)
+        const recentMembers = await this.db.all(`
+            SELECT user_id FROM join_analytics
+            WHERE guild_id = ? AND timestamp > datetime('now', '-5 minutes')
+        `, [guild.id]);
+
+        if (recentMembers.length > 1) {
+            detectionMethods.push('join_time_clustering');
+            confidence += 30;
+        }
+
+        // Method 2: Similar username patterns
+        const similarUsers = await this.findSimilarUsernames(guild, member.user.username);
+        if (similarUsers.length > 0) {
+            detectionMethods.push('similar_username');
+            confidence += 40;
+            suspectedMainAccount = similarUsers[0];
+        }
+
+        // Method 3: Account age + behavior pattern
+        const accountAge = this.getAccountAgeDays(member);
+        if (accountAge < 7) {
+            const existingAlts = await this.db.get(`
+                SELECT COUNT(*) as count FROM alt_detection
+                WHERE guild_id = ? AND suspected_main_account = ?
+            `, [guild.id, suspectedMainAccount]);
+
+            if (existingAlts?.count > 0) {
+                detectionMethods.push('pattern_matching');
+                confidence += 30;
+            }
+        }
+
+        if (confidence > 60) {
+            await this.db.run(`
+                INSERT INTO alt_detection (
+                    guild_id, user_id, suspected_main_account,
+                    detection_method, confidence, evidence
+                ) VALUES (?, ?, ?, ?, ?, ?)
+            `, [
+                guild.id,
+                member.id,
+                suspectedMainAccount,
+                detectionMethods.join(','),
+                confidence,
+                JSON.stringify({ methods: detectionMethods, timestamp: new Date() })
+            ]);
+
+            return {
+                isAlt: true,
+                confidence,
+                suspectedMainAccount,
+                detectionMethods
+            };
+        }
+
+        return {
+            isAlt: false,
+            confidence,
+            suspectedMainAccount: null,
+            detectionMethods
+        };
+    }
+
+    /**
      * Get risk level from score
      */
     getRiskLevel(score) {
@@ -205,6 +277,25 @@ class RiskScoring {
             }
         }
         return count;
+    }
+
+    /**
+     * Helper: Find similar usernames
+     */
+    async findSimilarUsernames(guild, username) {
+        const members = await guild.members.fetch();
+        const similar = [];
+
+        const base = username.toLowerCase().replace(/\d+/g, '');
+        
+        members.forEach(member => {
+            const memberBase = member.user.username.toLowerCase().replace(/\d+/g, '');
+            if (memberBase === base && member.user.username !== username) {
+                similar.push(member.id);
+            }
+        });
+
+        return similar;
     }
 
     /**

@@ -3,388 +3,698 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign In | Darklock</title>
+    <title>Sign In | Darklock Site</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="icon" type="image/png" href="/images/darklock-logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
     <style>
         :root {
-            --bg-base: #06060b;
-            --bg-surface: #0c0c14;
-            --bg-elevated: #12121c;
-            --bg-card: #161622;
-            --text-primary: #f0f2f5;
-            --text-secondary: #8b8fa3;
+            --bg-900: #06060b;
+            --bg-800: #0c0c14;
+            --card: rgba(10, 10, 11, 0.58);
+            --card-border: rgba(99, 102, 241, 0.2);
+            --surface: rgba(18, 18, 28, 0.78);
+            --surface-hover: rgba(28, 28, 46, 0.92);
+            --text: #f0f2f5;
+            --text-dim: #8b8fa3;
             --text-muted: #5c5f73;
             --accent: #6366f1;
-            --accent-light: #818cf8;
+            --accent-2: #8b5cf6;
             --accent-glow: rgba(99, 102, 241, 0.25);
-            --discord: #5865F2;
-            --google: #4285F4;
+            --danger: #ff6b6b;
             --success: #22c55e;
-            --danger: #ef4444;
-            --border: rgba(255,255,255,0.06);
-            --border-hover: rgba(255,255,255,0.12);
-            --radius: 12px;
-            --radius-lg: 20px;
-            --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-body: 'Manrope', sans-serif;
+            --font-head: 'Space Grotesk', sans-serif;
+            --radius-xl: 24px;
+            --radius-lg: 16px;
+            --radius-md: 12px;
         }
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { -webkit-font-smoothing: antialiased; }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
         body {
-            font-family: var(--font);
-            background: var(--bg-base);
-            color: var(--text-primary);
-            min-height: 100vh;
+            min-height: 100%;
+        }
+
+        body {
+            font-family: var(--font-body);
+            color: var(--text);
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-            overflow: hidden;
+            min-height: 100vh;
+            padding: 22px;
+            background:
+                radial-gradient(circle at 82% 8%, rgba(124, 58, 237, 0.22), transparent 32%),
+                radial-gradient(circle at 9% 88%, rgba(6, 182, 212, 0.16), transparent 36%),
+                linear-gradient(150deg, var(--bg-900), var(--bg-800));
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Animated Background */
-        .bg-grid {
-            position: fixed; inset: 0; z-index: 0;
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.14;
             background-image:
-                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
-            background-size: 60px 60px;
-        }
-        .bg-glow-1 {
-            position: fixed; width: 600px; height: 600px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(99,102,241,0.12), transparent 70%);
-            top: -200px; right: -200px; z-index: 0;
-            animation: glow-drift 20s ease-in-out infinite;
-        }
-        .bg-glow-2 {
-            position: fixed; width: 500px; height: 500px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(139,92,246,0.1), transparent 70%);
-            bottom: -150px; left: -150px; z-index: 0;
-            animation: glow-drift 25s ease-in-out infinite reverse;
-        }
-        @keyframes glow-drift {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(30px, -20px) scale(1.05); }
-            66% { transform: translate(-20px, 30px) scale(0.95); }
+                linear-gradient(rgba(99, 102, 241, 0.25) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(99, 102, 241, 0.07) 1px, transparent 1px);
+            background-size: 38px 38px;
+            mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
         }
 
-        /* Login Card */
-        .login-wrap {
-            position: relative; z-index: 1;
-            width: 100%; max-width: 420px;
-            padding: 1.5rem;
-        }
-        .login-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 2.5rem;
+        .shell {
             position: relative;
+            z-index: 2;
+            width: min(1040px, 100%);
+            display: grid;
+            grid-template-columns: minmax(320px, 1fr) minmax(360px, 1fr);
+            gap: 0;
+            align-items: stretch;
+            margin-top: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-xl);
             overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-        }
-        .login-card::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--accent), #8b5cf6);
+            background: rgba(10, 10, 11, 0.58);
+            box-shadow: 0 26px 90px rgba(0, 0, 0, 0.52);
+            animation: pop 420ms ease-out;
         }
 
-        /* Back link */
-        .back-link {
-            display: inline-flex; align-items: center; gap: 0.4rem;
-            color: var(--text-muted); text-decoration: none;
-            font-size: 0.82rem; font-weight: 500;
-            margin-bottom: 1.75rem; transition: color 0.15s;
-        }
-        .back-link:hover { color: var(--accent-light); }
-
-        /* Header */
-        .login-header { text-align: center; margin-bottom: 2rem; }
-        .login-logo {
-            width: 56px; height: 56px; margin: 0 auto 1.25rem;
-        }
-        .login-logo img {
-            width: 100%; height: 100%; border-radius: 14px;
-            box-shadow: 0 8px 30px rgba(99,102,241,0.3);
-        }
-        .login-header h1 {
-            font-size: 1.5rem; font-weight: 700;
-            margin-bottom: 0.35rem;
-        }
-        .login-header p {
-            color: var(--text-secondary); font-size: 0.9rem;
+        @keyframes pop {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        /* Discord button */
-        .btn-discord {
-            display: flex; align-items: center; justify-content: center; gap: 0.6rem;
-            width: 100%; padding: 0.85rem;
-            background: var(--discord); color: #fff;
-            border: none; border-radius: var(--radius);
-            font-size: 0.95rem; font-weight: 600;
-            font-family: var(--font);
-            cursor: pointer; text-decoration: none;
-            transition: all 0.2s;
-        }
-        .btn-discord:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 8px 25px rgba(88,101,242,0.35);
+        .overview {
+            padding: 38px;
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+            background: linear-gradient(185deg, rgba(12, 12, 20, 0.86), rgba(16, 16, 28, 0.72));
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 24px;
         }
 
-        /* Google button */
-        .btn-google {
-            display: flex; align-items: center; justify-content: center; gap: 0.6rem;
-            width: 100%; padding: 0.85rem;
-            background: var(--bg-elevated); color: var(--text-primary);
-            border: 1px solid var(--border-hover); border-radius: var(--radius);
-            font-size: 0.95rem; font-weight: 600;
-            font-family: var(--font);
-            cursor: pointer; text-decoration: none;
-            transition: all 0.2s;
-            margin-top: 0.75rem;
-        }
-        .btn-google:hover {
-            transform: translateY(-1px);
-            background: var(--bg-card);
-            border-color: var(--google);
-            box-shadow: 0 8px 25px rgba(66,133,244,0.25);
-        }
-        .btn-google .google-icon {
-            width: 18px; height: 18px; flex-shrink: 0;
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text);
+            text-decoration: none;
+            font-family: var(--font-head);
+            font-weight: 700;
+            width: fit-content;
         }
 
-        /* Divider */
-        .divider {
-            display: flex; align-items: center; gap: 0.75rem;
-            margin: 1.5rem 0; color: var(--text-muted); font-size: 0.78rem;
-        }
-        .divider::before, .divider::after {
-            content: ''; flex: 1; height: 1px; background: var(--border);
+        .brand img {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
         }
 
-        /* Form */
-        .form-group { margin-bottom: 1.1rem; }
-        .form-group label {
-            display: block; font-size: 0.82rem; font-weight: 500;
-            color: var(--text-secondary); margin-bottom: 0.4rem;
+        .pill {
+            width: fit-content;
+            border-radius: 999px;
+            border: 1px solid rgba(99, 102, 241, 0.32);
+            background: rgba(99, 102, 241, 0.1);
+            color: #a5b4fc;
+            padding: 7px 12px;
+            text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            font-size: 0.72rem;
+            margin-bottom: 12px;
         }
-        .form-group input {
-            width: 100%; padding: 0.75rem 1rem;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-primary);
-            font-size: 0.9rem; font-family: var(--font);
-            transition: all 0.15s;
+
+        .overview h1 {
+            font-family: var(--font-head);
+            font-size: clamp(1.8rem, 2.3vw, 2.3rem);
+            line-height: 1.18;
+            margin-bottom: 12px;
         }
-        .form-group input::placeholder { color: var(--text-muted); }
-        .form-group input:focus {
+
+        .overview p {
+            color: var(--text-dim);
+            line-height: 1.58;
+        }
+
+        .overview-grid {
+            margin-top: 18px;
+            display: grid;
+            gap: 11px;
+        }
+
+        .overview-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-dim);
+            font-size: 0.91rem;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: linear-gradient(130deg, var(--accent), var(--accent-2));
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.07);
+        }
+
+        .overview-links {
+            color: var(--text-muted);
+            font-size: 0.83rem;
+            line-height: 1.5;
+        }
+
+        .overview-links a {
+            color: #a5b4fc;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .overview-links a:hover {
+            text-decoration: underline;
+        }
+
+        .auth {
+            width: 100%;
+            padding: 36px;
+            background: linear-gradient(180deg, rgba(12, 12, 20, 0.9), rgba(10, 10, 18, 0.9));
+        }
+
+        .back {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 18px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.84rem;
+            font-weight: 700;
+        }
+
+        .back:hover {
+            color: var(--text-dim);
+        }
+
+        .auth h2 {
+            font-family: var(--font-head);
+            font-size: 1.55rem;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 0.92rem;
+            margin-bottom: 16px;
+        }
+
+        .alert {
+            display: none;
+            border-radius: var(--radius-md);
+            padding: 11px 12px;
+            font-size: 0.88rem;
+            margin-bottom: 14px;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert.error {
+            border: 1px solid rgba(255, 107, 107, 0.38);
+            background: rgba(255, 107, 107, 0.14);
+            color: #ffd0d0;
+        }
+
+        .alert.success {
+            border: 1px solid rgba(61, 220, 151, 0.35);
+            background: rgba(61, 220, 151, 0.16);
+            color: #bbf7d0;
+        }
+
+        .field {
+            margin-bottom: 12px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .field input {
+            width: 100%;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-md);
+            background: var(--surface);
+            color: var(--text);
+            padding: 12px;
+            font: inherit;
+            font-size: 0.94rem;
             outline: none;
-            border-color: var(--accent);
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+
+        .field input:focus {
+            border-color: rgba(99, 102, 241, 0.65);
             box-shadow: 0 0 0 3px var(--accent-glow);
+            background: var(--surface-hover);
         }
 
-        /* Submit button */
-        .btn-submit {
-            width: 100%; padding: 0.85rem;
-            background: linear-gradient(135deg, var(--accent), #8b5cf6);
-            color: #fff; border: none;
-            border-radius: var(--radius);
-            font-size: 0.95rem; font-weight: 600;
-            font-family: var(--font);
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-        }
-        .btn-submit:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 8px 25px var(--accent-glow);
-        }
-        .btn-submit:disabled {
-            opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none;
+        .field input::placeholder {
+            color: var(--text-muted);
         }
 
-        /* Error */
-        .error-msg {
-            background: rgba(239,68,68,0.08);
-            border: 1px solid rgba(239,68,68,0.2);
-            color: #fca5a5; padding: 0.75rem 1rem;
-            border-radius: 8px; margin-bottom: 1rem;
-            text-align: center; font-size: 0.85rem;
+        .hint {
+            margin-top: 4px;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+        }
+
+        .hidden {
             display: none;
         }
 
-        /* 2FA hint */
-        .hint { color: var(--text-muted); font-size: 0.78rem; margin-top: 0.35rem; }
-
-        /* Footer */
-        .login-footer {
-            text-align: center; margin-top: 1.75rem;
-            padding-top: 1.25rem;
-            border-top: 1px solid var(--border);
+        .btn {
+            width: 100%;
+            border: none;
+            border-radius: var(--radius-md);
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+            min-height: 44px;
         }
-        .login-footer p { color: var(--text-muted); font-size: 0.78rem; }
-        .login-footer a { color: var(--text-secondary); text-decoration: none; }
-        .login-footer a:hover { color: var(--accent-light); }
 
-        @media (max-width: 480px) {
-            .login-card { padding: 2rem; }
-            .login-header h1 { font-size: 1.3rem; }
+        .btn:disabled {
+            opacity: 0.66;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-primary {
+            margin-top: 8px;
+            background: linear-gradient(140deg, #6366f1, #8b5cf6);
+            color: #ffffff;
+            box-shadow: 0 14px 34px rgba(124, 58, 237, 0.22);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 18px 38px rgba(99, 102, 241, 0.26);
+        }
+
+        .btn-secondary {
+            margin-top: 9px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            background: rgba(22, 22, 34, 0.58);
+            color: #c7d2fe;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(30, 30, 44, 0.72);
+            transform: translateY(-1px);
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .separator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 16px 0 12px;
+            color: var(--text-muted);
+            font-size: 0.79rem;
+        }
+
+        .separator::before,
+        .separator::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .social {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .social-btn {
+            min-height: 44px;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(99, 102, 241, 0.24);
+            background: rgba(22, 22, 34, 0.58);
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+        }
+
+        .social-btn:hover {
+            transform: translateY(-1px);
+            border-color: rgba(167, 180, 255, 0.55);
+            background: rgba(30, 30, 44, 0.72);
+        }
+
+        .social-btn svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .foot-note {
+            margin-top: 16px;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            line-height: 1.45;
+        }
+
+        .foot-note a {
+            color: #c7d2fe;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .foot-note a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 940px) {
+            .shell {
+                grid-template-columns: 1fr;
+                gap: 0;
+                margin-top: 12px;
+            }
+
+            .overview,
+            .auth {
+                padding: 28px;
+            }
+
+            .overview {
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            }
+        }
+
+        @media (max-width: 620px) {
+            body {
+                padding: 12px;
+            }
+
+            .overview,
+            .auth {
+                padding: 22px;
+            }
+
+            .social {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
-    <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v4/admin/theme/css">
-    <script src="/js/global-theme.js"></script>
 </head>
 <body>
-    <div class="bg-grid"></div>
-    <div class="bg-glow-1"></div>
-    <div class="bg-glow-2"></div>
-
-    <div class="login-wrap">
-        <div class="login-card">
-            <a href="/site/" class="back-link">
-                <i class="fas fa-arrow-left"></i> Back to Home
+    <main class="shell">
+        <section class="overview" aria-label="Site dashboard access overview">
+            <a class="brand" href="/site/">
+                <img src="/platform/static/icons/darklock-logo.png" alt="Darklock logo">
+                <span>Darklock</span>
             </a>
 
-            <div class="login-header">
-                <div class="login-logo">
-                    <img src="/platform/static/icons/darklock-logo.png" alt="Darklock">
+            <div>
+                <p class="pill">Site + Dashboard</p>
+                <h1>One sign-in point for operations, admin, and incident response.</h1>
+                <p>
+                    Use your admin credentials, passkey, Discord, or Google to access dashboard controls.
+                    The flow is optimized for both desktop and mobile.
+                </p>
+
+                <div class="overview-grid" role="list" aria-label="Login capabilities">
+                    <p class="overview-item" role="listitem"><span class="dot"></span>Password plus optional two-factor verification</p>
+                    <p class="overview-item" role="listitem"><span class="dot"></span>OAuth support with Discord and Google</p>
+                    <p class="overview-item" role="listitem"><span class="dot"></span>Passkey login using platform identity</p>
                 </div>
-                <h1>Security Dashboard</h1>
-                <p>Sign in to access your dashboard</p>
             </div>
 
-            <a href="/auth/discord" class="btn-discord">
-                <i class="fab fa-discord"></i> Continue with Discord
+            <p class="overview-links">
+                Need platform access instead? <a href="/platform/auth/login">Go to platform sign in</a>
+            </p>
+        </section>
+
+        <section class="auth" aria-label="Site login form">
+            <a class="back" href="/site/">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+                Back to site
             </a>
 
-            <a href="/auth/google" class="btn-google">
-                <svg class="google-icon" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-                    <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-                    <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
-                    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-                </svg>
-                Continue with Google
-            </a>
+            <h2>Sign in</h2>
+            <p class="subtitle">Use admin credentials or a trusted identity provider.</p>
 
-            <div class="divider"><span>or use admin login</span></div>
+            <div class="alert" id="alert" role="alert" aria-live="polite"></div>
 
-            <form id="loginForm">
-                <div class="error-msg" id="errorMessage"></div>
-
-                <div class="form-group">
-                    <label for="username">Admin Username</label>
-                    <input type="text" id="username" name="username" placeholder="Enter your username" autocomplete="username" required>
+            <form id="loginForm" autocomplete="on" novalidate>
+                <div class="field">
+                    <label for="username">Admin username</label>
+                    <input id="username" name="username" type="text" autocomplete="username" placeholder="Enter admin username" required>
                 </div>
 
-                <div class="form-group">
-                    <label for="password">Admin Password</label>
-                    <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+                <div class="field">
+                    <label for="password">Admin password</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter admin password" required>
                 </div>
 
-                <div class="form-group" id="twoFactorGroup" style="display:none">
-                    <label for="totpToken">Two-Factor Authentication Code</label>
-                    <input type="text" id="totpToken" name="token" placeholder="Enter 6-digit code" maxlength="6" pattern="[0-9]{6}" autocomplete="one-time-code">
-                    <p class="hint">Enter the code from your authenticator app or use a backup code.</p>
+                <div class="field hidden" id="totpField">
+                    <label for="totpToken">Two-factor code</label>
+                    <input id="totpToken" name="totpToken" type="text" inputmode="numeric" maxlength="6" pattern="[0-9]*" autocomplete="one-time-code" placeholder="000000">
+                    <p class="hint">Enter the six-digit code from your authenticator app or a backup code.</p>
                 </div>
 
-                <button type="submit" class="btn-submit" id="loginButton">
-                    <span id="loginButtonText">Sign In</span>
-                    <i id="loginSpinner" class="fas fa-spinner fa-spin" style="display:none"></i>
+                <button class="btn btn-primary" id="signInBtn" type="submit">
+                    <span class="btn-label">Sign in</span>
+                    <span class="btn-spinner hidden" aria-hidden="true">
+                        <svg class="spinner" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="40" stroke-dashoffset="24"/></svg>
+                    </span>
                 </button>
+
+                <button class="btn btn-secondary" id="passkeyBtn" type="button">Sign in with passkey</button>
             </form>
 
-            <div class="login-footer">
-                <p><a href="/platform">Darklock Platform</a> &middot; <a href="/site/">Bot Website</a> &middot; <a href="/site/bug-reports">Report Bug</a></p>
+            <div class="separator">or continue with</div>
+
+            <div class="social">
+                <a class="social-btn" href="/auth/discord">
+                    <svg viewBox="0 0 24 24" fill="#5865F2" aria-hidden="true"><path d="M20.317 4.37a19.79 19.79 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.445.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.74 19.74 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.058a.082.082 0 00.031.056 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.873-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128c.125-.094.252-.192.373-.292a.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.1.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.84 19.84 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z"/></svg>
+                    Discord
+                </a>
+                <a class="social-btn" href="/auth/google">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.07 5.07 0 01-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A11 11 0 001 12c0 1.78.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                    Google
+                </a>
             </div>
-        </div>
-    </div>
 
+            <p class="foot-note">
+                Passkey sign-in uses your platform identity and then opens the dashboard.
+                You can also manage users from <a href="/platform">Darklock Platform</a>.
+            </p>
+        </section>
+    </main>
+
+    <script src="/platform/static/js/passkeys.js"></script>
     <script>
-    (function() {
-        'use strict';
-        var requires2FA = false;
-        var urlParams = new URLSearchParams(window.location.search);
+        (function() {
+            'use strict';
 
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            var username = document.getElementById('username').value;
-            var password = document.getElementById('password').value;
-            var totpToken = document.getElementById('totpToken').value;
-            var loginButton = document.getElementById('loginButton');
-            var loginButtonText = document.getElementById('loginButtonText');
-            var loginSpinner = document.getElementById('loginSpinner');
-            var errorMessage = document.getElementById('errorMessage');
-            var twoFactorGroup = document.getElementById('twoFactorGroup');
+            const form = document.getElementById('loginForm');
+            const alertEl = document.getElementById('alert');
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const totpField = document.getElementById('totpField');
+            const totpInput = document.getElementById('totpToken');
+            const signInButton = document.getElementById('signInBtn');
+            const passkeyButton = document.getElementById('passkeyBtn');
 
-            loginButton.disabled = true;
-            loginButtonText.style.display = 'none';
-            loginSpinner.style.display = 'inline';
-            errorMessage.style.display = 'none';
+            let requires2FA = false;
 
-            try {
-                var body = { username: username, password: password };
-                if (totpToken) body.token = totpToken;
-
-                var response = await fetch('/auth/login', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-
-                var data = await response.json();
-
-                if (response.status === 429) {
-                    var minutes = Math.ceil(data.remainingTime);
-                    throw new Error('Too many failed attempts. Account locked for ' + minutes + ' minute' + (minutes > 1 ? 's' : '') + '.');
-                }
-
-                if (data.requires2FA) {
-                    requires2FA = true;
-                    twoFactorGroup.style.display = 'block';
-                    document.getElementById('totpToken').focus();
-                    loginButtonText.textContent = 'Verify Code';
-                    throw new Error(data.message || 'Two-factor authentication required');
-                }
-
-                if (response.ok && data.success) {
-                    loginButtonText.textContent = 'Redirecting...';
-                    loginButtonText.style.display = 'inline';
-                    loginSpinner.style.display = 'none';
-                    setTimeout(function() { window.location.href = 'https://admin.darklock.net/dashboard'; }, 500);
-                } else {
-                    throw new Error(data.error || 'Login failed');
-                }
-            } catch (error) {
-                errorMessage.textContent = error.message;
-                errorMessage.style.display = 'block';
-            } finally {
-                loginButton.disabled = false;
-                loginButtonText.style.display = 'inline';
-                loginSpinner.style.display = 'none';
+            function showAlert(message, type) {
+                alertEl.textContent = message;
+                alertEl.className = 'alert show ' + (type || 'error');
             }
-        });
 
-        // Check for OAuth error in URL
-        var error = urlParams.get('error');
-        if (error) {
-            var errorMessage = document.getElementById('errorMessage');
-            errorMessage.textContent = decodeURIComponent(error);
-            errorMessage.style.display = 'block';
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
+            function hideAlert() {
+                alertEl.className = 'alert';
+                alertEl.textContent = '';
+            }
 
-        // If already logged in, redirect to dashboard
-        var hasDashToken = document.cookie.split(';').some(function(c) { return c.trim().startsWith('dashboardToken='); });
-        if (hasDashToken) {
-            window.location.href = '/dashboard';
-        }
-    })();
+            async function ensureCsrfToken() {
+                try {
+                    await fetch('/api/csrf-token', {
+                        method: 'GET',
+                        credentials: 'include'
+                    });
+                } catch {
+                    // Passkey flow will show a direct request error if token bootstrap fails.
+                }
+            }
+
+            function setButtonLoading(button, isLoading, idleText) {
+                const label = button.querySelector('.btn-label');
+                const spinner = button.querySelector('.btn-spinner');
+                button.disabled = isLoading;
+                if (!label || !spinner) {
+                    if (!isLoading) {
+                        button.textContent = idleText;
+                    }
+                    return;
+                }
+                label.textContent = isLoading ? 'Please wait...' : idleText;
+                spinner.classList.toggle('hidden', !isLoading);
+            }
+
+            const params = new URLSearchParams(window.location.search);
+            const queryError = params.get('error');
+            if (queryError) {
+                showAlert(decodeURIComponent(queryError), 'error');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                hideAlert();
+
+                const username = usernameInput.value.trim();
+                const password = passwordInput.value;
+                const token = totpInput.value.trim();
+
+                if (!username || !password) {
+                    showAlert('Enter your admin username and password.', 'error');
+                    return;
+                }
+
+                if (requires2FA && !token) {
+                    showAlert('Enter your two-factor code to continue.', 'error');
+                    return;
+                }
+
+                setButtonLoading(signInButton, true, 'Sign in');
+
+                try {
+                    const body = { username: username, password: password };
+                    if (token) {
+                        body.token = token;
+                    }
+
+                    const response = await fetch('/auth/login', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+
+                    const data = await response.json();
+
+                    if (response.status === 429) {
+                        showAlert(data.error || 'Too many attempts. Please wait and retry.', 'error');
+                        return;
+                    }
+
+                    if (data.requires2FA) {
+                        requires2FA = true;
+                        totpField.classList.remove('hidden');
+                        totpInput.required = true;
+                        totpInput.focus();
+                        showAlert('Two-factor verification required.', 'success');
+                        return;
+                    }
+
+                    if (!response.ok || !data.success) {
+                        showAlert(data.error || 'Login failed.', 'error');
+                        return;
+                    }
+
+                    showAlert('Sign-in successful. Redirecting...', 'success');
+                    window.location.href = data.redirect || '/dashboard';
+                } catch (error) {
+                    showAlert('Network error while signing in. Try again.', 'error');
+                } finally {
+                    setButtonLoading(signInButton, false, 'Sign in');
+                }
+            });
+
+            if (!window.DarklockPasskeys || !window.DarklockPasskeys.isSupported()) {
+                passkeyButton.disabled = true;
+                passkeyButton.textContent = 'Passkeys unavailable on this device';
+            } else {
+                passkeyButton.addEventListener('click', async function() {
+                    hideAlert();
+                    const originalLabel = passkeyButton.textContent;
+                    passkeyButton.disabled = true;
+                    passkeyButton.textContent = 'Waiting for passkey...';
+
+                    try {
+                        await ensureCsrfToken();
+                        const data = await window.DarklockPasskeys.beginAuthentication({
+                            identifier: usernameInput.value.trim(),
+                            optionsUrl: '/platform/auth/passkeys/login/options',
+                            verifyUrl: '/platform/auth/passkeys/login/verify'
+                        });
+                        showAlert('Passkey verified. Redirecting...', 'success');
+                        window.location.href = data.redirect || '/dashboard';
+                    } catch (error) {
+                        showAlert(error.message || 'Passkey sign in failed.', 'error');
+                    } finally {
+                        passkeyButton.disabled = false;
+                        passkeyButton.textContent = originalLabel;
+                    }
+                });
+            }
+
+            const hasDashToken = document.cookie.split(';').some(function(cookie) {
+                return cookie.trim().startsWith('dashboardToken=');
+            });
+
+            if (hasDashToken) {
+                window.location.href = '/dashboard';
+            }
+        })();
     </script>
 </body>
 </html>

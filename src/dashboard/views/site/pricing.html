@@ -41,7 +41,7 @@
                 <a href="/site/security" class="nav-link">Security</a>
                 <a href="/site/pricing" class="nav-link active">Pricing</a>
                 <a href="/site/documentation" class="nav-link">Docs</a>
-                <a href="/site/status" class="nav-link">Status</a>
+                <a href="/platform/status" class="nav-link">Status</a>
                 <a href="/platform" class="nav-link">Platform</a>
             </div>
             
@@ -50,9 +50,9 @@
                     <i class="fas fa-rocket"></i>
                     <span>Dashboard</span>
                 </a>
-                <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary">
-                    <i class="fas fa-plus"></i>
-                    <span>Add to Discord</span>
+                <a href="/payment" class="btn btn-primary">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Open Payment Page</span>
                 </a>
             </div>
             
@@ -125,7 +125,7 @@
                         <li><i class="fas fa-check"></i> Priority support</li>
                         <li class="disabled"><i class="fas fa-times"></i> Custom branding</li>
                     </ul>
-                    <a href="https://discord.gg/Vsq9PUTrgb" target="_blank" class="btn btn-primary btn-block">Upgrade to Pro</a>
+                    <a href="/payment" class="btn btn-primary btn-block">Upgrade to Pro</a>
                 </div>
                 
                 <!-- Enterprise Plan -->
@@ -165,8 +165,8 @@
             
             <div class="faq-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: var(--space-lg); max-width: 1000px; margin: 0 auto;">
                 <div class="feature-card">
-                    <h4 style="color: var(--accent-primary); margin-bottom: var(--space-sm);">Can I try Pro features for free?</h4>
-                    <p style="color: var(--text-secondary);">Yes! We offer a 7-day free trial of Pro features for new users. No credit card required.</p>
+                    <h4 style="color: var(--accent-primary); margin-bottom: var(--space-sm);">Can I upgrade from the dashboard?</h4>
+                    <p style="color: var(--text-secondary);">Yes. After logging in, open the payment page from the dashboard or site and complete Stripe checkout securely.</p>
                 </div>
                 
                 <div class="feature-card">
@@ -176,7 +176,7 @@
                 
                 <div class="feature-card">
                     <h4 style="color: var(--accent-primary); margin-bottom: var(--space-sm);">What payment methods are accepted?</h4>
-                    <p style="color: var(--text-secondary);">We accept all major credit cards, PayPal, and cryptocurrency through our secure payment system.</p>
+                    <p style="color: var(--text-secondary);">We accept major credit and debit cards through Stripe. Billing and cancellation are managed from the dashboard.</p>
                 </div>
                 
                 <div class="feature-card">
@@ -192,11 +192,15 @@
         <div class="container">
             <div class="cta-content">
                 <h2>Start Protecting Your Server Today</h2>
-                <p>Get started with DarkLock's free tier — no credit card required.</p>
+                <p>Get started free, then open the payment page whenever you are ready to upgrade.</p>
                 <div class="cta-buttons">
                     <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary btn-lg">
                         <i class="fas fa-plus"></i>
                         <span>Add to Discord Free</span>
+                    </a>
+                    <a href="/payment" class="btn btn-outline btn-lg">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Open Payment Page</span>
                     </a>
                 </div>
             </div>
@@ -234,7 +238,7 @@
                     <h4>Resources</h4>
                     <ul>
                         <li><a href="/site/documentation">Documentation</a></li>
-                        <li><a href="/site/status">Status</a></li>
+                        <li><a href="/platform/status">Status</a></li>
                         <li><a href="/site/bug-reports">Bug Reports</a></li>
                         <li><a href="/site/support">Support</a></li>
                     </ul>

@@ -215,7 +215,6 @@ module.exports = {
                 )
             `);
             
-            console.log('[ChannelAccess] Database tables ensured');
         } catch (error) {
             console.error('[ChannelAccess] Error creating tables:', error);
             throw error;
@@ -257,7 +256,6 @@ module.exports = {
                 await targetChannel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
                     ViewChannel: false
                 });
-                console.log(`[ChannelAccess] Locked ${targetChannel.name} from @everyone`);
             } catch (permError) {
                 console.error('[ChannelAccess] Failed to lock channel:', permError);
                 return await interaction.editReply({
@@ -411,7 +409,6 @@ module.exports = {
                         SendMessages: true,
                         ReadMessageHistory: true
                     });
-                    console.log(`[ChannelAccess] Granted ${role.name} access to ${targetChannel.name}`);
                 } catch (permError) {
                     console.error('[ChannelAccess] Failed to set channel permissions:', permError);
                 }
@@ -469,7 +466,6 @@ module.exports = {
             if (targetChannel) {
                 try {
                     await targetChannel.permissionOverwrites.delete(role);
-                    console.log(`[ChannelAccess] Removed ${role.name} access from ${targetChannel.name}`);
                 } catch (permError) {
                     console.error('[ChannelAccess] Failed to remove channel permissions:', permError);
                 }
@@ -551,7 +547,6 @@ module.exports = {
                 // Restore @everyone access
                 try {
                     await targetChannel.permissionOverwrites.delete(interaction.guild.roles.everyone);
-                    console.log(`[ChannelAccess] Restored @everyone access to ${targetChannel.name}`);
                 } catch (err) {
                     // Ignore if can't restore
                 }

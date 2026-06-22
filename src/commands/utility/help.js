@@ -34,18 +34,16 @@ const CATEGORIES = {
         color: 0xff6b6b,
         description: 'Manage and moderate your community',
         commands: [
-            { name: '/kick',    desc: 'Kick a member from the server' },
-            { name: '/ban',     desc: 'Ban a member from the server' },
-            { name: '/unban',   desc: 'Unban a user by ID' },
-            { name: '/timeout', desc: 'Timeout a member' },
-            { name: '/warn',    desc: 'Issue a warning to a member' },
-            { name: '/warnings', desc: 'View a member\'s warnings' },
-            { name: '/purge',   desc: 'Delete multiple messages at once' },
-            { name: '/slowmode', desc: 'Set channel slowmode' },
-            { name: '/lock',    desc: 'Lock a channel' },
-            { name: '/unlock',  desc: 'Unlock a channel' },
-            { name: '/mute',    desc: 'Mute a member' },
-            { name: '/unmute',  desc: 'Unmute a member' }
+            { name: '/mod ban',      desc: 'Ban a member' },
+            { name: '/mod kick',     desc: 'Kick a member' },
+            { name: '/mod timeout',  desc: 'Timeout a member' },
+            { name: '/mod warn',     desc: 'Warn a member' },
+            { name: '/mod strike',   desc: 'Issue strike points' },
+            { name: '/mod purge',    desc: 'Bulk-delete messages' },
+            { name: '/mod lock',     desc: 'Lock a channel' },
+            { name: '/mod unlock',   desc: 'Unlock a channel' },
+            { name: '/mod unban',    desc: 'Unban by user ID' },
+            { name: '/cases',        desc: 'Review moderation history' }
         ]
     },
     security: {
@@ -53,14 +51,14 @@ const CATEGORIES = {
         color: 0x00d4ff,
         description: 'Protection against raids, spam, phishing, and nukes',
         commands: [
-            { name: '/automod',      desc: 'Configure automod rules' },
+            { name: '/security antiraid', desc: 'Raid protection status/config' },
+            { name: '/security antispam', desc: 'Spam protection status/config' },
+            { name: '/security phishing', desc: 'Phishing protection + scans' },
+            { name: '/security quarantine', desc: 'Manage quarantined users' },
+            { name: '/security audit', desc: 'Security overview and incidents' },
+            { name: '/automod',      desc: 'Advanced auto-moderation controls' },
             { name: '/antinuke',     desc: 'Anti-nuke protection settings' },
-            { name: '/antiraid',     desc: 'Anti-raid protection settings' },
-            { name: '/antiphishing', desc: 'Anti-phishing link protection' },
-            { name: '/antispam',     desc: 'Anti-spam throttles' },
-            { name: '/security',     desc: 'Open the security dashboard' },
-            { name: '/lockdown',     desc: 'Lock or unlock all channels' },
-            { name: '/quarantine',   desc: 'Quarantine a suspicious user' },
+            { name: '/admin lockdown', desc: 'Emergency server lockdown' },
             { name: '/verification', desc: 'Configure member verification' },
             { name: '/wordfilter',   desc: 'Manage the word filter' }
         ]
@@ -70,15 +68,16 @@ const CATEGORIES = {
         color: 0xffd43b,
         description: 'Server configuration and bot setup',
         commands: [
-            { name: '/wizard',          desc: 'Interactive setup wizard' },
+            { name: '/setup start',     desc: 'Interactive setup guide' },
+            { name: '/setup verification', desc: 'Verification settings' },
             { name: '/setup welcome',   desc: 'Configure welcome messages' },
             { name: '/setup goodbye',   desc: 'Configure goodbye messages' },
             { name: '/setup roles',     desc: 'Configure auto-role assignment' },
-            { name: '/setup logs',      desc: 'Pick the log channel' },
+            { name: '/setup logging',   desc: 'Pick the log channel' },
             { name: '/setup language',  desc: 'Set the server language' },
-            { name: '/serversetup',     desc: 'Create a full server structure' },
-            { name: '/reactionrole',    desc: 'Create a reaction role panel' },
-            { name: '/autorole',        desc: 'Configure roles given on join' }
+            { name: '/setup tickets',   desc: 'Configure ticket defaults' },
+            { name: '/setup view',      desc: 'View current server setup' },
+            { name: '/admin',           desc: 'Destructive admin actions' }
         ]
     },
     utility: {
@@ -90,10 +89,11 @@ const CATEGORIES = {
             { name: '/ping',        desc: 'Check bot latency' },
             { name: '/serverinfo',  desc: 'View server information' },
             { name: '/userinfo',    desc: 'View user information' },
-            { name: '/roleinfo',    desc: 'View role information' },
-            { name: '/avatar',      desc: 'Show a user\'s avatar' },
-            { name: '/remind',      desc: 'Set a reminder' },
             { name: '/poll',        desc: 'Create a poll' },
+            { name: '/announce',    desc: 'Send an announcement embed' },
+            { name: '/invites',     desc: 'Invite analytics and leaderboard' },
+            { name: '/schedule',    desc: 'Schedule events and reminders' },
+            { name: '/analytics',   desc: 'View server analytics' },
             { name: '/status',      desc: 'Bot uptime and status' }
         ]
     },
@@ -104,10 +104,11 @@ const CATEGORIES = {
         commands: [
             { name: '/rank',        desc: 'View your rank and XP' },
             { name: '/leaderboard', desc: 'View the server leaderboard' },
-            { name: '/setlevel',    desc: 'Set a user\'s level (admin)' },
             { name: '/xp add',      desc: 'Grant XP to a user (admin)' },
             { name: '/xp remove',   desc: 'Remove XP from a user (admin)' },
-            { name: '/rewards',     desc: 'View level-up role rewards' }
+            { name: '/xp set',      desc: 'Set a user XP amount (admin)' },
+            { name: '/xp levelrole', desc: 'Assign roles by level (admin)' },
+            { name: '/xp enable',   desc: 'Enable XP system (admin)' }
         ]
     },
     tickets: {
@@ -119,7 +120,9 @@ const CATEGORIES = {
             { name: '/ticket close',  desc: 'Close a ticket' },
             { name: '/ticket add',    desc: 'Add a user to a ticket' },
             { name: '/ticket remove', desc: 'Remove a user from a ticket' },
-            { name: '/ticket claim',  desc: 'Claim a ticket as staff' }
+            { name: '/ticket claim',  desc: 'Claim a ticket as staff' },
+            { name: '/ticket setup',  desc: 'Configure ticket channels/roles' },
+            { name: '/ticket stats',  desc: 'View ticket metrics' }
         ]
     }
 };

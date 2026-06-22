@@ -163,7 +163,8 @@ module.exports = {
 
             // Security checks
             if (role.managed) {
-                const msg = bot.languageSystem?.t(interaction.guild.id, 'errors.cannotAssignManagedRole') || '❌ Cannot assign managed roles (bot roles, boosts, etc).';
+                const bot = interaction.client.bot;
+                const msg = bot?.languageSystem?.t(interaction.guild.id, 'errors.cannotAssignManagedRole') || '❌ Cannot assign managed roles (bot roles, boosts, etc).';
                 return await interaction.reply({ content: msg, ephemeral: true });
             }
 

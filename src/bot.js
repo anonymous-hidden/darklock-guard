@@ -270,6 +270,55 @@ class SecurityBot {
 
         // Per-guild console buffer: guildId -> entries (max 5000 per guild)
         this.consoleBuffer = new Map();
+
+        // Legacy slash commands kept for backward compatibility while users migrate.
+        this.legacyCommandMigrations = {
+            ban: '/mod ban',
+            kick: '/mod kick',
+            timeout: '/mod timeout',
+            warn: '/mod warn',
+            strike: '/mod strike',
+            purge: '/mod purge',
+            slowmode: '/mod slowmode',
+            lock: '/mod lock',
+            unlock: '/mod unlock',
+            unban: '/mod unban',
+            quarantine: '/security quarantine',
+            automod: '/security automod',
+            antinuke: '/security antinuke',
+            verification: '/setup verification',
+            welcome: '/setup welcome',
+            reactionroles: '/setup roles',
+            selfrole: '/setup roles',
+            wordfilter: '/security automod wordfilter',
+            webhookprotect: '/security webhookprotect',
+            'ticket-manage': '/ticket',
+            wizard: '/setup',
+            lockdown: '/admin lockdown',
+            unlockdown: '/admin unlock'
+        };
+    }
+
+    getLegacyCommandTarget(commandName) {
+        const key = String(commandName || '').toLowerCase();
+        return this.legacyCommandMigrations[key] || null;
+    }
+
+    async sendLegacyDeprecationNotice(interaction, commandName) {
+        const movedTo = this.getLegacyCommandTarget(commandName);
+        if (!movedTo) return;
+
+        const message = `⚠️ This command has moved to ${movedTo}. I ran it for you this time, but please use ${movedTo} going forward.`;
+
+        try {
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({ content: message, ephemeral: true });
+            } else {
+                await interaction.reply({ content: message, ephemeral: true });
+            }
+        } catch (_) {
+            // Never fail command execution because a deprecation notice could not be sent.
+        }
     }
 
     async initialize() {
@@ -939,6 +988,12 @@ class SecurityBot {
                     this.logger.warn(`   ⚠️  Duplicate: ${commandName} (skipped)`);
                     continue;
                 }
+
+                const movedTo = this.getLegacyCommandTarget(commandName);
+                if (movedTo) {
+                    command.legacyAliasOf = movedTo;
+                    command.isLegacyStandalone = true;
+                }
                 
                 this.commands.set(commandName, command);
                 this.logger.info(`   ✅ ${commandName}`);
@@ -973,6 +1028,12 @@ class SecurityBot {
                         // Skip if already loaded from top-level (prioritize new structure)
                         if (this.commands.has(commandName)) {
                             continue;
+                        }
+
+                        const movedTo = this.getLegacyCommandTarget(commandName);
+                        if (movedTo) {
+                            command.legacyAliasOf = movedTo;
+                            command.isLegacyStandalone = true;
                         }
                         
                         this.commands.set(commandName, command);
@@ -1145,6 +1206,8 @@ class SecurityBot {
 
                     // Pass bot instance to commands that need it
                     await command.execute(interaction, this);
+
+                    await this.sendLegacyDeprecationNotice(interaction, interaction.commandName);
                     
                     // Broadcast command execution to console
                     try {
@@ -1204,9 +1267,80 @@ class SecurityBot {
                         error: commandError
                     });
                 }
+
+                return;
             }
+
+            if (interaction.isMessageContextMenuCommand()) {
+                const command = this.commands.get(interaction.commandName);
+
+                if (!command) {
+                    return await interaction.reply({
+                        content: '❌ Command not found.',
+                        ephemeral: true
+                    });
+                }
+
+                const startTime = Date.now();
+                let commandSuccess = true;
+                let commandError = null;
+
+                try {
+                    if (this.permissionManager) {
+                        const allowed = await this.permissionManager.isAllowed(interaction);
+                        if (!allowed) {
+                            return await interaction.reply({
+                                content: '🚫 You do not have permission to use this command. Ask a server admin to grant access via `/permissions`.',
+                                ephemeral: true
+                            });
+                        }
+                    }
+
+                    await command.execute(interaction, this);
+                    await this.sendLegacyDeprecationNotice(interaction, interaction.commandName);
+                } catch (error) {
+                    commandSuccess = false;
+                    commandError = error.message || String(error);
+
+                    await this.logger.logError({
+                        error,
+                        context: `context_menu_${interaction.commandName}`,
+                        userId: interaction.user.id,
+                        userTag: interaction.user.username,
+                        guildId: interaction.guild?.id,
+                        channelId: interaction.channel?.id
+                    });
+
+                    const errorMessage = {
+                        content: '❌ An error occurred while executing this command.',
+                        ephemeral: true
+                    };
+
+                    if (interaction.replied || interaction.deferred) {
+                        await interaction.followUp(errorMessage);
+                    } else {
+                        await interaction.reply(errorMessage);
+                    }
+                } finally {
+                    const duration = Date.now() - startTime;
+                    await this.logger.logCommand({
+                        commandName: interaction.commandName,
+                        userId: interaction.user.id,
+                        userTag: interaction.user.username,
+                        guildId: interaction.guild?.id,
+                        channelId: interaction.channel?.id,
+                        options: {},
+                        success: commandSuccess,
+                        duration,
+                        error: commandError
+                    });
+                }
+
+                return;
+            }
+
             // Handle button interactions
-            else if (interaction.isButton()) {
+            if (interaction.isButton()) {
                 const buttonSuccess = await (async () => {
                     try {
                         // Enterprise security middleware check for buttons
@@ -1307,6 +1441,18 @@ class SecurityBot {
                             }
                             return true;
                         }
+                        // Handle reaction-role buttons (panels created via /reactionroles)
+                        else if (interaction.customId.startsWith('rr_')) {
+                            const reactionRoleButtonHandler = require('./events/reactionRoleButtons');
+                            await reactionRoleButtonHandler(interaction);
+                            return true;
+                        }
+                        // Handle channel access buttons
+                        else if (interaction.customId.startsWith('channel_access_')) {
+                            const channelAccessHandler = require('./events/channelAccessHandler');
+                            await channelAccessHandler.handleChannelAccessButton(interaction, this);
+                            return true;
+                        }
                         // Handle legacy ticket system and other buttons
                         else {
                             await this.handleButtonInteraction(interaction);
@@ -1339,8 +1485,13 @@ class SecurityBot {
             }
             // Handle select menu interactions
             else if (interaction.isStringSelectMenu()) {
+                // Handle channel access role selection
+                if (interaction.customId.startsWith('channel_access_select_')) {
+                    const channelAccessHandler = require('./events/channelAccessHandler');
+                    await channelAccessHandler.handleChannelAccessSelect(interaction, this);
+                }
                 // Handle leaderboard time range selection
-                if (interaction.customId === 'leaderboard_select') {
+                else if (interaction.customId === 'leaderboard_select') {
                     const leaderboardCommand = this.commands.get('leaderboard');
                     if (leaderboardCommand && leaderboardCommand.handleLeaderboardSelect) {
                         await leaderboardCommand.handleLeaderboardSelect(interaction, this);
@@ -2005,14 +2156,30 @@ class SecurityBot {
             }
         });
 
-        // NEW: Reaction tracking for analytics
+        // Reaction tracking for analytics + emoji reaction roles
         this.client.on('messageReactionAdd', async (reaction, user) => {
             try {
                 if (this.analyticsManager && !user.bot) {
                     await this.analyticsManager.trackReaction(reaction, user);
                 }
+                if (!user.bot) {
+                    const reactionRoleHandler = require('./events/messageReactionAdd');
+                    await reactionRoleHandler.execute(reaction, user);
+                }
             } catch (error) {
                 this.logger.error('Error in reaction handler:', error);
+            }
+        });
+
+        // Emoji reaction role removal
+        this.client.on('messageReactionRemove', async (reaction, user) => {
+            try {
+                if (!user.bot) {
+                    const reactionRoleRemoveHandler = require('./events/messageReactionRemove');
+                    await reactionRoleRemoveHandler.execute(reaction, user);
+                }
+            } catch (error) {
+                this.logger.error('Error in reaction remove handler:', error);
             }
         });
         

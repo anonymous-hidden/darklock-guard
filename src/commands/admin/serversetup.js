@@ -61,18 +61,14 @@ module.exports = {
 
             await interaction.editReply({ embeds: [setupEmbed] });
 
-            console.log(`[ServerSetup] Starting setup for guild ${guild.name} with template ${template}`);
-
             if (!keepExisting) {
                 await this.clearExistingChannels(guild);
             }
 
             // Step 1: Create roles (based on user preference)
             let roles = {};
-            console.log(`[ServerSetup] Roles option: ${rolesOption}`);
-            
+
             if (rolesOption === 'skip') {
-                console.log('[ServerSetup] Skipping role creation - user will create their own');
                 // Try to find existing essential roles for channel permissions
                 roles.admin = guild.roles.cache.find(r => /admin/i.test(r.name));
                 roles.moderator = guild.roles.cache.find(r => /mod/i.test(r.name));
@@ -80,25 +76,19 @@ module.exports = {
                 roles.verified = guild.roles.cache.find(r => /verified/i.test(r.name));
                 roles.muted = guild.roles.cache.find(r => /muted/i.test(r.name));
             } else if (rolesOption === 'essential') {
-                console.log('[ServerSetup] Creating essential roles only...');
                 roles = await this.createRoles(guild, template, keepExisting, true);
             } else {
-                console.log('[ServerSetup] Creating full template roles...');
                 roles = await this.createRoles(guild, template, keepExisting, false);
             }
-            console.log(`[ServerSetup] ${rolesOption === 'skip' ? 'Found' : 'Created'} ${Object.keys(roles).filter(k => roles[k]).length} roles`);
-            
+
             // Step 2: Create categories and channels
-            console.log('[ServerSetup] Creating channels...');
             const channels = await this.createChannels(guild, template, roles, keepExisting);
-            console.log(`[ServerSetup] Created ${channels.categories.length} categories, ${channels.text.length} text channels, ${channels.voice.length} voice channels`);
 
             // Post default rules & create ticket channel after channels stage
             await this.postDefaultRules(guild);
             await this.ensureTicketChannel(guild);
             
             // Step 3: Set up permissions
-            console.log('[ServerSetup] Setting up permissions...');
             await this.setupPermissions(guild, roles, channels);
 
             // Prepare success or warning embed
@@ -184,8 +174,6 @@ module.exports = {
             roleTemplates = roleTemplates.filter(r => essentialKeys.includes(r.key));
         }
 
-        console.log(`[ServerSetup] Role templates to create: ${roleTemplates.length}${essentialOnly ? ' (essential only)' : ''}`);
-
         for (const roleData of roleTemplates) {
             try {
                 // Check if role already exists
@@ -218,15 +206,12 @@ module.exports = {
             }
         }
 
-        console.log(`[ServerSetup] Successfully created ${Object.keys(roles).length} roles`);
         return roles;
     },
 
     async createChannels(guild, template, roles, keepExisting) {
         const channels = { categories: [], text: [], voice: [] };
         const channelTemplates = this.getChannelTemplates(template);
-
-        console.log(`[ServerSetup] Channel templates to create: ${channelTemplates.length} categories`);
 
         for (const categoryData of channelTemplates) {
             try {
@@ -323,7 +308,6 @@ module.exports = {
             }
         }
 
-        console.log(`[ServerSetup] Created total: ${channels.categories.length} categories, ${channels.text.length} text, ${channels.voice.length} voice`);
         return channels;
     },
 

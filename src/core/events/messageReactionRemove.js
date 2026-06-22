@@ -9,7 +9,7 @@ module.exports = {
     async execute(reaction, user, bot) {
         try {
             if (!user.bot) {
-                const reactionRoleRemoveHandler = require('../events/messageReactionRemove');
+                const reactionRoleRemoveHandler = require('../../events/messageReactionRemove');
                 await reactionRoleRemoveHandler.execute(reaction, user);
             }
         } catch (error) {

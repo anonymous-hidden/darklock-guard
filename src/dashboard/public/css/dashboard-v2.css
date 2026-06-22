@@ -1,0 +1,301 @@
+/* ════════════════════════════════════════════════════════════════
+   DARKLOCK DASHBOARD V2 — Professional Reskin Layer
+   Loaded AFTER dashboard-modern.css. Pure visual overrides:
+   no layout structure, IDs, or JS contracts are changed.
+   ════════════════════════════════════════════════════════════════ */
+
+:root {
+    --v2-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --v2-glow: 0 0 0 1px rgba(0, 240, 255, 0.06), 0 8px 32px -12px rgba(0, 240, 255, 0.18);
+    --v2-card-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018));
+    --v2-ring: rgba(0, 240, 255, 0.45);
+}
+
+/* ── Page entrance ─────────────────────────────────────────────── */
+@keyframes v2PageIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+}
+.main-content { animation: v2PageIn 0.5s var(--v2-ease) both; }
+
+@keyframes v2SlideRight {
+    from { opacity: 0; transform: translateX(-14px); }
+    to   { opacity: 1; transform: none; }
+}
+.sidebar { animation: v2SlideRight 0.45s var(--v2-ease) both; }
+
+/* ── Ambient background depth ──────────────────────────────────── */
+body {
+    background:
+        radial-gradient(ellipse 80% 50% at 15% -10%, rgba(0, 240, 255, 0.05), transparent 60%),
+        radial-gradient(ellipse 70% 50% at 90% 110%, rgba(124, 58, 237, 0.06), transparent 60%),
+        var(--bg-primary);
+}
+
+/* ── Sidebar polish ────────────────────────────────────────────── */
+.sidebar {
+    background: linear-gradient(180deg, rgba(14, 14, 22, 0.92), rgba(10, 10, 15, 0.96));
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 8px 0 40px -20px rgba(0, 0, 0, 0.8);
+}
+
+.sidebar-brand { transition: opacity 0.2s var(--v2-ease); }
+.sidebar-brand:hover { opacity: 0.85; }
+
+.nav-item {
+    position: relative;
+    border-radius: 10px;
+    margin: 1px 8px;
+    transition: color 0.18s var(--v2-ease), background 0.18s var(--v2-ease), transform 0.18s var(--v2-ease);
+}
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateX(3px);
+}
+.nav-item.active {
+    background: linear-gradient(90deg, rgba(0, 240, 255, 0.12), rgba(0, 240, 255, 0.03));
+    box-shadow: inset 0 0 0 1px rgba(0, 240, 255, 0.14);
+}
+.nav-item.active::before {
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: linear-gradient(180deg, var(--accent-primary), var(--accent-secondary));
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.5);
+}
+.nav-item i { transition: transform 0.18s var(--v2-ease); }
+.nav-item:hover i { transform: scale(1.12); }
+
+/* ── Server selector ───────────────────────────────────────────── */
+.server-selector {
+    border-radius: 12px;
+    transition: border-color 0.2s var(--v2-ease), box-shadow 0.2s var(--v2-ease);
+}
+.server-selector:hover,
+.server-selector:focus-within {
+    border-color: rgba(0, 240, 255, 0.3);
+    box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.07);
+}
+
+/* ── Header: frosted sticky bar ────────────────────────────────── */
+.dashboard-header {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    background: linear-gradient(180deg, rgba(10, 10, 15, 0.85), rgba(10, 10, 15, 0.65));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.header-title h1 {
+    letter-spacing: -0.02em;
+    background: linear-gradient(120deg, #fff 30%, rgba(0, 240, 255, 0.85));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* ── Cards: glass depth + lift ─────────────────────────────────── */
+.card,
+.stat-card,
+.chart-container {
+    background: var(--v2-card-bg);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    transition: transform 0.25s var(--v2-ease), border-color 0.25s var(--v2-ease), box-shadow 0.25s var(--v2-ease);
+}
+.card:hover,
+.chart-container:hover {
+    border-color: rgba(255, 255, 255, 0.13);
+    box-shadow: 0 18px 44px -18px rgba(0, 0, 0, 0.65);
+}
+.stat-card { overflow: hidden; }
+.stat-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(420px circle at var(--v2-mx, 50%) var(--v2-my, 0%), rgba(0, 240, 255, 0.07), transparent 45%);
+    opacity: 0;
+    transition: opacity 0.3s var(--v2-ease);
+    pointer-events: none;
+}
+.stat-card:hover { transform: translateY(-4px); box-shadow: var(--v2-glow), 0 20px 44px -20px rgba(0, 0, 0, 0.7); }
+.stat-card:hover::after { opacity: 1; }
+
+.stat-value {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    transition: color 0.3s var(--v2-ease);
+}
+.stat-card .stat-icon {
+    transition: transform 0.3s var(--v2-ease);
+}
+.stat-card:hover .stat-icon { transform: scale(1.18) rotate(-4deg); }
+
+/* value-change flash (added by dashboard-live.js) */
+@keyframes v2Tick {
+    0%   { color: var(--accent-primary); text-shadow: 0 0 18px rgba(0, 240, 255, 0.6); }
+    100% { color: inherit; text-shadow: none; }
+}
+.v2-ticked { animation: v2Tick 1.1s var(--v2-ease); }
+
+/* ── Buttons: tactile micro-interactions ───────────────────────── */
+.btn {
+    border-radius: 10px;
+    transition: transform 0.15s var(--v2-ease), box-shadow 0.2s var(--v2-ease), background 0.2s var(--v2-ease), border-color 0.2s var(--v2-ease);
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(0) scale(0.985); }
+.btn-primary { box-shadow: 0 6px 20px -8px rgba(0, 240, 255, 0.4); }
+.btn-primary:hover { box-shadow: 0 10px 28px -8px rgba(0, 240, 255, 0.55); }
+
+.btn:focus-visible,
+.nav-item:focus-visible,
+a:focus-visible,
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--v2-ring);
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+/* ── Quick actions ─────────────────────────────────────────────── */
+.quick-action-tile {
+    border-radius: 14px;
+    transition: transform 0.2s var(--v2-ease), border-color 0.2s var(--v2-ease), box-shadow 0.2s var(--v2-ease);
+}
+.quick-action-tile:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 32px -16px rgba(0, 0, 0, 0.7);
+}
+.quick-action-icon { transition: transform 0.2s var(--v2-ease); }
+.quick-action-tile:hover .quick-action-icon { transform: scale(1.12); }
+
+/* ── Tables / activity lists ───────────────────────────────────── */
+table tbody tr { transition: background 0.15s var(--v2-ease); }
+table tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
+
+.activity-item,
+.log-entry {
+    transition: background 0.15s var(--v2-ease), transform 0.15s var(--v2-ease);
+    border-radius: 10px;
+}
+.activity-item:hover,
+.log-entry:hover {
+    background: rgba(255, 255, 255, 0.03);
+    transform: translateX(3px);
+}
+
+/* ── Skeleton shimmer (used while data loads) ──────────────────── */
+@keyframes v2Shimmer {
+    from { background-position: -300px 0; }
+    to   { background-position: 300px 0; }
+}
+.v2-skeleton {
+    color: transparent !important;
+    border-radius: 8px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.04) 75%) !important;
+    background-size: 600px 100% !important;
+    animation: v2Shimmer 1.4s linear infinite;
+    user-select: none;
+    pointer-events: none;
+}
+
+/* ── Live bot status pill (injected by dashboard-live.js) ──────── */
+.v2-bot-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    color: #34d399;
+    white-space: nowrap;
+    transition: all 0.3s var(--v2-ease);
+}
+.v2-bot-pill .v2-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    position: relative;
+    flex-shrink: 0;
+}
+.v2-bot-pill .v2-dot::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1px solid #10b981;
+    animation: v2Ping 1.8s var(--v2-ease) infinite;
+}
+@keyframes v2Ping {
+    0%   { transform: scale(0.6); opacity: 0.9; }
+    100% { transform: scale(1.7); opacity: 0; }
+}
+.v2-bot-pill.offline {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #f87171;
+}
+.v2-bot-pill.offline .v2-dot { background: #ef4444; }
+.v2-bot-pill.offline .v2-dot::after { border-color: #ef4444; animation: none; }
+.v2-bot-pill .v2-meta {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* ── Modals: smooth scale-in ───────────────────────────────────── */
+@keyframes v2ModalIn {
+    from { opacity: 0; transform: translateY(14px) scale(0.97); }
+    to   { opacity: 1; transform: none; }
+}
+.modal-content,
+.modal-dialog,
+[class*="modal"] [class*="content"] {
+    animation: v2ModalIn 0.3s var(--v2-ease) both;
+}
+
+/* ── Scrollbars ────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 240, 255, 0.25); background-clip: padding-box; }
+
+/* ── Toasts ────────────────────────────────────────────────────── */
+@keyframes v2ToastIn {
+    from { opacity: 0; transform: translateY(10px) scale(0.97); }
+    to   { opacity: 1; transform: none; }
+}
+.toast, [class*="toast"] { animation: v2ToastIn 0.3s var(--v2-ease) both; }
+
+/* ── Charts breathing room ─────────────────────────────────────── */
+.chart-container canvas { border-radius: 10px; }
+
+/* ── Inputs ────────────────────────────────────────────────────── */
+input[type="text"], input[type="number"], input[type="email"],
+input[type="password"], select, textarea {
+    transition: border-color 0.2s var(--v2-ease), box-shadow 0.2s var(--v2-ease);
+}
+input[type="text"]:focus, input[type="number"]:focus, input[type="email"]:focus,
+input[type="password"]:focus, select:focus, textarea:focus {
+    border-color: rgba(0, 240, 255, 0.4);
+    box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.08);
+}
+
+/* ── Reduced motion ────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .main-content, .sidebar, .modal-content, .toast { animation: none; }
+    .stat-card:hover, .card:hover, .btn:hover, .quick-action-tile:hover,
+    .nav-item:hover, .activity-item:hover { transform: none; }
+    .v2-bot-pill .v2-dot::after { animation: none; }
+    .v2-skeleton { animation: none; }
+}

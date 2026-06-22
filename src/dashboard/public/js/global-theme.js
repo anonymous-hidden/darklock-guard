@@ -264,7 +264,10 @@
                 // Same-origin navigation — show transition
                 e.preventDefault();
                 showOverlay(() => { location.href = href; });
-            } catch(_) {}
+            } catch(_) {
+                // Transition failed — fall back to direct navigation
+                location.href = href;
+            }
         }, true);
 
         // Also show on browser back/forward
