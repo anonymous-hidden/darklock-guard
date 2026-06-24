@@ -27,6 +27,9 @@ module.exports = {
             .setName('current')
             .setDescription('View current server language'))
         .addSubcommand(sub => sub
+            .setName('view')
+            .setDescription('View current server language'))
+        .addSubcommand(sub => sub
             .setName('list')
             .setDescription('List all supported languages')),
 
@@ -42,6 +45,7 @@ module.exports = {
             case 'set':
                 return this.handleSet(interaction, langSystem);
             case 'current':
+            case 'view':
                 return this.handleCurrent(interaction, langSystem);
             case 'list':
                 return this.handleList(interaction, langSystem);
@@ -52,7 +56,7 @@ module.exports = {
         const language = interaction.options.getString('language');
         const guildId = interaction.guildId;
 
-        const result = await langSystem.setLanguage(guildId, language);
+        const result = await langSystem.setLanguage(guildId, language, interaction.user.id);
 
         if (!result.success) {
             return interaction.reply({ content: `❌ ${result.error}`, ephemeral: true });

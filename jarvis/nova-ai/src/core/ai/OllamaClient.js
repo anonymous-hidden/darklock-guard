@@ -5,16 +5,71 @@
  * with NDJSON line decoding. Fully cancellable via AbortController.
  *
  * Model strategy:
- *   - default: qwen2.5:32b   (deep reasoning, widget builds, code)
- *   - fast:    llama3.1:8b   (chat fallback, fast replies)
+ *   - chat defaults to a small model so Nova stays responsive on low VRAM.
+ *   - heavier local models are still preferred for code/widget generation.
  *
  * The renderer can talk to Ollama directly because Electron renderers are
  * not bound by browser CORS for localhost. No proxy is required.
  */
 
-export const DEFAULT_MODEL = 'qwen2.5:32b';
-export const FAST_MODEL = 'llama3.1:8b';
+export const DEFAULT_MODEL = 'llama3.2:3b';
+export const FAST_MODEL = 'llama3.2:3b';
 export const OLLAMA_URL = 'http://localhost:11434';
+
+const CHAT_MODEL_RANK = [
+  /llama3\.2:1b/i,
+  /llama3\.2:3b/i,
+  /gemma3:1b/i,
+  /gemma3:4b/i,
+  /qwen2\.5:0\.5b/i,
+  /qwen2\.5:1\.5b/i,
+  /qwen2\.5:3b/i,
+  /phi3:mini/i,
+  /mistral:7b/i,
+  /qwen2\.5:7b/i,
+  /llama3\.1:8b/i,
+  /llama3:8b/i,
+];
+
+const HEAVY_MODEL_RANK = [
+  /llama3\.2:3b/i,
+  /gemma3:4b/i,
+  /mistral:7b/i,
+  /llama3\.1:8b/i,
+  /llama3:8b/i,
+  /qwen2\.5:32b/i,
+  /qwen2\.5-coder:32b/i,
+  /deepseek-coder/i,
+  /qwen2\.5:14b/i,
+];
+
+function modelName(model) {
+  return String(model?.name || model?.model || model || '').trim();
+}
+
+function pickByRank(models, rank, fallback) {
+  const names = (models || []).map(modelName).filter(Boolean);
+  for (const rx of rank) {
+    const hit = names.find((name) => rx.test(name));
+    if (hit) return hit;
+  }
+  return names[0] || fallback;
+}
+
+function messagesToPrompt(messages) {
+  return [
+    ...messages.map((m) => `${String(m.role || 'user').toUpperCase()}:\n${String(m.content ?? '').trim()}`),
+    'ASSISTANT:',
+  ].join('\n\n');
+}
+
+export function pickBestChatModel(models, fallback = DEFAULT_MODEL) {
+  return pickByRank(models, CHAT_MODEL_RANK, fallback);
+}
+
+export function pickBestHeavyModel(models, fallback = DEFAULT_MODEL) {
+  return pickByRank(models, HEAVY_MODEL_RANK, pickBestChatModel(models, fallback));
+}
 
 /**
  * @typedef {{ role: 'system'|'user'|'assistant', content: string }} ChatMessage
@@ -55,6 +110,19 @@ export class OllamaClient {
     return Array.isArray(data?.models) ? data.models : [];
   }
 
+  async resolveInstalledModel(preferred) {
+    const wanted = modelName(preferred || this.defaultModel);
+    let models = [];
+    try { models = await this.listModels(); } catch { return wanted; }
+    const names = models.map(modelName).filter(Boolean);
+    if (!names.length) return wanted;
+    if (names.includes(wanted)) return wanted;
+    const base = wanted.split(':')[0];
+    const sameBase = names.find((name) => name.split(':')[0] === base);
+    if (sameBase) return sameBase;
+    return pickBestChatModel(models, names[0]);
+  }
+
   /**
    * Stream a chat completion. Returns the final accumulated text.
    * @param {ChatOptions} opts
@@ -64,9 +132,10 @@ export class OllamaClient {
     const {
       model = this.defaultModel,
       messages,
-      temperature = 0.7,
+      temperature = 0.45,
       topP = 0.9,
-      numCtx = 8192,
+      numCtx = 6144,
+      numPredict = 900,
       stop,
       signal,
       onToken,
@@ -77,25 +146,44 @@ export class OllamaClient {
       throw new Error('OllamaClient.chat: messages[] required');
     }
 
+    const resolvedModel = await this.resolveInstalledModel(model);
+
     const body = {
-      model,
+      model: resolvedModel,
       messages: messages.map((m) => ({ role: m.role, content: String(m.content ?? '') })),
       stream: true,
       options: {
         temperature,
         top_p: topP,
         num_ctx: numCtx,
+        num_predict: numPredict,
         ...(Array.isArray(stop) && stop.length ? { stop } : {}),
       },
     };
 
     const start = Date.now();
-    const res = await fetch(`${this.baseUrl}/api/chat`, {
+    let res = await fetch(`${this.baseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       signal,
     });
+
+    let mode = 'chat';
+    if (res.status === 404) {
+      mode = 'generate';
+      res = await fetch(`${this.baseUrl}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: resolvedModel,
+          prompt: messagesToPrompt(body.messages),
+          stream: true,
+          options: body.options,
+        }),
+        signal,
+      });
+    }
 
     if (!res.ok || !res.body) {
       const errText = await res.text().catch(() => '');
@@ -127,7 +215,7 @@ export class OllamaClient {
         if (parsed.error) {
           throw new Error(`Ollama error: ${parsed.error}`);
         }
-        const tok = parsed?.message?.content;
+        const tok = mode === 'generate' ? parsed?.response : parsed?.message?.content;
         if (typeof tok === 'string' && tok.length) {
           fullText += tok;
           if (onToken) {
@@ -145,14 +233,15 @@ export class OllamaClient {
     if (buffer.trim()) {
       try {
         const parsed = JSON.parse(buffer.trim());
-        if (parsed?.message?.content) fullText += parsed.message.content;
+        if (mode === 'generate' && parsed?.response) fullText += parsed.response;
+        else if (parsed?.message?.content) fullText += parsed.message.content;
         if (parsed?.done) lastMeta = parsed;
       } catch {}
     }
 
     return {
       text: fullText,
-      model,
+      model: resolvedModel,
       durationMs: Date.now() - start,
       evalCount,
       raw: lastMeta,

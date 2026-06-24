@@ -160,6 +160,24 @@ router.get('/theme/css', async (req, res) => {
   }
 });
 
+// ── Public endpoint (no auth) — published Ridgeline shop items ─────────────────
+router.get('/shop/public', async (req, res) => {
+  try {
+    const app = req.query.app || 'ridgeline';
+    const items = await Q.getShopProducts({
+      app,
+      includeUnpublished: false,
+      limit: Math.min(Number(req.query.limit) || 100, 200),
+      offset: Number(req.query.offset) || 0,
+    });
+
+    res.json({ success: true, items });
+  } catch (err) {
+    console.error('[Admin v4] Public shop fetch error:', err);
+    res.status(500).json({ success: false, error: 'Failed to load shop catalog' });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 //  ALL ROUTES BELOW REQUIRE ADMIN AUTH + CSRF
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -188,10 +206,10 @@ router.get('/shell', async (req, res) => {
       { id: 'accounts',       label: 'Accounts',              icon: 'users',            minLevel: 50 },
       { id: 'roles',          label: 'Role & Access',         icon: 'shield-check',     minLevel: 90 },
       { id: 'app-updates',    label: 'App Updates',           icon: 'download-cloud',   minLevel: 50 },
-      { id: 'pi5',             label: 'Pi5 Infrastructure',    icon: 'server',           minLevel: 70 },
+      { id: 'shop',           label: 'Shop',                  icon: 'shopping-bag',     minLevel: 50 },
+      { id: 'server',          label: 'Server',                icon: 'server',           minLevel: 70 },
       { id: 'bug-reports',    label: 'Bug Reports',           icon: 'bug',              minLevel: 30 },
       { id: 'system-logs',    label: 'System Logs',           icon: 'file-text',        minLevel: 30 },
-      { id: 'security',       label: 'Security Settings',     icon: 'lock',             minLevel: 70 },
       { id: 'themes',          label: 'Themes',                icon: 'palette',          minLevel: 50 },
       { id: 'maintenance',     label: 'Maintenance',           icon: 'tool',             minLevel: 70 },
       { id: 'settings',       label: 'Platform Settings',     icon: 'settings',         minLevel: 50 },
@@ -601,10 +619,10 @@ router.post('/app-updates', MW.adminOrAbove, MW.auditLog('app_updates'), async (
   try {
     const { app, version, title, changelog, download_url, force_update, min_version, channel, platform, file_size } = req.body;
     if (!version || !title) return res.status(400).json({ success: false, error: 'Version and title are required' });
-    if (!app) return res.status(400).json({ success: false, error: 'App name is required (secure-guard, secure-channel, secure-notes)' });
+    if (!app) return res.status(400).json({ success: false, error: 'App name is required (ridgeline, secure-guard, secure-channel, secure-notes)' });
 
-    const validApps = ['secure-guard', 'secure-channel', 'secure-notes'];
-    if (!validApps.includes(app)) return res.status(400).json({ success: false, error: 'Invalid app. Must be: secure-guard, secure-channel, or secure-notes' });
+    const validApps = ['ridgeline', 'secure-guard', 'secure-channel', 'secure-notes'];
+    if (!validApps.includes(app)) return res.status(400).json({ success: false, error: 'Invalid app. Must be: ridgeline, secure-guard, secure-channel, or secure-notes' });
 
     if (!/^\d+\.\d+\.\d+$/.test(version)) {
       return res.status(400).json({ success: false, error: 'Version must be semantic (e.g., 2.1.0)' });
@@ -669,163 +687,321 @@ router.delete('/app-updates/:id', MW.ownerOrCoowner, MW.sensitiveActionLimiter, 
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  5b) PI5 INFRASTRUCTURE
+//  5c) SHOP CATALOG (Ridgeline)
+// ═══════════════════════════════════════════════════════════════════════════════
+router.get('/shop/items', MW.modOrAbove, async (req, res) => {
+  try {
+    const includeUnpublished = req.query.includeUnpublished !== 'false';
+    const app = req.query.app || 'ridgeline';
+    const items = await Q.getShopProducts({
+      app,
+      includeUnpublished,
+      limit: Math.min(Number(req.query.limit) || 200, 500),
+      offset: Number(req.query.offset) || 0,
+    });
+    res.json({ success: true, items });
+  } catch (err) {
+    console.error('[Admin v4] Shop list error:', err);
+    res.status(500).json({ success: false, error: 'Failed to load shop items' });
+  }
+});
+
+router.post('/shop/items', MW.adminOrAbove, MW.auditLog('shop'), async (req, res) => {
+  try {
+    const {
+      app,
+      slug,
+      title,
+      subtitle,
+      description,
+      image_url,
+      badge,
+      price_cents,
+      currency,
+      billing_type,
+      stripe_price_id,
+      features,
+      sort_order,
+      published,
+    } = req.body || {};
+
+    if (!title || typeof title !== 'string') {
+      return res.status(400).json({ success: false, error: 'Title is required' });
+    }
+
+    const parsedPrice = Number(price_cents);
+    if (!Number.isInteger(parsedPrice) || parsedPrice < 50) {
+      return res.status(400).json({ success: false, error: 'price_cents must be an integer >= 50' });
+    }
+
+    const validBilling = ['one_time', 'month', 'year'];
+    const billing = validBilling.includes(billing_type) ? billing_type : 'one_time';
+
+    const id = crypto.randomBytes(16).toString('hex');
+    const item = await Q.createShopProduct({
+      id,
+      app: app || 'ridgeline',
+      slug,
+      title,
+      subtitle,
+      description,
+      image_url,
+      badge,
+      price_cents: parsedPrice,
+      currency: (currency || 'usd').toLowerCase(),
+      billing_type: billing,
+      stripe_price_id,
+      features: Array.isArray(features) ? features : [],
+      sort_order: Number.isFinite(Number(sort_order)) ? Number(sort_order) : 0,
+      published: !!published,
+      published_by: req.admin.email,
+      created_by: req.admin.email,
+    });
+
+    await Q.logAudit({
+      admin_id: req.admin.id,
+      admin_email: req.admin.email,
+      action: 'create_shop_item',
+      category: 'shop',
+      target_type: 'shop_item',
+      target_id: id,
+      new_value: { title, price_cents: parsedPrice, billing_type: billing, published: !!published },
+      ip_address: MW.getClientIP(req),
+    });
+
+    res.json({ success: true, item });
+  } catch (err) {
+    if (err.message?.includes('UNIQUE')) {
+      return res.status(400).json({ success: false, error: 'Slug already exists' });
+    }
+    console.error('[Admin v4] Create shop item error:', err);
+    res.status(500).json({ success: false, error: 'Failed to create shop item' });
+  }
+});
+
+router.put('/shop/items/:id', MW.adminOrAbove, MW.auditLog('shop'), async (req, res) => {
+  try {
+    const patch = { ...req.body };
+    if (patch.price_cents !== undefined) {
+      const parsedPrice = Number(patch.price_cents);
+      if (!Number.isInteger(parsedPrice) || parsedPrice < 50) {
+        return res.status(400).json({ success: false, error: 'price_cents must be an integer >= 50' });
+      }
+      patch.price_cents = parsedPrice;
+    }
+
+    if (patch.billing_type !== undefined) {
+      const validBilling = ['one_time', 'month', 'year'];
+      if (!validBilling.includes(patch.billing_type)) {
+        return res.status(400).json({ success: false, error: 'billing_type must be one_time, month, or year' });
+      }
+    }
+
+    const item = await Q.updateShopProduct(req.params.id, patch);
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'Shop item not found' });
+    }
+
+    await Q.logAudit({
+      admin_id: req.admin.id,
+      admin_email: req.admin.email,
+      action: 'update_shop_item',
+      category: 'shop',
+      target_type: 'shop_item',
+      target_id: req.params.id,
+      new_value: patch,
+      ip_address: MW.getClientIP(req),
+    });
+
+    res.json({ success: true, item });
+  } catch (err) {
+    if (err.message?.includes('UNIQUE')) {
+      return res.status(400).json({ success: false, error: 'Slug already exists' });
+    }
+    console.error('[Admin v4] Update shop item error:', err);
+    res.status(500).json({ success: false, error: 'Failed to update shop item' });
+  }
+});
+
+router.post('/shop/items/:id/publish', MW.adminOrAbove, MW.auditLog('shop'), async (req, res) => {
+  try {
+    const published = !!req.body?.published;
+    const item = await Q.setShopProductPublished(req.params.id, published, req.admin.email);
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'Shop item not found' });
+    }
+
+    await Q.logAudit({
+      admin_id: req.admin.id,
+      admin_email: req.admin.email,
+      action: published ? 'publish_shop_item' : 'unpublish_shop_item',
+      category: 'shop',
+      target_type: 'shop_item',
+      target_id: req.params.id,
+      new_value: { published },
+      ip_address: MW.getClientIP(req),
+    });
+
+    res.json({ success: true, item });
+  } catch (err) {
+    console.error('[Admin v4] Publish shop item error:', err);
+    res.status(500).json({ success: false, error: 'Failed to update publish state' });
+  }
+});
+
+router.delete('/shop/items/:id', MW.ownerOrCoowner, MW.sensitiveActionLimiter, MW.requireConfirmation, MW.auditLog('shop'), async (req, res) => {
+  try {
+    await Q.deleteShopProduct(req.params.id);
+
+    await Q.logAudit({
+      admin_id: req.admin.id,
+      admin_email: req.admin.email,
+      action: 'delete_shop_item',
+      category: 'shop',
+      target_type: 'shop_item',
+      target_id: req.params.id,
+      ip_address: MW.getClientIP(req),
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Admin v4] Delete shop item error:', err);
+    res.status(500).json({ success: false, error: 'Failed to delete shop item' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  5b) SERVER — Local introspection only. No SSH, no remote exec, no shell input.
+//  This admin process IS the production server (192.168.50.173), so we report
+//  on ourselves via os.* and bounded systemctl/df calls with hardcoded args.
 // ═══════════════════════════════════════════════════════════════════════════════
 const { execFile } = require('child_process');
-const PI5_DEPLOY_SCRIPT = path.join(__dirname, '../scripts/deploy-pi5.sh');
-const PI5_UPDATE_SCRIPT = path.join(__dirname, '../scripts/update.sh');
+const os = require('os');
 
-// Shared state for deploy jobs (in-memory — single process)
-const pi5Jobs = new Map();
+// Allow-list of services we will report on. Hardcoded to prevent injection.
+const DARKLOCK_SERVICES = [
+  'darklock-bot',
+  'darklock-platform',
+  'darklock-ids',
+  'darklock-notes',
+  'darklock-relay',
+];
 
-/** Run a shell script and track its progress */
-function runPi5Job(jobId, scriptPath, args, adminInfo) {
-  const job = {
-    id: jobId,
-    script: path.basename(scriptPath),
-    args,
-    status: 'running',
-    startedAt: new Date().toISOString(),
-    startedBy: adminInfo.email,
-    output: '',
-    exitCode: null,
-  };
-  pi5Jobs.set(jobId, job);
-
-  const child = execFile('bash', [scriptPath, ...args], {
-    cwd: path.join(__dirname, '..'),
-    timeout: 300_000, // 5 min max
-    maxBuffer: 2 * 1024 * 1024,
-    env: { ...process.env, FORCE_COLOR: '0' },
-  }, (err, stdout, stderr) => {
-    job.output = (stdout || '') + (stderr ? `\n[stderr]\n${stderr}` : '');
-    if (err) {
-      job.status = 'failed';
-      job.exitCode = err.code ?? 1;
-      job.error = err.message;
-    } else {
-      job.status = 'success';
-      job.exitCode = 0;
-    }
-    job.completedAt = new Date().toISOString();
+function execFileP(cmd, args, timeout = 5000) {
+  return new Promise((resolve) => {
+    execFile(cmd, args, { timeout, maxBuffer: 256 * 1024 }, (err, stdout, stderr) => {
+      resolve({ ok: !err, stdout: stdout || '', stderr: stderr || '' });
+    });
   });
-
-  child.stdout?.on('data', chunk => { job.output += chunk; });
-  child.stderr?.on('data', chunk => { job.output += chunk; });
-
-  return job;
 }
 
-// Check Pi5 health — SSH into Pi and hit local health endpoint
-router.get('/pi5/status', MW.adminOrAbove, async (req, res) => {
+function fmtBytes(b) {
+  if (!b || b < 0) return '0 B';
+  const u = ['B','KB','MB','GB','TB'];
+  let i = 0;
+  while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+  return `${b.toFixed(1)} ${u[i]}`;
+}
+
+function fmtUptime(seconds) {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+// GET /server/status — local OS metrics (uptime, load, memory, disk)
+router.get('/server/status', MW.adminOrAbove, async (req, res) => {
   try {
-    const config = {
-      host: process.env.PI_HOST || '192.168.50.150',
-      user: process.env.PI_USER || 'darklock',
-    };
-    // Quick SSH command to check if Pi is reachable + get uptime + bot health
-    execFile('ssh', [
-      '-o', 'ConnectTimeout=5',
-      '-o', 'StrictHostKeyChecking=no',
-      `${config.user}@${config.host}`,
-      'echo "REACHABLE"; uptime -p; curl -s --connect-timeout 3 http://localhost:3001/health || echo "BOT_DOWN"',
-    ], { timeout: 15_000 }, (err, stdout) => {
-      if (err) {
-        return res.json({
-          success: true,
-          pi5: { reachable: false, host: config.host, error: 'Cannot reach Pi5 via SSH' },
-        });
+    const totalMem = os.totalmem();
+    const freeMem  = os.freemem();
+    const usedMem  = totalMem - freeMem;
+    const load = os.loadavg();
+
+    // Bounded df call with hardcoded args — no shell, no user input.
+    let disk = null;
+    const dfResult = await execFileP('df', ['-Pk', '/']);
+    if (dfResult.ok) {
+      const lines = dfResult.stdout.trim().split('\n');
+      const parts = (lines[1] || '').split(/\s+/);
+      if (parts.length >= 5) {
+        const totalKb = Number(parts[1]) || 0;
+        const usedKb  = Number(parts[2]) || 0;
+        disk = {
+          total: totalKb * 1024,
+          used:  usedKb * 1024,
+          totalHuman: fmtBytes(totalKb * 1024),
+          usedHuman:  fmtBytes(usedKb * 1024),
+          pct: totalKb > 0 ? Math.round((usedKb / totalKb) * 100) : 0,
+        };
       }
-      const lines = (stdout || '').trim().split('\n');
-      const reachable = lines[0] === 'REACHABLE';
-      const uptime = lines[1] || 'unknown';
-      const healthRaw = lines.slice(2).join('');
-      let botHealthy = false;
-      try {
-        const h = JSON.parse(healthRaw);
-        botHealthy = h.status === 'ok';
-      } catch { /* not JSON = down */ }
-      res.json({
-        success: true,
-        pi5: { reachable, host: config.host, uptime, botHealthy },
-      });
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, error: 'Status check failed' });
-  }
-});
-
-// Deploy to Pi5 (sync files + restart)
-router.post('/pi5/deploy', MW.adminOrAbove, MW.sensitiveActionLimiter, async (req, res) => {
-  try {
-    const mode = req.body.mode || 'full'; // full | sync-only | dry-run
-    const args = [];
-    if (mode === 'sync-only') args.push('--sync-only');
-    if (mode === 'dry-run') args.push('--dry-run');
-
-    if (!fs.existsSync(PI5_DEPLOY_SCRIPT)) {
-      return res.status(404).json({ success: false, error: 'deploy-pi5.sh not found' });
     }
 
-    const jobId = crypto.randomBytes(8).toString('hex');
-    const job = runPi5Job(jobId, PI5_DEPLOY_SCRIPT, args, req.admin);
-
-    await Q.logAudit({
-      admin_id: req.admin.id, admin_email: req.admin.email,
-      action: 'pi5_deploy', category: 'infrastructure',
-      target_type: 'pi5', target_id: jobId,
-      new_value: { mode },
-      ip_address: MW.getClientIP(req),
+    res.json({
+      success: true,
+      server: {
+        hostname: os.hostname(),
+        platform: `${os.type()} ${os.release()}`,
+        arch:     os.arch(),
+        node:     process.version,
+        uptime:   fmtUptime(os.uptime()),
+        uptimeSeconds: Math.floor(os.uptime()),
+        processUptime: fmtUptime(process.uptime()),
+        cpus:     os.cpus().length,
+        loadAvg:  { '1m': load[0], '5m': load[1], '15m': load[2] },
+        memory:   {
+          total: totalMem, used: usedMem, free: freeMem,
+          totalHuman: fmtBytes(totalMem),
+          usedHuman:  fmtBytes(usedMem),
+          pct: Math.round((usedMem / totalMem) * 100),
+        },
+        disk,
+      },
     });
-
-    res.json({ success: true, jobId, mode, message: 'Deploy started' });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Deploy failed to start' });
+    console.error('[Admin v4] Server status error:', err);
+    res.status(500).json({ success: false, error: 'Failed to gather server status' });
   }
 });
 
-// Run update.sh on Pi5 (git pull + npm install + health check)
-router.post('/pi5/update', MW.adminOrAbove, MW.sensitiveActionLimiter, async (req, res) => {
+// GET /server/services — systemctl status for the allow-listed darklock units.
+// systemctl show/is-active are unprivileged on systemd — safe to call as user.
+router.get('/server/services', MW.adminOrAbove, async (req, res) => {
   try {
-    const branch = req.body.branch || 'main';
-    const skipBackup = !!req.body.skipBackup;
-    const args = ['--branch', branch];
-    if (skipBackup) args.push('--skip-backup');
+    const results = await Promise.all(DARKLOCK_SERVICES.map(async (name) => {
+      const [isActive, show] = await Promise.all([
+        execFileP('systemctl', ['is-active', name], 3000),
+        execFileP('systemctl', [
+          'show', name,
+          '--property=ActiveState,SubState,LoadState,MainPID,ActiveEnterTimestamp,Description',
+          '--no-pager',
+        ], 3000),
+      ]);
 
-    if (!fs.existsSync(PI5_UPDATE_SCRIPT)) {
-      return res.status(404).json({ success: false, error: 'update.sh not found' });
-    }
+      const props = {};
+      for (const line of (show.stdout || '').split('\n')) {
+        const idx = line.indexOf('=');
+        if (idx > 0) props[line.slice(0, idx)] = line.slice(idx + 1);
+      }
 
-    const jobId = crypto.randomBytes(8).toString('hex');
-    const job = runPi5Job(jobId, PI5_UPDATE_SCRIPT, args, req.admin);
-
-    await Q.logAudit({
-      admin_id: req.admin.id, admin_email: req.admin.email,
-      action: 'pi5_update', category: 'infrastructure',
-      target_type: 'pi5', target_id: jobId,
-      new_value: { branch, skipBackup },
-      ip_address: MW.getClientIP(req),
-    });
-
-    res.json({ success: true, jobId, branch, message: 'Update started' });
+      return {
+        name,
+        description: props.Description || name,
+        active:      (isActive.stdout || '').trim() || 'unknown',
+        state:       props.ActiveState || 'unknown',
+        sub:         props.SubState || '',
+        mainPid:     props.MainPID && props.MainPID !== '0' ? props.MainPID : null,
+        activeSince: props.ActiveEnterTimestamp || null,
+        loadState:   props.LoadState || 'unknown',
+      };
+    }));
+    res.json({ success: true, services: results });
   } catch (err) {
-    res.status(500).json({ success: false, error: 'Update failed to start' });
+    console.error('[Admin v4] Server services error:', err);
+    res.status(500).json({ success: false, error: 'Failed to query services' });
   }
-});
-
-// Check job status
-router.get('/pi5/job/:jobId', MW.adminOrAbove, (req, res) => {
-  const job = pi5Jobs.get(req.params.jobId);
-  if (!job) return res.status(404).json({ success: false, error: 'Job not found' });
-  res.json({ success: true, job });
-});
-
-// List recent jobs
-router.get('/pi5/jobs', MW.adminOrAbove, (req, res) => {
-  const jobs = [...pi5Jobs.values()]
-    .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
-    .slice(0, 20);
-  res.json({ success: true, jobs });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -37,7 +37,7 @@ export default function ClipboardWidget() {
       }
     };
 
-    // Also subscribe via Nova IPC if available
+    // Also subscribe via Jarvis IPC if available
     const unsub = window.nova?.clipboard?.onCopy?.((text) => {
       if (!text || text === lastRef.current) return;
       lastRef.current = text;

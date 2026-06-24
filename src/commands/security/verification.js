@@ -15,7 +15,8 @@ module.exports = {
             .addStringOption(opt => opt.setName('method').setDescription('Verification method').addChoices(
                 { name: 'Button Click', value: 'button' },
                 { name: 'CAPTCHA Code', value: 'captcha' },
-                { name: 'Emoji Challenge', value: 'reaction' },
+                { name: 'Emoji Reaction', value: 'reaction' },
+                { name: 'Emoji Sequence', value: 'sequence' },
                 { name: 'Web Portal', value: 'web' },
                 { name: 'Auto (Risk-based)', value: 'auto' }
             ).setRequired(true))
@@ -59,6 +60,25 @@ module.exports = {
                 if (typeof bot.emitSettingChange === 'function') {
                     await bot.emitSettingChange(guildId, interaction.user.id, 'verification_enabled', 1);
                 }
+                if (bot.configService?.cache) {
+                    bot.configService.cache.delete(guildId);
+                }
+                if (bot.discordLogger?.invalidateCache) {
+                    bot.discordLogger.invalidateCache(guildId);
+                }
+
+                // Existing pending sessions store the method they started with.
+                // Remove stale sessions so users who click the new panel get a fresh
+                // challenge for the newly selected method instead of an old flow.
+                await bot.database.run(
+                    `DELETE FROM verification_sessions
+                     WHERE guild_id = ? AND status = 'pending' AND method != ?`,
+                    [guildId, method]
+                ).catch(() => {});
+
+                // Bulk permission rewrites below can emit a channelUpdate event per
+                // channel. Suppress server-change logs for this bot-owned setup pass.
+                bot.discordLogger?.suppress?.(guildId, 'server', 2 * 60 * 1000);
 
                 // Configure channel permissions
                 // 1. Allow unverified role in verification channel
@@ -151,7 +171,7 @@ If you're having trouble verifying, please contact a staff member.
                     verifyButton = new ActionRowBuilder()
                         .addComponents(
                             new ButtonBuilder()
-                                .setCustomId('verify_button')
+                                .setCustomId('verify_method_web')
                                 .setLabel('🔗 Verify via Web Portal')
                                 .setStyle(ButtonStyle.Primary)
                         );
@@ -180,8 +200,8 @@ If you're having trouble verifying, please contact a staff member.
                     verifyButton = new ActionRowBuilder()
                         .addComponents(
                             new ButtonBuilder()
-                                .setCustomId('verify_button')
-                                .setLabel('✅ Verify')
+                                .setCustomId(`verify_method_${method}`)
+                                .setLabel(method === 'auto' ? '✅ Start Risk Check' : '✅ Verify')
                                 .setStyle(ButtonStyle.Success)
                         );
                 } else if (method === 'captcha' || method === 'code') {
@@ -212,7 +232,7 @@ If you're having trouble verifying or didn't receive a DM, please contact a staf
                     verifyButton = new ActionRowBuilder()
                         .addComponents(
                             new ButtonBuilder()
-                                .setCustomId('verify_button')
+                                .setCustomId('verify_method_captcha')
                                 .setLabel('🔐 Get Code / Enter Code')
                                 .setStyle(ButtonStyle.Primary)
                         );
@@ -244,8 +264,31 @@ If you're having trouble verifying or didn't receive a DM, please contact a staf
                     verifyButton = new ActionRowBuilder()
                         .addComponents(
                             new ButtonBuilder()
-                                .setCustomId('verify_button')
+                                .setCustomId('verify_method_reaction')
                                 .setLabel('🎯 Start Verification')
+                                .setStyle(ButtonStyle.Primary)
+                        );
+                } else if (method === 'sequence') {
+                    instructionEmbed = new EmbedBuilder()
+                        .setTitle('🔐 Welcome to Server Verification')
+                        .setDescription(`Before you can access the rest of the server, please complete verification to confirm you're a real person.
+
+**How to Verify:**
+Click **Start Sequence** below, then press the emoji buttons in the requested order.
+
+**What happens next:**
+✅ Start the sequence challenge
+✅ Click the emojis in order
+✅ You'll receive the verified role automatically
+✅ You'll gain access to all server channels`)
+                        .setColor('#00d4ff')
+                        .setTimestamp();
+
+                    verifyButton = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('verify_method_sequence')
+                                .setLabel('🎯 Start Sequence')
                                 .setStyle(ButtonStyle.Primary)
                         );
                 } else {
@@ -268,7 +311,7 @@ If you're having trouble verifying, please contact a staff member.
                     verifyButton = new ActionRowBuilder()
                         .addComponents(
                             new ButtonBuilder()
-                                .setCustomId('verify_button')
+                                .setCustomId('verify_method_button')
                                 .setLabel('✅ Verify')
                                 .setStyle(ButtonStyle.Success)
                         );

@@ -87,7 +87,7 @@ export const ToolEngine = {
     }).join('\n');
     return {
       role: 'system',
-      content: `TOOL_RESULTS:\n${summary}\n\nUse these results to give the user a final answer. Do NOT emit more tool calls unless absolutely needed.`,
+      content: `TOOL_RESULTS:\n${summary}\n\nUse these real results to answer. If the result clearly needs one more lookup/action, emit the next tool call. Otherwise give the user a concise final answer.`,
     };
   },
 };

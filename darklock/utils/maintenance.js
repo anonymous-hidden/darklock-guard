@@ -268,6 +268,14 @@ function shouldSkipPath(path) {
         '/platform/css',
         '/platform/js',
         '/favicon.ico',
+
+        // Public PWA shell
+        '/app/secure-channel',
+        '/app/secure-channel/',
+        '/app/secure-channel/assets/',
+        '/app/secure-channel/icons/',
+        '/app/secure-channel/sw.js',
+        '/app/secure-channel/pwa.html',
         
         // API endpoints (return JSON 503 instead of redirect)
         '/api/',

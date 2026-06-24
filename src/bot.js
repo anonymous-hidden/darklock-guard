@@ -40,10 +40,23 @@
 })();
 // === END ANTI-TAMPER PRE-FLIGHT ===
 
-const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, REST, Routes, PermissionFlagsBits } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder, REST, Routes, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+
+// Web verification must use the public site, not the admin dashboard host.
+// DASHBOARD_URL can point at admin.darklock.net for staff tools, so do not use it
+// as the verification origin fallback.
+if (!process.env.WEB_VERIFY_BASE_URL) {
+    process.env.WEB_VERIFY_BASE_URL = 'https://darklock.net';
+}
+if (!process.env.DASHBOARD_ORIGIN) {
+    process.env.DASHBOARD_ORIGIN = process.env.WEB_VERIFY_BASE_URL;
+}
+if (!process.env.BASE_URL) {
+    process.env.BASE_URL = process.env.DASHBOARD_ORIGIN;
+}
 
 // Initialize Tamper Protection System (with embedded anti-tamper guard)
 const AntiTamperGuard = require('./utils/antiTamperGuard');
@@ -135,6 +148,10 @@ const LockdownManager = require('./utils/LockdownManager');
 const AppealSystem = require('./systems/appealsystem');
 const DiscordLogger = require('./systems/DiscordLogger');
 const ServerBackupSystem = require('./systems/serverbackup');
+const AuditLogViewer = require('./systems/auditlogviewer');
+const InviteTracker = require('./systems/invitetracker');
+const LanguageSystem = require('./systems/language');
+const { handleHelpInteraction, PREFIX: HELP_PREFIX } = require('./core/interactions/helpV2Handler');
 
 // Import rank system modules
 const RankSystem = require('./utils/RankSystem');
@@ -243,6 +260,9 @@ class SecurityBot {
         this.ticketSystem = null;
         this.forensicsManager = null;
         this.lockdownManager = null;
+        this.auditLogViewer = null;
+        this.inviteTracker = null;
+        this.languageSystem = null;
         
         // Initialize rank system
         this.rankSystem = null;
@@ -265,7 +285,21 @@ class SecurityBot {
             antinuke: 'pro',
             security: 'pro',
             backup: 'pro',
-            ticket_ai_summarize: 'enterprise'
+            ticket_ai_summarize: 'pro',
+            // High-level configuration/admin commands behind Pro
+            setup: 'pro',
+            settings: 'pro',
+            admin: 'pro',
+            serversetup: 'pro',
+            serverbackup: 'pro',
+            permissions: 'pro',
+            language: 'pro',
+            wizard: 'pro',
+            onboarding: 'pro',
+            reactionroles: 'pro',
+            channelaccess: 'pro',
+            voicemonitor: 'pro',
+            xp: 'pro'
         };
 
         // Per-guild console buffer: guildId -> entries (max 5000 per guild)
@@ -304,6 +338,52 @@ class SecurityBot {
         return this.legacyCommandMigrations[key] || null;
     }
 
+    normalizeInteractionPayload(payload = {}) {
+        const normalized = { ...payload };
+        if (Object.prototype.hasOwnProperty.call(normalized, 'ephemeral')) {
+            if (normalized.ephemeral && normalized.flags === undefined) {
+                normalized.flags = MessageFlags.Ephemeral;
+            }
+            delete normalized.ephemeral;
+        }
+        return normalized;
+    }
+
+    isStaleInteractionError(error) {
+        return error?.code === 10062 || error?.code === 40060
+            || /Unknown interaction|Interaction has already been acknowledged/i.test(error?.message || '');
+    }
+
+    async safeInteractionResponse(interaction, payload, context = 'interaction_response') {
+        const response = this.normalizeInteractionPayload(payload);
+
+        try {
+            if (interaction.replied || interaction.deferred) {
+                return await interaction.followUp(response);
+            }
+            return await interaction.reply(response);
+        } catch (error) {
+            if (error?.code === 40060) {
+                try {
+                    return await interaction.followUp(response);
+                } catch (followUpError) {
+                    if (this.isStaleInteractionError(followUpError)) {
+                        this.logger?.debug?.(`Dropped stale ${context} follow-up: ${followUpError.message}`);
+                        return null;
+                    }
+                    throw followUpError;
+                }
+            }
+
+            if (this.isStaleInteractionError(error)) {
+                this.logger?.debug?.(`Dropped stale ${context} response: ${error.message}`);
+                return null;
+            }
+
+            throw error;
+        }
+    }
+
     async sendLegacyDeprecationNotice(interaction, commandName) {
         const movedTo = this.getLegacyCommandTarget(commandName);
         if (!movedTo) return;
@@ -311,11 +391,10 @@ class SecurityBot {
         const message = `⚠️ This command has moved to ${movedTo}. I ran it for you this time, but please use ${movedTo} going forward.`;
 
         try {
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp({ content: message, ephemeral: true });
-            } else {
-                await interaction.reply({ content: message, ephemeral: true });
-            }
+            await this.safeInteractionResponse(interaction, {
+                content: message,
+                flags: MessageFlags.Ephemeral
+            }, 'legacy_deprecation_notice');
         } catch (_) {
             // Never fail command execution because a deprecation notice could not be sent.
         }
@@ -476,6 +555,22 @@ class SecurityBot {
             // Forensics Manager for immutable audit logging
             this.forensicsManager = new ForensicsManager(this);
             this.logger.info('   ✅ Forensics Manager initialized');
+
+            this.auditLogViewer = new AuditLogViewer(this);
+            await this.auditLogViewer.initialize();
+            this.client.auditLogViewer = this.auditLogViewer;
+            this.logger.info('   ✅ Audit Log Viewer initialized');
+
+            this.inviteTracker = new InviteTracker(this);
+            await this.inviteTracker.initialize();
+            this.client.inviteTracker = this.inviteTracker;
+            this.logger.info('   ✅ Invite Tracker initialized');
+
+            this.languageSystem = new LanguageSystem(this);
+            await this.languageSystem.initialize();
+            this.client.languageSystem = this.languageSystem;
+            this.t = (guildId, key, vars) => this.languageSystem.t(guildId, key, vars);
+            this.logger.info('   ✅ Language System initialized');
 
             // Lockdown Manager for server lockdowns
             this.lockdownManager = new LockdownManager(this);
@@ -651,10 +746,10 @@ class SecurityBot {
             };
 
             // Lightweight helper: emit a universal setting change event
-            this.emitSettingChange = (guildId, userId, settingKey, newValue) => {
+            this.emitSettingChange = (guildId, userId, settingKey, newValue, before = null, category = 'configuration') => {
                 if (!this.eventEmitter || typeof this.eventEmitter.emit !== 'function') return;
                 try {
-                    this.eventEmitter.emit('settingChanged', { guildId, userId, settingKey, newValue });
+                    this.eventEmitter.emit('settingChanged', { guildId, userId, settingKey, newValue, before, category });
                 } catch (e) {
                     this.logger?.warn && this.logger.warn('emitSettingChange emit failed:', e?.message || e);
                 }
@@ -1065,6 +1160,12 @@ class SecurityBot {
             
             // Register slash commands (global + per-guild for immediacy)
             await this.registerSlashCommands();
+
+            if (this.inviteTracker) {
+                await this.inviteTracker.cacheAllGuildInvites().catch(err => {
+                    this.logger.warn(`Invite cache warmup failed: ${err.message}`);
+                });
+            }
         });
 
         // Interaction handling
@@ -1075,7 +1176,7 @@ class SecurityBot {
                 if (!command) {
                     return await interaction.reply({
                         content: '❌ Command not found.',
-                        ephemeral: true
+                        flags: MessageFlags.Ephemeral
                     });
                 }
 
@@ -1095,7 +1196,7 @@ class SecurityBot {
                         const timeLeft = (expirationTime - now) / 1000;
                         return await interaction.reply({
                             content: `⏰ Please wait ${timeLeft.toFixed(1)} seconds before using this command again.`,
-                            ephemeral: true
+                            flags: MessageFlags.Ephemeral
                         });
                     }
                 }
@@ -1114,7 +1215,7 @@ class SecurityBot {
                         if (!securityCheck.passed) {
                             return await interaction.reply({
                                 content: securityCheck.error || '❌ Security check failed.',
-                                ephemeral: true
+                                flags: MessageFlags.Ephemeral
                             });
                         }
                     }
@@ -1122,7 +1223,7 @@ class SecurityBot {
                     // Feature gating
                     const blocked = await this.isFeatureBlocked(interaction);
                     if (blocked) {
-                        return await interaction.reply({ content: '❌ This feature is disabled in this server.', ephemeral: true });
+                        return await interaction.reply({ content: '❌ This feature is disabled in this server.', flags: MessageFlags.Ephemeral });
                     }
 
                     // Plan-based gating
@@ -1134,9 +1235,9 @@ class SecurityBot {
                                 return await interaction.reply('❌ This feature requires the **Pro plan**.');
                             }
                         } else if (requiredPlan === 'enterprise') {
-                            const hasEnterprise = await this.hasEnterpriseFeatures(interaction.guild.id);
-                            if (!hasEnterprise) {
-                                return await interaction.reply('❌ This feature requires the **Enterprise plan**.');
+                            const hasPro = await this.hasProFeatures(interaction.guild.id);
+                            if (!hasPro) {
+                                return await interaction.reply('❌ This feature requires the **Pro plan**.');
                             }
                         }
                     }
@@ -1147,7 +1248,7 @@ class SecurityBot {
                         if (!allowed) {
                             return await interaction.reply({
                                 content: '🚫 You do not have permission to use this command. Ask a server admin to grant access via `/permissions`.',
-                                ephemeral: true
+                                flags: MessageFlags.Ephemeral
                             });
                         }
                     }
@@ -1159,7 +1260,7 @@ class SecurityBot {
                             if (!enabled) {
                                 return await interaction.reply({
                                     content: `⚠️ The feature required for this command (${command.feature}) is currently disabled in this server. Ask an admin to enable it in the dashboard.`,
-                                    ephemeral: true
+                                    flags: MessageFlags.Ephemeral
                                 });
                             }
                         } catch (e) {
@@ -1178,11 +1279,12 @@ class SecurityBot {
                             const { resolveGuildTier } = require('./services/tier-enforcement');
                             const tier = await resolveGuildTier(this, interaction.guild.id);
                             const required = command.premium === true ? 'pro' : String(command.premium);
+                            const effectiveRequired = required === 'enterprise' ? 'pro' : required;
                             const rank = { free: 0, pro: 1, enterprise: 2 };
-                            if ((rank[tier] || 0) < (rank[required] || 0)) {
+                            if ((rank[tier] || 0) < (rank[effectiveRequired] || 0)) {
                                 return await interaction.reply({
-                                    content: `🔒 **\`/${interaction.commandName}\` is a ${required === 'enterprise' ? 'Enterprise' : 'Premium'} command.**\nUpgrade your server's plan at https://admin.darklock.net/payment to unlock it.`,
-                                    ephemeral: true
+                                    content: `🔒 **\`/${interaction.commandName}\` is a Pro command.**\nUpgrade your server's plan at https://darklock.net/site/pricing to unlock it.`,
+                                    flags: MessageFlags.Ephemeral
                                 });
                             }
                         } catch (e) {
@@ -1244,14 +1346,10 @@ class SecurityBot {
                     
                     const errorMessage = {
                         content: '❌ An error occurred while executing this command.',
-                        ephemeral: true
+                        flags: MessageFlags.Ephemeral
                     };
 
-                    if (interaction.replied || interaction.deferred) {
-                        await interaction.followUp(errorMessage);
-                    } else {
-                        await interaction.reply(errorMessage);
-                    }
+                    await this.safeInteractionResponse(interaction, errorMessage, `command_${interaction.commandName}_error`);
                 } finally {
                     // Log command execution
                     const duration = Date.now() - startTime;
@@ -1277,7 +1375,7 @@ class SecurityBot {
                 if (!command) {
                     return await interaction.reply({
                         content: '❌ Command not found.',
-                        ephemeral: true
+                        flags: MessageFlags.Ephemeral
                     });
                 }
 
@@ -1291,7 +1389,7 @@ class SecurityBot {
                         if (!allowed) {
                             return await interaction.reply({
                                 content: '🚫 You do not have permission to use this command. Ask a server admin to grant access via `/permissions`.',
-                                ephemeral: true
+                                flags: MessageFlags.Ephemeral
                             });
                         }
                     }
@@ -1313,14 +1411,10 @@ class SecurityBot {
 
                     const errorMessage = {
                         content: '❌ An error occurred while executing this command.',
-                        ephemeral: true
+                        flags: MessageFlags.Ephemeral
                     };
 
-                    if (interaction.replied || interaction.deferred) {
-                        await interaction.followUp(errorMessage);
-                    } else {
-                        await interaction.reply(errorMessage);
-                    }
+                    await this.safeInteractionResponse(interaction, errorMessage, `context_menu_${interaction.commandName}_error`);
                 } finally {
                     const duration = Date.now() - startTime;
                     await this.logger.logCommand({
@@ -1343,19 +1437,23 @@ class SecurityBot {
             if (interaction.isButton()) {
                 const buttonSuccess = await (async () => {
                     try {
+                        if (interaction.customId?.startsWith(HELP_PREFIX)) {
+                            return await handleHelpInteraction(interaction, this);
+                        }
+
                         // Enterprise security middleware check for buttons
                         if (this.securityMiddleware) {
                             const securityCheck = await this.securityMiddleware.checkButton(interaction);
                             if (!securityCheck.passed) {
                                 return interaction.reply({
                                     content: securityCheck.error || '❌ Security check failed.',
-                                    ephemeral: true
+                                    flags: MessageFlags.Ephemeral
                                 });
                             }
                         }
 
                         // Handle verification through enterprise VerificationService
-                        if (interaction.customId === 'verify_button' && this.verificationService) {
+                        if ((interaction.customId === 'verify_button' || interaction.customId.startsWith('verify_method_')) && this.verificationService) {
                             await this.verificationService.handleVerifyButton(interaction);
                             return true;
                         }
@@ -1366,15 +1464,20 @@ class SecurityBot {
                             return true;
                         }
 
+                        if (interaction.customId.startsWith('verify_sequence_') && this.verificationService) {
+                            await this.verificationService.handleSequenceVerify(interaction);
+                            return true;
+                        }
+
                         // Verification skip/deny
                         if (interaction.customId.startsWith('verify_allow_') || interaction.customId.startsWith('verify_deny_')) {
                             const targetId = interaction.customId.split('_')[2];
                             const approve = interaction.customId.startsWith('verify_allow_');
                             if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild) &&
                                 !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-                                return interaction.reply({ content: 'Staff only.', ephemeral: true });
+                                return interaction.reply({ content: 'Staff only.', flags: MessageFlags.Ephemeral });
                             }
-                            await interaction.deferReply({ ephemeral: true });
+                            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                             const member = await interaction.guild.members.fetch(targetId).catch(() => null);
                             if (!member) return interaction.editReply({ content: 'User not found.' });
                             const cfg = await this.database.getGuildConfig(interaction.guild.id);
@@ -1514,7 +1617,7 @@ class SecurityBot {
                     const category = interaction.values[0];
                     
                     if (!this.helpTicketSystem) {
-                        return await interaction.reply({ content: '❌ Help ticket system not available', ephemeral: true });
+                        return await interaction.reply({ content: '❌ Help ticket system not available', flags: MessageFlags.Ephemeral });
                     }
 
                     // Show modal for the selected category
@@ -1568,9 +1671,14 @@ class SecurityBot {
                     if (!securityCheck.passed) {
                         return interaction.reply({
                             content: securityCheck.error || '❌ Security check failed.',
-                            ephemeral: true
+                            flags: MessageFlags.Ephemeral
                         });
                     }
+                }
+
+                if (interaction.customId?.startsWith(HELP_PREFIX)) {
+                    await handleHelpInteraction(interaction, this);
+                    return;
                 }
 
                 // Handle verification captcha modal through enterprise VerificationService
@@ -1615,7 +1723,7 @@ class SecurityBot {
                 // Anti-malicious links check
                 if (this.antiMaliciousLinks && guildConfig.anti_phishing_enabled !== 0) {
                     const linkResult = await this.antiMaliciousLinks.checkMessage(message);
-                    if (linkResult && linkResult.isBlocked) return;
+                    if (linkResult === true || linkResult?.isBlocked || linkResult?.blocked) return;
                 }
 
                 // Word filter check (banned words/phrases)
@@ -1832,6 +1940,12 @@ class SecurityBot {
                     await this.analyticsManager.trackMemberJoin(member);
                 }
 
+                if (this.inviteTracker) {
+                    await this.inviteTracker.handleMemberJoin(member).catch(err => {
+                        this.logger.debug('Invite tracking error:', err.message);
+                    });
+                }
+
                 // Forensics audit log
                 if (this.forensicsManager) {
                     await this.forensicsManager.logAuditEvent({
@@ -1978,6 +2092,12 @@ class SecurityBot {
                     await this.analyticsManager.trackMemberLeave(member);
                 }
 
+                if (this.inviteTracker) {
+                    await this.inviteTracker.handleMemberLeave(member).catch(err => {
+                        this.logger.debug('Invite leave tracking error:', err.message);
+                    });
+                }
+
                 // Log leave to Discord log channel
                 if (this.discordLogger) await this.discordLogger.logMemberLeave(member).catch(() => {});
 
@@ -2023,6 +2143,8 @@ class SecurityBot {
         // Member update events (role conflict resolution + timeout notifications)
         this.client.on('guildMemberUpdate', async (oldMember, newMember) => {
             try {
+                if (this.discordLogger) await this.discordLogger.logMemberUpdate(oldMember, newMember).catch(() => {});
+
                 // 1) Auto-resolve role conflicts (verified + unverified)
                 const cfg = await this.database.getGuildConfig(newMember.guild.id).catch(() => null);
                 if (cfg?.verified_role_id && cfg?.unverified_role_id) {
@@ -2033,7 +2155,7 @@ class SecurityBot {
                 }
 
                 // 2) Timeout notifications
-                const { EmbedBuilder } = require('discord.js');
+                const { EmbedBuilder, AuditLogEvent } = require('discord.js');
                 
                 // Check if timeout status changed
                 const wasTimedOut = oldMember.communicationDisabledUntil;
@@ -2045,6 +2167,9 @@ class SecurityBot {
                     
                     const timeoutUntil = new Date(isTimedOut);
                     const duration = Math.round((timeoutUntil - Date.now()) / 1000 / 60); // minutes
+                    const audit = this.discordLogger
+                        ? await this.discordLogger._executor(newMember.guild, AuditLogEvent.MemberUpdate, newMember.id).catch(() => null)
+                        : null;
                     
                     // Get guild config
                     const config = await this.database.getGuildConfig(newMember.guild.id);
@@ -2069,6 +2194,7 @@ class SecurityBot {
                             .setDescription(`**${newMember.user.username}** has been timed out`)
                             .addFields(
                                 { name: '👤 User', value: `${newMember.user.username}\n<@${newMember.user.id}>\n\`${newMember.user.id}\``, inline: true },
+                                { name: 'Actor', value: audit?.user ? `${audit.user.username}\n<@${audit.user.id}>\n\`${audit.user.id}\`` : '*Not resolved from audit log*', inline: true },
                                 { name: '⏰ Duration', value: `${duration} minutes`, inline: true },
                                 { name: '🕐 Until', value: `<t:${Math.floor(timeoutUntil.getTime() / 1000)}:F>`, inline: true }
                             )
@@ -2110,11 +2236,11 @@ class SecurityBot {
                             eventType: 'TIMEOUT',
                             guildId: newMember.guild.id,
                             channelId: null,
-                            moderatorId: null,
-                            moderatorTag: null,
+                            moderatorId: audit?.user?.id || null,
+                            moderatorTag: audit?.user?.tag || audit?.user?.username || null,
                             targetId: newMember.user.id,
                             targetTag: newMember.user.username,
-                            reason: `Timed out for ${duration} minutes`,
+                            reason: audit?.reason || `Timed out for ${duration} minutes`,
                             details: {
                                 duration: duration,
                                 until: timeoutUntil.toISOString()
@@ -2151,6 +2277,7 @@ class SecurityBot {
                 if (this.analyticsManager) {
                     await this.analyticsManager.trackVoiceActivity(oldState, newState);
                 }
+                if (this.discordLogger) await this.discordLogger.logVoiceState(oldState, newState).catch(() => {});
             } catch (error) {
                 this.logger.error('Error in voice state handler:', error);
             }
@@ -2223,17 +2350,45 @@ class SecurityBot {
         this.client.on('guildBanAdd', async (ban) => {
             try {
                 await this.handleBanAdd(ban);
+                if (this.discordLogger) await this.discordLogger.logBanEvent(ban, 'ban').catch(() => {});
             } catch (error) {
                 this.logger.error('Error handling guildBanAdd:', error);
+            }
+        });
+
+        this.client.on('guildBanRemove', async (ban) => {
+            try {
+                if (this.discordLogger) await this.discordLogger.logBanEvent(ban, 'unban').catch(() => {});
+            } catch (error) {
+                this.logger.error('Error handling guildBanRemove:', error);
             }
         });
         
         this.client.on('webhookUpdate', async (channel) => {
             try {
                 await this.handleWebhookUpdate(channel);
+                if (this.discordLogger && channel.guild) await this.discordLogger.logWebhookUpdate(channel).catch(() => {});
             } catch (error) {
                 this.logger.error('Error handling webhookUpdate:', error);
             }
+        });
+
+        this.client.on('inviteCreate', async (invite) => {
+            if (this.inviteTracker && invite.guild) {
+                await this.inviteTracker.cacheGuildInvites(invite.guild).catch(err => {
+                    this.logger.debug('Invite create cache refresh failed:', err.message);
+                });
+            }
+            if (this.discordLogger && invite.guild) await this.discordLogger.logInviteEvent(invite, 'create').catch(() => {});
+        });
+
+        this.client.on('inviteDelete', async (invite) => {
+            if (this.inviteTracker && invite.guild) {
+                await this.inviteTracker.cacheGuildInvites(invite.guild).catch(err => {
+                    this.logger.debug('Invite delete cache refresh failed:', err.message);
+                });
+            }
+            if (this.discordLogger && invite.guild) await this.discordLogger.logInviteEvent(invite, 'delete').catch(() => {});
         });
 
         // Role Update (permission escalation detection)
@@ -2250,8 +2405,41 @@ class SecurityBot {
         this.client.on('channelUpdate', async (oldChannel, newChannel) => {
             try {
                 await this.handleChannelUpdate(oldChannel, newChannel);
+                if (this.discordLogger && newChannel.guild) await this.discordLogger.logChannelEvent(newChannel, 'update', oldChannel).catch(() => {});
             } catch (error) {
                 this.logger.error('Error handling channelUpdate:', error);
+            }
+        });
+
+        this.client.on('guildUpdate', async (oldGuild, newGuild) => {
+            try {
+                if (this.discordLogger) await this.discordLogger.logGuildUpdate(oldGuild, newGuild).catch(() => {});
+            } catch (error) {
+                this.logger.error('Error handling guildUpdate:', error);
+            }
+        });
+
+        this.client.on('threadCreate', async (thread) => {
+            try {
+                if (this.discordLogger && thread.guild) await this.discordLogger.logThreadEvent(thread, 'create').catch(() => {});
+            } catch (error) {
+                this.logger.error('Error handling threadCreate:', error);
+            }
+        });
+
+        this.client.on('threadUpdate', async (oldThread, newThread) => {
+            try {
+                if (this.discordLogger && newThread.guild) await this.discordLogger.logThreadEvent(newThread, 'update', oldThread).catch(() => {});
+            } catch (error) {
+                this.logger.error('Error handling threadUpdate:', error);
+            }
+        });
+
+        this.client.on('threadDelete', async (thread) => {
+            try {
+                if (this.discordLogger && thread.guild) await this.discordLogger.logThreadEvent(thread, 'delete').catch(() => {});
+            } catch (error) {
+                this.logger.error('Error handling threadDelete:', error);
             }
         });
 
@@ -2335,27 +2523,27 @@ class SecurityBot {
                     const guildId = parts[2];
                     const targetUserId = parts[3];
                     if (interaction.user.id !== targetUserId) {
-                        return interaction.reply({ content: 'This verification button is not for you.', ephemeral: true });
+                        return interaction.reply({ content: 'This verification button is not for you.', flags: MessageFlags.Ephemeral });
                     }
                     const pending = await this.database.get(
                         `SELECT * FROM verification_queue WHERE guild_id = ? AND user_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT 1`,
                         [guildId, targetUserId]
                     );
                     if (!pending) {
-                        return interaction.reply({ content: 'No active verification challenge found.', ephemeral: true });
+                        return interaction.reply({ content: 'No active verification challenge found.', flags: MessageFlags.Ephemeral });
                     }
                     const isExpired = pending.expires_at && new Date(pending.expires_at).getTime() < Date.now();
                     if (isExpired) {
                         await this.database.run(`UPDATE verification_queue SET status = 'expired', completed_at = CURRENT_TIMESTAMP WHERE id = ?`, [pending.id]);
-                        return interaction.reply({ content: 'Verification challenge expired. Ask staff to resend.', ephemeral: true });
+                        return interaction.reply({ content: 'Verification challenge expired. Ask staff to resend.', flags: MessageFlags.Ephemeral });
                     }
                     const guild = this.client.guilds.cache.get(guildId);
-                    if (!guild) return interaction.reply({ content: 'Guild not found for verification.', ephemeral: true });
+                    if (!guild) return interaction.reply({ content: 'Guild not found for verification.', flags: MessageFlags.Ephemeral });
                     const member = await guild.members.fetch(targetUserId).catch(() => null);
-                    if (!member) return interaction.reply({ content: 'You are no longer in the server.', ephemeral: true });
+                    if (!member) return interaction.reply({ content: 'You are no longer in the server.', flags: MessageFlags.Ephemeral });
                     await this.userVerification.markVerified(member, 'button');
                     await this.database.run(`UPDATE verification_queue SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ?`, [pending.id]);
-                    return interaction.reply({ content: '✅ You are now verified. Welcome!', ephemeral: true });
+                    return interaction.reply({ content: '✅ You are now verified. Welcome!', flags: MessageFlags.Ephemeral });
                 }
             }
             switch (customId) {
@@ -2380,7 +2568,7 @@ class SecurityBot {
                         )
                         .setColor('#00d4ff');
 
-                    await interaction.reply({ embeds: [setupEmbed], ephemeral: true });
+                    await interaction.reply({ embeds: [setupEmbed], flags: MessageFlags.Ephemeral });
                     break;
 
                 case 'security_guide':
@@ -2396,7 +2584,7 @@ class SecurityBot {
                         )
                         .setColor('#2ed573');
 
-                    await interaction.reply({ embeds: [securityEmbed], ephemeral: true });
+                    await interaction.reply({ embeds: [securityEmbed], flags: MessageFlags.Ephemeral });
                     break;
 
                 case 'check_status':
@@ -2434,7 +2622,7 @@ class SecurityBot {
                     } else {
                         await interaction.reply({
                             content: '❌ Unknown button interaction.',
-                            ephemeral: true
+                            flags: MessageFlags.Ephemeral
                         });
                     }
             }
@@ -2442,7 +2630,7 @@ class SecurityBot {
             this.logger.error('Error handling button interaction:', error);
             await interaction.reply({
                 content: '❌ An error occurred while processing your request.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
     }
@@ -2455,7 +2643,7 @@ class SecurityBot {
         if (!member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
             return interaction.reply({
                 content: '❌ You need Moderate Members permission to use these actions.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -2465,7 +2653,7 @@ class SecurityBot {
         const action = parts[1]; // remove_timeout, warn, kick, ban
         const targetUserId = parts[parts.length - 1];
 
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         try {
             const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
@@ -2840,6 +3028,31 @@ class SecurityBot {
                             is_active: true
                         };
                     }
+
+                    // Check for user-wide enterprise subscription owned by the guild owner
+                    // Covers guilds not present at webhook time (joined after purchase)
+                    try {
+                        const ownerEnterprise = await this.database.get(
+                            `SELECT subscription_id FROM stripe_subscriptions
+                             WHERE user_id = ? AND plan_type = 'enterprise' AND status IN ('active', 'trialing')
+                             AND (current_period_end IS NULL OR current_period_end > ?)
+                             LIMIT 1`,
+                            [guild.ownerId, now]
+                        );
+                        if (ownerEnterprise) {
+                            this.logger?.info(`[Paywall] Guild ${guildId} covered by owner ${guild.ownerId}'s enterprise subscription`);
+                            return {
+                                guild_id: guildId,
+                                plan: 'enterprise',
+                                effectivePlan: 'enterprise',
+                                status: 'active',
+                                current_period_end: null,
+                                stripe_customer_id: null,
+                                stripe_subscription_id: ownerEnterprise.subscription_id,
+                                is_active: true
+                            };
+                        }
+                    } catch { /* skip */ }
                 }
             }
 
@@ -2869,11 +3082,12 @@ class SecurityBot {
     }
 
     async hasProFeatures(guildId) {
-        return true; // all features unlocked
+        const plan = await this.getGuildPlan(guildId);
+        return Boolean(plan?.is_active && ['pro', 'enterprise'].includes(plan.effectivePlan || plan.plan));
     }
 
     async hasEnterpriseFeatures(guildId) {
-        return true; // all features unlocked
+        return this.hasProFeatures(guildId);
     }
 
     async applySubscriptionUpdate({ guildId, userId = null, plan = 'free', status = 'inactive', currentPeriodEnd = undefined, stripeCustomerId = null, stripeSubscriptionId = null }) {
@@ -3069,7 +3283,7 @@ class SecurityBot {
     async handleTicketCreate(interaction) {
         const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField, ChannelType } = require('discord.js');
         
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         try {
             const guild = interaction.guild;
@@ -3084,7 +3298,7 @@ class SecurityBot {
             if (!config || !config.ticket_staff_role) {
                 return await interaction.editReply({
                     content: '❌ Ticket system is not configured. Ask an admin to run `/ticket-panel setup`.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
 
@@ -3099,7 +3313,7 @@ class SecurityBot {
                 if (channel) {
                     return await interaction.editReply({
                         content: `❌ You already have an open ticket: ${channel}`,
-                        ephemeral: true
+                        flags: MessageFlags.Ephemeral
                     });
                 }
             }
@@ -3187,14 +3401,14 @@ Please describe your issue in detail. A staff member will assist you shortly.
 
             await interaction.editReply({
                 content: `✅ Ticket created! ${ticketChannel}`,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
 
         } catch (error) {
             this.logger.error('Error creating ticket:', error);
             await interaction.editReply({
                 content: '❌ Failed to create ticket. Please contact an administrator.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
     }
@@ -3217,7 +3431,7 @@ Please describe your issue in detail. A staff member will assist you shortly.
             if (!ticket) {
                 return await interaction.editReply({
                     content: '❌ This is not an active ticket channel.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
 
@@ -3234,7 +3448,7 @@ Please describe your issue in detail. A staff member will assist you shortly.
             if (!isOwner && !isStaff && !isAdmin) {
                 return await interaction.editReply({
                     content: '❌ You don\'t have permission to close this ticket.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
 
@@ -3270,7 +3484,7 @@ The channel will be deleted in 10 seconds...
             this.logger.error('Error closing ticket:', error);
             await interaction.editReply({
                 content: '❌ Failed to close ticket. Please contact an administrator.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
     }
@@ -3310,7 +3524,7 @@ The channel will be deleted in 10 seconds...
             this.logger.error('Error showing ticket modal:', error);
             await interaction.reply({
                 content: '❌ Failed to open ticket creation form.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
     }
@@ -3319,7 +3533,7 @@ The channel will be deleted in 10 seconds...
         try {
             const { ChannelType, PermissionsBitField, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             // Get ticket config
             const config = await this.database.get(
@@ -3330,7 +3544,7 @@ The channel will be deleted in 10 seconds...
             if (!config || !config.ticket_channel_id) {
                 return await interaction.editReply({
                     content: '❌ Ticket system is not set up. Ask an admin to run `/ticket setup`.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
 
@@ -3343,7 +3557,7 @@ The channel will be deleted in 10 seconds...
             if (existingTicket) {
                 return await interaction.editReply({
                     content: `❌ You already have an open ticket: <#${existingTicket.channel_id}>`,
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
 
@@ -3468,7 +3682,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
             // Reply to interaction
             await interaction.editReply({
                 content: `✅ Your ticket has been created: ${ticketChannel}`,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
 
             // Emit event for dashboard
@@ -3487,7 +3701,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
             this.logger.error('Error creating ticket:', error);
             await interaction.editReply({
                 content: '❌ Failed to create ticket. Please contact an administrator.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
     }
@@ -3496,7 +3710,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
         try {
             const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             // Get ticket config
             const config = await this.database.get(
@@ -3507,7 +3721,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
             if (!config) {
                 return await interaction.editReply({
                     content: '❌ Ticket system is not configured.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
 
@@ -3519,7 +3733,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
             if (!hasStaffRole && !hasManageRole && !isAdmin) {
                 return await interaction.editReply({
                     content: '❌ You don\'t have permission to claim tickets.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
 
@@ -3532,7 +3746,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
             if (!ticket) {
                 return await interaction.editReply({
                     content: '❌ This is not an active ticket channel.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
 
@@ -3541,7 +3755,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
                 const claimer = await interaction.guild.members.fetch(ticket.claimed_by);
                 return await interaction.editReply({
                     content: `❌ This ticket has already been claimed by ${claimer}.`,
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
 
@@ -3586,7 +3800,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
 
             await interaction.editReply({
                 content: '✅ You have claimed this ticket.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
 
             // Emit event for dashboard
@@ -3603,7 +3817,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
             this.logger.error('Error claiming ticket:', error);
             await interaction.editReply({
                 content: '❌ Failed to claim ticket. Please try again.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
     }
@@ -3711,7 +3925,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
             await interaction.reply({
                 embeds: [helpEmbed],
                 components: buttons,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
 
         } catch (error) {
@@ -3719,7 +3933,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
             if (!interaction.replied) {
                 await interaction.reply({
                     content: '❌ An error occurred while processing your request.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 }).catch(() => {});
             }
         }
@@ -3736,7 +3950,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
             const description = interaction.fields.getTextInputValue('help-description');
             const priority = 'normal'; // Default priority
 
-            await interaction.deferReply({ ephemeral: true });
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
             // Create the ticket (combine reason and description)
             const fullDescription = `**Reason:** ${reason}\n\n**Details:**\n${description}`;
@@ -3752,7 +3966,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
             if (!result || !result.ticketId) {
                 return await interaction.editReply({
                     content: '❌ Failed to create ticket. Please try again later.',
-                    ephemeral: true
+                    flags: MessageFlags.Ephemeral
                 });
             }
 
@@ -3833,7 +4047,7 @@ Our support team will reach out shortly. Please check the ticket channel for upd
             this.logger?.error('Error processing help ticket modal:', error);
             await interaction.editReply({
                 content: '❌ An error occurred while creating your ticket. Please try again.',
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
             });
         }
     }

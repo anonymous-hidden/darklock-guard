@@ -5,11 +5,20 @@ import ChatInput from './ChatInput.jsx';
 import { useOllama } from '@hooks/useOllama.js';
 import { PromptEngine } from '@core/ai/PromptEngine.js';
 import { ToolEngine } from '@core/ai/ToolEngine.js';
+import { planToSystemBlock, planUserRequest } from '@core/ai/IntentPlanner.js';
+import { AUTO_MODEL } from '@core/ai/AIClient.js';
 import { useAiStore } from '@store/aiStore.js';
 import { useWidgetBuilder } from '@hooks/useWidgetBuilder.js';
 import { useAppStore } from '@store/appStore.js';
 
 const MAX_TOOL_HOPS = 3;
+const QUICK_ACTIONS = [
+  { label: 'news brief', prompt: 'Give me the latest news brief and open the news widget.' },
+  { label: 'lights blue', prompt: 'Turn my Govee lights blue.' },
+  { label: 'system stats', prompt: 'Check this computer CPU, memory, disk, and uptime.' },
+  { label: 'open widgets', prompt: 'Show me useful Jarvis widgets for what I am doing.' },
+  { label: 'remind me', prompt: 'Remind me in 30 minutes to check back here.' },
+];
 
 export default function ChatWindow() {
   const { messages, streaming, send, abort, ready, health, models, selectedModel, setModel } = useOllama();
@@ -17,7 +26,17 @@ export default function ChatWindow() {
   const reset = useAiStore((s) => s.reset);
   const { detectIntent, buildWidget } = useWidgetBuilder();
   const endRef = useRef(null);
+  const lastPlanRef = useRef(null);
   const [toolDescription, setToolDescription] = useState('');
+
+  const sortedModels = [...models].sort((a, b) => {
+    const an = String(a?.name || '');
+    const bn = String(b?.name || '');
+    const ap = an.startsWith('openai:') ? 0 : 1;
+    const bp = bn.startsWith('openai:') ? 0 : 1;
+    if (ap !== bp) return ap - bp;
+    return an.localeCompare(bn);
+  });
 
   // Load available tools once and inject into the chat system prompt.
   useEffect(() => {
@@ -76,7 +95,17 @@ export default function ChatWindow() {
       buildWidget(text);
       return;
     }
-    const result = await send(text);
+    const plan = planUserRequest(text, { previousPlan: lastPlanRef.current });
+    if (plan) {
+      lastPlanRef.current = plan;
+      useAiStore.getState().logInfo('planner', `${plan.intent} confidence=${plan.confidence}`);
+      if (plan.missing_info?.length) {
+        useAiStore.getState().pushUser(text);
+        useAiStore.getState().pushAssistant(plan.clarification_question || 'I need one detail before I can do that.');
+        return;
+      }
+    }
+    const result = await send(text, { extraSystem: planToSystemBlock(plan) });
     if (result?.ok && toolDescription && /<<<TOOL_CALL>>>/.test(result.text || '')) {
       await runToolLoop(result.text, result.msgId);
     }
@@ -87,7 +116,7 @@ export default function ChatWindow() {
       <header className="flex items-center justify-between border-b border-nova-border bg-nova-panel px-4 py-2.5">
         <div className="flex items-center gap-3">
           <h2 className="font-display text-base text-nova-text">Chat</h2>
-          {!ready && <span className="text-[11px] text-nova-warn font-mono">Ollama not reachable: {health.error || 'starting…'}</span>}
+          {!ready && <span className="text-[11px] text-nova-warn font-mono">AI backend not reachable: {health.error || 'starting…'}</span>}
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -95,8 +124,8 @@ export default function ChatWindow() {
             onChange={(e) => setModel(e.target.value)}
             className="nova-input py-1 text-xs w-auto"
           >
-            <option value={selectedModel}>{selectedModel}</option>
-            {models.filter((m) => m.name !== selectedModel).map((m) => (
+            <option value={AUTO_MODEL}>auto (best available)</option>
+            {sortedModels.map((m) => (
               <option key={m.name} value={m.name}>{m.name}</option>
             ))}
           </select>
@@ -107,7 +136,7 @@ export default function ChatWindow() {
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
           <div className="text-center text-nova-muted py-16">
-            <div className="font-display text-2xl text-nova-text mb-1">Nova</div>
+            <div className="font-display text-2xl text-nova-text mb-1">Jarvis</div>
             <div className="text-sm">Ask me anything. Say "build a …" to start a widget.</div>
           </div>
         )}
@@ -124,7 +153,8 @@ export default function ChatWindow() {
         streaming={streaming}
         onSend={handleSend}
         onAbort={abort}
-        placeholder={ready ? 'Message Nova…' : 'Waiting for Ollama…'}
+        placeholder={ready ? 'Message Jarvis…' : 'Waiting for AI backend…'}
+        suggestions={QUICK_ACTIONS}
       />
     </div>
   );

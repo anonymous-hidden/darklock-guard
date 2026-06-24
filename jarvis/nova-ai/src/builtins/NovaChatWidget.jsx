@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
- * NovaChatWidget — talks to the Nova Terminal brain (ai-terminal-server.py)
+ * NovaChatWidget — talks to the Jarvis Terminal brain (ai-terminal-server.py)
  * over its desktop WebSocket contract at ws://127.0.0.1:8951/ws/chat.
  *
  * The brain on the other side is the SAME AITerminal class that powers
@@ -21,11 +21,18 @@ import React, { useEffect, useRef, useState } from 'react';
  *   - Auto-reconnect every 1s if the socket drops
  */
 
+const API_BASE = 'http://127.0.0.1:8951';
 const WS_URL = 'ws://127.0.0.1:8951/ws/chat';
+const PRESENCE_WS_URL = 'ws://127.0.0.1:8951/ws/presence';
+const VISION_URL = `${API_BASE}/api/vision`;
+const MEMORY_ALL_URL = `${API_BASE}/api/memory/all?limit=200`;
+const MEMORY_URL = `${API_BASE}/api/memory`;
+const MODELS_URL = `${API_BASE}/api/models`;
+const MODELS_SELECT_URL = `${API_BASE}/api/models/select`;
 const RECONNECT_MS = 1000;
 const WIDGET_SHORTCUTS = [
   'nova-call', 'calendar', 'notes', 'todo', 'weather',
-  'sysmon', 'spotify', 'map', 'news', 'room-control', 'clock', 'calculator', 'logs', 'emotions',
+  'sysmon', 'spotify', 'map', 'news', 'room-control', 'clock', 'calculator', 'logs', 'emotions', 'widget-theme',
 ];
 
 const WIDGET_LABELS = {
@@ -43,6 +50,7 @@ const WIDGET_LABELS = {
   'calculator': 'calc',
   'logs': 'logs',
   'emotions': 'mood',
+  'widget-theme': 'themes',
 };
 
 /* ── Tiny safe markdown renderer (no deps) ──────────────────────────── */
@@ -192,6 +200,11 @@ export default function NovaChatWidget() {
   const [showMemory, setShowMemory] = useState(false);
   const [memories, setMemories] = useState([]);
   const [memLoading, setMemLoading] = useState(false);
+  const [runtimeStatus, setRuntimeStatus] = useState(null);
+  const [runtimeBusy, setRuntimeBusy] = useState(false);
+  const [modelOptions, setModelOptions] = useState([]);
+  const [selectedModel, setSelectedModel] = useState('auto');
+  const [modelBusy, setModelBusy] = useState(false);
 
   const wsRef = useRef(null);
   const scrollRef = useRef(null);
@@ -203,6 +216,104 @@ export default function NovaChatWidget() {
   const canvasRef = useRef(null);
   const cameraStreamRef = useRef(null);
 
+  const refreshRuntimeStatus = useCallback(async () => {
+    const bridgeApi = window.nova?.control?.novaAi?.status;
+    const aiHealthApi = window.nova?.ai?.health;
+    if (!bridgeApi && !aiHealthApi) return;
+
+    try {
+      const [bridge, aiHealth] = await Promise.all([
+        bridgeApi ? bridgeApi() : null,
+        aiHealthApi ? aiHealthApi() : null,
+      ]);
+      setRuntimeStatus({
+        bridge: bridge?.bridge || null,
+        ollama: bridge?.ollama || null,
+        ai: aiHealth || null,
+        updatedAt: Date.now(),
+      });
+    } catch (e) {
+      const err = String(e?.message || e);
+      setRuntimeStatus({
+        bridge: null,
+        ollama: { running: false, error: err },
+        ai: { ok: false, error: err },
+        updatedAt: Date.now(),
+      });
+    }
+  }, []);
+
+  const refreshModels = useCallback(async () => {
+    try {
+      const r = await fetch(MODELS_URL);
+      const data = await r.json();
+      if (!data?.ok) return;
+      const names = Array.isArray(data.models) ? data.models : [];
+      setModelOptions(names);
+      setSelectedModel(String(data.selected || 'auto'));
+    } catch {}
+  }, []);
+
+  const applyModel = useCallback(async (model) => {
+    const next = String(model || 'auto');
+    setSelectedModel(next);
+    setModelBusy(true);
+    try {
+      await fetch(MODELS_SELECT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: next }),
+      });
+      await refreshModels();
+      setHistory((h) => [...h, {
+        id: 'm' + Date.now(),
+        role: 'assistant',
+        kind: 'proactive',
+        content: next === 'auto'
+          ? 'Model mode set to Auto.'
+          : `Model set to ${next}.`,
+      }]);
+    } catch (e) {
+      setHistory((h) => [...h, {
+        id: 'e' + Date.now(),
+        role: 'assistant',
+        error: true,
+        content: `Model switch failed: ${String(e?.message || e)}`,
+      }]);
+    } finally {
+      setModelBusy(false);
+    }
+  }, [refreshModels]);
+
+  const ensureRuntime = useCallback(async () => {
+    if (runtimeBusy || !window.nova?.control?.novaAi?.ensure) return;
+    setRuntimeBusy(true);
+    try {
+      await window.nova.control.novaAi.ensure();
+    } catch {}
+    await refreshRuntimeStatus();
+    setRuntimeBusy(false);
+  }, [runtimeBusy, refreshRuntimeStatus]);
+
+  useEffect(() => {
+    refreshRuntimeStatus();
+  }, [refreshRuntimeStatus]);
+
+  useEffect(() => {
+    refreshModels();
+    const t = setInterval(refreshModels, 8000);
+    return () => clearInterval(t);
+  }, [refreshModels]);
+
+  useEffect(() => {
+    if (connState === 'open') {
+      refreshRuntimeStatus();
+      return;
+    }
+    const t = setInterval(refreshRuntimeStatus, 3500);
+    return () => clearInterval(t);
+  }, [connState, refreshRuntimeStatus]);
+
   const openWidget = (widgetId) => {
     try {
       window.nova?.widgets?.popout?.({
@@ -212,6 +323,45 @@ export default function NovaChatWidget() {
         ...(widgetId === 'nova-call' ? { query: { call: '1' } } : {}),
       });
       setWidgetPulse(Date.now());
+    } catch {}
+  };
+
+  const handleMapAction = async (msg) => {
+    try {
+      openWidget('map');
+      const from = String(msg?.from || '').trim();
+      const to = String(msg?.to || '').trim();
+      if (from && to && window.nova?.control?.map?.directions) {
+        const r = await window.nova.control.map.directions(from, to);
+        if (r?.ok && r?.route) {
+          window.nova?.bus?.publish?.('map:route', { route: r.route });
+          return;
+        }
+      }
+
+      if (msg?.place) {
+        window.nova?.bus?.publish?.('map:focus', {
+          place: msg.place,
+          query: msg.query,
+          zoom: msg.zoom,
+          orbit: !!(msg.orbit || msg.rotate),
+          orbitSeconds: msg.orbitSeconds,
+        });
+        return;
+      }
+
+      const query = String(msg?.query || msg?.location || '').trim();
+      if (!query || !window.nova?.control?.map?.search) return;
+      const r = await window.nova.control.map.search(query, 1);
+      const place = r?.ok ? r?.places?.[0] : null;
+      if (!place) return;
+      window.nova?.bus?.publish?.('map:focus', {
+        place,
+        query,
+        zoom: Number(msg?.zoom) || 13,
+        orbit: !!(msg?.orbit || msg?.rotate),
+        orbitSeconds: msg?.orbitSeconds,
+      });
     } catch {}
   };
 
@@ -281,24 +431,36 @@ export default function NovaChatWidget() {
           streamRef.current = '';
           setStreamText('');
           setStreaming(false);
+        } else if (t === 'bus_event') {
+          const channel = (msg.channel || '').toString();
+          if (channel) {
+            try { window.nova?.bus?.publish?.(channel, msg.payload || {}); } catch {}
+          }
         } else if (t === 'widget_action') {
           /* AI asked to open / dock / close a widget */
           const a = msg.action;
           const id = msg.widget;
           try {
             if (a === 'open' && id) {
-              window.nova?.widgets?.popout?.({
-                id: `chat:${id}:${Date.now()}`,
-                name: id,
-                builtinId: id,
-                // For nova-call we auto-start the call so the user doesn't
-                // have to click "Call" after Nova pops it open.
-                ...(id === 'nova-call' ? { query: { call: '1' } } : {}),
-              });
+              if (id === 'map') {
+                handleMapAction(msg);
+              } else {
+                window.nova?.widgets?.popout?.({
+                  id: `chat:${id}`,
+                  name: id,
+                  builtinId: id,
+                  // For nova-call we auto-start the call so the user doesn't
+                  // have to click "Call" after Jarvis pops it open.
+                  ...(id === 'nova-call' ? { query: { call: '1' } } : {}),
+                });
+              }
             } else if (a === 'close' && id) {
+              window.nova?.widgets?.closePopout?.(`chat:${id}`);
               window.nova?.widgets?.closePopout?.(id);
+            } else if (a === 'map_focus' || a === 'map_move' || a === 'map_go' || a === 'map_orbit' || a === 'map_directions') {
+              handleMapAction(msg);
             } else if (a === 'notes_write') {
-              const title = (msg.title || 'Nova Note').toString().slice(0, 120);
+              const title = (msg.title || 'Jarvis Note').toString().slice(0, 120);
               const content = (msg.content || '').toString();
               if (content.trim()) {
                 (async () => {
@@ -321,13 +483,95 @@ export default function NovaChatWidget() {
               }
             } else if (a === 'open_terminal_ai') {
               const task = (msg.task || '').toString();
-              try {
-                window.nova?.control?.openApp?.('terminal');
-                window.nova?.bus?.publish?.('widget:event', {
-                  widget: 'terminal-ai', action: 'opened',
-                  summary: `Handed off to terminal-ai: ${task.slice(0, 80)}`,
+              (async () => {
+                try {
+                  const result = await window.nova?.tools?.execute?.('terminal.ai', { task });
+                  if (!result?.ok || result?.result?.ok === false) throw new Error(result?.error || result?.result?.error || 'terminal opener failed');
+                  window.nova?.bus?.publish?.('widget:event', {
+                    widget: 'terminal-ai', action: 'opened',
+                    summary: `Handed off to terminal-ai: ${task.slice(0, 80)}`,
+                  });
+                } catch (e) {
+                  setHistory((h) => [...h, {
+                    id: 'e' + Date.now(),
+                    role: 'assistant',
+                    error: true,
+                    content: `error: terminal handoff failed: ${e?.message || e}`,
+                  }]);
+                }
+              })();
+            } else if (a === 'open_terminal_cmd') {
+              const command = (msg.command || '').toString();
+              (async () => {
+                try {
+                  const result = await window.nova?.tools?.execute?.('terminal.open', { command });
+                  if (!result?.ok || result?.result?.ok === false) throw new Error(result?.error || result?.result?.error || 'terminal opener failed');
+                  window.nova?.bus?.publish?.('widget:event', {
+                    widget: 'terminal', action: 'opened',
+                    summary: `Opened terminal command: ${command.slice(0, 80)}`,
+                  });
+                } catch (e) {
+                  setHistory((h) => [...h, {
+                    id: 'e' + Date.now(),
+                    role: 'assistant',
+                    error: true,
+                    content: `error: terminal command blocked: ${e?.message || e}`,
+                  }]);
+                }
+              })();
+            } else if (a === 'desktop_tool') {
+              const tool = (msg.tool || '').toString();
+              const raw = (msg.raw || '').toString();
+              const parsePairs = (value) => {
+                const out = {};
+                value.split('|').map((p) => p.trim()).filter(Boolean).forEach((part) => {
+                  const idx = part.indexOf('=');
+                  if (idx > 0) out[part.slice(0, idx).trim()] = part.slice(idx + 1).trim();
                 });
-              } catch {}
+                return out;
+              };
+              (async () => {
+                try {
+                  let name = '';
+                  let args = {};
+                  if (tool === 'DESKTOP_READ') {
+                    name = 'desktop.read';
+                    args = { includeScreenshot: !/\bno\s*screenshot\b/i.test(raw), ocr: !/\bno\s*ocr\b/i.test(raw) };
+                  } else if (tool === 'DESKTOP_FOCUS') {
+                    name = 'desktop.focus';
+                    const pairs = parsePairs(raw);
+                    args = { app: pairs.app || raw.replace(/^app=/i, '').trim(), title: pairs.title || '' };
+                  } else if (tool === 'DESKTOP_CLICK') {
+                    name = 'desktop.click';
+                    const parts = raw.split(',').map((x) => x.trim());
+                    args = { x: Number(parts[0]), y: Number(parts[1]), button: Number(parts[2] || 1) };
+                  } else if (tool === 'DESKTOP_TYPE') {
+                    name = 'desktop.type';
+                    args = { text: raw, confirmSend: false };
+                  } else if (tool === 'DESKTOP_KEY') {
+                    name = 'desktop.key';
+                    const [keyPart, ...flags] = raw.split('|').map((x) => x.trim());
+                    args = { key: keyPart, confirmSend: flags.some((x) => /^confirm$/i.test(x)) };
+                  } else if (tool === 'DESKTOP_SCROLL') {
+                    name = 'desktop.scroll';
+                    args = { amount: Number(raw || -5) };
+                  }
+                  if (!name) throw new Error(`unknown desktop tool: ${tool}`);
+                  const result = await window.nova?.tools?.execute?.(name, args);
+                  if (!result?.ok || result?.result?.ok === false) throw new Error(result?.error || result?.result?.error || 'desktop action failed');
+                  window.nova?.bus?.publish?.('widget:event', {
+                    widget: 'desktop', action: name,
+                    summary: `${name}: ${raw.slice(0, 80)}`,
+                  });
+                } catch (e) {
+                  setHistory((h) => [...h, {
+                    id: 'e' + Date.now(),
+                    role: 'assistant',
+                    error: true,
+                    content: `error: desktop action failed: ${e?.message || e}`,
+                  }]);
+                }
+              })();
             }
           } catch {}
         }
@@ -381,7 +625,7 @@ export default function NovaChatWidget() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [history.length, streamText]);
 
-  /* ── Cross-widget bus: live call transcript + Nova proactive notes ── */
+  /* ── Cross-widget bus: live call transcript + Jarvis proactive notes ── */
   useEffect(() => {
     const offTurn = window.nova?.bus?.subscribe?.('voice-call:turn', (p) => {
       if (!p?.text) return;
@@ -404,14 +648,14 @@ export default function NovaChatWidget() {
     return () => { offTurn?.(); offState?.(); offWidget?.(); };
   }, []);
 
-  /* ── Presence WS — Nova can speak unprompted (reminders, suggestions) ── */
+  /* ── Presence WS — Jarvis can speak unprompted (reminders, suggestions) ── */
   useEffect(() => {
     let disposed = false;
     let ws = null;
     let timer = null;
     const connect = () => {
       if (disposed) return;
-      try { ws = new WebSocket('ws://127.0.0.1:8951/ws/presence'); }
+      try { ws = new WebSocket(PRESENCE_WS_URL); }
       catch { timer = setTimeout(connect, 2000); return; }
       ws.onmessage = (ev) => {
         let msg; try { msg = JSON.parse(ev.data); } catch { return; }
@@ -575,7 +819,7 @@ export default function NovaChatWidget() {
     if (imageAtts.length > 0) {
       setVisionPending(true);
       try {
-        const resp = await fetch('http://127.0.0.1:8951/api/vision', {
+        const resp = await fetch(VISION_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -649,7 +893,7 @@ export default function NovaChatWidget() {
   const loadMemories = async () => {
     setMemLoading(true);
     try {
-      const r = await fetch('http://127.0.0.1:8951/api/memory/all?limit=200');
+      const r = await fetch(MEMORY_ALL_URL);
       const data = await r.json();
       setMemories(Array.isArray(data) ? data : []);
     } catch { setMemories([]); }
@@ -658,7 +902,7 @@ export default function NovaChatWidget() {
 
   const forgetMemory = async (key) => {
     try {
-      await fetch(`http://127.0.0.1:8951/api/memory/${encodeURIComponent(key)}`, { method: 'DELETE' });
+      await fetch(`${MEMORY_URL}/${encodeURIComponent(key)}`, { method: 'DELETE' });
       setMemories((m) => m.filter((x) => x.key !== key));
     } catch {}
   };
@@ -670,8 +914,15 @@ export default function NovaChatWidget() {
   };
 
   const visible = history;
+  const bridgeDown = !!runtimeStatus?.bridge && !runtimeStatus.bridge.running;
+  const ollamaDown = !!((runtimeStatus?.ai && !runtimeStatus.ai.ok) || (runtimeStatus?.ollama && !runtimeStatus.ollama.running));
+  const runtimeIssue = bridgeDown || ollamaDown;
+  const canEnsureRuntime = !!window.nova?.control?.novaAi?.ensure;
+  const runtimeError = bridgeDown
+    ? (runtimeStatus?.bridge?.error || 'Jarvis bridge is not running on port 8951.')
+    : (runtimeStatus?.ollama?.error || runtimeStatus?.ai?.error || 'Ollama is offline.');
   const statusLabel =
-    connState === 'open'         ? 'connected'
+    connState === 'open'         ? (ollamaDown ? 'connected · model offline' : 'connected')
     : connState === 'connecting' ? 'connecting…'
     : connState === 'closed'     ? 'reconnecting…'
     :                              'offline';
@@ -691,10 +942,11 @@ export default function NovaChatWidget() {
           <span className="text-[10px] text-nova-muted">images, text, code</span>
         </div>
       )}
-      <header className="flex items-center justify-between px-3 py-1.5 border-b border-nova-border bg-nova-panel">
-        <div className="flex items-center gap-2">
+      <header className="px-2.5 py-1.5 border-b border-nova-border bg-nova-panel">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
           <span className={`w-2 h-2 rounded-full ${ready ? 'bg-nova-ok animate-pulse' : 'bg-nova-err'}`} />
-          <span className="font-display text-xs">Chat with Nova</span>
+          <span className="font-display text-xs truncate">Chat with Jarvis</span>
           <span
             className="text-[9.5px] font-mono text-nova-accent/80 px-1 rounded border border-nova-accent/30"
             title="Same brain as the terminal AI — full tool surface (lights, spotify, gdocs, weather, browser, code search, memory, …)"
@@ -703,16 +955,37 @@ export default function NovaChatWidget() {
             <span className="text-[9.5px] font-mono text-nova-ok px-1 rounded border border-nova-ok/40 animate-pulse">☎ {callState.toLowerCase()}</span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-nova-muted truncate max-w-[120px]">
+
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          <select
+            value={selectedModel}
+            onChange={(e) => applyModel(e.target.value)}
+            disabled={modelBusy}
+            title="Jarvis widget model"
+            className="nova-input py-0.5 text-[10px] w-[140px] max-w-[38vw]"
+          >
+            <option value="auto">auto</option>
+            {modelOptions.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+          <span className="text-[10px] font-mono text-nova-muted truncate max-w-[120px] hidden sm:inline">
             {statusLabel}
           </span>
+          {canEnsureRuntime && (runtimeIssue || connState !== 'open') && (
+            <button
+              onClick={ensureRuntime}
+              disabled={runtimeBusy}
+              title="Start or repair Jarvis AI runtime"
+              className="text-[9.5px] font-mono text-nova-warn px-1 rounded border border-nova-warn/40 hover:bg-nova-warn/10 disabled:opacity-50"
+            >{runtimeBusy ? 'starting…' : 'start ai'}</button>
+          )}
           {visionPending && (
             <span className="text-[9.5px] font-mono text-nova-accent2 px-1 rounded border border-nova-accent2/40 animate-pulse">👁 analyzing…</span>
           )}
           <button
             onClick={toggleMemory}
-            title="Nova's memory"
+            title="Jarvis's memory"
             className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${showMemory ? 'text-nova-accent border-nova-accent/50 bg-nova-accent/10' : 'text-nova-muted border-nova-border hover:text-nova-accent'}`}
           >✦ memory{memories.length > 0 ? ` (${memories.length})` : ''}</button>
           <button
@@ -722,18 +995,25 @@ export default function NovaChatWidget() {
               builtinId: 'nova-call',
               query: { call: '1' },
             })}
-            title="Call Nova"
+            title="Call Jarvis"
             className="text-[10.5px] text-nova-muted hover:text-nova-ok"
           >☎</button>
           <button onClick={clear} className="text-[10.5px] text-nova-muted hover:text-nova-text">clear</button>
         </div>
+        </div>
       </header>
+
+      {runtimeIssue && (
+        <div className="px-3 py-1 border-b border-nova-warn/30 bg-nova-warn/10 text-[9.5px] font-mono text-nova-warn truncate" title={runtimeError}>
+          {bridgeDown ? 'Jarvis bridge offline' : 'Ollama offline'}: {runtimeError}
+        </div>
+      )}
 
       {/* Memory panel — slides in under header */}
       {showMemory && (
         <div className="border-b border-nova-border/60 bg-nova-panel/60 backdrop-blur max-h-52 overflow-y-auto">
           <div className="flex items-center justify-between px-3 py-1 border-b border-nova-border/40">
-            <span className="text-[10px] font-mono text-nova-accent">Nova's Memory</span>
+            <span className="text-[10px] font-mono text-nova-accent">Jarvis's Memory</span>
             <div className="flex gap-2">
               <button onClick={loadMemories} className="text-[9.5px] text-nova-muted hover:text-nova-text">↻ refresh</button>
               <span className="text-[9.5px] text-nova-muted">{memories.length} entries</span>
@@ -742,7 +1022,7 @@ export default function NovaChatWidget() {
           {memLoading && <div className="px-3 py-2 text-[10px] text-nova-muted animate-pulse">Loading…</div>}
           {!memLoading && memories.length === 0 && (
             <div className="px-3 py-2 text-[10px] text-nova-muted">
-              No memories yet — tell Nova something about yourself and she'll remember it.
+              No memories yet — tell Jarvis something about yourself and he'll remember it.
             </div>
           )}
           <div className="divide-y divide-nova-border/30">
@@ -764,11 +1044,11 @@ export default function NovaChatWidget() {
         </div>
       )}
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-2 min-h-0">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-2.5 py-2 space-y-2 min-h-0">
         {visible.length === 0 && !streaming && (
           <div className="text-center text-nova-muted text-xs pt-8">
             <div className="font-display text-2xl text-nova-text mb-1">✦</div>
-            Say hi to Nova.
+            Say hi to Jarvis.
           </div>
         )}
         {visible.map((m) => (
@@ -838,7 +1118,7 @@ export default function NovaChatWidget() {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
             }}
-            placeholder={visionPending ? 'Analyzing image…' : attachments.length > 0 ? 'Ask about the attachment…' : 'Message Nova…'}
+            placeholder={visionPending ? 'Analyzing image…' : attachments.length > 0 ? 'Ask about the attachment…' : 'Message Jarvis…'}
             rows={1}
             className="nova-input text-sm flex-1 resize-none max-h-32"
             style={{ minHeight: 32 }}
@@ -905,7 +1185,7 @@ function Bubble({ role, content, streaming, error, kind, suggestedWidget, attach
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div className={[
-        'max-w-[90%] rounded-lg px-2.5 py-1.5 text-[12.5px] leading-relaxed break-words',
+        'max-w-[94%] sm:max-w-[88%] rounded-lg px-2.5 py-1.5 text-[12.5px] leading-relaxed break-words',
         isUser
           ? (isVoice
               ? 'bg-nova-ok/10 border border-nova-ok/30 text-nova-text'
@@ -951,13 +1231,21 @@ function Bubble({ role, content, streaming, error, kind, suggestedWidget, attach
               dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }}
             />
           ) : streaming && !thinking ? (
-            <span className="text-nova-muted">…</span>
+            <span className="inline-flex items-center gap-1 text-nova-muted">
+              <span>Jarvis is typing</span>
+              <span className="nova-typing-dots"><i /><i /><i /></span>
+            </span>
           ) : null
         ) : (
-          body || (streaming ? <span className="text-nova-muted">…</span> : '')
+          body || (streaming ? (
+            <span className="inline-flex items-center gap-1 text-nova-muted">
+              <span>Jarvis is typing</span>
+              <span className="nova-typing-dots"><i /><i /><i /></span>
+            </span>
+          ) : '')
         )}
 
-        {streaming && body && <span className="inline-block w-1.5 h-3 ml-0.5 bg-nova-accent align-middle animate-pulse" />}
+        {streaming && body && <span className="nova-stream-cursor" />}
 
         {isProactive && suggestedWidget && (
           <button

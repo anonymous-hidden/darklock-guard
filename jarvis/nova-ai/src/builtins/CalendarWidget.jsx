@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 
 /**
- * CalendarWidget — local Nova calendar.
+ * CalendarWidget — local Jarvis calendar.
  *
  * Backed by sqlite in the terminal-AI bridge (port 8951). The AI can add
  * and read events via CALENDAR_ADD / CALENDAR_LIST / CALENDAR_TODAY /
@@ -85,7 +85,7 @@ export default function CalendarWidget() {
     return () => { clearInterval(refreshTimer); clearInterval(tickTimer); off?.(); };
   }, [loadReminders]);
 
-  // Refresh whenever Nova adds an event via tool. Also listen for chat-driven
+  // Refresh whenever Jarvis adds an event via tool. Also listen for chat-driven
   // direct add requests on the bus (any widget can publish calendar:add).
   useEffect(() => {
     const off = window.nova?.bus?.subscribe?.('calendar:changed', load);
@@ -280,7 +280,7 @@ export default function CalendarWidget() {
         {!loading && events.length === 0 && !error && (
           <div className="text-center text-nova-muted text-xs py-8">
             <div className="font-display text-2xl text-nova-text mb-1">📅</div>
-            Nothing scheduled. Ask Nova to add an event, or use + above.
+            Nothing scheduled. Ask Jarvis to add an event, or use + above.
           </div>
         )}
         {Object.entries(grouped).map(([day, items]) => (

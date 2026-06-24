@@ -6,7 +6,6 @@
  * /admin lockdown - Lock all channels
  * /admin unlock - Unlock all channels  
  * /admin slowmode <seconds> [scope] - Set slowmode
- * /admin nuke - Clone and delete current channel
  * /admin audit [type] - Audit permissions (perms or roles)
  */
 
@@ -43,10 +42,6 @@ module.exports = {
                     { name: 'This channel only', value: 'here' },
                     { name: 'All channels', value: 'all' }
                 )))
-        
-        .addSubcommand(sub => sub
-            .setName('nuke')
-            .setDescription('💣 Clone and delete this channel (clears all messages)'))
         
         .addSubcommand(sub => sub
             .setName('audit')
@@ -87,9 +82,6 @@ module.exports = {
                 const scope = interaction.options.getString('scope') || 'here';
                 return serverControlHandlers.slowmode(interaction, bot, seconds, scope);
             }
-            
-            case 'nuke':
-                return serverControlHandlers.nuke(interaction, bot);
             
             case 'audit': {
                 const type = interaction.options.getString('type') || 'overview';

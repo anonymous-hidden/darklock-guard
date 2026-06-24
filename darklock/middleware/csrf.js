@@ -49,6 +49,7 @@ function csrfCookie(req, res, next) {
 /**
  * Middleware: Validate CSRF token on state-changing requests (POST, PUT, DELETE, PATCH).
  * Skips GET, HEAD, OPTIONS.
+ * Also doesnt not pull from main.
  */
 function csrfProtection(req, res, next) {
     // Skip safe methods

@@ -462,6 +462,7 @@ const ICONS = {
   'users': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
   'shield-check': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>',
   'download-cloud': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.29"/></svg>',
+  'shopping-bag': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 016 0"/></svg>',
   'bug': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="6" width="8" height="14" rx="4"/><path d="M6 10H2"/><path d="M22 10h-4"/><path d="M6 14H2"/><path d="M22 14h-4"/><path d="M6 18H2"/><path d="M22 18h-4"/><path d="M8 6V4a2 2 0 014 0v2"/></svg>',
   'file-text': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
   'lock': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>',
@@ -601,10 +602,10 @@ function renderSidebar(tabs) {
 function navigate(tab) {
   currentTab = tab;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
-  const titleMap = { overview:'Overview', tickets:'Tickets', announcements:'Announcements', accounts:'Accounts', roles:'Role & Access', 'app-updates':'App Updates', pi5:'Pi5 Infrastructure', 'bug-reports':'Bug Reports', 'system-logs':'System Logs', security:'Security Settings', themes:'Themes', maintenance:'Maintenance', settings:'Platform Settings', analytics:'Analytics' };
+  const titleMap = { overview:'Overview', tickets:'Tickets', announcements:'Announcements', accounts:'Accounts', roles:'Role & Access', 'app-updates':'App Updates', shop:'Shop', server:'Server', 'bug-reports':'Bug Reports', 'system-logs':'System Logs', themes:'Themes', maintenance:'Maintenance', settings:'Platform Settings', analytics:'Analytics' };
   document.getElementById('pageTitle').textContent = titleMap[tab] || tab;
   document.getElementById('content').innerHTML = '<div class="loading">Loading...</div>';
-  const loaders = { overview: loadOverview, tickets: loadTickets, announcements: loadAnnouncements, accounts: loadAccounts, roles: loadRoles, 'app-updates': loadAppUpdates, pi5: loadPi5, 'bug-reports': loadBugReports, 'system-logs': loadSystemLogs, security: loadSecurity, themes: loadThemes, maintenance: loadMaintenance, settings: loadSettings, analytics: loadAnalytics };
+  const loaders = { overview: loadOverview, tickets: loadTickets, announcements: loadAnnouncements, accounts: loadAccounts, roles: loadRoles, 'app-updates': loadAppUpdates, shop: loadShop, server: loadServer, 'bug-reports': loadBugReports, 'system-logs': loadSystemLogs, themes: loadThemes, maintenance: loadMaintenance, settings: loadSettings, analytics: loadAnalytics };
   (loaders[tab] || (() => {}))();
   if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('mobile-open');
 }
@@ -614,14 +615,23 @@ function navigate(tab) {
 // ═══════════════════════════════════════════════════════════════════════════════
 async function loadOverview() {
   try {
-    const d = await api('/overview');
+    // Core overview always required. Tickets stats + recent audit are best-effort
+    // (helpers may have access but bot DB might be offline).
+    const [d, ticketsRes, auditRes] = await Promise.all([
+      api('/overview'),
+      api('/tickets/stats').catch(() => ({ open: 0, closed: 0, total: 0, today: 0, avg_minutes: null })),
+      api('/audit-logs?limit=6').catch(() => ({ logs: [] })),
+    ]);
+    const tk = ticketsRes || {};
+    const recent = (auditRes.logs || []).slice(0, 6);
+
     document.getElementById('content').innerHTML = `
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value text-accent">${d.totalUsers}</div></div>
         <div class="stat-card"><div class="stat-label">Premium Users</div><div class="stat-value text-yellow">${d.premiumUsers}</div></div>
         <div class="stat-card"><div class="stat-label">Active (7d)</div><div class="stat-value text-green">${d.activeUsers}</div></div>
-        <div class="stat-card"><div class="stat-label">Bug Reports</div><div class="stat-value text-red">${d.totalBugReports}</div></div>
-        <div class="stat-card"><div class="stat-label">Open Bugs</div><div class="stat-value text-yellow">${d.openBugReports}</div></div>
+        <div class="stat-card"><div class="stat-label">Open Tickets</div><div class="stat-value text-blue">${tk.open ?? 0}</div><div style="font-size:.7rem;color:var(--text-muted);margin-top:.2rem">${tk.total ?? 0} total · ${tk.today ?? 0} today</div></div>
+        <div class="stat-card"><div class="stat-label">Open Bugs</div><div class="stat-value text-yellow">${d.openBugReports}</div><div style="font-size:.7rem;color:var(--text-muted);margin-top:.2rem">${d.totalBugReports} total</div></div>
         <div class="stat-card"><div class="stat-label">Active Sessions</div><div class="stat-value text-blue">${d.activeSessions}</div></div>
         <div class="stat-card"><div class="stat-label">App Version</div><div class="stat-value" style="font-size:1.1rem">v${esc(d.currentAppVersion)}</div></div>
         <div class="stat-card"><div class="stat-label">System Status</div><div class="stat-value ${d.maintenanceMode ? 'text-yellow' : 'text-green'}" style="font-size:1rem">${d.maintenanceMode ? 'Maintenance' : 'Online'}</div></div>
@@ -632,20 +642,40 @@ async function loadOverview() {
           <div class="btn-group">
             <button class="btn btn-primary" onclick="navigate('announcements');setTimeout(()=>showCreateAnnouncement(),200)">Post Announcement</button>
             <button class="btn btn-secondary" onclick="navigate('app-updates');setTimeout(()=>showPushUpdate(),200)">Push Update</button>
+            <button class="btn btn-secondary" onclick="navigate('shop');setTimeout(()=>showCreateShopItem(),200)">Publish Shop Item</button>
             <button class="btn btn-secondary" onclick="navigate('roles')">Manage Admins</button>
             <button class="btn btn-secondary" onclick="navigate('bug-reports')">View Bug Reports</button>
+            <button class="btn btn-secondary" onclick="navigate('tickets')">View Tickets</button>
           </div>
         </div>
       </div>
-      ${d.latestAnnouncement ? `
-      <div class="card">
-        <div class="card-header"><h3>Latest Announcement</h3><span class="badge badge-accent">v${esc(d.latestAnnouncement.version)}</span></div>
-        <div class="card-body">
-          <h4 style="margin-bottom:.5rem">${esc(d.latestAnnouncement.title)}</h4>
-          <p style="color:var(--text-secondary);font-size:.85rem;white-space:pre-wrap">${esc(truncate(d.latestAnnouncement.content, 300))}</p>
-          <div style="margin-top:.75rem;font-size:.75rem;color:var(--text-muted)">${fmtDateTime(d.latestAnnouncement.created_at)} by ${esc(d.latestAnnouncement.author_email || 'System')}</div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem;margin-bottom:1rem">
+        <div class="card">
+          <div class="card-header"><h3>Recent Activity</h3><span class="badge badge-muted" style="font-size:.65rem">audit trail</span></div>
+          <div class="card-body" style="padding:.5rem .75rem">
+            ${recent.length === 0 ? '<div style="font-size:.8rem;color:var(--text-muted);padding:1rem 0;text-align:center">No recent activity</div>' :
+              recent.map(l => `
+                <div style="padding:.45rem 0;border-bottom:1px solid var(--border);display:flex;gap:.6rem;align-items:flex-start;font-size:.78rem">
+                  <span class="badge badge-muted" style="font-size:.6rem;flex-shrink:0">${esc(l.category || 'system')}</span>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-weight:600">${esc(l.action || 'action')}</div>
+                    <div style="font-size:.68rem;color:var(--text-muted)">${esc(l.admin_email || 'system')} · ${fmtDateTime(l.created_at)}</div>
+                  </div>
+                </div>`).join('')}
+          </div>
         </div>
-      </div>` : ''}`;
+
+        ${d.latestAnnouncement ? `
+        <div class="card">
+          <div class="card-header"><h3>Latest Announcement</h3><span class="badge badge-accent">v${esc(d.latestAnnouncement.version)}</span></div>
+          <div class="card-body">
+            <h4 style="margin-bottom:.5rem">${esc(d.latestAnnouncement.title)}</h4>
+            <p style="color:var(--text-secondary);font-size:.85rem;white-space:pre-wrap">${esc(truncate(d.latestAnnouncement.content, 300))}</p>
+            <div style="margin-top:.75rem;font-size:.75rem;color:var(--text-muted)">${fmtDateTime(d.latestAnnouncement.created_at)} by ${esc(d.latestAnnouncement.author_email || 'System')}</div>
+          </div>
+        </div>` : ''}
+      </div>`;
   } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -821,7 +851,9 @@ async function accountAction(userId, action) {
   }
   try {
     const body = destructive.includes(action) ? JSON.stringify({ confirm: true }) : '{}';
-    const d = await api(`/accounts/${userId}/${action}`, { method: action === 'delete' ? 'DELETE' : 'POST', body });
+    const isDelete = action === 'delete';
+    const endpoint = isDelete ? `/accounts/${userId}` : `/accounts/${userId}/${action}`;
+    const d = await api(endpoint, { method: isDelete ? 'DELETE' : 'POST', body });
     closeModal();
     toast(d.message || 'Action completed', 'success');
     if (d.temporaryPassword) {
@@ -942,9 +974,11 @@ async function loadAppUpdates() {
   try {
     const d = await api('/app-updates');
     const list = d.updates || [];
-    const apps = ['secure-guard', 'secure-channel', 'secure-notes'];
-    const appLabels = { 'secure-guard': 'Secure Guard', 'secure-channel': 'Secure Channel', 'secure-notes': 'Secure Notes' };
-    const appColors = { 'secure-guard': '#6366f1', 'secure-channel': '#06b6d4', 'secure-notes': '#22c55e' };
+    // UI shows Ridgeline only — backend keeps full app history for legacy records.
+    // Legacy apps (secure-guard / secure-channel / secure-notes) are still labeled if they appear in history.
+    const apps = ['ridgeline'];
+    const appLabels = { 'ridgeline': 'Ridgeline', 'secure-guard': 'Secure Guard (legacy)', 'secure-channel': 'Secure Channel (legacy)', 'secure-notes': 'Secure Notes (legacy)' };
+    const appColors = { 'ridgeline': '#6366f1', 'secure-guard': '#6b7280', 'secure-channel': '#6b7280', 'secure-notes': '#6b7280' };
     document.getElementById('content').innerHTML = `
       <div class="flex-between mb-2">
         <div style="display:flex;gap:.5rem;align-items:center">
@@ -1004,9 +1038,9 @@ async function loadAppUpdates() {
               /site/updates.html
             </a>
           </div>
-          <strong>App-specific polling:</strong> <code style="background:var(--bg-input);padding:.2rem .5rem;border-radius:4px;font-size:.75rem">GET /api/v4/admin/app/latest-update?app=secure-guard|secure-channel|secure-notes</code>
+          <strong>App-specific polling:</strong> <code style="background:var(--bg-input);padding:.2rem .5rem;border-radius:4px;font-size:.75rem">GET /api/v4/admin/app/latest-update?app=ridgeline</code>
           <br><strong>All apps latest:</strong> <code style="background:var(--bg-input);padding:.2rem .5rem;border-radius:4px;font-size:.75rem">GET /api/v4/admin/app/all-updates</code>
-          <br><strong>Update history:</strong> <code style="background:var(--bg-input);padding:.2rem .5rem;border-radius:4px;font-size:.75rem">GET /api/v4/admin/app/update-history/:app</code>
+          <br><strong>Update history:</strong> <code style="background:var(--bg-input);padding:.2rem .5rem;border-radius:4px;font-size:.75rem">GET /api/v4/admin/app/update-history/ridgeline</code>
         </div>
       </div>`;
   } catch (err) { toast(err.message, 'error'); }
@@ -1069,7 +1103,9 @@ async function submitUploadFiles() {
   try {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/v4/admin/app-updates/upload');
-    xhr.setRequestHeader('Authorization', `Bearer ${getCookie('admin_token')}`);
+    xhr.withCredentials = true;
+    const csrf = getCSRFToken();
+    if (csrf) xhr.setRequestHeader('X-CSRF-Token', csrf);
 
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {
@@ -1104,11 +1140,6 @@ async function submitUploadFiles() {
   }
 }
 
-function getCookie(name) {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  return match ? match[2] : '';
-}
-
 async function deleteUpdateFile(version, filename) {
   if (!confirm(`Delete ${filename} from v${version}?`)) return;
   try {
@@ -1123,10 +1154,9 @@ function showPushUpdate() {
     <div class="form-group">
       <label class="form-label">App</label>
       <select class="form-input" id="mApp" style="padding:.5rem .75rem">
-        <option value="secure-guard">Secure Guard</option>
-        <option value="secure-channel">Secure Channel</option>
-        <option value="secure-notes">Secure Notes</option>
+        <option value="ridgeline" selected>Ridgeline</option>
       </select>
+      <div style="font-size:.7rem;color:var(--text-muted);margin-top:.2rem">Ridgeline is the only actively distributed Darklock app. Legacy apps remain queryable but cannot receive new releases here.</div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Version (semver)</label><input class="form-input" id="mVersion" placeholder="2.1.0"></div>
@@ -1190,127 +1220,448 @@ async function deleteAppUpdate(id) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  TAB 5b: PI5 INFRASTRUCTURE
+//  TAB 5c: SHOP
 // ═══════════════════════════════════════════════════════════════════════════════
-let pi5PollTimer = null;
-
-async function loadPi5() {
-  if (pi5PollTimer) { clearInterval(pi5PollTimer); pi5PollTimer = null; }
+function fmtMoney(cents, currency = 'usd') {
   try {
-    const [statusRes, jobsRes] = await Promise.all([api('/pi5/status'), api('/pi5/jobs')]);
-    const pi = statusRes.pi5 || {};
-    const jobs = (jobsRes.jobs || []).slice(0, 10);
-    document.getElementById('content').innerHTML = `
-      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:1.5rem">
-        <div class="stat-card">
-          <div class="stat-label">Status</div>
-          <div class="stat-value" style="color:${pi.reachable ? 'var(--green)' : 'var(--red)'}">${pi.reachable ? '● Online' : '● Offline'}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Host</div>
-          <div class="stat-value" style="font-size:1rem;font-family:monospace">${esc(pi.host || '–')}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Uptime</div>
-          <div class="stat-value" style="font-size:.95rem">${esc(pi.uptime || '–')}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Bot Health</div>
-          <div class="stat-value" style="color:${pi.botHealthy ? 'var(--green)' : 'var(--red)'}">${pi.botHealthy ? '✓ Healthy' : '✕ Down'}</div>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:.75rem;margin-bottom:1.5rem;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="pi5Deploy('full')">
-          ${ICONS['download-cloud'] || ''} Deploy (Sync + Restart)
-        </button>
-        <button class="btn btn-secondary" onclick="pi5Deploy('sync-only')">
-          Sync Files Only
-        </button>
-        <button class="btn btn-secondary" onclick="pi5Update()">
-          ${ICONS.tool || ''} Run Update Script
-        </button>
-        <button class="btn btn-secondary" onclick="pi5Deploy('dry-run')">
-          Dry Run
-        </button>
-        <button class="btn btn-secondary" onclick="loadPi5()">
-          Refresh
-        </button>
-      </div>
-
-      <h3 style="margin-bottom:.75rem;font-size:.95rem">Recent Jobs</h3>
-      <div id="pi5Jobs">
-        ${jobs.length === 0 ? '<div class="empty-state"><p>No deploy/update jobs yet</p></div>' :
-          jobs.map(j => `
-            <div class="card mb-1" id="pi5job-${esc(j.id)}">
-              <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:1rem">
-                <div style="flex:1;min-width:0">
-                  <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;flex-wrap:wrap">
-                    <span class="badge ${j.status === 'success' ? 'badge-green' : j.status === 'running' ? 'badge-accent' : 'badge-red'}">${esc(j.status)}</span>
-                    <span style="font-weight:600">${esc(j.script)}</span>
-                    <span class="badge badge-muted" style="font-family:monospace">${esc(j.args?.join(' ') || 'default')}</span>
-                  </div>
-                  <span style="font-size:.7rem;color:var(--text-muted)">Started ${fmtDateTime(j.startedAt)} by ${esc(j.startedBy)}${j.completedAt ? ' · Completed ' + fmtDateTime(j.completedAt) : ''}</span>
-                </div>
-                <button class="btn btn-secondary" style="font-size:.75rem;padding:.3rem .6rem" onclick="viewPi5Job('${esc(j.id)}')">View Output</button>
-              </div>
-            </div>
-          `).join('')}
-      </div>
-      <div id="pi5JobOutput" style="display:none;margin-top:1rem">
-        <h3 style="margin-bottom:.5rem;font-size:.9rem">Job Output <button class="btn btn-secondary" style="font-size:.65rem;padding:.2rem .5rem;margin-left:.5rem" onclick="document.getElementById('pi5JobOutput').style.display='none'">Close</button></h3>
-        <pre id="pi5OutputPre" style="background:var(--bg-input);padding:1rem;border-radius:var(--radius);font-size:.75rem;max-height:400px;overflow:auto;white-space:pre-wrap;color:var(--text-secondary);border:1px solid var(--border)"></pre>
-      </div>
-    `;
-  } catch (err) {
-    document.getElementById('content').innerHTML = `<div class="empty-state"><h4>Failed to load Pi5 status</h4><p>${esc(err.message)}</p></div>`;
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: String(currency || 'usd').toUpperCase() }).format((Number(cents) || 0) / 100);
+  } catch {
+    return `$${((Number(cents) || 0) / 100).toFixed(2)}`;
   }
 }
 
-async function pi5Deploy(mode) {
-  if (mode === 'full' && !confirm('Deploy to Pi5? This will sync files and restart the bot.')) return;
-  try {
-    const res = await api('/pi5/deploy', { method: 'POST', body: JSON.stringify({ mode }) });
-    toast(`Deploy started (${mode}) — Job: ${res.jobId}`, 'success');
-    // Poll job status
-    pi5PollJob(res.jobId);
-  } catch (err) { toast(err.message, 'error'); }
+function parseFeatureLines(raw) {
+  return String(raw || '')
+    .split('\n')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .slice(0, 20);
 }
 
-async function pi5Update() {
-  const branch = prompt('Branch to update from:', 'main');
-  if (!branch) return;
+async function loadShop() {
   try {
-    const res = await api('/pi5/update', { method: 'POST', body: JSON.stringify({ branch }) });
-    toast(`Update started (branch: ${branch}) — Job: ${res.jobId}`, 'success');
-    pi5PollJob(res.jobId);
-  } catch (err) { toast(err.message, 'error'); }
+    const d = await api('/shop/items?includeUnpublished=true&app=ridgeline');
+    const list = d.items || [];
+
+    document.getElementById('content').innerHTML = `
+      <div class="flex-between mb-2">
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <span style="font-size:.85rem;color:var(--text-muted)">${list.length} item${list.length !== 1 ? 's' : ''}</span>
+          <span class="badge badge-muted">Published: ${list.filter(i => i.published === 1).length}</span>
+          <span class="badge badge-muted">Drafts: ${list.filter(i => i.published !== 1).length}</span>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <a href="/platform/shop" target="_blank" class="btn btn-secondary">Open Shop Page</a>
+          <button class="btn btn-primary" onclick="showCreateShopItem()">New Item</button>
+        </div>
+      </div>
+      ${list.length === 0 ? '<div class="empty-state"><h4>No shop items yet</h4><p>Create your first listing and publish it to the Ridgeline shop.</p></div>' :
+        list.map(item => `
+          <div class="card mb-1">
+            <div class="card-body" style="display:flex;justify-content:space-between;gap:.8rem;align-items:flex-start;flex-wrap:wrap">
+              <div style="flex:1;min-width:280px">
+                <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.35rem">
+                  <span class="badge ${item.published === 1 ? 'badge-green' : 'badge-muted'}">${item.published === 1 ? 'Published' : 'Draft'}</span>
+                  ${item.badge ? `<span class="badge badge-accent">${esc(item.badge)}</span>` : ''}
+                  <span style="font-weight:700">${esc(item.title || 'Untitled')}</span>
+                  ${item.slug ? `<span class="badge badge-muted">/${esc(item.slug)}</span>` : ''}
+                </div>
+                ${item.subtitle ? `<div style="font-size:.82rem;color:var(--text-secondary);margin-bottom:.35rem">${esc(item.subtitle)}</div>` : ''}
+                <div style="display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;font-size:.78rem;color:var(--text-muted)">
+                  <span>${fmtMoney(item.price_cents, item.currency)} ${item.billing_type === 'one_time' ? 'one-time' : '/' + item.billing_type}</span>
+                  <span>•</span>
+                  <span>Sort ${Number(item.sort_order || 0)}</span>
+                  ${item.stripe_price_id ? `<span>• Stripe price: ${esc(item.stripe_price_id)}</span>` : '<span>• Dynamic Stripe pricing</span>'}
+                </div>
+                ${(item.features || []).length ? `<div style="margin-top:.45rem;font-size:.75rem;color:var(--text-muted)">${(item.features || []).slice(0, 4).map(f => `• ${esc(f)}`).join('<br>')}</div>` : ''}
+              </div>
+              <div style="display:flex;gap:.45rem;flex-wrap:wrap">
+                <button class="btn btn-secondary btn-sm" onclick="showEditShopItem('${item.id}')">Edit</button>
+                <button class="btn btn-secondary btn-sm" onclick="togglePublishShopItem('${item.id}', ${item.published === 1 ? 'false' : 'true'})">${item.published === 1 ? 'Unpublish' : 'Publish'}</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteShopItem('${item.id}')">Delete</button>
+              </div>
+            </div>
+          </div>`).join('')}
+    `;
+  } catch (err) {
+    toast(err.message, 'error');
+  }
 }
 
-function pi5PollJob(jobId) {
-  if (pi5PollTimer) clearInterval(pi5PollTimer);
-  pi5PollTimer = setInterval(async () => {
-    try {
-      const res = await api(`/pi5/job/${jobId}`);
-      if (res.job && res.job.status !== 'running') {
-        clearInterval(pi5PollTimer);
-        pi5PollTimer = null;
-        toast(`Job ${res.job.status === 'success' ? 'completed ✓' : 'failed ✕'}`, res.job.status === 'success' ? 'success' : 'error');
-        if (currentTab === 'pi5') loadPi5();
-      }
-    } catch { clearInterval(pi5PollTimer); pi5PollTimer = null; }
-  }, 3000);
+function showCreateShopItem() {
+  openModal('Create Shop Item', `
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="mShopTitle" placeholder="Ridgeline Pro Pack"></div>
+      <div class="form-group"><label class="form-label">Badge (optional)</label><input class="form-input" id="mShopBadge" placeholder="Best Seller"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Slug (optional)</label><input class="form-input" id="mShopSlug" placeholder="ridgeline-pro-pack"></div>
+      <div class="form-group"><label class="form-label">Sort Order</label><input class="form-input" id="mShopSort" type="number" value="0"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Subtitle</label><input class="form-input" id="mShopSubtitle" placeholder="Unlock premium workflows"></div>
+    <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="mShopDesc" rows="3" placeholder="Detailed description for storefront cards"></textarea></div>
+    <div class="form-group"><label class="form-label">Features (one per line)</label><textarea class="form-textarea" id="mShopFeatures" rows="4" placeholder="Priority syncing\nAdvanced automation\nPremium support"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Price (USD)</label><input class="form-input" id="mShopPrice" type="number" step="0.01" min="0.5" value="4.99"></div>
+      <div class="form-group"><label class="form-label">Billing</label>
+        <select class="form-select" id="mShopBilling">
+          <option value="one_time" selected>One-time</option>
+          <option value="month">Monthly</option>
+          <option value="year">Yearly</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Currency</label><input class="form-input" id="mShopCurrency" value="usd"></div>
+      <div class="form-group"><label class="form-label">Stripe Price ID (optional)</label><input class="form-input" id="mShopStripePrice" placeholder="price_..."></div>
+    </div>
+    <div class="form-group"><label class="form-label">Image URL (optional)</label><input class="form-input" id="mShopImage" placeholder="https://..."></div>
+    <div class="form-group" style="display:flex;align-items:center;gap:.6rem">
+      <label class="toggle-switch"><input type="checkbox" id="mShopPublish"><span class="toggle-slider"></span></label>
+      <span style="font-size:.85rem;color:var(--text-secondary)">Publish immediately</span>
+    </div>
+  `, `
+    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-primary" onclick="submitCreateShopItem()">Create</button>
+  `);
 }
 
-async function viewPi5Job(jobId) {
+async function submitCreateShopItem() {
   try {
-    const res = await api(`/pi5/job/${jobId}`);
-    const out = document.getElementById('pi5JobOutput');
-    const pre = document.getElementById('pi5OutputPre');
-    out.style.display = 'block';
-    pre.textContent = res.job?.output || '(no output)';
-    out.scrollIntoView({ behavior: 'smooth' });
-  } catch (err) { toast(err.message, 'error'); }
+    const title = document.getElementById('mShopTitle').value.trim();
+    const badge = document.getElementById('mShopBadge').value.trim();
+    const slug = document.getElementById('mShopSlug').value.trim();
+    const subtitle = document.getElementById('mShopSubtitle').value.trim();
+    const description = document.getElementById('mShopDesc').value.trim();
+    const sort_order = Number(document.getElementById('mShopSort').value || 0);
+    const billing_type = document.getElementById('mShopBilling').value;
+    const currency = document.getElementById('mShopCurrency').value.trim().toLowerCase() || 'usd';
+    const stripe_price_id = document.getElementById('mShopStripePrice').value.trim();
+    const image_url = document.getElementById('mShopImage').value.trim();
+    const published = document.getElementById('mShopPublish').checked;
+    const priceInput = Number(document.getElementById('mShopPrice').value || 0);
+    const price_cents = Math.round(priceInput * 100);
+    const features = parseFeatureLines(document.getElementById('mShopFeatures').value);
+
+    if (!title) return toast('Title is required', 'error');
+    if (!Number.isInteger(price_cents) || price_cents < 50) return toast('Price must be at least $0.50', 'error');
+
+    await api('/shop/items', {
+      method: 'POST',
+      body: JSON.stringify({
+        app: 'ridgeline',
+        title,
+        badge: badge || undefined,
+        slug: slug || undefined,
+        subtitle: subtitle || undefined,
+        description: description || undefined,
+        image_url: image_url || undefined,
+        price_cents,
+        currency,
+        billing_type,
+        stripe_price_id: stripe_price_id || undefined,
+        features,
+        sort_order,
+        published,
+      }),
+    });
+
+    closeModal();
+    toast('Shop item created', 'success');
+    loadShop();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+async function showEditShopItem(id) {
+  try {
+    const d = await api('/shop/items?includeUnpublished=true&app=ridgeline');
+    const item = (d.items || []).find(x => x.id === id);
+    if (!item) return toast('Item not found', 'error');
+
+    openModal('Edit Shop Item', `
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="mShopTitle" value="${esc(item.title || '')}"></div>
+        <div class="form-group"><label class="form-label">Badge</label><input class="form-input" id="mShopBadge" value="${esc(item.badge || '')}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Slug</label><input class="form-input" id="mShopSlug" value="${esc(item.slug || '')}"></div>
+        <div class="form-group"><label class="form-label">Sort Order</label><input class="form-input" id="mShopSort" type="number" value="${Number(item.sort_order || 0)}"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Subtitle</label><input class="form-input" id="mShopSubtitle" value="${esc(item.subtitle || '')}"></div>
+      <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="mShopDesc" rows="3">${esc(item.description || '')}</textarea></div>
+      <div class="form-group"><label class="form-label">Features (one per line)</label><textarea class="form-textarea" id="mShopFeatures" rows="4">${esc((item.features || []).join('\n'))}</textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Price (USD)</label><input class="form-input" id="mShopPrice" type="number" step="0.01" min="0.5" value="${(Number(item.price_cents || 0) / 100).toFixed(2)}"></div>
+        <div class="form-group"><label class="form-label">Billing</label>
+          <select class="form-select" id="mShopBilling">
+            <option value="one_time" ${item.billing_type === 'one_time' ? 'selected' : ''}>One-time</option>
+            <option value="month" ${item.billing_type === 'month' ? 'selected' : ''}>Monthly</option>
+            <option value="year" ${item.billing_type === 'year' ? 'selected' : ''}>Yearly</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Currency</label><input class="form-input" id="mShopCurrency" value="${esc(item.currency || 'usd')}"></div>
+        <div class="form-group"><label class="form-label">Stripe Price ID</label><input class="form-input" id="mShopStripePrice" value="${esc(item.stripe_price_id || '')}"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Image URL</label><input class="form-input" id="mShopImage" value="${esc(item.image_url || '')}"></div>
+    `, `
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitEditShopItem('${item.id}')">Save</button>
+    `);
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+async function submitEditShopItem(id) {
+  try {
+    const title = document.getElementById('mShopTitle').value.trim();
+    const badge = document.getElementById('mShopBadge').value.trim();
+    const slug = document.getElementById('mShopSlug').value.trim();
+    const subtitle = document.getElementById('mShopSubtitle').value.trim();
+    const description = document.getElementById('mShopDesc').value.trim();
+    const sort_order = Number(document.getElementById('mShopSort').value || 0);
+    const billing_type = document.getElementById('mShopBilling').value;
+    const currency = document.getElementById('mShopCurrency').value.trim().toLowerCase() || 'usd';
+    const stripe_price_id = document.getElementById('mShopStripePrice').value.trim();
+    const image_url = document.getElementById('mShopImage').value.trim();
+    const priceInput = Number(document.getElementById('mShopPrice').value || 0);
+    const price_cents = Math.round(priceInput * 100);
+    const features = parseFeatureLines(document.getElementById('mShopFeatures').value);
+
+    if (!title) return toast('Title is required', 'error');
+    if (!Number.isInteger(price_cents) || price_cents < 50) return toast('Price must be at least $0.50', 'error');
+
+    await api(`/shop/items/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        title,
+        badge: badge || null,
+        slug: slug || null,
+        subtitle: subtitle || null,
+        description: description || null,
+        image_url: image_url || null,
+        price_cents,
+        currency,
+        billing_type,
+        stripe_price_id: stripe_price_id || null,
+        features,
+        sort_order,
+      }),
+    });
+
+    closeModal();
+    toast('Shop item updated', 'success');
+    loadShop();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+async function togglePublishShopItem(id, shouldPublish) {
+  try {
+    await api(`/shop/items/${id}/publish`, {
+      method: 'POST',
+      body: JSON.stringify({ published: !!shouldPublish }),
+    });
+    toast(shouldPublish ? 'Item published' : 'Item unpublished', 'success');
+    loadShop();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+async function deleteShopItem(id) {
+  if (!confirm('Delete this shop item?')) return;
+  try {
+    await api(`/shop/items/${id}`, { method: 'DELETE', body: JSON.stringify({ confirm: true }) });
+    toast('Item deleted', 'success');
+    loadShop();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 5b: SERVER (local introspection — read-only)
+// ═══════════════════════════════════════════════════════════════════════════════
+function _serverFmtPctColor(p) {
+  if (p > 85) return 'var(--red)';
+  if (p > 70) return 'var(--yellow)';
+  return 'var(--green)';
+}
+
+async function loadServer() {
+  try {
+    const [statusRes, svcRes, securityRes] = await Promise.all([
+      api('/server/status'),
+      api('/server/services'),
+      api('/security').catch(() => null),
+    ]);
+    const s = statusRes.server || {};
+    const services = svcRes.services || [];
+    const sec = securityRes || null;
+    const mem = s.memory || {};
+    const disk = s.disk;
+    const load = s.loadAvg || {};
+
+    const memPct  = mem.pct || 0;
+    const diskPct = disk ? (disk.pct || 0) : 0;
+    const cpuLoad = ((load['1m'] || 0) / Math.max(s.cpus || 1, 1)) * 100;
+
+    document.getElementById('content').innerHTML = `
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:1.5rem">
+        <div class="stat-card">
+          <div class="stat-label">Hostname</div>
+          <div class="stat-value" style="font-size:1rem;font-family:monospace">${esc(s.hostname || '–')}</div>
+          <div style="font-size:.7rem;color:var(--text-muted);margin-top:.25rem">${esc(s.platform || '')} · ${esc(s.arch || '')}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">System Uptime</div>
+          <div class="stat-value" style="font-size:1.05rem">${esc(s.uptime || '–')}</div>
+          <div style="font-size:.7rem;color:var(--text-muted);margin-top:.25rem">Admin proc: ${esc(s.processUptime || '–')}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">CPU Load (1m / 5m / 15m)</div>
+          <div class="stat-value" style="font-size:1rem;color:${_serverFmtPctColor(cpuLoad)}">
+            ${(load['1m']||0).toFixed(2)} / ${(load['5m']||0).toFixed(2)} / ${(load['15m']||0).toFixed(2)}
+          </div>
+          <div style="font-size:.7rem;color:var(--text-muted);margin-top:.25rem">${esc(String(s.cpus || '?'))} cores · ~${Math.round(cpuLoad)}% on 1m</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Memory</div>
+          <div class="stat-value" style="font-size:1.05rem;color:${_serverFmtPctColor(memPct)}">${esc(mem.usedHuman || '–')} / ${esc(mem.totalHuman || '–')}</div>
+          <div style="font-size:.7rem;color:var(--text-muted);margin-top:.25rem">${memPct}% used</div>
+        </div>
+        ${disk ? `
+        <div class="stat-card">
+          <div class="stat-label">Disk (/)</div>
+          <div class="stat-value" style="font-size:1.05rem;color:${_serverFmtPctColor(diskPct)}">${esc(disk.usedHuman || '–')} / ${esc(disk.totalHuman || '–')}</div>
+          <div style="font-size:.7rem;color:var(--text-muted);margin-top:.25rem">${diskPct}% used</div>
+        </div>` : ''}
+        <div class="stat-card">
+          <div class="stat-label">Node Runtime</div>
+          <div class="stat-value" style="font-size:1rem;font-family:monospace">${esc(s.node || '?')}</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:.5rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap">
+        <h3 style="font-size:.95rem;font-weight:600;margin:0">Darklock Services</h3>
+        <span style="font-size:.75rem;color:var(--text-muted)">read-only · ${services.length} units</span>
+        <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="loadServer()">Refresh</button>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap"><table>
+          <thead><tr><th>Service</th><th>Status</th><th>Sub-state</th><th>Main PID</th><th>Started</th></tr></thead>
+          <tbody>${services.map(svc => {
+            const isActive = svc.active === 'active';
+            const isFailed = svc.active === 'failed' || svc.state === 'failed';
+            const badge = isActive ? 'green' : isFailed ? 'red' : 'muted';
+            return `<tr>
+              <td>
+                <div style="font-weight:600">${esc(svc.name)}</div>
+                <div style="font-size:.7rem;color:var(--text-muted)">${esc(svc.description)}</div>
+              </td>
+              <td><span class="badge badge-${badge}">${esc(svc.active)}</span></td>
+              <td style="font-size:.78rem;color:var(--text-secondary)">${esc(svc.sub || '–')}</td>
+              <td style="font-family:monospace;font-size:.78rem">${esc(svc.mainPid || '–')}</td>
+              <td style="font-size:.72rem;color:var(--text-muted)">${esc(svc.activeSince || '–')}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>
+      </div>
+
+      ${_renderServerSecurityControls(sec)}
+
+      <div class="card mt-2">
+        <div class="card-body" style="font-size:.78rem;color:var(--text-muted);line-height:1.6">
+          <strong style="color:var(--text-secondary)">Security note:</strong>
+          This tab reports on the local server (192.168.50.173) using <code>os.*</code> and bounded <code>systemctl is-active / show</code> + <code>df</code> calls with hardcoded arguments. No SSH, no remote execution, no user-controlled command input. Service restart actions are intentionally not exposed here — perform them from the server console where they are properly auditable and elevation-gated.
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('content').innerHTML = `<div class="empty-state"><h4>Failed to load server status</h4><p>${esc(err.message)}</p></div>`;
+  }
+}
+
+function _renderServerSecurityControls(d) {
+  if (!d) {
+    return `
+      <div class="card mt-2">
+        <div class="card-header"><h3>Security Controls</h3></div>
+        <div class="card-body"><p style="font-size:.8rem;color:var(--text-muted)">Security controls are temporarily unavailable. Core server telemetry is still active.</p></div>
+      </div>`;
+  }
+
+  return `
+    <div class="stats-grid mt-2" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:1rem">
+      <div class="stat-card"><div class="stat-label">Active Sessions</div><div class="stat-value text-blue">${d.activeSessions}</div></div>
+      <div class="stat-card"><div class="stat-label">Registration</div><div class="stat-value ${d.registrationEnabled?'text-green':'text-red'}" style="font-size:1rem">${d.registrationEnabled?'Enabled':'Disabled'}</div></div>
+      <div class="stat-card"><div class="stat-label">Email Verification</div><div class="stat-value ${d.emailVerification?'text-green':'text-muted'}" style="font-size:1rem">${d.emailVerification?'Required':'Off'}</div></div>
+    </div>
+
+    <div class="card mb-2">
+      <div class="card-header"><h3>Security Controls</h3></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:1rem">
+        <div class="form-toggle">
+          <label class="toggle-switch"><input type="checkbox" id="secMaintenance" ${d.maintenanceMode?'checked':''} onchange="toggleSecurityMaintenance(this.checked)"><span class="toggle-slider"></span></label>
+          <div><span style="font-weight:600">Maintenance Mode (/platform)</span><br><span style="font-size:.8rem;color:var(--text-muted)">Controls platform maintenance mode. Website (/site) maintenance is configured in the Maintenance tab.</span></div>
+        </div>
+        <div class="form-group"><label class="form-label">Maintenance Message</label><input class="form-input" id="secMaintenanceMsg" value="${esc(d.maintenanceMessage)}" placeholder="We'll be back shortly."></div>
+        <div style="display:flex;flex-wrap:wrap;gap:.75rem">
+          <button class="btn btn-secondary btn-sm" onclick="updateMaintenanceMsg()">Save Message</button>
+          <div class="form-toggle"><label class="toggle-switch"><input type="checkbox" id="secRegistration" ${d.registrationEnabled?'checked':''} onchange="toggleRegistration(this.checked)"><span class="toggle-slider"></span></label><span style="font-size:.85rem">New User Registration</span></div>
+          <div class="form-toggle"><label class="toggle-switch"><input type="checkbox" id="secEmailVerify" ${d.emailVerification?'checked':''} onchange="toggleEmailVerification(this.checked)"><span class="toggle-slider"></span></label><span style="font-size:.85rem">Email Verification</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-2">
+      <div class="card-header" style="background:linear-gradient(135deg,rgba(139,26,26,.3),rgba(80,0,0,.3));border-color:#8b1a1a">
+        <h3 style="color:#ff6666">⚠ Lockdown Controls</h3>
+      </div>
+      <div class="card-body">
+        ${d.lockdownLevel ? `
+          <div style="background:rgba(255,136,0,.1);border:1px solid #ff8800;border-radius:8px;padding:1rem;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem">
+            <div>
+              <strong style="color:#ff8800">🔒 ${d.lockdownLevel.charAt(0).toUpperCase()+d.lockdownLevel.slice(1)} Lockdown Active</strong>
+              <p style="font-size:.8rem;color:var(--text-muted);margin:.25rem 0 0">Affected services are offline. Release to restore normal operation.</p>
+            </div>
+            <button class="btn" style="background:#28a745;color:#fff;border:none;white-space:nowrap" onclick="releaseLockdown()">🔓 Release Lockdown</button>
+          </div>
+        ` : ''}
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem">
+          <div style="border:1px solid #555;border-radius:8px;padding:1rem">
+            <div style="font-weight:700;color:#ffd700;margin-bottom:.4rem">🟡 Soft Lockdown</div>
+            <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:.75rem">Enables maintenance mode only. Bot and hardware keep running.</p>
+            <button class="btn btn-sm" style="background:#b8860b;color:#fff;border:none;width:100%" onclick="activateLockdown('soft')">Activate Soft</button>
+          </div>
+          <div style="border:1px solid #885500;border-radius:8px;padding:1rem">
+            <div style="font-weight:700;color:#ff8800;margin-bottom:.4rem">🟠 Medium Lockdown</div>
+            <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:.75rem">Maintenance mode + stops Discord bot + terminates user sessions.</p>
+            <button class="btn btn-sm" style="background:#cc6600;color:#fff;border:none;width:100%" onclick="activateLockdown('medium')">Activate Medium</button>
+          </div>
+          <div style="border:1px solid #8b1a1a;border-radius:8px;padding:1rem;background:rgba(139,26,26,.08)">
+            <div style="font-weight:700;color:#ff4444;margin-bottom:.4rem">🔴 Hard Lockdown</div>
+            <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:.75rem">Stops all services including hardware bridges and guard processes.</p>
+            <button class="btn btn-danger btn-sm" style="width:100%" onclick="activateLockdown('hard')">Activate Hard</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3>Danger Zone</h3></div>
+      <div class="card-body">
+        <button class="btn btn-danger" onclick="forceLogoutAll()">Force Logout All Users</button>
+        <p style="font-size:.8rem;color:var(--text-muted);margin-top:.5rem">Terminates all active user sessions. Users will need to log in again.</p>
+      </div>
+    </div>`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1478,7 +1829,7 @@ async function loadSecurity() {
         <div class="card-header"><h3>Maintenance Mode</h3></div>
         <div class="card-body">
           <div class="form-toggle mb-2">
-            <label class="toggle-switch"><input type="checkbox" id="secMaintenance" ${d.maintenanceMode?'checked':''} onchange="toggleMaintenance(this.checked)"><span class="toggle-slider"></span></label>
+            <label class="toggle-switch"><input type="checkbox" id="secMaintenance" ${d.maintenanceMode?'checked':''} onchange="toggleSecurityMaintenance(this.checked)"><span class="toggle-slider"></span></label>
             <div><span style="font-weight:600">Maintenance Mode</span><br><span style="font-size:.8rem;color:var(--text-muted)">When enabled, the platform shows a maintenance page to all non-admin users.</span></div>
           </div>
           <div class="form-group"><label class="form-label">Maintenance Message</label><input class="form-input" id="secMaintenanceMsg" value="${esc(d.maintenanceMessage)}" placeholder="We'll be back shortly."></div>
@@ -1554,7 +1905,7 @@ async function activateLockdown(level) {
   try {
     const r = await api('/security/lockdown', { method: 'POST', body: JSON.stringify({ level }) });
     toast(r.message, 'success');
-    loadSecurity();
+    refreshSecurityContext();
   } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -1563,13 +1914,18 @@ async function releaseLockdown() {
   try {
     const r = await api('/security/lockdown/release', { method: 'POST' });
     toast(r.message, 'success');
-    loadSecurity();
+    refreshSecurityContext();
   } catch (err) { toast(err.message, 'error'); }
 }
 
-async function toggleMaintenance(enabled) {
+function refreshSecurityContext() {
+  if (currentTab === 'server') loadServer();
+  else loadSecurity();
+}
+
+async function toggleSecurityMaintenance(enabled) {
   try { await api('/security/maintenance', { method: 'POST', body: JSON.stringify({ enabled }) }); toast(enabled ? 'Maintenance enabled' : 'Maintenance disabled', 'success'); }
-  catch (err) { toast(err.message, 'error'); loadSecurity(); }
+  catch (err) { toast(err.message, 'error'); refreshSecurityContext(); }
 }
 
 async function updateMaintenanceMsg() {
@@ -1582,17 +1938,17 @@ async function updateMaintenanceMsg() {
 
 async function toggleRegistration(enabled) {
   try { await api('/security/toggle-registration', { method: 'POST', body: JSON.stringify({ enabled }) }); toast(enabled ? 'Registration enabled' : 'Registration disabled', 'success'); }
-  catch (err) { toast(err.message, 'error'); loadSecurity(); }
+  catch (err) { toast(err.message, 'error'); refreshSecurityContext(); }
 }
 
 async function toggleEmailVerification(enabled) {
   try { await api('/security/toggle-email-verification', { method: 'POST', body: JSON.stringify({ enabled }) }); toast(enabled ? 'Verification enabled' : 'Verification disabled', 'success'); }
-  catch (err) { toast(err.message, 'error'); loadSecurity(); }
+  catch (err) { toast(err.message, 'error'); refreshSecurityContext(); }
 }
 
 async function forceLogoutAll() {
   if (!confirm('This will terminate ALL user sessions. Continue?')) return;
-  try { await api('/security/force-logout', { method: 'POST', body: JSON.stringify({ confirm: true }) }); toast('All sessions terminated', 'success'); loadSecurity(); }
+  try { await api('/security/force-logout', { method: 'POST', body: JSON.stringify({ confirm: true }) }); toast('All sessions terminated', 'success'); refreshSecurityContext(); }
   catch (err) { toast(err.message, 'error'); }
 }
 
@@ -1725,7 +2081,7 @@ async function loadMaintenance() {
           <h3>${icon} ${label}</h3>
           <div style="display:flex;align-items:center;gap:1rem">
             <span style="font-size:.8rem;color:${data.enabled?'var(--danger)':'var(--success)'};font-weight:600">${data.enabled?'🔴 MAINTENANCE ON':'🟢 LIVE'}</span>
-            <label class="toggle-switch"><input type="checkbox" ${data.enabled?'checked':''} onchange="toggleMaintenance('${scope}', this.checked)"><span class="toggle-slider"></span></label>
+            <label class="toggle-switch"><input type="checkbox" ${data.enabled?'checked':''} onchange="toggleScopedMaintenance('${scope}', this.checked)"><span class="toggle-slider"></span></label>
           </div>
         </div>
         <div class="card-body">
@@ -1764,7 +2120,7 @@ async function loadMaintenance() {
           </div>
           <div style="margin-top:1rem;display:flex;gap:.5rem">
             <button class="btn btn-primary btn-sm" onclick="saveMaintenance('${scope}')">Save Settings</button>
-            <button class="btn ${data.enabled?'btn-success':'btn-danger'} btn-sm" onclick="toggleMaintenance('${scope}', ${!data.enabled})">
+            <button class="btn ${data.enabled?'btn-success':'btn-danger'} btn-sm" onclick="toggleScopedMaintenance('${scope}', ${!data.enabled})">
               ${data.enabled?'🟢 Disable Maintenance':'🔴 Enable Maintenance'}
             </button>
           </div>
@@ -1790,7 +2146,7 @@ async function loadMaintenance() {
   } catch (err) { toast(err.message, 'error'); }
 }
 
-async function toggleMaintenance(scope, enabled) {
+async function toggleScopedMaintenance(scope, enabled) {
   try {
     await api('/maintenance/update', { method: 'POST', body: JSON.stringify({ scope, enabled }) });
     toast(enabled ? `${scope} maintenance enabled` : `${scope} maintenance disabled`, enabled ? 'warning' : 'success');
@@ -1831,28 +2187,48 @@ async function loadSettings() {
     const d = await api('/settings');
     const cfg = d.config || {};
     const entries = Object.entries(cfg);
-    document.getElementById('content').innerHTML = `
-      <div class="card">
-        <div class="card-header"><h3>Platform Configuration</h3></div>
-        <div class="card-body">
-          ${entries.map(([key, item]) => `
-            <div style="display:flex;align-items:center;gap:1rem;padding:.75rem 0;border-bottom:1px solid var(--border)">
-              <div style="flex:1;min-width:0">
-                <div style="font-weight:600;font-size:.85rem">${esc(key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))}</div>
-                <div style="font-size:.75rem;color:var(--text-muted)">${esc(item.description || '')} ${item.updated_by ? `• Last updated by ${esc(item.updated_by)}` : ''}</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
-                ${item.type === 'boolean' ? `
-                  <label class="toggle-switch"><input type="checkbox" ${item.value === 'true' ? 'checked' : ''} onchange="saveSetting('${esc(key)}', this.checked ? 'true' : 'false')"><span class="toggle-slider"></span></label>
-                ` : `
-                  <input class="form-input" id="cfg_${esc(key)}" value="${esc(item.value || '')}" style="width:200px;font-size:.8rem">
-                  <button class="btn btn-secondary btn-sm" onclick="saveSetting('${esc(key)}', document.getElementById('cfg_${esc(key)}').value)">Save</button>
-                `}
-              </div>
-            </div>
-          `).join('')}
+
+    // Group settings into sensible categories. Unknown keys fall through to 'Other'.
+    const groups = {
+      'General': ['platform_name', 'contact_email'],
+      'Authentication': ['registration_enabled', 'email_verification'],
+      'Maintenance': ['maintenance_mode', 'maintenance_message'],
+      'Tier Limits': ['free_tier_file_limit', 'premium_tier_file_limit'],
+      'App Distribution': ['current_app_version'],
+    };
+    const known = new Set(Object.values(groups).flat());
+    const otherKeys = entries.map(([k]) => k).filter(k => !known.has(k));
+    if (otherKeys.length) groups['Other'] = otherKeys;
+
+    const renderRow = (key, item) => `
+      <div style="display:flex;align-items:center;gap:1rem;padding:.75rem 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:.85rem">${esc(key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))}</div>
+          <div style="font-size:.72rem;color:var(--text-muted)">${esc(item.description || '')}${item.updated_by ? ` · last updated by ${esc(item.updated_by)}` : ''} · <code style="font-size:.65rem;background:var(--bg-input);padding:1px 5px;border-radius:3px">${esc(key)}</code></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
+          ${item.type === 'boolean' ? `
+            <label class="toggle-switch"><input type="checkbox" ${item.value === 'true' ? 'checked' : ''} onchange="saveSetting('${esc(key)}', this.checked ? 'true' : 'false')"><span class="toggle-slider"></span></label>
+          ` : `
+            <input class="form-input" id="cfg_${esc(key)}" value="${esc(item.value || '')}" style="width:220px;font-size:.8rem">
+            <button class="btn btn-secondary btn-sm" onclick="saveSetting('${esc(key)}', document.getElementById('cfg_${esc(key)}').value)">Save</button>
+          `}
         </div>
       </div>`;
+
+    const sections = Object.entries(groups).map(([groupName, keyList]) => {
+      const rows = keyList.filter(k => cfg[k]).map(k => renderRow(k, cfg[k])).join('');
+      if (!rows) return '';
+      return `
+        <div class="card" style="margin-bottom:1rem">
+          <div class="card-header"><h3>${esc(groupName)}</h3></div>
+          <div class="card-body">${rows}</div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('content').innerHTML = `
+      <div style="margin-bottom:1rem;font-size:.78rem;color:var(--text-muted)">${entries.length} configuration key${entries.length === 1 ? '' : 's'} · changes are audit-logged and take effect immediately for code paths that read this key.</div>
+      ${sections || '<div class="empty-state"><p>No platform settings defined.</p></div>'}`;
   } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -2653,9 +3029,9 @@ async function renderTicketsList() {
                   <td><span style="color:${priorityColors[t.priority]||'var(--text)'};font-weight:600">${(t.priority||'normal').toUpperCase()}</span></td>
                   <td>${fmtDateTime(t.created_at)}</td>
                   <td style="white-space:nowrap">
-                    <button class="btn btn-secondary btn-sm" onclick="openTicketDetail(${t.id})">View</button>
-                    ${t.status==='open'||t.status==='claimed' ? `<button class="btn btn-sm" style="background:var(--red-dim);color:var(--red)" onclick="changeTicketStatus(${t.id},'closed')">Close</button>` : ''}
-                    ${t.status==='closed'||t.status==='resolved' ? `<button class="btn btn-sm" style="background:var(--green-dim);color:var(--green)" onclick="changeTicketStatus(${t.id},'open')">Reopen</button>` : ''}
+                    <button class="btn btn-secondary btn-sm" onclick="openTicketDetail('${esc(String(t.id))}')">View</button>
+                    ${t.status==='open'||t.status==='claimed' ? `<button class="btn btn-sm" style="background:var(--red-dim);color:var(--red)" onclick="changeTicketStatus('${esc(String(t.id))}','closed')">Close</button>` : ''}
+                    ${t.status==='closed'||t.status==='resolved' ? `<button class="btn btn-sm" style="background:var(--green-dim);color:var(--green)" onclick="changeTicketStatus('${esc(String(t.id))}','open')">Reopen</button>` : ''}
                   </td>
                 </tr>`).join('')}
             </tbody>
@@ -2679,25 +3055,26 @@ async function openTicketDetail(id) {
   try {
     const d = await api(`/tickets/${id}`);
     const t = d.ticket;
+    const ticketId = String(t.id);
     const notes = d.notes || [];
     const priorityColors = { urgent:'var(--red)', high:'var(--yellow)', normal:'var(--blue)', low:'var(--text-muted)' };
 
     openModal(`Ticket #${t.id} — ${esc(t.user_tag || t.user_id)}`,
       `<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
         <div class="form-group"><label class="form-label">Status</label>
-          <select class="form-input" id="tkStatus" onchange="changeTicketStatus(${t.id}, this.value, true)">
+          <select class="form-input" id="tkStatus" onchange="changeTicketStatus('${esc(ticketId)}', this.value, true)">
             ${['open','claimed','closed','resolved'].map(s => `<option value="${s}"${t.status===s?' selected':''}>${s}</option>`).join('')}
           </select>
         </div>
         <div class="form-group"><label class="form-label">Priority</label>
-          <select class="form-input" id="tkPriority" onchange="changeTicketPriority(${t.id}, this.value)">
+          <select class="form-input" id="tkPriority" onchange="changeTicketPriority('${esc(ticketId)}', this.value)">
             ${['low','normal','high','urgent'].map(p => `<option value="${p}"${(t.priority||'normal')===p?' selected':''}>${p}</option>`).join('')}
           </select>
         </div>
         <div class="form-group"><label class="form-label">User ID</label><div class="form-input" style="background:var(--bg-body)">${esc(t.user_id)}</div></div>
         <div class="form-group"><label class="form-label">Guild ID</label><div class="form-input" style="background:var(--bg-body)">${esc(t.guild_id)}</div></div>
         <div class="form-group"><label class="form-label">Category</label><div class="form-input" style="background:var(--bg-body)">${esc(t.category||'—')}</div></div>
-        <div class="form-group"><label class="form-label">Channel</label><div class="form-input" style="background:var(--bg-body)font-size:.8rem">${esc(t.channel_id||'—')}</div></div>
+        <div class="form-group"><label class="form-label">Channel</label><div class="form-input" style="background:var(--bg-body);font-size:.8rem">${esc(t.channel_id||'—')}</div></div>
         <div class="form-group"><label class="form-label">Created</label><div class="form-input" style="background:var(--bg-body)">${fmtDateTime(t.created_at)}</div></div>
         <div class="form-group"><label class="form-label">Closed</label><div class="form-input" style="background:var(--bg-body)">${t.closed_at ? fmtDateTime(t.closed_at) : '—'}</div></div>
       </div>
@@ -2716,14 +3093,14 @@ async function openTicketDetail(id) {
         </div>
         <div style="display:flex;gap:.5rem;margin-top:.5rem">
           <input class="form-input" id="tkNoteInput" placeholder="Add private staff note…" style="flex:1">
-          <button class="btn btn-secondary" onclick="addTicketNote(${t.id})">Add Note</button>
+          <button class="btn btn-secondary" onclick="addTicketNote('${esc(ticketId)}')">Add Note</button>
         </div>
       </div>
 
       <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
         <button class="btn btn-secondary btn-sm" onclick="addToBlacklist('${esc(t.guild_id)}','${esc(t.user_id)}')">🚫 Blacklist User</button>
-        ${t.status==='open'||t.status==='claimed' ? `<button class="btn btn-sm" style="background:var(--red-dim);color:var(--red)" onclick="changeTicketStatus(${t.id},'closed','close reason from admin');closeModal()">Close Ticket</button>` : ''}
-        ${t.status==='closed'||t.status==='resolved' ? `<button class="btn btn-sm" style="background:var(--green-dim);color:var(--green)" onclick="changeTicketStatus(${t.id},'open');closeModal()">Reopen</button>` : ''}
+        ${t.status==='open'||t.status==='claimed' ? `<button class="btn btn-sm" style="background:var(--red-dim);color:var(--red)" onclick="changeTicketStatus('${esc(ticketId)}','closed','close reason from admin');closeModal()">Close Ticket</button>` : ''}
+        ${t.status==='closed'||t.status==='resolved' ? `<button class="btn btn-sm" style="background:var(--green-dim);color:var(--green)" onclick="changeTicketStatus('${esc(ticketId)}','open');closeModal()">Reopen</button>` : ''}
       </div>
     `,
       `<button class="btn btn-secondary" onclick="closeModal()">Close</button>`

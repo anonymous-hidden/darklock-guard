@@ -3,6 +3,33 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 const RiskEngine = require('../utils/RiskEngine');
 const { t } = require('../../locale');
 
+function getPublicOrigin() {
+    const candidates = [
+        process.env.WEB_VERIFY_BASE_URL,
+        process.env.VERIFICATION_BASE_URL,
+        process.env.DASHBOARD_ORIGIN,
+        process.env.BASE_URL,
+        process.env.DOMAIN,
+        process.env.DASHBOARD_URL,
+        process.env.BACKEND_URL,
+    ];
+
+    for (const raw of candidates) {
+        const value = String(raw || '').trim();
+        if (!value) continue;
+
+        try {
+            const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+            const url = new URL(withProtocol);
+            const hostname = url.hostname.toLowerCase();
+            if (hostname === 'admin.darklock.net' || hostname.startsWith('admin.')) continue;
+            return url.origin;
+        } catch (_) {}
+    }
+
+    return process.env.NODE_ENV === 'production' ? 'https://darklock.net' : 'http://localhost:3001';
+}
+
 class UserVerification {
     constructor(bot) {
         this.bot = bot;
@@ -381,10 +408,10 @@ class UserVerification {
             `,
                 [JSON.stringify({ codeHash, mode, token, issuedAt: Date.now(), tokenExpiresAt }), member.guild.id, member.id]
             );
-            const backend = process.env.BACKEND_URL || 'http://localhost:3001';
+            const backend = getPublicOrigin();
             embed.addFields({
                 name: t(guildLang, 'verification.challenge.web.field'),
-                value: `Open: ${backend}/verify/${token}\n${t(guildLang,'verification.challenge.desc.web')}`
+                value: `Open: ${backend}/verify/${token}?v=${Date.now().toString(36)}\n${t(guildLang,'verification.challenge.desc.web')}`
             });
         }
 

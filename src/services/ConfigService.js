@@ -22,11 +22,19 @@ class ConfigService extends EventEmitter {
             anti_raid_enabled: { type: 'boolean', default: false },
             antinuke_enabled: { type: 'boolean', default: false },
             anti_phishing_enabled: { type: 'boolean', default: false },
+            anti_links_enabled: { type: 'boolean', default: false },
             auto_mod_enabled: { type: 'boolean', default: false },
+            antilinks_allowed_domains: { type: 'json_array', default: [] },
+            antilinks_blocked_domains: { type: 'json_array', default: [] },
+            safe_browsing_enabled: { type: 'boolean', default: false },
+            emoji_spam_enabled: { type: 'boolean', default: false },
+            emoji_spam_max: { type: 'number', min: 3, max: 100, default: 10 },
+            sticker_spam_max: { type: 'number', min: 1, max: 10, default: 5 },
+            emoji_spam_action: { type: 'string', enum: ['log', 'delete', 'warn', 'delete_warn', 'timeout', 'kick', 'ban'], default: 'delete' },
             
             // Verification settings
             verification_enabled: { type: 'boolean', default: false },
-            verification_method: { type: 'string', enum: ['button', 'captcha', 'web', 'reaction', 'auto'], default: 'button' },
+            verification_method: { type: 'string', enum: ['button', 'captcha', 'web', 'reaction', 'sequence', 'auto'], default: 'button' },
             verification_profile: { type: 'string', enum: ['standard', 'high', 'ultra'], default: 'standard' },
             unverified_role_id: { type: 'snowflake', default: null },
             verified_role_id: { type: 'snowflake', default: null },
@@ -102,11 +110,11 @@ class ConfigService extends EventEmitter {
                 return { valid: true, value: snowflake };
 
             case 'json_array':
-                if (Array.isArray(value)) return { valid: true, value };
+                if (Array.isArray(value)) return { valid: true, value: JSON.stringify(value) };
                 if (typeof value === 'string') {
                     try {
                         const parsed = JSON.parse(value);
-                        if (Array.isArray(parsed)) return { valid: true, value: parsed };
+                        if (Array.isArray(parsed)) return { valid: true, value: JSON.stringify(parsed) };
                     } catch {}
                 }
                 return { valid: false, error: `${key} must be a JSON array` };

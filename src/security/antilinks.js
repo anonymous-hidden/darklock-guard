@@ -1,10 +1,12 @@
 const axios = require('axios');
 const URL = require('url-parse');
+const { URL: NativeURL } = require('url');
 
 class AntiMaliciousLinks {
     constructor(bot) {
         this.bot = bot;
         this.urlCache = new Map(); // url -> { threat: boolean, lastChecked: timestamp }
+        this.guildDomainCache = new Map(); // guildId -> { lists, lastLoaded }
         this.shortenerDomains = new Set([
             'bit.ly', 'tinyurl.com', 'short.link', 'ow.ly', 'is.gd',
             't.co', 'goo.gl', 'buff.ly', 'adf.ly', 'cutt.ly',
@@ -79,8 +81,129 @@ class AntiMaliciousLinks {
         return matches || [];
     }
 
+    normalizeDomain(hostname = '') {
+        let domain = String(hostname || '').trim().toLowerCase();
+        if (domain.startsWith('www.')) domain = domain.slice(4);
+        return domain;
+    }
+
+    normalizeUrl(rawUrl = '') {
+        try {
+            const parsed = new NativeURL(rawUrl);
+            parsed.hostname = this.normalizeDomain(parsed.hostname);
+            if (parsed.pathname === '/' && !parsed.search && !parsed.hash) {
+                return `${parsed.protocol}//${parsed.hostname}`;
+            }
+            parsed.hash = '';
+            return parsed.toString().replace(/\/$/, '');
+        } catch (_) {
+            return String(rawUrl || '').trim().toLowerCase().replace(/\/$/, '');
+        }
+    }
+
+    parseConfiguredList(...rawValues) {
+        const domains = new Set();
+        const urls = new Set();
+
+        const expand = (value) => {
+            if (!value) return [];
+            if (Array.isArray(value)) return value;
+            if (typeof value !== 'string') return [];
+
+            const trimmed = value.trim();
+            if (!trimmed) return [];
+            if (trimmed.startsWith('[')) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (Array.isArray(parsed)) return parsed;
+                } catch (_) {
+                    return trimmed.split(',');
+                }
+            }
+            return trimmed.split(',');
+        };
+
+        for (const rawValue of rawValues) {
+            for (const entry of expand(rawValue)) {
+                let raw = String(entry || '').trim().toLowerCase();
+                if (!raw) continue;
+                raw = raw.replace(/^<|>$/g, '').replace(/[),.;]+$/g, '');
+
+                try {
+                    const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
+                    const parsed = new NativeURL(withScheme);
+                    const domain = this.normalizeDomain(parsed.hostname);
+                    if (!domain) continue;
+                    domains.add(domain);
+                    if ((parsed.pathname && parsed.pathname !== '/') || parsed.search) {
+                        parsed.hostname = domain;
+                        parsed.hash = '';
+                        urls.add(parsed.toString().replace(/\/$/, ''));
+                    }
+                } catch (_) {
+                    const domain = this.normalizeDomain(raw.split('/')[0].split(':')[0]);
+                    if (domain) domains.add(domain);
+                }
+            }
+        }
+
+        return { domains, urls };
+    }
+
+    async getGuildDomainLists(guildId) {
+        const cacheKey = String(guildId || '');
+        const cached = this.guildDomainCache.get(cacheKey);
+        if (cached && Date.now() - cached.lastLoaded < 30000) {
+            return cached.lists;
+        }
+
+        const config = await this.bot.database.getGuildConfig(guildId).catch(() => ({}));
+        const allowed = this.parseConfiguredList(
+            config?.phishing_whitelist_domains,
+            config?.antilinks_allowed_domains
+        );
+        const blocked = this.parseConfiguredList(
+            config?.phishing_blacklist_domains,
+            config?.antilinks_blocked_domains,
+            config?.antilinks_phishing_domains
+        );
+
+        const lists = {
+            allowedDomains: allowed.domains,
+            allowedUrls: allowed.urls,
+            blockedDomains: blocked.domains,
+            blockedUrls: blocked.urls
+        };
+
+        this.guildDomainCache.set(cacheKey, { lists, lastLoaded: Date.now() });
+        return lists;
+    }
+
     async analyzeUrl(url, guildId) {
         try {
+            const parsedUrl = new URL(url);
+            const domain = this.normalizeDomain(parsedUrl.hostname);
+            const normalizedUrl = this.normalizeUrl(url);
+
+            const domainLists = await this.getGuildDomainLists(guildId);
+            if (domainLists.allowedDomains.has(domain) || domainLists.allowedUrls.has(normalizedUrl)) {
+                return {
+                    url,
+                    isThreat: false,
+                    threatType: 'CUSTOM_ALLOWED',
+                    confidence: 0.1
+                };
+            }
+
+            if (domainLists.blockedDomains.has(domain) || domainLists.blockedUrls.has(normalizedUrl)) {
+                return {
+                    url,
+                    isThreat: true,
+                    threatType: 'CUSTOM_PHISHING_BLOCKLIST',
+                    confidence: 0.95
+                };
+            }
+
             // Check cache first
             const cached = this.urlCache.get(url);
             if (cached && Date.now() - cached.lastChecked < 300000) { // 5 minutes cache
@@ -92,12 +215,8 @@ class AntiMaliciousLinks {
                 };
             }
 
-            // Parse URL
-            const parsedUrl = new URL(url);
-            const domain = parsedUrl.hostname.toLowerCase();
-
             // Quick checks
-            const quickResult = await this.performQuickChecks(url, domain, parsedUrl);
+            const quickResult = await this.performQuickChecks(url, domain, parsedUrl, guildId);
             if (quickResult.isThreat) {
                 this.cacheResult(url, quickResult);
                 return quickResult;
@@ -138,7 +257,7 @@ class AntiMaliciousLinks {
         }
     }
 
-    async performQuickChecks(url, domain, parsedUrl) {
+    async performQuickChecks(url, domain, parsedUrl, guildId) {
         // Check if domain is trusted
         if (this.trustedDomains.has(domain)) {
             return {
@@ -178,7 +297,7 @@ class AntiMaliciousLinks {
             try {
                 const expandedUrl = await this.expandShortUrl(url);
                 if (expandedUrl && expandedUrl !== url) {
-                    return await this.analyzeUrl(expandedUrl); // Recursive analysis
+                    return await this.analyzeUrl(expandedUrl, guildId); // Recursive analysis
                 }
             } catch (error) {
                 // If expansion fails, treat as suspicious
@@ -288,23 +407,26 @@ class AntiMaliciousLinks {
 
     async checkDatabase(url, domain) {
         try {
+            const normalizedUrl = this.normalizeUrl(url);
+            const normalizedDomain = this.normalizeDomain(domain);
             const result = await this.bot.database.get(`
                 SELECT * FROM malicious_links 
-                WHERE url = ? OR url LIKE ?
+                WHERE LOWER(url) = LOWER(?)
+                   OR LOWER(url) = LOWER(?)
+                   OR LOWER(url) = LOWER(?)
+                   OR LOWER(url) LIKE LOWER(?)
                 ORDER BY last_checked DESC 
                 LIMIT 1
-            `, [url, `%${domain}%`]);
+            `, [url, normalizedUrl, normalizedDomain, `%://${normalizedDomain}/%`]);
 
             if (result) {
-                const ageHours = (Date.now() - new Date(result.last_checked).getTime()) / (1000 * 60 * 60);
-                
-                // If record is recent (less than 24 hours) and verified
-                if (ageHours < 24 && result.verified) {
+                if (Number(result.whitelisted) === 1) return { isThreat: false };
+                if (Number(result.verified) === 1) {
                     return {
                         url: url,
-                        isThreat: !result.whitelisted,
+                        isThreat: true,
                         threatType: result.threat_type || 'DATABASE',
-                        confidence: 0.9
+                        confidence: Math.min(0.95, Math.max(0.7, Number(result.severity || 9) / 10))
                     };
                 }
             }

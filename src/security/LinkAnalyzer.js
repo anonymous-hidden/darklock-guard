@@ -65,6 +65,8 @@ class LinkAnalyzer {
      */
     async initialize() {
         try {
+            await this.ensurePhishingDatabase();
+            await this.seedBuiltInPhishingDomains();
             await this.loadPhishingDomainsFromDB();
             
             // Set up periodic refresh
@@ -79,6 +81,45 @@ class LinkAnalyzer {
             this.bot.logger.info(`[LinkAnalyzer] Initialized with ${this.phishingDomains.size} phishing domains`);
         } catch (error) {
             this.bot.logger.error('[LinkAnalyzer] Initialization failed:', error);
+        }
+    }
+
+    async ensurePhishingDatabase() {
+        if (!this.bot?.database?.run) return;
+        await this.bot.database.run(`
+            CREATE TABLE IF NOT EXISTS malicious_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                url TEXT UNIQUE,
+                threat_type TEXT,
+                severity INTEGER,
+                source TEXT,
+                verified BOOLEAN DEFAULT 0,
+                whitelisted BOOLEAN DEFAULT 0,
+                last_checked DATETIME DEFAULT CURRENT_TIMESTAMP,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+    }
+
+    async seedBuiltInPhishingDomains() {
+        if (!this.bot?.database?.run) return;
+
+        let inserted = 0;
+        for (const domain of this.phishingDomains) {
+            try {
+                const result = await this.bot.database.run(`
+                    INSERT OR IGNORE INTO malicious_links
+                    (url, threat_type, severity, source, verified, whitelisted, last_checked)
+                    VALUES (?, 'PHISHING', 9, 'BUILTIN', 1, 0, CURRENT_TIMESTAMP)
+                `, [domain]);
+                if (result?.changes) inserted += result.changes;
+            } catch (error) {
+                this.bot.logger?.warn && this.bot.logger.warn(`[LinkAnalyzer] Failed to seed built-in phishing domain ${domain}:`, error?.message || error);
+            }
+        }
+
+        if (inserted > 0) {
+            this.bot.logger?.info && this.bot.logger.info(`[LinkAnalyzer] Seeded ${inserted} built-in phishing domains`);
         }
     }
 
@@ -108,8 +149,9 @@ class LinkAnalyzer {
                 let addedCount = 0;
                 domains.forEach(row => {
                     if (row.url) {
-                        if (!this.phishingDomains.has(row.url.toLowerCase())) {
-                            this.phishingDomains.add(row.url.toLowerCase());
+                        const domain = this.normalizeDomainEntry(row.url);
+                        if (domain && !this.phishingDomains.has(domain)) {
+                            this.phishingDomains.add(domain);
                             addedCount++;
                         }
                     }
@@ -146,7 +188,10 @@ class LinkAnalyzer {
         if (!guildId) return { dominated: false, score: 0, urls: [] };
 
         const config = await this.bot.database.getGuildConfig(guildId).catch(() => ({}));
-        const featureEnabled = config.anti_links_enabled !== 0 || config.antilinks_enabled !== 0;
+        const featureEnabled = config.anti_links_enabled !== 0 ||
+            config.antilinks_enabled !== 0 ||
+            config.anti_phishing_enabled !== 0 ||
+            config.antiphishing_enabled !== 0;
         if (!featureEnabled) {
             return { dominated: false, score: 0, urls: [], disabled: true };
         }
@@ -405,9 +450,9 @@ class LinkAnalyzer {
     }
 
     resolveDomainLists(config = {}) {
-        const allowed = this.parseDomainList(config.antilinks_allowed_domains);
-        const blocked = this.parseDomainList(config.antilinks_blocked_domains);
-        const phishing = this.parseDomainList(config.antilinks_phishing_domains);
+        const allowed = this.parseDomainList(config.antilinks_allowed_domains, config.phishing_whitelist_domains);
+        const blocked = this.parseDomainList(config.antilinks_blocked_domains, config.phishing_blacklist_domains);
+        const phishing = this.parseDomainList(config.antilinks_phishing_domains, config.phishing_blacklist_domains);
         const ipLogger = this.parseDomainList(config.antilinks_iplogger_domains);
 
         const hasCustom = allowed.size > 0 || blocked.size > 0 || phishing.size > 0 || ipLogger.size > 0;
@@ -423,29 +468,52 @@ class LinkAnalyzer {
         return { allowed, blocked, phishing, ipLogger, hasCustom, fingerprint };
     }
 
-    parseDomainList(rawValue) {
-        if (!rawValue) return new Set();
+    parseDomainList(...rawValues) {
+        const values = rawValues.filter(Boolean);
+        if (values.length === 0) return new Set();
 
         let arr = [];
-        if (typeof rawValue === 'string') {
-            const trimmed = rawValue.trim();
-            if (trimmed.startsWith('[')) {
-                try {
-                    const parsed = JSON.parse(trimmed);
-                    if (Array.isArray(parsed)) {
-                        arr = parsed;
+        const append = (rawValue) => {
+            if (typeof rawValue === 'string') {
+                const trimmed = rawValue.trim();
+                if (!trimmed) return;
+                if (trimmed.startsWith('[')) {
+                    try {
+                        const parsed = JSON.parse(trimmed);
+                        if (Array.isArray(parsed)) {
+                            arr.push(...parsed);
+                            return;
+                        }
+                    } catch (_) {
+                        arr.push(...trimmed.split(','));
+                        return;
                     }
-                } catch (_) {
-                    arr = trimmed.split(',');
+                } else {
+                    arr.push(...trimmed.split(','));
+                    return;
                 }
-            } else {
-                arr = trimmed.split(',');
+            } else if (Array.isArray(rawValue)) {
+                arr.push(...rawValue);
             }
-        } else if (Array.isArray(rawValue)) {
-            arr = rawValue;
-        }
+        };
 
-        return new Set(arr.map((d) => this.normalizeDomain(String(d || '')).trim()).filter(Boolean));
+        for (const rawValue of values) append(rawValue);
+
+        return new Set(arr.map((d) => this.normalizeDomainEntry(d)).filter(Boolean));
+    }
+
+    normalizeDomainEntry(value) {
+        let raw = String(value || '').trim().toLowerCase();
+        if (!raw) return '';
+        raw = raw.replace(/^<|>$/g, '').replace(/[),.;]+$/g, '');
+
+        try {
+            const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
+            const parsed = new URL(withScheme);
+            return this.normalizeDomain(parsed.hostname);
+        } catch (_) {
+            return this.normalizeDomain(raw.split('/')[0].split(':')[0]);
+        }
     }
 
     resolveSafeBrowsingConfig(config = {}) {

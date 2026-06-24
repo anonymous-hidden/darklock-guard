@@ -44,6 +44,12 @@ export const useAiStore = create((set, get) => ({
     return m;
   },
 
+  pushAssistant(content, extra = {}) {
+    const m = get().conversation.addAssistant(content, extra);
+    set({ messages: [...get().conversation.messages] });
+    return m;
+  },
+
   updateLastAssistant(content) {
     get().conversation.updateLastAssistant(content);
     set({ messages: [...get().conversation.messages] });

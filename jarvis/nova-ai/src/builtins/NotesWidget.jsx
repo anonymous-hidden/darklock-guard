@@ -213,7 +213,7 @@ export default function NotesWidget() {
                 {notes.length === 0 ? 'Start a new note' : 'Pick a note to edit'}
               </div>
               <div className="text-[11px] text-nova-muted mt-0.5 max-w-[280px]">
-                Notes are saved as plain markdown files. Nova can read, append, and edit them anytime.
+                Notes are saved as plain markdown files. Jarvis can read, append, and edit them anytime.
               </div>
             </div>
             <button onClick={newNote} className="nova-btn-primary text-xs">

@@ -12,8 +12,11 @@ let premiumStatus = {
     licenseCode: null
 };
 
-// Stripe publishable key
-const STRIPE_KEY = 'pk_test_51SXAqORvlraeSG12Gpcj1fdq0ZjAydaggaORKe676HeTVySp34WsLfN0epNmxFQDu9n7lbTm23Nu7l64phP5P9z800uS1ISgLr';
+// Stripe publishable key (prefer runtime-injected values)
+const STRIPE_KEY =
+    (typeof window !== 'undefined' && (window.STRIPE_PUBLISHABLE_KEY || window.STRIPE_PUBLISHABLE)) ||
+    document.querySelector('meta[name="stripe-publishable-key"]')?.content ||
+    '';
 let stripeInstance = null;
 
 /**
@@ -21,6 +24,10 @@ let stripeInstance = null;
  */
 async function initPremium() {
     try {
+        if (!STRIPE_KEY) {
+            console.warn('[Premium] Stripe publishable key not configured; using hosted checkout URL redirects only');
+        }
+
         // Load Stripe.js if not already loaded
         if (!window.Stripe && STRIPE_KEY) {
             await loadStripeJs();

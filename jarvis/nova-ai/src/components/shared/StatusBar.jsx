@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import { useAppStore } from '@store/appStore.js';
 import { useAiStore } from '@store/aiStore.js';
 import { useWidgetStore } from '@store/widgetStore.js';
+import { AUTO_MODEL, parseModelRef } from '@core/ai/AIClient.js';
 
 export default function StatusBar({ onToggleTransparency }) {
   const health = useAppStore((s) => s.ollamaHealth);
@@ -10,6 +11,10 @@ export default function StatusBar({ onToggleTransparency }) {
   const status = useAppStore((s) => s.statusMessage);
   const streaming = useAiStore((s) => s.streaming);
   const building = useWidgetStore((s) => s.build.isBuilding);
+  const provider = parseModelRef(model).provider;
+  const providerLabel = model === AUTO_MODEL
+    ? 'Auto'
+    : (provider === 'openai' ? 'OpenAI' : 'Ollama');
 
   const dot =
     health.ok === true ? 'bg-nova-ok' :
@@ -21,7 +26,7 @@ export default function StatusBar({ onToggleTransparency }) {
       <div className="flex items-center gap-3">
         <span className="flex items-center gap-1.5">
           <span className={clsx('w-2 h-2 rounded-full', dot)} />
-          <span>Ollama</span>
+          <span>{providerLabel}</span>
           {health.ok && health.version && <span className="text-nova-muted/70">v{health.version}</span>}
           {health.error && <span className="text-nova-err">· {health.error}</span>}
         </span>

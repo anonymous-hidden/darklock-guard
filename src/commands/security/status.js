@@ -1,5 +1,11 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
+function getPlatformStatusUrl() {
+    const configured = process.env.PLATFORM_URL || process.env.DASHBOARD_URL || process.env.PUBLIC_URL || 'https://darklock.net';
+    const base = String(configured).replace(/\/+$/, '');
+    return `${base}/platform/status`;
+}
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('status')
@@ -155,9 +161,9 @@ module.exports = {
             const actionRow = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
-                        .setLabel('Open Dashboard')
+                        .setLabel('Platform Status')
                         .setStyle(ButtonStyle.Link)
-                        .setURL(process.env.DASHBOARD_URL || 'https://discord-security-bot-uyx6.onrender.com')
+                        .setURL(getPlatformStatusUrl())
                         .setEmoji('🌐'),
                     new ButtonBuilder()
                         .setLabel('Refresh Status')

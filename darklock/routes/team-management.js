@@ -80,6 +80,8 @@ const ROLE_PRESETS = {
     }
 };
 
+const TEAM_ROLE_PERMISSIONS_TABLE = 'team_role_permissions';
+
 /**
  * Initialize team management schema
  */
@@ -101,9 +103,9 @@ async function initializeTeamSchema() {
             )
         `);
 
-        // Role permissions table
+        // Team role permissions table (kept separate from RBAC role_permissions mapping)
         await db.run(`
-            CREATE TABLE IF NOT EXISTS role_permissions (
+            CREATE TABLE IF NOT EXISTS team_role_permissions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 role TEXT UNIQUE NOT NULL,
                 permissions TEXT NOT NULL,
@@ -113,12 +115,39 @@ async function initializeTeamSchema() {
             )
         `);
 
+        // Migrate legacy team permissions if they were previously stored in role_permissions.
+        const legacyRolePermissionsCols = await db.all(`PRAGMA table_info(role_permissions)`);
+        const hasLegacyTeamShape = Array.isArray(legacyRolePermissionsCols)
+            && legacyRolePermissionsCols.some(c => c.name === 'role')
+            && legacyRolePermissionsCols.some(c => c.name === 'permissions');
+
+        if (hasLegacyTeamShape) {
+            const legacyRows = await db.all(`
+                SELECT role, permissions, updated_by, updated_at
+                FROM role_permissions
+            `);
+
+            for (const row of legacyRows) {
+                await db.run(
+                    `
+                    INSERT INTO ${TEAM_ROLE_PERMISSIONS_TABLE} (role, permissions, updated_by, updated_at)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(role) DO UPDATE SET
+                        permissions = excluded.permissions,
+                        updated_by = excluded.updated_by,
+                        updated_at = excluded.updated_at
+                    `,
+                    [row.role, row.permissions, row.updated_by || 'system', row.updated_at || new Date().toISOString()]
+                );
+            }
+        }
+
         // Initialize default permissions if not exists
         for (const [role, perms] of Object.entries(ROLE_PRESETS)) {
-            const existing = await db.get('SELECT * FROM role_permissions WHERE role = ?', [role]);
+            const existing = await db.get(`SELECT * FROM ${TEAM_ROLE_PERMISSIONS_TABLE} WHERE role = ?`, [role]);
             if (!existing) {
                 await db.run(
-                    'INSERT INTO role_permissions (role, permissions, updated_by, updated_at) VALUES (?, ?, ?, ?)',
+                    `INSERT INTO ${TEAM_ROLE_PERMISSIONS_TABLE} (role, permissions, updated_by, updated_at) VALUES (?, ?, ?, ?)`,
                     [role, JSON.stringify(perms), 'system', new Date().toISOString()]
                 );
             }
@@ -293,7 +322,7 @@ router.delete('/:id', requireAdminAuth, canManageTeam, async (req, res) => {
 // GET /api/team/permissions - Get all role permissions
 router.get('/permissions', requireAdminAuth, async (req, res) => {
     try {
-        const permissions = await db.all('SELECT * FROM role_permissions ORDER BY role ASC');
+        const permissions = await db.all(`SELECT * FROM ${TEAM_ROLE_PERMISSIONS_TABLE} ORDER BY role ASC`);
         const formatted = {};
         for (const perm of permissions) {
             formatted[perm.role] = JSON.parse(perm.permissions);
@@ -329,7 +358,7 @@ router.put('/permissions', requireAdminAuth, canManageTeam, async (req, res) => 
         }
 
         // Get existing permissions
-        const existing = await db.get('SELECT * FROM role_permissions WHERE role = ?', [role]);
+        const existing = await db.get(`SELECT * FROM ${TEAM_ROLE_PERMISSIONS_TABLE} WHERE role = ?`, [role]);
         if (!existing) {
             return res.status(404).json({ error: 'Role permissions not found' });
         }
@@ -352,7 +381,7 @@ router.put('/permissions', requireAdminAuth, canManageTeam, async (req, res) => 
         const userEmail = req.admin?.email || req.userEmail || 'admin';
         
         await db.run(
-            'UPDATE role_permissions SET permissions = ?, updated_by = ?, updated_at = ? WHERE role = ?',
+            `UPDATE ${TEAM_ROLE_PERMISSIONS_TABLE} SET permissions = ?, updated_by = ?, updated_at = ? WHERE role = ?`,
             [JSON.stringify(permissions), userEmail, now, role]
         );
 

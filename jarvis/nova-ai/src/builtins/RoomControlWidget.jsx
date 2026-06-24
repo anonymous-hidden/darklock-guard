@@ -49,7 +49,7 @@ export default function RoomControlWidget() {
     if (!silent) setBusy(true);
     try {
       const fn = window.nova?.control?.room?.request;
-      if (!fn) throw new Error('Nova bridge unavailable (run inside Nova desktop)');
+      if (!fn) throw new Error('Jarvis bridge unavailable (run inside Jarvis desktop)');
       const r = await fn(path, method, body);
       if (!r?.ok) throw new Error(r?.error || r?.body?.error || 'bridge error');
       return r.body || r;

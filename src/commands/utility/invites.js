@@ -1,5 +1,18 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 
+function buildBotInvite(interaction) {
+    const clientId = process.env.CLIENT_ID || process.env.DISCORD_CLIENT_ID || interaction.client.user?.id;
+    const url = clientId
+        ? `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot%20applications.commands`
+        : (process.env.BOT_INVITE_URL || 'https://darklock.net');
+
+    return new EmbedBuilder()
+        .setTitle('Invite DarkLock')
+        .setColor(0x5865F2)
+        .setDescription(`Invite tracking is not available right now, but you can still add DarkLock to a server:\n${url}`)
+        .setTimestamp();
+}
+
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('invites')
@@ -83,7 +96,7 @@ module.exports = {
 
         if (!tracker) {
             return interaction.reply({
-                content: '❌ Invite tracking system is not available.',
+                embeds: [buildBotInvite(interaction)],
                 ephemeral: true
             });
         }

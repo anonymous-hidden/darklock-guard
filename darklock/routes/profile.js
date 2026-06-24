@@ -18,7 +18,7 @@ const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
 
 // Import auth middleware and helpers
-const { requireAuth } = require('../admin-v4/middleware');
+const { requireAuth } = require('./dashboard');
 const authModule = require('./auth');
 const db = require('../utils/database');
 
@@ -88,6 +88,23 @@ async function getUserRecord(userId) {
     const usersData = await loadUsers();
     const user = usersData.users.find(u => u.id === userId);
     return { source: 'json', user, usersData };
+}
+
+function parseObjectField(value) {
+    if (!value) {
+        return {};
+    }
+
+    if (typeof value === 'object' && !Array.isArray(value)) {
+        return value;
+    }
+
+    try {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+        return {};
+    }
 }
 
 // ============================================================================
@@ -641,12 +658,22 @@ router.get('/api/2fa/status', requireAuth, async (req, res) => {
             });
         }
         
+        let hasBackupCodes = false;
+        try {
+            const parsedCodes = user.two_factor_backup_codes
+                ? JSON.parse(user.two_factor_backup_codes)
+                : [];
+            hasBackupCodes = Array.isArray(parsedCodes) && parsedCodes.length > 0;
+        } catch {
+            hasBackupCodes = false;
+        }
+
         res.json({
             success: true,
             twoFactor: {
                 enabled: user.two_factor_enabled || false,
                 enabledAt: user.two_factor_enabled_at || null,
-                hasBackupCodes: !!(user.two_factor_backup_codes && JSON.parse(user.two_factor_backup_codes || '[]').length > 0)
+                hasBackupCodes
             }
         });
         
@@ -1153,9 +1180,9 @@ router.post('/api/sync', requireAuth, async (req, res) => {
 router.put('/api/info', requireAuth, async (req, res) => {
     try {
         const { displayName, timezone, language } = req.body;
-        
-        const usersData = await loadUsers();
-        const user = usersData.users.find(u => u.id === req.user.userId);
+
+        const { source, user, usersData } = await getUserRecord(req.user.userId);
+        const updates = {};
         
         if (!user) {
             return res.status(404).json({
@@ -1166,26 +1193,44 @@ router.put('/api/info', requireAuth, async (req, res) => {
         
         // Validate display name
         if (displayName !== undefined) {
-            if (displayName.length > 50) {
+            const normalizedDisplayName = String(displayName).trim();
+            if (normalizedDisplayName.length > 50) {
                 return res.status(400).json({
                     success: false,
                     error: 'Display name must be 50 characters or less'
                 });
             }
-            user.displayName = displayName;
+            updates.display_name = normalizedDisplayName;
+            if (source === 'json') {
+                user.displayName = normalizedDisplayName;
+            }
         }
         
         // Validate and update timezone
         if (timezone !== undefined) {
-            user.timezone = timezone;
+            const normalizedTimezone = String(timezone);
+            updates.timezone = normalizedTimezone;
+            if (source === 'json') {
+                user.timezone = normalizedTimezone;
+            }
         }
         
         // Validate and update language
         if (language !== undefined) {
-            user.language = language;
+            const normalizedLanguage = String(language);
+            updates.language = normalizedLanguage;
+            if (source === 'json') {
+                user.language = normalizedLanguage;
+            }
         }
-        
-        await saveUsers(usersData);
+
+        if (source === 'json') {
+            await saveUsers(usersData);
+        }
+
+        if (Object.keys(updates).length > 0) {
+            await db.updateUser(user.id, updates);
+        }
         
         res.json({
             success: true,
@@ -1210,8 +1255,7 @@ router.put('/api/info', requireAuth, async (req, res) => {
  */
 router.put('/api/preferences', requireAuth, async (req, res) => {
     try {
-        const usersData = await loadUsers();
-        const user = usersData.users.find(u => u.id === req.user.userId);
+        const { source, user, usersData } = await getUserRecord(req.user.userId);
         
         if (!user) {
             return res.status(404).json({
@@ -1220,24 +1264,27 @@ router.put('/api/preferences', requireAuth, async (req, res) => {
             });
         }
         
-        // Initialize preferences if not exists
-        if (!user.preferences) {
-            user.preferences = {};
-        }
+        const preferences = parseObjectField(user.preferences);
         
         // Update preferences (only allow specific keys)
         const allowedKeys = ['theme', 'reducedMotion', 'compactLayout'];
         for (const key of allowedKeys) {
             if (req.body[key] !== undefined) {
-                user.preferences[key] = req.body[key];
+                preferences[key] = req.body[key];
             }
         }
-        
-        await saveUsers(usersData);
+
+        if (source === 'json') {
+            user.preferences = preferences;
+            await saveUsers(usersData);
+        }
+
+        await db.updateUser(user.id, { preferences });
         
         res.json({
             success: true,
-            message: 'Preferences updated successfully'
+            message: 'Preferences updated successfully',
+            preferences
         });
         
     } catch (err) {
@@ -1258,8 +1305,7 @@ router.put('/api/preferences', requireAuth, async (req, res) => {
  */
 router.put('/api/notifications', requireAuth, async (req, res) => {
     try {
-        const usersData = await loadUsers();
-        const user = usersData.users.find(u => u.id === req.user.userId);
+        const { source, user, usersData } = await getUserRecord(req.user.userId);
         
         if (!user) {
             return res.status(404).json({
@@ -1268,24 +1314,27 @@ router.put('/api/notifications', requireAuth, async (req, res) => {
             });
         }
         
-        // Initialize notifications if not exists
-        if (!user.notifications) {
-            user.notifications = {};
-        }
+        const notifications = parseObjectField(user.notifications);
         
         // Update notification settings (only allow specific keys)
         const allowedKeys = ['securityAlerts', 'productUpdates', 'emailNotifications'];
         for (const key of allowedKeys) {
             if (req.body[key] !== undefined) {
-                user.notifications[key] = req.body[key];
+                notifications[key] = req.body[key];
             }
         }
-        
-        await saveUsers(usersData);
+
+        if (source === 'json') {
+            user.notifications = notifications;
+            await saveUsers(usersData);
+        }
+
+        await db.updateUser(user.id, { notifications });
         
         res.json({
             success: true,
-            message: 'Notification settings updated successfully'
+            message: 'Notification settings updated successfully',
+            notifications
         });
         
     } catch (err) {

@@ -26,6 +26,9 @@ export const useUIStore = create((set) => ({
   setSettingsTab: (tab) => set({ settingsTab: tab }),
   setFontSize: (size) => set({ fontSize: size }),
   setMessageDensity: (density) => set({ messageDensity: density }),
+  setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
+  setSoundsEnabled: (enabled) => set({ soundsEnabled: enabled }),
+  setNotificationContent: (content) => set({ notificationContent: content }),
   closeAll: () => set({
     showSettings: false,
     showCreateServer: false,

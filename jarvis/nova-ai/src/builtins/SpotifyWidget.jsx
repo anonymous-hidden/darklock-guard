@@ -2,6 +2,13 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 
 const CHAT_WS = 'ws://127.0.0.1:8951/ws/chat';
 
+function fmtClock(sec) {
+  const n = Math.max(0, Number(sec) || 0);
+  const m = Math.floor(n / 60);
+  const s = Math.floor(n % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 /**
  * SpotifyWidget — sleek now-playing display + transport.
  *
@@ -10,7 +17,7 @@ const CHAT_WS = 'ws://127.0.0.1:8951/ws/chat';
  *   • Animated EQ bars while playing
  *   • Transport (prev/play/next), volume slider
  *   • Lyrics panel when lyrics are supplied by the player/local source
- *   • Per-song Nova listening cue when lyrics are not available
+ *   • Per-song Jarvis listening cue when lyrics are not available
  *   • Robust launch chain (snap / flatpak / xdg-open spotify://)
  */
 export default function SpotifyWidget() {
@@ -30,6 +37,9 @@ export default function SpotifyWidget() {
       const r = await window.nova.control.spotify('now-playing');
       if (r?.ok && (r.track?.title || r.track?.artist)) {
         setTrack(r.track);
+        if (Number.isFinite(r.track?.volumePct)) {
+          setVol(Math.max(0, Math.min(100, Math.round(r.track.volumePct))));
+        }
         setErr(null);
       } else {
         setTrack(null);
@@ -69,7 +79,7 @@ export default function SpotifyWidget() {
   const lyricsText = [track?.lyrics, track?.syncedLyrics, track?.plainLyrics]
     .find((value) => typeof value === 'string' && value.trim().length > 0)?.trim() || '';
 
-  /* Per-song Nova cue — fires when the track key changes and no lyrics are available. */
+  /* Per-song Jarvis cue — fires when the track key changes and no lyrics are available. */
   useEffect(() => {
     if (!track?.title || !track?.artist) return;
     if (lyricsText) { setNovaSays(''); setNovaPending(false); return; }
@@ -83,7 +93,7 @@ export default function SpotifyWidget() {
     try { ws = new WebSocket(CHAT_WS); } catch { setNovaPending(false); return; }
     const timer = setTimeout(() => { if (!done) { done = true; try { ws.close(); } catch {} setNovaPending(false); } }, 14000);
     const prompt =
-      `You are Nova. Lyrics were not supplied by an authorized local source, so do not quote or reconstruct lyrics. ` +
+      `You are Jarvis. Lyrics were not supplied by an authorized local source, so do not quote or reconstruct lyrics. ` +
       `In ONE short sentence (max 16 words), give Cayden a quick, warm listening cue for this song: ` +
       `"${track.title}" by ${track.artist}${track.album ? ` (album: ${track.album})` : ''}. ` +
       `No quotes around the song. No markdown. No <thinking> blocks. Just the sentence.`;
@@ -104,6 +114,11 @@ export default function SpotifyWidget() {
   }, [track?.title, track?.artist, track?.album, lyricsText]);
 
   const playing = track && (track.status === 'Playing' || track.status === 'playing');
+  const title = String(track?.title || 'Unknown title');
+  const longTitle = title.length > 28;
+  const positionSec = Math.max(0, Number(track?.positionSec) || 0);
+  const lengthSec = Math.max(0, Number(track?.lengthSec) || 0);
+  const progressPct = lengthSec > 0 ? Math.max(0, Math.min(100, (positionSec / lengthSec) * 100)) : 0;
 
   /* ── No IPC bridge ─────────────────────────────────── */
   if (!hasIpc) {
@@ -126,7 +141,7 @@ export default function SpotifyWidget() {
         <div className="text-center">
           <div className="font-display text-base">Spotify isn't running</div>
           <div className="text-[11px] text-nova-muted mt-0.5 max-w-[260px]">
-            Hit Launch — Nova will try snap, flatpak, and the native command.
+            Hit Launch — Jarvis will try snap, flatpak, and the native command.
           </div>
         </div>
         {isPlayerctlError && (
@@ -157,9 +172,18 @@ export default function SpotifyWidget() {
       <div className="absolute inset-0 bg-gradient-to-b from-nova-bg/60 via-nova-bg/80 to-nova-bg pointer-events-none" />
 
       <div className="relative z-10 flex-1 flex flex-col p-3 gap-2.5">
+        <div className="flex items-center justify-between">
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-nova-accent/40 bg-nova-accent/10 text-[9.5px] font-mono text-nova-accent tracking-wide">
+            ✦ NOW PLAYING
+          </div>
+          <div className={`text-[9.5px] font-mono px-2 py-0.5 rounded-full border ${playing ? 'text-nova-ok border-nova-ok/40 bg-nova-ok/10' : 'text-nova-muted border-nova-border bg-nova-panel/50'}`}>
+            {playing ? 'LIVE' : 'PAUSED'}
+          </div>
+        </div>
+
         {/* Art + meta */}
         <div className="flex gap-3 items-center">
-          <div className="relative w-24 h-24 rounded-lg bg-nova-panel2 border border-nova-border overflow-hidden shrink-0 shadow-xl">
+          <div className="relative w-24 h-24 rounded-xl bg-nova-panel2 border border-nova-border overflow-hidden shrink-0 shadow-xl ring-1 ring-white/5">
             {track?.art ? (
               <img src={track.art} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -176,8 +200,12 @@ export default function SpotifyWidget() {
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="font-display text-base leading-tight truncate" title={track.title}>
-              {track.title || 'Unknown title'}
+            <div className="font-display text-base leading-tight overflow-hidden" title={track.title}>
+              {longTitle ? (
+                <div className="inline-block whitespace-nowrap pr-6 animate-[nova-marquee_10s_linear_infinite]">{title}</div>
+              ) : (
+                <span className="truncate block">{title}</span>
+              )}
             </div>
             <div className="text-xs text-nova-muted truncate mt-0.5" title={track.artist}>
               {track.artist || 'Unknown artist'}
@@ -190,7 +218,24 @@ export default function SpotifyWidget() {
           </div>
         </div>
 
-        {/* Lyrics or Nova's live listening cue */}
+        <div className="bg-nova-panel/60 border border-nova-border/60 rounded-lg px-2 py-1.5 backdrop-blur">
+          <div className="flex items-center justify-between text-[9.5px] font-mono text-nova-muted">
+            <span>progress</span>
+            <span>{lengthSec > 0 ? `${Math.round(progressPct)}%` : 'live stream'}</span>
+          </div>
+          <div className="mt-1 h-1.5 rounded-full bg-nova-panel2/90 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-nova-accent via-cyan-400 to-nova-ok transition-[width] duration-300"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+          <div className="mt-1 flex items-center justify-between text-[9px] font-mono text-nova-muted">
+            <span>{fmtClock(positionSec)}</span>
+            <span>{lengthSec > 0 ? fmtClock(lengthSec) : '--:--'}</span>
+          </div>
+        </div>
+
+        {/* Lyrics or Jarvis's live listening cue */}
         <div className="bg-nova-panel/60 border border-nova-border/60 rounded-lg px-2 py-1.5 backdrop-blur min-h-[36px] max-h-24 overflow-y-auto">
           <div className="text-[9.5px] font-mono text-nova-accent2 mb-0.5 flex items-center gap-1">
             ✦ {lyricsText ? 'LYRICS' : 'NOVA'} {novaPending && <span className="animate-pulse">listening…</span>}
@@ -219,7 +264,8 @@ export default function SpotifyWidget() {
             onChange={(e) => setVol(Number(e.target.value))}
             onMouseUp={(e) => cmd('volume', Number(e.target.value))}
             onTouchEnd={(e) => cmd('volume', Number(e.target.value))}
-            className="flex-1 accent-nova-ok"
+            className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer nova-slider"
+            style={{ background: `linear-gradient(to right, #3ddc84 0%, #3ddc84 ${vol}%, rgba(35,35,47,0.95) ${vol}%, rgba(35,35,47,0.95) 100%)` }}
           />
           <span>🔊</span>
           <span className="w-7 text-right tabular-nums">{vol}%</span>
@@ -236,6 +282,27 @@ export default function SpotifyWidget() {
         @keyframes nova-eq {
           0%, 100% { transform: scaleY(0.3); }
           50% { transform: scaleY(1); }
+        }
+        @keyframes nova-marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-40%); }
+        }
+        .nova-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 12px;
+          height: 12px;
+          border-radius: 999px;
+          background: #3ddc84;
+          border: 1px solid rgba(10, 10, 15, 0.7);
+          box-shadow: 0 0 0 2px rgba(61, 220, 132, 0.2);
+        }
+        .nova-slider::-moz-range-thumb {
+          width: 12px;
+          height: 12px;
+          border-radius: 999px;
+          background: #3ddc84;
+          border: 1px solid rgba(10, 10, 15, 0.7);
+          box-shadow: 0 0 0 2px rgba(61, 220, 132, 0.2);
         }
       `}</style>
     </div>

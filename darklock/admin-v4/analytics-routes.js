@@ -125,6 +125,14 @@ router.get('/overview-cards', MW.helperOrAbove, async (req, res) => {
     const joins7d = await db.get("SELECT COUNT(*) as c FROM admin_audit_trail WHERE category = 'member_join' AND created_at >= datetime('now', '-7 days')").catch(() => ({ c: 0 }));
     const leaves7d = await db.get("SELECT COUNT(*) as c FROM admin_audit_trail WHERE category = 'member_leave' AND created_at >= datetime('now', '-7 days')").catch(() => ({ c: 0 }));
 
+    // Compute risk score from real signals: open bugs + recent leaves + failed audit actions.
+    // 0-100 scale. No randomness — if signals are zero, score stays at the baseline.
+    const failedAudit = await db.get("SELECT COUNT(*) as c FROM admin_audit_trail WHERE action LIKE '%fail%' AND created_at >= datetime('now', '-24 hours')").catch(() => ({ c: 0 }));
+    const riskOpenBugs   = Math.min(40, (openBugs?.c   ?? 0) * 4);   // up to 40 pts
+    const riskLeaves     = Math.min(20, (leaves7d?.c   ?? 0) * 2);   // up to 20 pts
+    const riskAuditFails = Math.min(40, (failedAudit?.c ?? 0) * 5);   // up to 40 pts
+    const riskScore = Math.min(100, riskOpenBugs + riskLeaves + riskAuditFails);
+
     const data = {
       success: true,
       cards: {
@@ -138,7 +146,7 @@ router.get('/overview-cards', MW.helperOrAbove, async (req, res) => {
         joins7d: joins7d?.c ?? 0,
         leaves7d: leaves7d?.c ?? 0,
         netGrowth7d: (joins7d?.c ?? 0) - (leaves7d?.c ?? 0),
-        riskScore: Math.floor(Math.random() * 30) + 5, // placeholder —replace with real scoring
+        riskScore,
       },
     };
     setCache(ck, data, 15_000);
@@ -418,15 +426,10 @@ async function aggregateMetric(metric, range, groupBy) {
     case 'raid_velocity':
     case 'engagement_score':
     case 'custom_events': {
-      // Generate placeholder data for now — real implementations plug in here
-      const labels = [];
-      const values = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(); d.setDate(d.getDate() - i);
-        labels.push(d.toISOString().split('T')[0]);
-        values.push(Math.floor(Math.random() * 100));
-      }
-      return { labels, values };
+      // No synthetic data. These metrics require a real signal source that is not
+      // wired up yet — return an empty series so the UI honestly shows "no data"
+      // instead of misleading placeholder values.
+      return { labels: [], values: [] };
     }
 
     default:

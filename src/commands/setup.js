@@ -414,14 +414,14 @@ module.exports = {
                 log_channels,
                 log_compact,
                 updated_at
-            ) VALUES (?, 1, 1, 1, 1, 1, 1, 1, CURRENT_TIMESTAMP)
+            ) VALUES (?, 1, 0, 0, 1, 0, 0, 1, CURRENT_TIMESTAMP)
             ON CONFLICT(guild_id) DO UPDATE SET
                 mod_logging = 1,
-                log_edits = 1,
-                log_deletes = 1,
+                log_edits = 0,
+                log_deletes = 0,
                 log_members = 1,
-                log_roles = 1,
-                log_channels = 1,
+                log_roles = 0,
+                log_channels = 0,
                 log_compact = 1,
                 updated_at = CURRENT_TIMESTAMP`,
             [guildId]

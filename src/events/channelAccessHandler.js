@@ -182,6 +182,23 @@ async function handleChannelAccessSelect(interaction, bot) {
             });
         }
 
+        const botMember = interaction.guild.members.me;
+        if (selectedRole.managed || selectedRole.id === interaction.guild.id) {
+            return await interaction.editReply({
+                content: '❌ This role is managed by Discord or an integration and cannot be assigned from this panel.',
+                embeds: [],
+                components: []
+            });
+        }
+
+        if (selectedRole.position >= botMember.roles.highest.position) {
+            return await interaction.editReply({
+                content: '❌ I cannot manage that role anymore. Ask an administrator to move my role higher or update this panel.',
+                embeds: [],
+                components: []
+            });
+        }
+
         const member = interaction.member;
         const hasSelectedRole = member.roles.cache.has(selectedRoleId);
 

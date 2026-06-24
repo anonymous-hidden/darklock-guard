@@ -8,6 +8,7 @@
  *   admin_audit_trail     – unified admin action log
  *   platform_announcements – announcements / release notes
  *   app_updates           – pushed app update records
+ *   shop_products         – publishable Ridgeline shop catalog
  *   bug_reports_v2        – bug reports from site + desktop app
  *   platform_config       – key/value platform settings
  *
@@ -175,6 +176,52 @@ async function initializeV4Schema() {
   `);
   await db.run(`CREATE INDEX IF NOT EXISTS idx_v4_bugs_status  ON bug_reports_v2(status)`);
   await db.run(`CREATE INDEX IF NOT EXISTS idx_v4_bugs_source  ON bug_reports_v2(source)`);
+
+  // shop_products — admin-managed storefront catalog
+  await db.run(`
+    CREATE TABLE IF NOT EXISTS shop_products (
+      id              TEXT PRIMARY KEY,
+      app             TEXT NOT NULL DEFAULT 'ridgeline',
+      slug            TEXT UNIQUE,
+      title           TEXT NOT NULL,
+      subtitle        TEXT,
+      description     TEXT,
+      image_url       TEXT,
+      badge           TEXT,
+      price_cents     INTEGER NOT NULL,
+      currency        TEXT NOT NULL DEFAULT 'usd',
+      billing_type    TEXT NOT NULL DEFAULT 'one_time',
+      stripe_price_id TEXT,
+      features_json   TEXT,
+      sort_order      INTEGER NOT NULL DEFAULT 0,
+      published       INTEGER NOT NULL DEFAULT 0,
+      published_by    TEXT,
+      published_at    TEXT,
+      created_by      TEXT,
+      created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_shop_products_app ON shop_products(app)`);
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_shop_products_published ON shop_products(published)`);
+  await db.run(`CREATE INDEX IF NOT EXISTS idx_shop_products_sort ON shop_products(sort_order, created_at)`);
+
+  // Backward-compatible migrations for older installations
+  await db.run(`ALTER TABLE shop_products ADD COLUMN stripe_price_id TEXT`).catch(() => {});
+  await db.run(`ALTER TABLE shop_products ADD COLUMN subtitle TEXT`).catch(() => {});
+  await db.run(`ALTER TABLE shop_products ADD COLUMN description TEXT`).catch(() => {});
+  await db.run(`ALTER TABLE shop_products ADD COLUMN image_url TEXT`).catch(() => {});
+  await db.run(`ALTER TABLE shop_products ADD COLUMN badge TEXT`).catch(() => {});
+  await db.run(`ALTER TABLE shop_products ADD COLUMN currency TEXT NOT NULL DEFAULT 'usd'`).catch(() => {});
+  await db.run(`ALTER TABLE shop_products ADD COLUMN billing_type TEXT NOT NULL DEFAULT 'one_time'`).catch(() => {});
+  await db.run(`ALTER TABLE shop_products ADD COLUMN features_json TEXT`).catch(() => {});
+  await db.run(`ALTER TABLE shop_products ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0`).catch(() => {});
+  await db.run(`ALTER TABLE shop_products ADD COLUMN published INTEGER NOT NULL DEFAULT 0`).catch(() => {});
+  await db.run(`ALTER TABLE shop_products ADD COLUMN published_by TEXT`).catch(() => {});
+  await db.run(`ALTER TABLE shop_products ADD COLUMN published_at TEXT`).catch(() => {});
+  await db.run(`ALTER TABLE shop_products ADD COLUMN created_by TEXT`).catch(() => {});
+  await db.run(`ALTER TABLE shop_products ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime('now'))`).catch(() => {});
+  await db.run(`ALTER TABLE shop_products ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))`).catch(() => {});
 
   // platform_config — key/value settings
   await db.run(`

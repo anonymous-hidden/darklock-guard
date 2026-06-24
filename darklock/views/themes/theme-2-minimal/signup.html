@@ -107,6 +107,10 @@
                 <input type="checkbox" id="terms" required>
                 <label for="terms">I agree to the <a href="/platform/terms">Terms of Service</a> and <a href="/platform/privacy">Privacy Policy</a></label>
             </div>
+            <div class="field-row">
+                <input type="checkbox" id="enablePasskey" checked>
+                <label for="enablePasskey">Set up a passkey after account creation</label>
+            </div>
             <button type="submit" class="btn-submit" id="submitBtn">Create Account</button>
         </form>
 
@@ -122,16 +126,24 @@
     <a href="/platform" class="back-link">← Back to home</a>
 </div>
 
+<script src="/platform/static/js/passkeys.js"></script>
 <script>
     const form = document.getElementById('signupForm');
     const alertEl = document.getElementById('alert');
     const btn = document.getElementById('submitBtn');
     const passInput = document.getElementById('password');
     const bar = document.getElementById('strengthBar');
+    const enablePasskeyInput = document.getElementById('enablePasskey');
 
     function showAlert(msg, type = 'error') {
         alertEl.textContent = msg;
         alertEl.className = 'alert ' + type;
+    }
+
+    function getCookie(name) {
+        const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const match = document.cookie.match(new RegExp('(?:^|; )' + escapedName + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : '';
     }
 
     passInput.addEventListener('input', () => {
@@ -148,28 +160,70 @@
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const username = document.getElementById('username').value.trim();
+        const email = document.getElementById('email').value.trim();
         const password = passInput.value;
         const confirm = document.getElementById('confirmPassword').value;
+
+        if (!username || !email || !password || !confirm) {
+            showAlert('Please fill in all fields');
+            return;
+        }
+
+        if (username.length < 3) {
+            showAlert('Username must be at least 3 characters long');
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showAlert('Please enter a valid email address');
+            return;
+        }
+
         if (password !== confirm) { showAlert('Passwords do not match'); return; }
 
         btn.disabled = true;
         btn.textContent = 'Creating account...';
         alertEl.className = 'alert';
         try {
+            const csrfToken = getCookie('_csrf_token');
+            const headers = { 'Content-Type': 'application/json' };
+            if (csrfToken) {
+                headers['x-csrf-token'] = csrfToken;
+            }
+
             const res = await fetch('/platform/auth/signup', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 credentials: 'same-origin',
                 body: JSON.stringify({
-                    username: document.getElementById('username').value,
-                    email: document.getElementById('email').value,
-                    password
+                    username,
+                    email,
+                    password,
+                    confirmPassword: confirm
                 })
             });
             const data = await res.json();
             if (data.success) {
-                showAlert('Account created! Redirecting...', 'success');
-                setTimeout(() => window.location.href = data.redirect || '/platform/auth/login', 500);
+                let redirectDelay = 500;
+
+                if (enablePasskeyInput?.checked && window.DarklockPasskeys && window.DarklockPasskeys.isSupported()) {
+                    showAlert('Account created. Setting up passkey...', 'success');
+                    try {
+                        await window.DarklockPasskeys.beginRegistration({
+                            deviceLabel: navigator.userAgent
+                        });
+                        showAlert('Account and passkey created! Redirecting...', 'success');
+                    } catch (error) {
+                        redirectDelay = 1300;
+                        showAlert(`Account created, but passkey setup was skipped: ${error.message}`, 'error');
+                    }
+                } else {
+                    showAlert('Account created! Redirecting...', 'success');
+                }
+
+                setTimeout(() => window.location.href = data.redirect || '/platform/dashboard', redirectDelay);
             } else {
                 showAlert(data.error || 'Registration failed');
             }

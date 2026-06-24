@@ -150,10 +150,13 @@ module.exports = {
                     .setName('action')
                     .setDescription('Action to take')
                     .addChoices(
+                        { name: 'Log only', value: 'log' },
                         { name: 'Delete message', value: 'delete' },
                         { name: 'Warn user', value: 'warn' },
                         { name: 'Delete and warn', value: 'delete_warn' },
-                        { name: 'Timeout user', value: 'timeout' }
+                        { name: 'Timeout user', value: 'timeout' },
+                        { name: 'Kick user', value: 'kick' },
+                        { name: 'Ban user', value: 'ban' }
                     )))
             .addSubcommand(sub => sub
                 .setName('off')
@@ -175,10 +178,13 @@ module.exports = {
                     .setName('action')
                     .setDescription('Action to take')
                     .addChoices(
+                        { name: 'Log only', value: 'log' },
                         { name: 'Delete message', value: 'delete' },
                         { name: 'Warn user', value: 'warn' },
                         { name: 'Delete and warn', value: 'delete_warn' },
-                        { name: 'Timeout user', value: 'timeout' }
+                        { name: 'Timeout user', value: 'timeout' },
+                        { name: 'Kick user', value: 'kick' },
+                        { name: 'Ban user', value: 'ban' }
                     )))),
 
     async execute(interaction) {

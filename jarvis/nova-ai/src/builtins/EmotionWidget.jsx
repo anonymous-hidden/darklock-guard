@@ -99,7 +99,7 @@ export default function EmotionWidget() {
 
   useEffect(() => { load(); loadStats(); }, [load, loadStats]);
 
-  // Auto-refresh when Nova logs an emotion
+  // Auto-refresh when Jarvis logs an emotion
   useEffect(() => {
     const off = window.nova?.bus?.subscribe?.('emotion:changed', () => { load(); loadStats(); });
     const t = setInterval(() => { load(); loadStats(); }, 15000);
@@ -219,7 +219,7 @@ export default function EmotionWidget() {
               <div className="text-center text-nova-muted py-10 text-sm">
                 <div className="text-3xl mb-2">💭</div>
                 <div>No entries yet.</div>
-                <div className="text-[11px] mt-1">Click <strong>+ Log</strong> or just tell Nova how you're feeling.</div>
+                <div className="text-[11px] mt-1">Click <strong>+ Log</strong> or just tell Jarvis how you're feeling.</div>
               </div>
             )}
             {days.map(day => (
@@ -241,7 +241,7 @@ export default function EmotionWidget() {
                             {e.emotion}
                           </span>
                           {e.source === 'nova' && (
-                            <span className="text-[9.5px] text-nova-accent bg-nova-accent/10 px-1 py-0.5 rounded-full">✦ Nova</span>
+                            <span className="text-[9.5px] text-nova-accent bg-nova-accent/10 px-1 py-0.5 rounded-full">✦ Jarvis</span>
                           )}
                           <IntensityBar value={e.intensity} />
                           <span className="text-[10.5px] text-nova-muted font-mono ml-auto">{fmtTime(e.logged_at)}</span>
@@ -316,7 +316,7 @@ export default function EmotionWidget() {
                       <div className="text-nova-muted font-semibold mb-1">Logged by</div>
                       <div className="flex gap-4">
                         <div><span className="text-nova-text font-bold">{userCount}</span> <span className="text-nova-muted">by you</span></div>
-                        <div><span className="text-nova-accent font-bold">{novaCount}</span> <span className="text-nova-muted">by Nova</span></div>
+                        <div><span className="text-nova-accent font-bold">{novaCount}</span> <span className="text-nova-muted">by Jarvis</span></div>
                       </div>
                     </div>
                   );

@@ -2,6 +2,7 @@
  * appStore — global app state: active tab, settings, status.
  */
 import { create } from 'zustand';
+import { AUTO_MODEL, DEFAULT_MODEL, FAST_MODEL, pickBestAiModel } from '@core/ai/AIClient.js';
 
 export const TABS = ['chat', 'command-center', 'widget-studio', 'coding'];
 
@@ -25,8 +26,8 @@ export const useAppStore = create((set, get) => ({
   activeTab: TABS.includes(initial.activeTab) ? initial.activeTab : 'chat',
   ollamaHealth: { ok: null, version: null, error: null },
   models: [],
-  selectedModel: initial.selectedModel || 'qwen2.5:32b',
-  fastModel: initial.fastModel || 'llama3.1:8b',
+  selectedModel: initial.selectedModel || AUTO_MODEL,
+  fastModel: initial.fastModel || FAST_MODEL,
   transparencyOpen: false,
   statusMessage: '',
 
@@ -37,7 +38,17 @@ export const useAppStore = create((set, get) => ({
   },
 
   setOllamaHealth(h) { set({ ollamaHealth: h }); },
-  setModels(models)  { set({ models: Array.isArray(models) ? models : [] }); },
+  setModels(models)  {
+    const list = Array.isArray(models) ? models : [];
+    const names = list.map((m) => m?.name || m?.model || m).filter(Boolean);
+    const current = get().selectedModel;
+    const selectedModel = current === AUTO_MODEL
+      ? AUTO_MODEL
+      : (names.includes(current) ? current : AUTO_MODEL);
+    const fastModel = names.includes(get().fastModel) ? get().fastModel : pickBestAiModel(list, FAST_MODEL);
+    set({ models: list, selectedModel, fastModel });
+    persist({ activeTab: get().activeTab, selectedModel, fastModel });
+  },
 
   setSelectedModel(m) {
     set({ selectedModel: m });

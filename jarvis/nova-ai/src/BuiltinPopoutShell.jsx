@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getBuiltin } from '@builtins/registry.js';
+import { getWidgetThemeOption, useWidgetAppearanceStore } from '@store/widgetAppearanceStore.js';
 
 /**
  * Standalone shell rendered into popout windows that load
@@ -9,6 +10,9 @@ import { getBuiltin } from '@builtins/registry.js';
 export default function BuiltinPopoutShell({ id }) {
   const meta = getBuiltin(id);
   const [pinned, setPinned] = useState(false);
+  const theme = useWidgetAppearanceStore((s) => s.theme);
+  const setDesktopMode = useWidgetAppearanceStore((s) => s.setDesktopMode);
+  const syncAppearance = useWidgetAppearanceStore((s) => s.syncFromStorage);
 
   useEffect(() => {
     // Sync initial always-on-top state
@@ -18,10 +22,17 @@ export default function BuiltinPopoutShell({ id }) {
     return () => unsub?.();
   }, []);
 
+  useEffect(() => {
+    const onStorage = () => syncAppearance();
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [syncAppearance]);
+
   const togglePin = async () => {
     const next = await window.nova?.win?.alwaysOnTop?.toggle();
     if (next !== undefined) setPinned(next);
   };
+  const themeOption = getWidgetThemeOption(theme);
 
   if (!meta) {
     return (
@@ -32,28 +43,43 @@ export default function BuiltinPopoutShell({ id }) {
   }
   const Component = meta.component;
   return (
-    <div className="h-screen w-screen flex flex-col bg-nova-bg text-nova-text">
-      <header className="h-7 shrink-0 px-2.5 flex items-center gap-2 border-b border-nova-border bg-nova-panel select-none"
+    <div className={`h-screen w-screen flex flex-col text-nova-text nova-widget-shell ${themeOption.className}`}>
+      <header className="shrink-0 px-3 flex items-center gap-2 border-b border-nova-border select-none nova-widget-header"
         style={{ WebkitAppRegion: 'drag' }}>
-        <span className="text-nova-accent text-xs">{meta.icon}</span>
-        <span className="font-display text-[11px] tracking-wider">{meta.name.toUpperCase()}</span>
+        <div className="flex items-center gap-1.5 pr-1.5" aria-hidden>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57] shadow-[0_0_0_1px_rgba(0,0,0,0.18)]" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e] shadow-[0_0_0_1px_rgba(0,0,0,0.18)]" />
+          <span className="w-2.5 h-2.5 rounded-full bg-[#28c840] shadow-[0_0_0_1px_rgba(0,0,0,0.18)]" />
+        </div>
+        <span className="text-nova-accent text-sm leading-none">{meta.icon}</span>
+        <span className="font-display text-[12px] font-medium tracking-wide truncate">{meta.name}</span>
+        <button
+          onClick={() => {
+            setDesktopMode(id, false);
+            window.close();
+          }}
+          title="Disable desktop mode and close"
+          style={{ WebkitAppRegion: 'no-drag' }}
+          className="ml-auto nova-widget-window-control text-xs leading-none">
+          ⇲
+        </button>
         {/* Pin (always-on-top) button */}
         <button
           onClick={togglePin}
           title={pinned ? 'Unpin (disable always on top)' : 'Pin on top'}
           style={{ WebkitAppRegion: 'no-drag' }}
-          className={`ml-auto w-5 h-5 flex items-center justify-center rounded transition-colors text-xs leading-none
+          className={`nova-widget-window-control text-xs leading-none
             ${pinned
-              ? 'text-nova-accent bg-nova-accent/15 hover:bg-nova-accent/25'
-              : 'text-nova-muted hover:text-nova-text hover:bg-nova-panel2'}`}>
-          📌
+              ? 'text-nova-accent bg-nova-accent/15'
+              : ''}`}>
+          ●
         </button>
         {/* Minimize */}
         <button
           onClick={() => window.nova?.win?.minimize()}
           title="Minimize"
           style={{ WebkitAppRegion: 'no-drag' }}
-          className="w-5 h-5 flex items-center justify-center rounded text-nova-muted hover:text-nova-text hover:bg-nova-panel2 transition-colors text-xs leading-none">
+          className="nova-widget-window-control text-xs leading-none">
           ─
         </button>
         {/* Close */}
@@ -61,11 +87,11 @@ export default function BuiltinPopoutShell({ id }) {
           onClick={() => window.close()}
           title="Close"
           style={{ WebkitAppRegion: 'no-drag' }}
-          className="w-5 h-5 flex items-center justify-center rounded text-nova-muted hover:text-nova-err hover:bg-nova-err/15 transition-colors text-xs leading-none">
+          className="nova-widget-window-control nova-widget-window-control-danger text-xs leading-none">
           ✕
         </button>
       </header>
-      <main className="flex-1 min-h-0">
+      <main className="flex-1 min-h-0 nova-widget-body">
         <Component />
       </main>
     </div>

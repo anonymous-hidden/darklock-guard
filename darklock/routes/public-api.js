@@ -9,9 +9,57 @@
 
 const express = require('express');
 const router = express.Router();
+const os = require('os');
+const net = require('net');
 
 // Database
 const db = require('../utils/database');
+
+function getActionsToken() {
+    return process.env.CHATGPT_ACTIONS_TOKEN || process.env.API_ACTIONS_TOKEN || '';
+}
+
+function requireActionsToken(req, res, next) {
+    const token = getActionsToken();
+    if (!token) {
+        return res.status(503).json({
+            success: false,
+            error: 'ChatGPT Actions token not configured'
+        });
+    }
+
+    const auth = req.headers.authorization || '';
+    if (!auth.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const provided = auth.slice('Bearer '.length).trim();
+    if (provided !== token) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    return next();
+}
+
+function checkPort(port, host = '127.0.0.1', timeoutMs = 1200) {
+    return new Promise((resolve) => {
+        const socket = new net.Socket();
+        let finished = false;
+
+        const done = (open) => {
+            if (finished) return;
+            finished = true;
+            try { socket.destroy(); } catch (_) {}
+            resolve(open);
+        };
+
+        socket.setTimeout(timeoutMs);
+        socket.once('connect', () => done(true));
+        socket.once('timeout', () => done(false));
+        socket.once('error', () => done(false));
+        socket.connect(port, host);
+    });
+}
 
 // ============================================================================
 // MAINTENANCE STATUS (PUBLIC)
@@ -205,6 +253,98 @@ router.get('/rfid/status', async (req, res) => {
             error: err.message
         });
     }
+});
+
+// ============================================================================
+// CHATGPT ACTIONS STATUS API (TOKEN PROTECTED)
+// ============================================================================
+
+/**
+ * GET /api/chatgpt/health
+ * Token-protected health snapshot for ChatGPT Actions.
+ */
+ router.get('/chatgpt/health', requireActionsToken, async (req, res) => {
+    try {
+        const dbCheck = await db.get(`SELECT 1 as ok`).catch(() => null);
+        const now = new Date().toISOString();
+        const healthy = dbCheck?.ok === 1;
+
+        res.json({
+            success: true,
+            status: healthy ? 'healthy' : 'degraded',
+            timestamp: now,
+            host: os.hostname(),
+            nodeVersion: process.version,
+            uptimeSec: Math.floor(process.uptime()),
+            memory: process.memoryUsage(),
+            db: healthy ? 'ok' : 'error'
+        });
+    } catch (err) {
+        res.status(503).json({
+            success: false,
+            status: 'unhealthy',
+            timestamp: new Date().toISOString(),
+            error: 'Service check failed'
+        });
+    }
+});
+
+/**
+ * GET /api/chatgpt/services
+ * Token-protected local service reachability on common DarkLock ports.
+ */
+    router.get('/chatgpt/services', requireActionsToken, async (req, res) => {
+    const serviceDefs = [
+        { name: 'discord-bot', port: 3001 },
+        { name: 'darklock-platform', port: Number(process.env.DARKLOCK_PORT || process.env.PORT || 3002) },
+        { name: 'room-control-bridge', port: 3099 },
+        { name: 'darklock-notes-server', port: 3003 },
+        { name: 'secure-channel-ids', port: 4100 },
+        { name: 'secure-channel-relay', port: 4101 },
+        { name: 'jarvis-api', port: 8950 },
+        { name: 'ollama', port: 11434 }
+    ];
+
+    const statuses = await Promise.all(serviceDefs.map(async (svc) => ({
+        name: svc.name,
+        port: svc.port,
+        reachable: await checkPort(svc.port)
+    })));
+
+    const down = statuses.filter(s => !s.reachable).map(s => s.name);
+    res.json({
+        success: true,
+        timestamp: new Date().toISOString(),
+        summary: down.length === 0 ? 'all_reachable' : 'partial_outage',
+        down,
+        services: statuses
+    });
+});
+
+/**
+ * GET /api/chatgpt/info
+ * Token-protected quick reference for external access and key URLs.
+ */
+router.get('/chatgpt/info', requireActionsToken, async (req, res) => {
+    const base = process.env.PUBLIC_BASE_URL || 'https://admin.darklock.net';
+
+    res.json({
+        success: true,
+        timestamp: new Date().toISOString(),
+        host: os.hostname(),
+        environment: process.env.NODE_ENV || 'development',
+        urls: {
+            dashboard: `${base}/`,
+            admin: `${base}/admin`,
+            platform: `${base}/platform`,
+            platformHealth: `${base}/platform/api/health`,
+            publicHealth: `${base}/api/health`
+        },
+        notes: [
+            'Use Authorization: Bearer <CHATGPT_ACTIONS_TOKEN> for /api/chatgpt/* endpoints.',
+            'Set CHATGPT_ACTIONS_TOKEN in .env before exposing these actions publicly.'
+        ]
+    });
 });
 
 module.exports = router;

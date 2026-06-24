@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Ridgeline — Darklock's end-to-end encrypted messenger. Private servers, sealed DMs, zero plaintext. Coming soon.">
+    <title>Ridgeline | End-to-End Encrypted Messaging — Coming Soon</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
+    <link rel="stylesheet" href="/platform/static/css/main.css">
+    <link rel="stylesheet" href="/platform/static/css/site-fx.css">
+    <style>
+        :root {
+            --rl-cyan: #22d3ee;
+            --rl-violet: #a78bfa;
+            --rl-indigo: #6366f1;
+        }
+        body { background: #05050a; }
+
+        /* ═══ HERO ═══ */
+        .rl-hero {
+            position: relative; min-height: 100vh;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            text-align: center; overflow: hidden;
+            padding: 140px 24px 80px;
+        }
+        .rl-hero-bg { position: absolute; inset: 0; }
+        .rl-hero-bg .orb {
+            position: absolute; border-radius: 50%;
+            filter: blur(90px); opacity: .55;
+            will-change: transform;
+        }
+        .rl-hero-bg .orb.o1 { width: 560px; height: 560px; top: -16%; left: -10%; background: radial-gradient(circle, rgba(99,102,241,.5), transparent 70%); }
+        .rl-hero-bg .orb.o2 { width: 480px; height: 480px; bottom: -18%; right: -8%; background: radial-gradient(circle, rgba(34,211,238,.32), transparent 70%); }
+        .rl-hero-bg .orb.o3 { width: 380px; height: 380px; top: 30%; right: 16%; background: radial-gradient(circle, rgba(167,139,250,.3), transparent 70%); }
+        .rl-hero-bg .grid-floor {
+            position: absolute; left: -20%; right: -20%; bottom: -10%; height: 52%;
+            background-image:
+                linear-gradient(rgba(129,140,248,.13) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(129,140,248,.13) 1px, transparent 1px);
+            background-size: 52px 52px;
+            transform: perspective(620px) rotateX(63deg);
+            -webkit-mask-image: linear-gradient(180deg, transparent, #000 40%, transparent 95%);
+            mask-image: linear-gradient(180deg, transparent, #000 40%, transparent 95%);
+            animation: rlGridMove 14s linear infinite;
+        }
+        @keyframes rlGridMove { from { background-position: 0 0; } to { background-position: 0 52px; } }
+
+        .rl-soon-pill {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 9px 22px; border-radius: 999px;
+            background: rgba(245, 158, 11, 0.09);
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            color: #fbbf24; font-size: .8rem; font-weight: 700;
+            letter-spacing: .14em; text-transform: uppercase;
+            margin-bottom: 30px;
+            position: relative; z-index: 2;
+            animation: rlPillGlow 3s ease-in-out infinite;
+        }
+        @keyframes rlPillGlow {
+            0%, 100% { box-shadow: 0 0 0 rgba(245,158,11,0); }
+            50% { box-shadow: 0 0 26px rgba(245,158,11,.25); }
+        }
+        .rl-soon-pill .live-dot { background: #fbbf24; }
+        .rl-soon-pill .live-dot::after { border-color: #fbbf24; }
+
+        .rl-hero h1 {
+            position: relative; z-index: 2;
+            font-size: clamp(3rem, 9vw, 6.4rem);
+            font-weight: 900; letter-spacing: -0.045em; line-height: 1.02;
+            margin-bottom: 8px;
+        }
+        .rl-hero h1 .line { display: block; overflow: hidden; }
+        .rl-hero h1 .line > span {
+            display: inline-block;
+            transform: translateY(110%);
+            animation: rlLineUp 1s cubic-bezier(.22,1,.36,1) forwards;
+        }
+        .rl-hero h1 .line:nth-child(2) > span { animation-delay: .14s; }
+        @keyframes rlLineUp { to { transform: translateY(0); } }
+        .rl-hero h1 .rl-grad {
+            background: linear-gradient(100deg, #818cf8, #22d3ee 45%, #a78bfa 80%);
+            background-size: 220% 100%;
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: dlGradShift 6s ease-in-out infinite, rlLineUp 1s cubic-bezier(.22,1,.36,1) forwards;
+        }
+        .rl-hero .sub {
+            position: relative; z-index: 2;
+            max-width: 600px; margin: 22px auto 0;
+            color: var(--text-secondary);
+            font-size: 1.12rem; line-height: 1.75;
+            opacity: 0; animation: rlFadeUp .9s ease .5s forwards;
+        }
+        .rl-hero .decode-line {
+            position: relative; z-index: 2;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .95rem; color: var(--rl-cyan);
+            margin-top: 26px; min-height: 1.5em;
+            opacity: 0; animation: rlFadeUp .9s ease .9s forwards;
+        }
+        @keyframes rlFadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .rl-hero .actions {
+            position: relative; z-index: 2;
+            display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+            margin-top: 38px;
+            opacity: 0; animation: rlFadeUp .9s ease 1.1s forwards;
+        }
+        .rl-hero .scroll-cue {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            z-index: 2; color: var(--text-muted); font-size: .75rem;
+            letter-spacing: .18em; text-transform: uppercase;
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            opacity: 0; animation: rlFadeUp 1s ease 1.6s forwards;
+        }
+        .rl-hero .scroll-cue .mouse {
+            width: 24px; height: 38px; border: 1.5px solid var(--text-muted);
+            border-radius: 12px; position: relative;
+        }
+        .rl-hero .scroll-cue .mouse::after {
+            content: ''; position: absolute; top: 7px; left: 50%;
+            width: 3px; height: 7px; margin-left: -1.5px;
+            background: var(--rl-cyan); border-radius: 3px;
+            animation: rlWheel 1.8s ease-in-out infinite;
+        }
+        @keyframes rlWheel { 0% { transform: translateY(0); opacity: 1; } 70% { transform: translateY(12px); opacity: 0; } 100% { opacity: 0; } }
+
+        /* ═══ APP WINDOW SHOWCASE ═══ */
+        .rl-showcase { position: relative; padding: 40px 24px 130px; perspective: 1400px; }
+        .rl-window {
+            max-width: 1020px; margin: 0 auto;
+            border-radius: 18px;
+            border: 1px solid rgba(129,140,248,.25);
+            background: #0b0b13;
+            box-shadow:
+                0 60px 130px -40px rgba(0,0,0,.85),
+                0 0 90px -28px rgba(99,102,241,.45),
+                0 0 0 1px rgba(255,255,255,.03) inset;
+            overflow: hidden;
+            transform-style: preserve-3d;
+            will-change: transform;
+        }
+        .rl-window-bar {
+            display: flex; align-items: center; gap: 8px;
+            padding: 13px 18px;
+            background: rgba(255,255,255,.025);
+            border-bottom: 1px solid rgba(255,255,255,.05);
+        }
+        .rl-window-bar .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .rl-window-bar .dot.r { background: #ff5f57; } .rl-window-bar .dot.y { background: #febc2e; } .rl-window-bar .dot.g { background: #28c840; }
+        .rl-window-bar .ttl { margin-left: 12px; font-size: .75rem; color: var(--text-muted); display: flex; align-items: center; gap: 7px; }
+        .rl-window-bar .ttl i { color: var(--success); font-size: .7rem; }
+        .rl-app { display: grid; grid-template-columns: 200px 1fr; min-height: 430px; }
+        @media (max-width: 760px) { .rl-app { grid-template-columns: 1fr; } .rl-app-side { display: none; } }
+        .rl-app-side {
+            background: rgba(255,255,255,.015);
+            border-right: 1px solid rgba(255,255,255,.05);
+            padding: 16px 10px;
+        }
+        .rl-app-side .sh { font-size: .62rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); padding: 8px 10px 6px; }
+        .rl-app-side .ch {
+            display: flex; align-items: center; gap: 9px;
+            padding: 8px 10px; border-radius: 8px;
+            color: var(--text-secondary); font-size: .82rem; font-weight: 500;
+            transition: background .2s ease, color .2s ease;
+            cursor: default;
+        }
+        .rl-app-side .ch i { font-size: .72rem; color: var(--text-muted); width: 13px; }
+        .rl-app-side .ch.on { background: rgba(99,102,241,.14); color: #e3e6f3; }
+        .rl-app-side .ch.on i { color: var(--accent-light); }
+        .rl-app-main { display: flex; flex-direction: column; }
+        .rl-app-head {
+            display: flex; align-items: center; gap: 10px;
+            padding: 13px 20px;
+            border-bottom: 1px solid rgba(255,255,255,.05);
+            font-size: .88rem; font-weight: 600; color: #dfe2ee;
+        }
+        .rl-app-head .e2e-chip {
+            margin-left: auto;
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: .66rem; font-weight: 700; color: var(--success);
+            border: 1px solid rgba(34,197,94,.3); background: rgba(34,197,94,.08);
+            padding: 4px 11px; border-radius: 999px;
+            letter-spacing: .06em;
+        }
+        .rl-app-msgs { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+        .rl-m { display: flex; gap: 11px; opacity: 0; transform: translateY(12px); transition: opacity .5s cubic-bezier(.22,1,.36,1), transform .5s cubic-bezier(.22,1,.36,1); }
+        .rl-m.in { opacity: 1; transform: translateY(0); }
+        .rl-m .av { width: 36px; height: 36px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .82rem; color: #fff; }
+        .rl-m .av.a { background: linear-gradient(135deg, #6366f1, #a78bfa); }
+        .rl-m .av.b { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
+        .rl-m .av.c { background: linear-gradient(135deg, #f59e0b, #ef4444); }
+        .rl-m .body { max-width: 72%; }
+        .rl-m .meta { font-size: .7rem; color: var(--text-muted); margin-bottom: 3px; }
+        .rl-m .meta b { color: #c7cbe0; font-size: .78rem; font-weight: 600; margin-right: 7px; }
+        .rl-m .txt {
+            background: rgba(255,255,255,.045);
+            border: 1px solid rgba(255,255,255,.06);
+            border-radius: 4px 14px 14px 14px;
+            padding: 10px 14px; font-size: .86rem; color: #ccd0e2; line-height: 1.5;
+            font-family: 'Inter', sans-serif;
+        }
+        .rl-m .txt.cipher { font-family: 'JetBrains Mono', monospace; color: var(--rl-cyan); font-size: .78rem; letter-spacing: .02em; }
+        .rl-typing { display: flex; gap: 11px; align-items: center; opacity: 0; transition: opacity .3s ease; padding-left: 47px; }
+        .rl-typing.in { opacity: 1; }
+        .rl-typing .dots { display: flex; gap: 4px; padding: 10px 14px; background: rgba(255,255,255,.045); border-radius: 14px; }
+        .rl-typing .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); animation: rlTyping 1.2s ease-in-out infinite; }
+        .rl-typing .dots span:nth-child(2) { animation-delay: .15s; }
+        .rl-typing .dots span:nth-child(3) { animation-delay: .3s; }
+        @keyframes rlTyping { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-5px); opacity: 1; } }
+        .rl-app-input {
+            margin: 0 20px 18px; padding: 12px 16px;
+            border: 1px solid rgba(255,255,255,.07); border-radius: 12px;
+            background: rgba(255,255,255,.03);
+            display: flex; align-items: center; gap: 12px;
+            color: var(--text-muted); font-size: .84rem;
+        }
+        .rl-app-input i.lock { color: var(--success); font-size: .8rem; }
+        .rl-app-input .send { margin-left: auto; color: var(--accent-light); }
+
+        /* ═══ ENCRYPT/DECRYPT SCROLL DEMO ═══ */
+        .rl-cipher-demo { padding: 130px 24px; position: relative; overflow: hidden; background: #07070e; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .rl-cipher-inner { max-width: 880px; margin: 0 auto; text-align: center; }
+        .rl-cipher-stage {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(1.05rem, 2.6vw, 1.7rem);
+            font-weight: 600; line-height: 1.85;
+            min-height: 5.4em;
+            color: #dfe2ee;
+            word-break: break-word;
+        }
+        .rl-cipher-stage .enc { color: var(--rl-cyan); opacity: .85; }
+        .rl-cipher-meter {
+            display: flex; align-items: center; gap: 14px; justify-content: center;
+            margin-top: 36px; font-size: .78rem; color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .rl-cipher-meter .bar { width: 220px; height: 4px; border-radius: 99px; background: rgba(255,255,255,.07); overflow: hidden; }
+        .rl-cipher-meter .bar > div { height: 100%; width: 0%; border-radius: 99px; background: linear-gradient(90deg, var(--rl-indigo), var(--rl-cyan)); transition: width .15s linear; }
+
+        /* ═══ FEATURES ═══ */
+        .rl-features { padding: 130px 0; }
+        .rl-feature-row {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 64px;
+            align-items: center; margin-bottom: 130px;
+        }
+        .rl-feature-row:last-child { margin-bottom: 0; }
+        @media (max-width: 860px) { .rl-feature-row { grid-template-columns: 1fr; gap: 36px; } .rl-feature-row .vis { order: -1; } }
+        .rl-feature-row .kicker {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: .74rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+            color: var(--rl-cyan); margin-bottom: 16px;
+        }
+        .rl-feature-row h2 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.14; margin-bottom: 16px; }
+        .rl-feature-row p.d { color: var(--text-secondary); line-height: 1.8; margin-bottom: 22px; }
+        .rl-feature-row ul { list-style: none; display: flex; flex-direction: column; gap: 11px; }
+        .rl-feature-row ul li { display: flex; align-items: flex-start; gap: 11px; color: #c7cbe0; font-size: .92rem; }
+        .rl-feature-row ul li i { color: var(--success); margin-top: 4px; font-size: .8rem; }
+
+        /* Vault visual */
+        .rl-vault {
+            position: relative; height: 340px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .rl-vault .ring {
+            position: absolute; border-radius: 50%;
+            border: 1px solid rgba(129,140,248,.22);
+        }
+        .rl-vault .ring.r1 { width: 190px; height: 190px; animation: rlSpin 14s linear infinite; border-style: dashed; }
+        .rl-vault .ring.r2 { width: 260px; height: 260px; animation: rlSpin 22s linear infinite reverse; }
+        .rl-vault .ring.r3 { width: 330px; height: 330px; border-color: rgba(34,211,238,.14); animation: rlSpin 30s linear infinite; border-style: dashed; }
+        .rl-vault .ring .node {
+            position: absolute; top: -5px; left: 50%; margin-left: -5px;
+            width: 10px; height: 10px; border-radius: 50%;
+            background: var(--rl-cyan); box-shadow: 0 0 14px var(--rl-cyan);
+        }
+        .rl-vault .core {
+            width: 110px; height: 110px; border-radius: 28px;
+            background: linear-gradient(135deg, rgba(99,102,241,.25), rgba(34,211,238,.18));
+            border: 1px solid rgba(129,140,248,.45);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2.4rem; color: #c4b5fd;
+            box-shadow: 0 0 60px -8px rgba(99,102,241,.6);
+            animation: rlCorePulse 3.2s ease-in-out infinite;
+            position: relative; z-index: 2;
+        }
+        @keyframes rlSpin { to { transform: rotate(360deg); } }
+        @keyframes rlCorePulse {
+            0%, 100% { box-shadow: 0 0 46px -8px rgba(99,102,241,.55); transform: scale(1); }
+            50% { box-shadow: 0 0 80px -6px rgba(34,211,238,.6); transform: scale(1.045); }
+        }
+
+        /* Key exchange visual */
+        .rl-keys { position: relative; height: 340px; display: flex; align-items: center; justify-content: space-between; padding: 0 26px; }
+        .rl-keys .peer {
+            width: 88px; height: 88px; border-radius: 24px;
+            background: var(--bg-card); border: 1px solid var(--border-hover);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+            font-size: 1.6rem; color: var(--accent-light);
+            position: relative; z-index: 2;
+        }
+        .rl-keys .peer span { font-size: .6rem; font-weight: 700; letter-spacing: .1em; color: var(--text-muted); text-transform: uppercase; }
+        .rl-keys .wire {
+            position: absolute; left: 120px; right: 120px; top: 50%; height: 2px;
+            background: linear-gradient(90deg, rgba(99,102,241,.45), rgba(34,211,238,.45));
+        }
+        .rl-keys .packet {
+            position: absolute; top: 50%; left: 120px;
+            width: 30px; height: 30px; margin-top: -15px; margin-left: -15px;
+            border-radius: 9px;
+            background: rgba(8,8,14,.95);
+            border: 1px solid var(--rl-cyan);
+            color: var(--rl-cyan); font-size: .72rem;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            animation: rlPacket 4s cubic-bezier(.45,0,.55,1) infinite;
+            box-shadow: 0 0 18px rgba(34,211,238,.45);
+        }
+        @keyframes rlPacket {
+            0% { left: 120px; opacity: 0; }
+            8% { opacity: 1; }
+            46% { left: calc(100% - 120px); opacity: 1; }
+            54% { left: calc(100% - 120px); opacity: 0; }
+            55% { left: 120px; opacity: 0; }
+            100% { left: 120px; opacity: 0; }
+        }
+        .rl-keys .shield-mid {
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            color: var(--text-muted); font-size: 1.2rem; z-index: 1;
+            background: #05050a; padding: 8px; border-radius: 50%;
+        }
+
+        /* Speed visual: latency bars */
+        .rl-speed { height: 340px; display: flex; align-items: flex-end; gap: 14px; padding: 30px 26px; }
+        .rl-speed .col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 9px; height: 100%; }
+        .rl-speed .bar {
+            border-radius: 9px 9px 4px 4px;
+            background: linear-gradient(180deg, rgba(99,102,241,.85), rgba(99,102,241,.18));
+            height: 0%;
+            transition: height 1.1s cubic-bezier(.22,1,.36,1);
+            position: relative;
+        }
+        .rl-speed .col:nth-child(2) .bar { background: linear-gradient(180deg, rgba(34,211,238,.85), rgba(34,211,238,.16)); transition-delay: .12s; }
+        .rl-speed .col:nth-child(3) .bar { background: linear-gradient(180deg, rgba(167,139,250,.85), rgba(167,139,250,.16)); transition-delay: .24s; }
+        .rl-speed .col:nth-child(4) .bar { background: linear-gradient(180deg, rgba(34,197,94,.8), rgba(34,197,94,.14)); transition-delay: .36s; }
+        .rl-speed .lbl { font-size: .68rem; color: var(--text-muted); text-align: center; font-weight: 600; letter-spacing: .04em; }
+        .rl-speed .val { position: absolute; top: -24px; left: 0; right: 0; text-align: center; font-size: .72rem; font-weight: 700; color: #c7cbe0; font-family: 'JetBrains Mono', monospace; }
+
+        /* ═══ EXPECT / ROADMAP ═══ */
+        .rl-roadmap { padding: 130px 0; background: #07070e; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); position: relative; overflow: hidden; }
+        .rl-timeline { max-width: 760px; margin: 64px auto 0; position: relative; }
+        .rl-timeline::before {
+            content: ''; position: absolute; left: 19px; top: 6px; bottom: 6px; width: 2px;
+            background: linear-gradient(180deg, var(--rl-indigo), var(--rl-cyan), transparent);
+        }
+        .rl-step { position: relative; padding: 0 0 44px 64px; }
+        .rl-step:last-child { padding-bottom: 0; }
+        .rl-step .pin {
+            position: absolute; left: 0; top: 0;
+            width: 40px; height: 40px; border-radius: 13px;
+            background: var(--bg-card); border: 1px solid var(--accent-border);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--accent-light); font-size: .92rem;
+            transition: transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s ease;
+        }
+        .rl-step:hover .pin { transform: scale(1.12); box-shadow: 0 0 24px var(--accent-glow); }
+        .rl-step .when { font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--rl-cyan); margin-bottom: 5px; }
+        .rl-step h3 { font-size: 1.18rem; font-weight: 700; margin-bottom: 7px; letter-spacing: -0.015em; }
+        .rl-step p { color: var(--text-secondary); font-size: .92rem; line-height: 1.7; max-width: 520px; }
+        .rl-step .tag {
+            display: inline-flex; margin-top: 10px;
+            font-size: .66rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+            padding: 4px 11px; border-radius: 999px;
+        }
+        .rl-step .tag.done { color: var(--success); background: rgba(34,197,94,.09); border: 1px solid rgba(34,197,94,.28); }
+        .rl-step .tag.wip { color: #fbbf24; background: rgba(245,158,11,.09); border: 1px solid rgba(245,158,11,.28); }
+        .rl-step .tag.next { color: var(--text-muted); background: rgba(255,255,255,.04); border: 1px solid var(--border); }
+
+        /* ═══ STATS STRIP ═══ */
+        .rl-stats { padding: 96px 0; }
+        .rl-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+        @media (max-width: 860px) { .rl-stats-grid { grid-template-columns: repeat(2, 1fr); } }
+        .rl-stat {
+            text-align: center; padding: 34px 18px;
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-xl);
+            transition: border-color .3s ease, transform .4s cubic-bezier(.22,1,.36,1);
+        }
+        .rl-stat:hover { border-color: rgba(34,211,238,.35); transform: translateY(-5px); }
+        .rl-stat .n {
+            font-size: 2.3rem; font-weight: 800; letter-spacing: -0.03em;
+            background: linear-gradient(110deg, #818cf8, #22d3ee);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .rl-stat .d { font-size: .8rem; color: var(--text-muted); font-weight: 600; margin-top: 6px; letter-spacing: .03em; }
+
+        /* ═══ FAQ ═══ */
+        .rl-faq { padding: 110px 0 130px; }
+        .rl-faq-list { max-width: 720px; margin: 52px auto 0; display: flex; flex-direction: column; gap: 12px; }
+        .rl-q {
+            border: 1px solid var(--border); border-radius: var(--radius-lg);
+            background: var(--bg-card); overflow: hidden;
+            transition: border-color .3s ease;
+        }
+        .rl-q.open { border-color: var(--accent-border); }
+        .rl-q button {
+            width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+            background: none; border: none; cursor: pointer;
+            padding: 19px 22px;
+            color: var(--text); font-size: .98rem; font-weight: 600; font-family: var(--font);
+            text-align: left;
+        }
+        .rl-q button i { color: var(--accent-light); transition: transform .35s cubic-bezier(.22,1,.36,1); flex: none; }
+        .rl-q.open button i { transform: rotate(45deg); }
+        .rl-q .a { max-height: 0; overflow: hidden; transition: max-height .45s cubic-bezier(.22,1,.36,1); }
+        .rl-q .a p { padding: 0 22px 20px; color: var(--text-secondary); font-size: .9rem; line-height: 1.75; }
+
+        /* ═══ FINAL CTA ═══ */
+        .rl-final { padding: 120px 24px 140px; text-align: center; position: relative; overflow: hidden; }
+        .rl-final .glow {
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            width: 780px; height: 420px; border-radius: 50%;
+            background: radial-gradient(closest-side, rgba(99,102,241,.18), transparent);
+            pointer-events: none;
+        }
+        .rl-final h2 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 850; letter-spacing: -0.035em; margin-bottom: 16px; position: relative; }
+        .rl-final p { color: var(--text-secondary); max-width: 520px; margin: 0 auto 36px; line-height: 1.75; position: relative; }
+        .rl-final .actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; position: relative; }
+
+        .sect-center { text-align: center; }
+        .sect-center .sect-badge { display: inline-flex; }
+        .sect-center h2.t { font-size: clamp(1.9rem, 4.2vw, 2.8rem); font-weight: 800; letter-spacing: -0.03em; margin-top: 14px; }
+        .sect-center p.s { color: var(--text-secondary); max-width: 560px; margin: 14px auto 0; line-height: 1.75; }
+    </style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav" id="mainNav">
+    <div class="nav-inner">
+        <a href="/platform" class="nav-brand">
+            <img src="/platform/static/icons/darklock-logo.png" alt="Darklock">
+            <span>Darklock</span>
+        </a>
+        <div class="nav-links" id="navLinks">
+            <a href="/platform">Platform</a>
+            <a href="/site/">Discord Bot</a>
+            <a href="#features">Features</a>
+            <a href="#roadmap">Roadmap</a>
+            <a href="/platform/update">Updates</a>
+            <a href="/platform/auth/signup" class="btn-cta">Get Started</a>
+        </div>
+        <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+            <i class="fas fa-bars"></i>
+        </button>
+    </div>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="rl-hero">
+    <div class="rl-hero-bg">
+        <div class="orb o1" data-parallax="0.35"></div>
+        <div class="orb o2" data-parallax="0.22"></div>
+        <div class="orb o3" data-parallax="0.5"></div>
+        <div class="grid-floor"></div>
+        <div class="fx-particles" data-density="1.1" data-color="34,211,238"></div>
+    </div>
+    <span class="rl-soon-pill"><span class="live-dot"></span> Coming Soon</span>
+    <h1>
+        <span class="line"><span>Say it once.</span></span>
+        <span class="line"><span class="rl-grad">Sealed forever.</span></span>
+    </h1>
+    <p class="sub">
+        Ridgeline is Darklock's end-to-end encrypted messenger — private servers, sealed DMs,
+        encrypted files. Your keys never leave your device. Not even we can read your messages.
+    </p>
+    <p class="decode-line"><span id="decodeLine" data-scramble>ENCRYPTION IS NOT A FEATURE. IT IS THE FOUNDATION.</span></p>
+    <div class="actions">
+        <a href="#showcase" class="btn primary magnetic"><i class="fas fa-play"></i> See It In Action</a>
+        <a href="#roadmap" class="btn ghost magnetic"><i class="fas fa-map"></i> What To Expect</a>
+    </div>
+    <div class="scroll-cue">
+        <div class="mouse"></div>
+        <span>Scroll</span>
+    </div>
+</section>
+
+<!-- ═══ LIVE APP SHOWCASE ═══ -->
+<section class="rl-showcase" id="showcase">
+    <div class="rl-window" id="rlWindow">
+        <div class="rl-window-bar">
+            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            <span class="ttl"><i class="fas fa-lock"></i> Ridgeline — #launch-team</span>
+        </div>
+        <div class="rl-app">
+            <aside class="rl-app-side">
+                <div class="sh">Ridgeline HQ</div>
+                <div class="ch on"><i class="fas fa-hashtag"></i> launch-team</div>
+                <div class="ch"><i class="fas fa-hashtag"></i> design</div>
+                <div class="ch"><i class="fas fa-hashtag"></i> engineering</div>
+                <div class="sh" style="margin-top:14px">Direct Messages</div>
+                <div class="ch"><i class="fas fa-user"></i> Riley</div>
+                <div class="ch"><i class="fas fa-user"></i> Morgan</div>
+                <div class="ch"><i class="fas fa-user"></i> Avery</div>
+            </aside>
+            <div class="rl-app-main">
+                <div class="rl-app-head">
+                    <i class="fas fa-hashtag" style="color:var(--text-muted)"></i> launch-team
+                    <span class="e2e-chip"><i class="fas fa-lock"></i> END-TO-END ENCRYPTED</span>
+                </div>
+                <div class="rl-app-msgs" id="rlMsgs"></div>
+                <div class="rl-app-input">
+                    <i class="fas fa-lock lock"></i>
+                    <span>Message #launch-team — encrypted before it leaves your device</span>
+                    <i class="fas fa-paper-plane send"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ ENCRYPT / DECRYPT SCROLL DEMO ═══ -->
+<section class="rl-cipher-demo">
+    <div class="rl-cipher-inner">
+        <div class="sect-center reveal">
+            <span class="sect-badge">Watch It Happen</span>
+            <h2 class="t">Scroll to <span class="grad">decrypt.</span></h2>
+            <p class="s">This is what the server sees versus what you see. Keep scrolling — only you hold the key.</p>
+        </div>
+        <div style="height:48px"></div>
+        <div class="rl-cipher-stage" id="cipherStage" aria-live="off"></div>
+        <div class="rl-cipher-meter">
+            <span>CIPHERTEXT</span>
+            <div class="bar"><div id="cipherBar"></div></div>
+            <span>PLAINTEXT</span>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ FEATURES ═══ -->
+<section class="rl-features" id="features">
+    <div class="container">
+
+        <div class="rl-feature-row">
+            <div class="reveal-left">
+                <span class="kicker"><i class="fas fa-key"></i> Zero-Knowledge Vault</span>
+                <h2>Your keys never<br>leave your device.</h2>
+                <p class="d">
+                    Every message is sealed with keys generated and stored only on your hardware.
+                    The server relays ciphertext — nothing else. There is no master key, no backdoor,
+                    no "trust us." There is only math.
+                </p>
+                <ul>
+                    <li><i class="fas fa-check-circle"></i> Client-side key generation and storage</li>
+                    <li><i class="fas fa-check-circle"></i> Encrypted local vault with passphrase unlock</li>
+                    <li><i class="fas fa-check-circle"></i> Zero plaintext ever touches the wire</li>
+                </ul>
+            </div>
+            <div class="vis reveal-right">
+                <div class="rl-vault">
+                    <div class="ring r1"><span class="node"></span></div>
+                    <div class="ring r2"><span class="node" style="background:#a78bfa;box-shadow:0 0 14px #a78bfa"></span></div>
+                    <div class="ring r3"><span class="node" style="background:#6366f1;box-shadow:0 0 14px #6366f1"></span></div>
+                    <div class="core"><i class="fas fa-key"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="rl-feature-row">
+            <div class="vis reveal-left">
+                <div class="rl-keys">
+                    <div class="peer"><i class="fas fa-laptop"></i><span>You</span></div>
+                    <div class="wire"></div>
+                    <i class="fas fa-shield-halved shield-mid"></i>
+                    <div class="packet">#</div>
+                    <div class="peer"><i class="fas fa-mobile-screen"></i><span>Them</span></div>
+                </div>
+            </div>
+            <div class="reveal-right">
+                <span class="kicker"><i class="fas fa-arrows-left-right"></i> True E2EE Delivery</span>
+                <h2>Encrypted in flight.<br>Encrypted at rest.</h2>
+                <p class="d">
+                    Messages are encrypted before they leave your device and only decrypted on the
+                    recipient's screen. The relay in the middle sees opaque packets — and that's all
+                    it will ever see.
+                </p>
+                <ul>
+                    <li><i class="fas fa-check-circle"></i> Per-conversation key agreement</li>
+                    <li><i class="fas fa-check-circle"></i> Encrypted attachments and media</li>
+                    <li><i class="fas fa-check-circle"></i> Hash-verified message integrity</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="rl-feature-row">
+            <div class="reveal-left">
+                <span class="kicker"><i class="fas fa-bolt"></i> Built For Speed</span>
+                <h2>Security that<br>doesn't slow you down.</h2>
+                <p class="d">
+                    Encryption overhead measured in microseconds, not milliseconds. Ridgeline feels
+                    like a modern chat app because it is one — groups, channels, roles, reactions,
+                    themes, and a desktop-class experience.
+                </p>
+                <ul>
+                    <li><i class="fas fa-check-circle"></i> Private servers with channels &amp; roles</li>
+                    <li><i class="fas fa-check-circle"></i> Friends, DMs, and group messaging</li>
+                    <li><i class="fas fa-check-circle"></i> Custom themes and appearance modes</li>
+                </ul>
+            </div>
+            <div class="vis reveal-right">
+                <div class="rl-speed" id="speedViz">
+                    <div class="col"><div class="bar" data-h="38%"><span class="val">2.1ms</span></div><span class="lbl">Encrypt</span></div>
+                    <div class="col"><div class="bar" data-h="62%"><span class="val">41ms</span></div><span class="lbl">Relay</span></div>
+                    <div class="col"><div class="bar" data-h="34%"><span class="val">1.8ms</span></div><span class="lbl">Decrypt</span></div>
+                    <div class="col"><div class="bar" data-h="88%"><span class="val">&lt;50ms</span></div><span class="lbl">Total</span></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- ═══ ROADMAP ═══ -->
+<section class="rl-roadmap" id="roadmap">
+    <div class="container">
+        <div class="sect-center reveal">
+            <span class="sect-badge">What To Expect</span>
+            <h2 class="t">The road to <span class="grad">launch.</span></h2>
+            <p class="s">Ridgeline is in active development. Here's where we are and what's landing next.</p>
+        </div>
+        <div class="rl-timeline">
+            <div class="rl-step reveal">
+                <div class="pin"><i class="fas fa-check"></i></div>
+                <div class="when">Foundation</div>
+                <h3>Core E2EE Engine</h3>
+                <p>The encryption core — client-side vaults, key agreement, sealed message transport — is built and battle-tested with a full automated test suite.</p>
+                <span class="tag done">Complete</span>
+            </div>
+            <div class="rl-step reveal">
+                <div class="pin"><i class="fas fa-check"></i></div>
+                <div class="when">Experience</div>
+                <h3>Desktop App — Servers, DMs &amp; Friends</h3>
+                <p>Private servers with channels and roles, encrypted DMs, friends system, profiles, themes, and a polished desktop experience.</p>
+                <span class="tag done">Complete</span>
+            </div>
+            <div class="rl-step reveal">
+                <div class="pin"><i class="fas fa-spinner"></i></div>
+                <div class="when">Right Now</div>
+                <h3>Private Beta Hardening</h3>
+                <p>Invited testers are hammering on real-world usage — performance tuning, mobile companion polish, and security review before the doors open.</p>
+                <span class="tag wip">In Progress</span>
+            </div>
+            <div class="rl-step reveal">
+                <div class="pin"><i class="fas fa-rocket"></i></div>
+                <div class="when">Next</div>
+                <h3>Public Launch</h3>
+                <p>Open availability with downloads for desktop, the mobile companion app, and access-key onboarding for communities that want in early.</p>
+                <span class="tag next">Coming Soon</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ STATS ═══ -->
+<section class="rl-stats">
+    <div class="container">
+        <div class="rl-stats-grid stagger">
+            <div class="rl-stat reveal"><div class="n"><span data-count="100" data-suffix="%">0</span></div><div class="d">Messages Encrypted</div></div>
+            <div class="rl-stat reveal"><div class="n"><span data-count="0">0</span></div><div class="d">Plaintext On Servers</div></div>
+            <div class="rl-stat reveal"><div class="n"><span data-count="56">0</span></div><div class="d">Automated Crypto Tests</div></div>
+            <div class="rl-stat reveal"><div class="n">&lt;<span data-count="50">0</span>ms</div><div class="d">Delivery Overhead</div></div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ FAQ ═══ -->
+<section class="rl-faq">
+    <div class="container">
+        <div class="sect-center reveal">
+            <span class="sect-badge">Questions</span>
+            <h2 class="t">Asked &amp; <span class="grad">answered.</span></h2>
+        </div>
+        <div class="rl-faq-list">
+            <div class="rl-q reveal">
+                <button type="button" aria-expanded="false">Can Darklock read my messages? <i class="fas fa-plus"></i></button>
+                <div class="a"><p>No. Messages are encrypted on your device with keys we never see. The server stores and relays ciphertext only. Even with full server access, your conversations are unreadable.</p></div>
+            </div>
+            <div class="rl-q reveal">
+                <button type="button" aria-expanded="false">When does Ridgeline launch? <i class="fas fa-plus"></i></button>
+                <div class="a"><p>Ridgeline is in private beta hardening right now. Public launch follows the current testing phase — keep an eye on the release notes page and the Darklock Discord for the announcement.</p></div>
+            </div>
+            <div class="rl-q reveal">
+                <button type="button" aria-expanded="false">What platforms will be supported? <i class="fas fa-plus"></i></button>
+                <div class="a"><p>Desktop (Linux first, with Windows builds following) plus a mobile companion experience. The desktop app is the flagship and ships at launch.</p></div>
+            </div>
+            <div class="rl-q reveal">
+                <button type="button" aria-expanded="false">What happens if I lose my device? <i class="fas fa-plus"></i></button>
+                <div class="a"><p>Your vault is protected by your passphrase, and a recovery flow lets you restore access using your recovery key. Without those, nobody — including us — can unlock your data. That's the point.</p></div>
+            </div>
+            <div class="rl-q reveal">
+                <button type="button" aria-expanded="false">How do I get early access? <i class="fas fa-plus"></i></button>
+                <div class="a"><p>Early access is granted via access keys distributed through the Darklock community. Join the Discord server to get involved in the beta.</p></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ FINAL CTA ═══ -->
+<section class="rl-final">
+    <div class="glow"></div>
+    <h2>The quietest place<br>on the <span class="grad">internet.</span></h2>
+    <p>Ridgeline is coming soon. Join the Darklock community to be first in line when the doors open.</p>
+    <div class="actions">
+        <a href="https://discord.gg/Vsq9PUTrgb" class="btn primary magnetic"><i class="fab fa-discord"></i> Join For Early Access</a>
+        <a href="/platform/update" class="btn ghost magnetic"><i class="fas fa-scroll"></i> Follow Development</a>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div class="footer-brand-block">
+                <div class="logo">
+                    <img src="/platform/static/icons/darklock-logo.png" alt="Darklock">
+                    <span>Darklock</span>
+                </div>
+                <p class="tagline">Enterprise security solutions for the modern digital landscape.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Platform</h4>
+                <a href="/platform">Home</a>
+                <a href="/platform/ridgeline">Ridgeline</a>
+                <a href="/platform/auth/login">Sign In</a>
+            </div>
+            <div class="footer-col">
+                <h4>Resources</h4>
+                <a href="/platform/docs">Documentation</a>
+                <a href="/platform/updates">Release Notes</a>
+                <a href="/platform/status">System Status</a>
+            </div>
+            <div class="footer-col">
+                <h4>Legal</h4>
+                <a href="/platform/privacy">Privacy Policy</a>
+                <a href="/platform/terms">Terms of Service</a>
+                <a href="/platform/security">Security</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Darklock. All rights reserved.</p>
+            <div class="footer-social">
+                <a href="https://github.com/anonymous-hidden?tab=repositories" target="_blank" aria-label="GitHub"><i class="fab fa-github"></i></a>
+                <a href="https://discord.gg/Vsq9PUTrgb" aria-label="Discord"><i class="fab fa-discord"></i></a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="/platform/static/js/site-fx.js"></script>
+<script>
+(function() {
+    'use strict';
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* ═══ 1. Hero orb parallax (mouse + scroll) ═══ */
+    if (!reduceMotion) {
+        var orbs = document.querySelectorAll('[data-parallax]');
+        var mx = 0, my = 0, tx = 0, ty = 0;
+        document.addEventListener('mousemove', function(e) {
+            tx = (e.clientX / window.innerWidth - 0.5) * 2;
+            ty = (e.clientY / window.innerHeight - 0.5) * 2;
+        }, { passive: true });
+        (function orbLoop() {
+            mx += (tx - mx) * 0.04;
+            my += (ty - my) * 0.04;
+            var sy = window.scrollY;
+            orbs.forEach(function(orb) {
+                var f = parseFloat(orb.getAttribute('data-parallax')) || 0.3;
+                orb.style.transform = 'translate3d(' + (mx * 40 * f) + 'px,' + (my * 40 * f + sy * f * 0.25) + 'px,0)';
+            });
+            requestAnimationFrame(orbLoop);
+        })();
+    }
+
+    /* ═══ 2. App window 3D scroll tilt ═══ */
+    var win = document.getElementById('rlWindow');
+    if (win && !reduceMotion) {
+        function tiltWindow() {
+            var r = win.getBoundingClientRect();
+            var mid = r.top + r.height / 2;
+            var delta = (mid - window.innerHeight / 2) / (window.innerHeight / 2); // -1..1
+            var clamped = Math.max(-1, Math.min(1, delta));
+            win.style.transform = 'rotateX(' + (clamped * 7) + 'deg) scale(' + (1 - Math.abs(clamped) * 0.03) + ')';
+        }
+        window.addEventListener('scroll', tiltWindow, { passive: true });
+        tiltWindow();
+    }
+
+    /* ═══ 3. Animated chat conversation (loops) ═══ */
+    var msgsHost = document.getElementById('rlMsgs');
+    var script = [
+        { av: 'a', nm: 'Riley',  enc: 'x9F2::kqL8vT0aZ_mw4Hc7Rd1NpY3sUebJg6', txt: 'Beta build 0.9.4 is out — vault unlock is 2x faster now.' },
+        { av: 'b', nm: 'Morgan', enc: 'q3Ww::8jNv5cXp0LtKfA2hYz_dR7mEoB1uG9s', txt: 'Confirmed. Key rotation worked across all my devices.' },
+        { av: 'c', nm: 'Avery',  enc: 'h7Tt::2sLp9wQx4ZvC0nB_kF6yJdM3rEgA8ou', txt: 'Encrypted file sharing just landed in my client 🎉' },
+        { av: 'a', nm: 'Riley',  enc: 'm1Kk::6vBh3xSw9NqT_pL0cZf5yDj8KgR2eAu7', txt: 'Remember: the relay only ever sees what you saw first.' }
+    ];
+    var CIPHER_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz0123456789_:#';
+
+    function addMessage(item, then) {
+        // typing indicator
+        var typing = document.createElement('div');
+        typing.className = 'rl-typing';
+        typing.innerHTML = '<div class="dots"><span></span><span></span><span></span></div>';
+        msgsHost.appendChild(typing);
+        requestAnimationFrame(function() { typing.classList.add('in'); });
+
+        setTimeout(function() {
+            typing.remove();
+            var m = document.createElement('div');
+            m.className = 'rl-m';
+            m.innerHTML =
+                '<div class="av ' + item.av + '">' + item.nm[0] + '</div>' +
+                '<div class="body">' +
+                    '<div class="meta"><b>' + item.nm + '</b>' + new Date().toTimeString().slice(0,5) + ' · <i class="fas fa-lock" style="font-size:.62rem;color:#22c55e"></i></div>' +
+                    '<div class="txt cipher"></div>' +
+                '</div>';
+            msgsHost.appendChild(m);
+            requestAnimationFrame(function() { m.classList.add('in'); });
+            var txtEl = m.querySelector('.txt');
+            txtEl.textContent = item.enc;
+
+            // decrypt animation after a beat
+            setTimeout(function() {
+                decryptText(txtEl, item.txt, function() {
+                    txtEl.classList.remove('cipher');
+                    if (then) setTimeout(then, 900);
+                });
+            }, 750);
+        }, 1100 + Math.random() * 500);
+    }
+
+    function decryptText(el, finalText, done) {
+        if (reduceMotion) { el.textContent = finalText; if (done) done(); return; }
+        var frame = 0;
+        var total = Math.max(finalText.length, 10);
+        function step() {
+            frame++;
+            var resolved = Math.floor((frame / 26) * total);
+            var out = '';
+            for (var i = 0; i < finalText.length; i++) {
+                out += i < resolved ? finalText[i] : CIPHER_CHARS[Math.floor(Math.random() * CIPHER_CHARS.length)];
+            }
+            el.textContent = out;
+            if (resolved < finalText.length) requestAnimationFrame(step);
+            else { el.textContent = finalText; if (done) done(); }
+        }
+        step();
+    }
+
+    function runConversation() {
+        msgsHost.innerHTML = '';
+        var i = 0;
+        function next() {
+            if (i >= script.length) {
+                setTimeout(runConversation, 6000); // loop
+                return;
+            }
+            addMessage(script[i++], next);
+        }
+        next();
+    }
+
+    if (msgsHost) {
+        if ('IntersectionObserver' in window) {
+            var convStarted = false;
+            new IntersectionObserver(function(en, io) {
+                if (en[0].isIntersecting && !convStarted) {
+                    convStarted = true; io.disconnect(); runConversation();
+                }
+            }, { threshold: 0.25 }).observe(msgsHost);
+        } else { runConversation(); }
+    }
+
+    /* ═══ 4. Scroll-driven cipher decode ═══ */
+    var stage = document.getElementById('cipherStage');
+    var bar = document.getElementById('cipherBar');
+    var PLAIN = 'Meet at the summit at dawn. Bring the launch keys — the new build ships today. Tell no one outside the team. This message was never readable in transit.';
+    var seed = [];
+    for (var i = 0; i < PLAIN.length; i++) {
+        seed.push(CIPHER_CHARS[Math.floor(Math.random() * CIPHER_CHARS.length)]);
+    }
+    function renderCipher(progress) {
+        var resolved = Math.floor(progress * PLAIN.length);
+        var out = '';
+        for (var i = 0; i < PLAIN.length; i++) {
+            if (i < resolved) out += PLAIN[i] === ' ' ? ' ' : PLAIN[i];
+            else out += '<span class="enc">' + (PLAIN[i] === ' ' ? ' ' : seed[i]) + '</span>';
+        }
+        stage.innerHTML = out;
+        bar.style.width = Math.round(progress * 100) + '%';
+    }
+    if (stage) {
+        renderCipher(0);
+        var section = stage.closest('.rl-cipher-demo');
+        window.addEventListener('scroll', function() {
+            var r = section.getBoundingClientRect();
+            var vh = window.innerHeight;
+            // progress: 0 when section enters, 1 when center passes
+            var p = (vh * 0.85 - r.top) / (r.height * 0.9);
+            p = Math.max(0, Math.min(1, p));
+            renderCipher(reduceMotion ? 1 : p);
+        }, { passive: true });
+    }
+
+    /* ═══ 5. Speed bars rise on view ═══ */
+    var speedViz = document.getElementById('speedViz');
+    if (speedViz && 'IntersectionObserver' in window) {
+        new IntersectionObserver(function(en, io) {
+            if (en[0].isIntersecting) {
+                io.disconnect();
+                speedViz.querySelectorAll('.bar').forEach(function(b) {
+                    b.style.height = b.getAttribute('data-h');
+                });
+            }
+        }, { threshold: 0.4 }).observe(speedViz);
+    }
+
+    /* ═══ 6. FAQ accordion ═══ */
+    document.querySelectorAll('.rl-q').forEach(function(q) {
+        var btn = q.querySelector('button');
+        var a = q.querySelector('.a');
+        btn.addEventListener('click', function() {
+            var open = q.classList.contains('open');
+            document.querySelectorAll('.rl-q.open').forEach(function(o) {
+                o.classList.remove('open');
+                o.querySelector('.a').style.maxHeight = '0';
+                o.querySelector('button').setAttribute('aria-expanded', 'false');
+            });
+            if (!open) {
+                q.classList.add('open');
+                a.style.maxHeight = a.scrollHeight + 'px';
+                btn.setAttribute('aria-expanded', 'true');
+            }
+        });
+    });
+})();
+</script>
+
+</body>
+</html>

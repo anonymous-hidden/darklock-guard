@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pricing - DarkLock Security</title>
-    <meta name="description" content="Choose the perfect DarkLock plan for your Discord server. Free and premium options available.">
+    <meta name="description" content="Choose a DarkLock plan for Discord server security. Free setup and Pro checkout are available.">
     <link rel="stylesheet" href="/site/css/style.css">
     <link id="dynamic-theme-stylesheet" rel="stylesheet" href="/api/v4/admin/theme/css">
     <script src="/js/global-theme.js"></script>
@@ -46,13 +46,13 @@
             </div>
             
             <div class="nav-actions">
-                <a href="https://admin.darklock.net/dashboard" class="btn btn-ghost">
+                <a href="/login?next=/dashboard" class="btn btn-ghost">
                     <i class="fas fa-rocket"></i>
                     <span>Dashboard</span>
                 </a>
-                <a href="/payment" class="btn btn-primary">
+                <a href="/payment?plan=pro" class="btn btn-primary">
                     <i class="fas fa-credit-card"></i>
-                    <span>Open Payment Page</span>
+                    <span>Upgrade to Pro</span>
                 </a>
             </div>
             
@@ -69,8 +69,8 @@
         <div class="container">
             <div class="section-header">
                 <span class="section-badge">Pricing</span>
-                <h1 class="section-title">Simple, Transparent Pricing</h1>
-                <p class="section-subtitle">Choose the plan that's right for your community</p>
+                <h1 class="section-title">Simple Plans for Discord Security</h1>
+                <p class="section-subtitle">Start free, then upgrade a selected server through Stripe Checkout when you need Pro features.</p>
             </div>
         </div>
     </section>
@@ -87,7 +87,7 @@
                             <span class="price">$0</span>
                             <span class="period">/month</span>
                         </div>
-                        <p class="plan-description">Perfect for small communities getting started</p>
+                        <p class="plan-description">Core protection for communities getting started.</p>
                     </div>
                     <ul class="plan-features">
                         <li><i class="fas fa-check"></i> Anti-spam protection</li>
@@ -95,61 +95,33 @@
                         <li><i class="fas fa-check"></i> Basic moderation tools</li>
                         <li><i class="fas fa-check"></i> Welcome messages</li>
                         <li><i class="fas fa-check"></i> Auto-roles</li>
-                        <li><i class="fas fa-check"></i> 7-day audit logs</li>
-                        <li class="disabled"><i class="fas fa-times"></i> Custom branding</li>
-                        <li class="disabled"><i class="fas fa-times"></i> Priority support</li>
-                        <li class="disabled"><i class="fas fa-times"></i> Advanced analytics</li>
+                        <li class="disabled"><i class="fas fa-times"></i> Pro command access</li>
+                        <li class="disabled"><i class="fas fa-times"></i> Pro-gated analytics commands</li>
                     </ul>
                     <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-outline btn-block">Get Started Free</a>
                 </div>
                 
                 <!-- Pro Plan -->
                 <div class="pricing-card dl-glow-card featured">
-                    <div class="popular-badge">Most Popular</div>
+                    <div class="popular-badge">Pro</div>
                     <div class="plan-header">
                         <h3 class="plan-name">Pro</h3>
                         <div class="plan-price">
-                            <span class="price">$4.99</span>
-                            <span class="period">/month</span>
+                            <span class="price">Stripe</span>
+                            <span class="period">checkout</span>
                         </div>
-                        <p class="plan-description">For growing communities that need more</p>
+                        <p class="plan-description">The live price and billing interval come from your configured Stripe Pro price.</p>
                     </div>
                     <ul class="plan-features">
                         <li><i class="fas fa-check"></i> Everything in Free</li>
-                        <li><i class="fas fa-check"></i> Anti-nuke protection</li>
-                        <li><i class="fas fa-check"></i> Advanced anti-phishing</li>
-                        <li><i class="fas fa-check"></i> Custom welcome images</li>
-                        <li><i class="fas fa-check"></i> XP & leveling system</li>
-                        <li><i class="fas fa-check"></i> 30-day audit logs</li>
-                        <li><i class="fas fa-check"></i> Scheduled backups</li>
-                        <li><i class="fas fa-check"></i> Priority support</li>
-                        <li class="disabled"><i class="fas fa-times"></i> Custom branding</li>
+                        <li><i class="fas fa-check"></i> Pro-gated bot commands</li>
+                        <li><i class="fas fa-check"></i> Anti-nuke and webhook protection commands</li>
+                        <li><i class="fas fa-check"></i> Anti-phishing and automod command access</li>
+                        <li><i class="fas fa-check"></i> Server backup and analytics commands</li>
+                        <li><i class="fas fa-check"></i> Modmail, schedule, and trust score commands</li>
+                        <li><i class="fas fa-check"></i> Guild subscription synced from Stripe webhooks</li>
                     </ul>
-                    <a href="/payment" class="btn btn-primary btn-block">Upgrade to Pro</a>
-                </div>
-                
-                <!-- Enterprise Plan -->
-                <div class="pricing-card dl-glow-card">
-                    <div class="plan-header">
-                        <h3 class="plan-name">Enterprise</h3>
-                        <div class="plan-price">
-                            <span class="price">$14.99</span>
-                            <span class="period">/month</span>
-                        </div>
-                        <p class="plan-description">For large communities with advanced needs</p>
-                    </div>
-                    <ul class="plan-features">
-                        <li><i class="fas fa-check"></i> Everything in Pro</li>
-                        <li><i class="fas fa-check"></i> Custom branding</li>
-                        <li><i class="fas fa-check"></i> Unlimited audit logs</li>
-                        <li><i class="fas fa-check"></i> API access</li>
-                        <li><i class="fas fa-check"></i> Dedicated support</li>
-                        <li><i class="fas fa-check"></i> Custom integrations</li>
-                        <li><i class="fas fa-check"></i> SLA guarantee</li>
-                        <li><i class="fas fa-check"></i> Multiple servers</li>
-                        <li><i class="fas fa-check"></i> White-label options</li>
-                    </ul>
-                    <a href="https://discord.gg/Vsq9PUTrgb" target="_blank" class="btn btn-outline btn-block">Contact Us on Discord</a>
+                    <a href="/payment?plan=pro" class="btn btn-primary btn-block">Continue to Stripe</a>
                 </div>
             </div>
         </div>
@@ -166,12 +138,12 @@
             <div class="faq-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: var(--space-lg); max-width: 1000px; margin: 0 auto;">
                 <div class="feature-card">
                     <h4 style="color: var(--accent-primary); margin-bottom: var(--space-sm);">Can I upgrade from the dashboard?</h4>
-                    <p style="color: var(--text-secondary);">Yes. After logging in, open the payment page from the dashboard or site and complete Stripe checkout securely.</p>
+                    <p style="color: var(--text-secondary);">Yes. Select the server you want to upgrade, then open the payment page and complete Stripe checkout.</p>
                 </div>
                 
                 <div class="feature-card">
                     <h4 style="color: var(--accent-primary); margin-bottom: var(--space-sm);">How do I upgrade my plan?</h4>
-                    <p style="color: var(--text-secondary);">You can upgrade directly from the dashboard or by using a Pro activation code in your server.</p>
+                    <p style="color: var(--text-secondary);">Log in, choose the server that should receive Pro, and continue to Stripe from this page or the payment page.</p>
                 </div>
                 
                 <div class="feature-card">
@@ -181,7 +153,7 @@
                 
                 <div class="feature-card">
                     <h4 style="color: var(--accent-primary); margin-bottom: var(--space-sm);">Can I cancel anytime?</h4>
-                    <p style="color: var(--text-secondary);">Absolutely! You can cancel your subscription at any time. Your features will remain active until the end of your billing period.</p>
+                    <p style="color: var(--text-secondary);">You can manage billing through the Stripe billing portal when a billing profile exists for the selected server.</p>
                 </div>
             </div>
         </div>
@@ -192,15 +164,15 @@
         <div class="container">
             <div class="cta-content">
                 <h2>Start Protecting Your Server Today</h2>
-                <p>Get started free, then open the payment page whenever you are ready to upgrade.</p>
+                <p>Get started free, then upgrade a selected server to Pro when you need the paid command set.</p>
                 <div class="cta-buttons">
                     <a href="https://discord.com/api/oauth2/authorize?client_id=1439793800309379114&permissions=8&scope=bot%20applications.commands" class="btn btn-primary btn-lg">
                         <i class="fas fa-plus"></i>
                         <span>Add to Discord Free</span>
                     </a>
-                    <a href="/payment" class="btn btn-outline btn-lg">
+                    <a href="/payment?plan=pro" class="btn btn-outline btn-lg">
                         <i class="fas fa-credit-card"></i>
-                        <span>Open Payment Page</span>
+                        <span>Continue to Stripe</span>
                     </a>
                 </div>
             </div>
@@ -218,7 +190,7 @@
                         </div>
                         <span>DarkLock</span>
                     </a>
-                    <p>Enterprise-grade security for Discord communities of all sizes.</p>
+                    <p>Security tools for Discord communities that need stronger moderation and protection controls.</p>
                     <div class="social-links">
                         <a href="https://discord.gg/Vsq9PUTrgb" target="_blank" aria-label="Discord"><i class="fab fa-discord"></i></a>
                     </div>
@@ -229,7 +201,7 @@
                     <ul>
                         <li><a href="/site/features">Features</a></li>
                         <li><a href="/site/pricing">Pricing</a></li>
-                        <li><a href="https://admin.darklock.net/dashboard">Dashboard</a></li>
+                        <li><a href="/login?next=/dashboard">Dashboard</a></li>
                         <li><a href="/site/add-bot">Add Bot</a></li>
                     </ul>
                 </div>

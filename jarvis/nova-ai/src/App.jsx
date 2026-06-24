@@ -86,7 +86,7 @@ export default function App() {
       <header className="h-12 shrink-0 bg-nova-panel border-b border-nova-border flex items-center px-3 gap-3">
         <div className="flex items-center gap-2 pr-3 border-r border-nova-border">
           <span className="w-6 h-6 rounded bg-gradient-to-br from-nova-accent to-nova-accent2" />
-          <span className="font-display text-sm tracking-wider">NOVA AI</span>
+          <span className="font-display text-sm tracking-wider">JARVIS</span>
         </div>
         <nav className="flex items-center gap-1">
           {TABS.map((t) => (

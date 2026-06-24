@@ -18,19 +18,26 @@
 // Features that require at least Pro tier to enable
 const PRO_FEATURES = new Set([
     'ai_enabled',
+    'anti_nuke_enabled',
+    'anti_phishing_enabled',
+    'antinuke_enabled',
     'advanced_analytics',
+    'advanced_anti_raid_enabled',
+    'advanced_anti_spam_enabled',
     'api_access',
+    'backup_enabled',
+    'custom_commands_enabled',
+    'custom_filters_enabled',
     'behavior_analysis_enabled',
     'advanced_filters_enabled',
+    'modmail_enabled',
+    'scheduled_backups_enabled',
     'push_notifications_enabled',
+    'webhook_protection_enabled',
 ]);
 
-// Features that require Enterprise tier to enable
-const ENTERPRISE_FEATURES = new Set([
-    'whitelabel_enabled',
-    'custom_integrations_enabled',
-    'sla_enabled',
-]);
+// Enterprise is supported for existing records, but current paid features are Pro.
+const ENTERPRISE_FEATURES = new Set();
 
 // Settings that free-tier guilds cannot modify (locked to default)
 const FREE_LOCKED_SETTINGS = new Set([
@@ -67,8 +74,50 @@ const TIER_LIMITS = {
  * Resolve the effective tier for a guild.
  * Returns 'free' | 'pro' | 'enterprise'
  */
+function normalizeTier(tier) {
+    const normalized = String(tier || 'free').toLowerCase();
+    return ['free', 'pro', 'enterprise'].includes(normalized) ? normalized : 'free';
+}
+
+function subscriptionIsActive(record) {
+    if (!record) return false;
+
+    const status = String(record.status || '').toLowerCase();
+    if (!['active', 'trialing'].includes(status)) return false;
+
+    const rawPeriodEnd = record.current_period_end ?? record.currentPeriodEnd ?? record.expires_at ?? record.expiresAt;
+    if (!rawPeriodEnd) return true;
+
+    const periodEnd = Number(rawPeriodEnd);
+    if (!Number.isFinite(periodEnd)) return true;
+
+    const periodEndSeconds = periodEnd > 100000000000 ? Math.floor(periodEnd / 1000) : periodEnd;
+    return periodEndSeconds > Math.floor(Date.now() / 1000);
+}
+
 async function resolveGuildTier(bot, guildId) {
-    return 'enterprise'; // all features unlocked for all guilds
+    if (!bot || !guildId) return 'free';
+
+    try {
+        if (typeof bot.getGuildPlan === 'function') {
+            const plan = await bot.getGuildPlan(guildId);
+            if (plan?.is_active || subscriptionIsActive(plan)) {
+                return normalizeTier(plan.effectivePlan || plan.plan);
+            }
+            return 'free';
+        }
+
+        if (bot.database && typeof bot.database.getGuildSubscription === 'function') {
+            const record = await bot.database.getGuildSubscription(guildId);
+            if (subscriptionIsActive(record)) {
+                return normalizeTier(record.plan);
+            }
+        }
+    } catch (error) {
+        bot.logger?.warn?.('Failed to resolve guild tier:', error.message || error);
+    }
+
+    return 'free';
 }
 
 /**
@@ -128,6 +177,7 @@ async function enforceTierLimits(bot, guildId, updates) {
  */
 function requireTier(minTier) {
     const tierRank = { free: 0, pro: 1, enterprise: 2 };
+    const requiredTier = minTier === 'enterprise' ? 'pro' : minTier;
 
     return async (req, res, next) => {
         const guildId = req.params.guildId;
@@ -141,11 +191,11 @@ function requireTier(minTier) {
         }
 
         const tier = await resolveGuildTier(bot, guildId);
-        if ((tierRank[tier] || 0) < (tierRank[minTier] || 0)) {
+        if ((tierRank[tier] || 0) < (tierRank[requiredTier] || 0)) {
             return res.status(403).json({
-                error: `This feature requires the ${minTier.charAt(0).toUpperCase() + minTier.slice(1)} plan`,
+                error: `This feature requires the ${requiredTier.charAt(0).toUpperCase() + requiredTier.slice(1)} plan`,
                 currentTier: tier,
-                requiredTier: minTier,
+                requiredTier,
                 code: 'TIER_LIMIT_EXCEEDED',
             });
         }

@@ -13,20 +13,21 @@
  *
  * Available widget ids:
  *   nova-call, nova-chat, clock, calculator, notes, todo, sysmon,
- *   spotify, weather, calendar, map, news, room-control
+ *   spotify, weather, calendar, map, news, room-control, widget-theme
  */
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import net from 'node:net';
 import fs from 'node:fs';
+import os from 'node:os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 
 const KNOWN = new Set([
   'nova-call','nova-chat','clock','calculator','notes','todo','sysmon',
-  'spotify','weather','calendar','map','news','room-control',
+  'spotify','weather','calendar','map','news','room-control','widget-theme',
 ]);
 
 const args = process.argv.slice(2).flatMap((a) => a.split(/[,\s]+/)).filter(Boolean);
@@ -76,10 +77,16 @@ function spawnVite() {
 function spawnElectron(ids) {
   const electronBin = path.join(ROOT, 'node_modules', '.bin', 'electron');
   const bin = fs.existsSync(electronBin) ? electronBin : 'electron';
+  const widgetUserData = path.join(os.homedir(), '.config', 'nova-ai-widgets');
+  try { fs.mkdirSync(widgetUserData, { recursive: true }); } catch {}
   const proc = spawn(bin, ['.'], {
     cwd: ROOT,
     stdio: 'inherit',
-    env: { ...process.env, NOVA_WIDGETS: ids.join(',') },
+    env: {
+      ...process.env,
+      NOVA_WIDGETS: ids.join(','),
+      NOVA_USER_DATA_DIR: widgetUserData,
+    },
   });
   return proc;
 }

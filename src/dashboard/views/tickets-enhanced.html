@@ -1268,7 +1268,8 @@
             document.cookie = 'dashboardToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
             localStorage.removeItem('dashboardToken');
             localStorage.removeItem('selectedGuildId');
-            window.location.href = '/login';
+            // Use server logout so httpOnly cookies are always cleared.
+            window.location.href = '/auth/logout';
         }
 
         // Server dropdown functions

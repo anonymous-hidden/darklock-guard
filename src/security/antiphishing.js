@@ -48,6 +48,47 @@ class AntiPhishing {
         this.bot.logger.debug(`🛡️  Anti-phishing system initialized for guild ${guildId}`);
     }
 
+    extractUrls(text = '') {
+        return text.match(/https?:\/\/[^\s]+/gi) || [];
+    }
+
+    normalizeDomainEntry(value) {
+        let raw = String(value || '').trim().toLowerCase();
+        if (!raw) return '';
+        raw = raw.replace(/^<|>$/g, '').replace(/[),.;]+$/g, '');
+
+        try {
+            const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
+            const parsed = new URL(withScheme);
+            return (parsed.hostname || raw).replace(/^www\./, '');
+        } catch (_) {
+            return raw.replace(/^www\./, '').split('/')[0].split(':')[0];
+        }
+    }
+
+    parseDomainList(rawValue) {
+        if (!rawValue) return new Set();
+
+        let arr = [];
+        if (Array.isArray(rawValue)) {
+            arr = rawValue;
+        } else if (typeof rawValue === 'string') {
+            const trimmed = rawValue.trim();
+            if (trimmed.startsWith('[')) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    arr = Array.isArray(parsed) ? parsed : trimmed.split(',');
+                } catch (_) {
+                    arr = trimmed.split(',');
+                }
+            } else {
+                arr = trimmed.split(',');
+            }
+        }
+
+        return new Set(arr.map((entry) => this.normalizeDomainEntry(entry)).filter(Boolean));
+    }
+
     async checkNewMember(member) {
         const guildId = member.guild.id;
         
@@ -97,7 +138,7 @@ class AntiPhishing {
             let detectedIssues = [];
             
             // Check message content for phishing patterns
-            const contentIssues = await this.checkMessageContent(message);
+            const contentIssues = await this.checkMessageContent(message, config);
             if (contentIssues.length > 0) {
                 phishingDetected = true;
                 detectedIssues.push(...contentIssues);
@@ -266,10 +307,30 @@ class AntiPhishing {
         return issues;
     }
 
-    async checkMessageContent(message) {
+    async checkMessageContent(message, config = {}) {
         const issues = [];
         const content = message.content.toLowerCase();
         const hasUrl = /https?:\/\//i.test(message.content);
+
+        if (hasUrl) {
+            const whitelist = this.parseDomainList(config.phishing_whitelist_domains);
+            const blacklist = this.parseDomainList(config.phishing_blacklist_domains);
+            const urls = this.extractUrls(message.content);
+
+            for (const rawUrl of urls) {
+                const domain = this.normalizeDomainEntry(rawUrl);
+                if (!domain || whitelist.has(domain)) continue;
+
+                if (blacklist.has(domain)) {
+                    issues.push({
+                        type: 'CUSTOM_PHISHING_BLOCKLIST',
+                        severity: 'CRITICAL',
+                        details: `Message contains blocked phishing domain: ${domain}`,
+                        confidence: 0.95
+                    });
+                }
+            }
+        }
         
         // Check for phishing patterns in message
         for (const pattern of this.suspiciousPatterns) {

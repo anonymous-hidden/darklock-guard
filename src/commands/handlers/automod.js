@@ -21,6 +21,43 @@ function normalizeList(raw) {
     return JSON.stringify(arr);
 }
 
+async function ensureAutomodColumns(bot) {
+    const columns = [
+        ['antilinks_allowed_domains', "TEXT DEFAULT '[]'"],
+        ['antilinks_blocked_domains', "TEXT DEFAULT '[]'"],
+        ['safe_browsing_enabled', 'INTEGER DEFAULT 0'],
+        ['emoji_spam_enabled', 'INTEGER DEFAULT 0'],
+        ['emoji_spam_max', 'INTEGER DEFAULT 10'],
+        ['emoji_spam_action', "TEXT DEFAULT 'delete'"],
+        ['sticker_spam_max', 'INTEGER DEFAULT 5']
+    ];
+
+    for (const [name, def] of columns) {
+        await bot.database.run(`ALTER TABLE guild_configs ADD COLUMN ${name} ${def}`).catch(err => {
+            if (!/duplicate column/i.test(String(err?.message || err))) {
+                bot.logger?.warn?.(`[automod] Could not ensure ${name}: ${err.message}`);
+            }
+        });
+    }
+}
+
+async function updateConfig(bot, guildId, updates, userId) {
+    await ensureAutomodColumns(bot);
+    if (bot.configService) {
+        const result = await bot.configService.update(guildId, updates, userId);
+        if (!result.success) {
+            throw new Error(result.errors?.join(', ') || 'Config update failed');
+        }
+        return result;
+    }
+    const serialized = {};
+    for (const [key, value] of Object.entries(updates)) {
+        serialized[key] = Array.isArray(value) ? JSON.stringify(value) : value;
+    }
+    await bot.database.updateGuildConfig(guildId, serialized);
+    return { success: true };
+}
+
 // =====================================================
 // SPAM HANDLERS
 // =====================================================
@@ -175,11 +212,7 @@ const raidHandlers = {
 const linksHandlers = {
     async enable(interaction, bot) {
         const guildId = interaction.guild.id;
-        await bot.database.run(`
-            INSERT INTO guild_configs (guild_id, anti_links_enabled)
-            VALUES (?, 1)
-            ON CONFLICT(guild_id) DO UPDATE SET anti_links_enabled = 1, updated_at = CURRENT_TIMESTAMP
-        `, [guildId]);
+        await updateConfig(bot, guildId, { anti_links_enabled: true }, interaction.user.id);
 
         const embed = new EmbedBuilder()
             .setColor('#00d4ff')
@@ -191,11 +224,7 @@ const linksHandlers = {
 
     async disable(interaction, bot) {
         const guildId = interaction.guild.id;
-        await bot.database.run(`
-            INSERT INTO guild_configs (guild_id, anti_links_enabled)
-            VALUES (?, 0)
-            ON CONFLICT(guild_id) DO UPDATE SET anti_links_enabled = 0, updated_at = CURRENT_TIMESTAMP
-        `, [guildId]);
+        await updateConfig(bot, guildId, { anti_links_enabled: false }, interaction.user.id);
 
         const embed = new EmbedBuilder()
             .setColor('#f59e0b')
@@ -207,33 +236,25 @@ const linksHandlers = {
 
     async config(interaction, bot, options) {
         const guildId = interaction.guild.id;
-        const updates = [];
-        const values = [];
+        const updates = {};
 
         const pushJson = (col, raw) => {
             if (!raw) return;
-            updates.push(`${col} = ?`);
-            values.push(normalizeList(raw));
+            updates[col] = JSON.parse(normalizeList(raw));
         };
 
         pushJson('antilinks_allowed_domains', options.allow_domains);
         pushJson('antilinks_blocked_domains', options.block_domains);
 
         if (options.safe_browsing !== null && options.safe_browsing !== undefined) {
-            updates.push('safe_browsing_enabled = ?');
-            values.push(options.safe_browsing ? 1 : 0);
+            updates.safe_browsing_enabled = !!options.safe_browsing;
         }
 
-        if (updates.length === 0) {
+        if (Object.keys(updates).length === 0) {
             return interaction.reply({ content: 'No settings provided. Specify at least one option.', ephemeral: true });
         }
 
-        values.push(guildId);
-        await bot.database.run(`
-            UPDATE guild_configs
-            SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
-            WHERE guild_id = ?
-        `, values);
+        await updateConfig(bot, guildId, updates, interaction.user.id);
 
         const embed = new EmbedBuilder()
             .setColor('#22c55e')
@@ -340,16 +361,11 @@ const phishingHandlers = {
 const emojiHandlers = {
     async enable(interaction, bot, options = {}) {
         const guildId = interaction.guild.id;
-        
-        await bot.database.run(`
-            INSERT INTO guild_configs (guild_id, emoji_spam_enabled, emoji_spam_max, emoji_spam_action)
-            VALUES (?, 1, ?, ?)
-            ON CONFLICT(guild_id) DO UPDATE SET 
-                emoji_spam_enabled = 1, 
-                emoji_spam_max = COALESCE(?, emoji_spam_max, 10),
-                emoji_spam_action = COALESCE(?, emoji_spam_action, 'delete'),
-                updated_at = CURRENT_TIMESTAMP
-        `, [guildId, options.max_emojis || 10, options.action || 'delete', options.max_emojis, options.action]);
+        await updateConfig(bot, guildId, {
+            emoji_spam_enabled: true,
+            emoji_spam_max: options.max_emojis || 10,
+            emoji_spam_action: options.action || 'delete'
+        }, interaction.user.id);
 
         const embed = new EmbedBuilder()
             .setColor('#00d4ff')
@@ -361,11 +377,7 @@ const emojiHandlers = {
 
     async disable(interaction, bot) {
         const guildId = interaction.guild.id;
-        await bot.database.run(`
-            INSERT INTO guild_configs (guild_id, emoji_spam_enabled)
-            VALUES (?, 0)
-            ON CONFLICT(guild_id) DO UPDATE SET emoji_spam_enabled = 0, updated_at = CURRENT_TIMESTAMP
-        `, [guildId]);
+        await updateConfig(bot, guildId, { emoji_spam_enabled: false }, interaction.user.id);
 
         const embed = new EmbedBuilder()
             .setColor('#f59e0b')
@@ -377,32 +389,23 @@ const emojiHandlers = {
 
     async config(interaction, bot, options) {
         const guildId = interaction.guild.id;
-        const updates = [];
-        const values = [];
+        const updates = {};
 
         if (options.max_emojis !== null && options.max_emojis !== undefined) {
-            updates.push('emoji_spam_max = ?');
-            values.push(options.max_emojis);
+            updates.emoji_spam_max = options.max_emojis;
         }
         if (options.action) {
-            updates.push('emoji_spam_action = ?');
-            values.push(options.action);
+            updates.emoji_spam_action = options.action;
         }
         if (options.max_stickers !== null && options.max_stickers !== undefined) {
-            updates.push('sticker_spam_max = ?');
-            values.push(options.max_stickers);
+            updates.sticker_spam_max = options.max_stickers;
         }
 
-        if (updates.length === 0) {
+        if (Object.keys(updates).length === 0) {
             return interaction.reply({ content: 'No settings provided. Specify at least one option.', ephemeral: true });
         }
 
-        values.push(guildId);
-        await bot.database.run(`
-            UPDATE guild_configs
-            SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
-            WHERE guild_id = ?
-        `, values);
+        await updateConfig(bot, guildId, updates, interaction.user.id);
 
         const embed = new EmbedBuilder()
             .setColor('#22c55e')

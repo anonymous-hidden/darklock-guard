@@ -168,9 +168,12 @@
     /* Plans Grid */
     .plans {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 2rem;
       margin-top: 2rem;
+      max-width: 760px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .plan-card {
@@ -232,7 +235,7 @@
     }
 
     .plan-price {
-      font-size: 3.5rem;
+      font-size: 2.4rem;
       font-weight: 800;
       background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
       -webkit-background-clip: text;
@@ -319,6 +322,28 @@
       margin-top: 1rem;
     }
 
+    .server-context,
+    .status-message {
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-top: 1.25rem;
+      padding: 1rem;
+    }
+
+    .server-context strong,
+    .status-message strong {
+      color: var(--text-primary);
+    }
+
+    .server-context.error,
+    .status-message.error {
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+    }
+
     /* Info Panel */
     .info-panel {
       background: var(--bg-card);
@@ -354,6 +379,43 @@
       line-height: 1.6;
     }
 
+    .roadmap-note {
+      margin-top: 1.25rem;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      font-size: 0.95rem;
+    }
+
+    .roadmap-note strong {
+      color: var(--text-primary);
+    }
+
+    .server-select {
+      width: 100%;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      font-family: inherit;
+      margin-top: 1.25rem;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .server-select:focus {
+      outline: none;
+      border-color: rgba(0, 240, 255, 0.5);
+    }
+
+    .server-select option {
+      background: #12121a;
+    }
+
     @media (max-width: 768px) {
       .container {
         padding: 2rem 1rem;
@@ -368,7 +430,7 @@
       }
 
       .plan-price {
-        font-size: 2.5rem;
+        font-size: 2rem;
       }
     }
   </style>
@@ -388,50 +450,61 @@
     <div class="hero">
       <div class="badge">
         <i class="fas fa-sparkles"></i>
-        Simple, Transparent Pricing
+        DarkLock Pro
       </div>
       <h1>Upgrade to DarkLock Pro</h1>
-      <p>Choose the plan that works best for your server</p>
+      <p>Start Stripe checkout for the Discord server you selected.</p>
     </div>
 
     <div class="plans">
-      <!-- Monthly Plan -->
+      <!-- Pro Plan: $5/month -->
       <div class="plan-card">
-        <div class="plan-name">Monthly</div>
-        <div class="plan-price">$4.99<span>/month</span></div>
-        <div class="plan-desc">Perfect for trying out Pro features</div>
+        <div class="plan-name">DarkLock Pro</div>
+        <div class="plan-price">$5<span>/mo</span></div>
+        <div class="plan-desc">Core protection and security for your Discord server.</div>
         <ul class="plan-features">
-          <li><i class="fas fa-check"></i> Full anti-nuke protection</li>
-          <li><i class="fas fa-check"></i> Real-time analytics</li>
-          <li><i class="fas fa-check"></i> Unlimited AI scans</li>
-          <li><i class="fas fa-check"></i> Advanced ticket system</li>
-          <li><i class="fas fa-check"></i> Incident alerts</li>
-          <li><i class="fas fa-check"></i> Custom themes</li>
+          <li><i class="fas fa-check"></i> Anti-nuke &amp; anti-raid protection</li>
+          <li><i class="fas fa-check"></i> Anti-spam &amp; anti-phishing</li>
+          <li><i class="fas fa-check"></i> Automod &amp; webhook protection</li>
+          <li><i class="fas fa-check"></i> Ticket system &amp; modmail</li>
+          <li><i class="fas fa-check"></i> Analytics &amp; audit logs</li>
+          <li><i class="fas fa-check"></i> /setup, /admin &amp; config commands</li>
+          <li><i class="fas fa-check"></i> Server backups &amp; role management</li>
+          <li><i class="fas fa-check"></i> 1 Discord server</li>
         </ul>
-        <button class="plan-btn" onclick="checkout('monthly')">
-          <i class="fas fa-bolt"></i> Subscribe Now
+        <select class="server-select" id="serverSelectPro" onchange="onServerSelect()">
+          <option value="">Loading your servers…</option>
+        </select>
+        <div class="status-message" id="serverContextPro" style="display:none"></div>
+        <button class="plan-btn" id="checkoutButtonPro" onclick="checkout('pro')" disabled>
+          <i class="fas fa-bolt"></i> Get Pro — $5/mo
         </button>
         <div class="secure-badge">
           <i class="fas fa-lock"></i> Secure checkout with Stripe
         </div>
       </div>
 
-      <!-- Yearly Plan -->
+      <!-- Enterprise Plan: $50/month -->
       <div class="plan-card popular">
         <div class="popular-badge">Best Value</div>
-        <div class="plan-name">Yearly</div>
-        <div class="plan-price">$50<span>/year</span></div>
-        <div class="plan-desc">Save $10 per year • Just $4.17/month</div>
+        <div class="plan-name">DarkLock Enterprise</div>
+        <div class="plan-price">$50<span>/mo</span></div>
+        <div class="plan-desc">Full access to every feature, command, and future addition.</div>
         <ul class="plan-features">
-          <li><i class="fas fa-check"></i> Everything in Monthly</li>
-          <li><i class="fas fa-check"></i> 2 months free</li>
+          <li><i class="fas fa-check"></i> Everything in Pro</li>
+          <li><i class="fas fa-check"></i> Advanced analytics dashboard</li>
+          <li><i class="fas fa-check"></i> Voice monitoring &amp; channel access control</li>
+          <li><i class="fas fa-check"></i> Trust score system</li>
+          <li><i class="fas fa-check"></i> Scheduled announcements</li>
+          <li><i class="fas fa-check"></i> XP &amp; leaderboard system</li>
+          <li><i class="fas fa-check"></i> Early access to beta features &amp; apps</li>
           <li><i class="fas fa-check"></i> Priority support</li>
-          <li><i class="fas fa-check"></i> Early access to features</li>
-          <li><i class="fas fa-check"></i> Dedicated account manager</li>
-          <li><i class="fas fa-check"></i> Volume discounts available</li>
         </ul>
-        <button class="plan-btn" onclick="checkout('yearly')">
-          <i class="fas fa-bolt"></i> Subscribe Now
+        <div class="server-context" id="serverContextEnterprise">
+          Enterprise covers <strong>every server you’re in</strong> — no selection needed.
+        </div>
+        <button class="plan-btn" id="checkoutButtonEnterprise" onclick="checkout('enterprise')" disabled>
+          <i class="fas fa-crown"></i> Get Enterprise — $50/mo
         </button>
         <div class="secure-badge">
           <i class="fas fa-lock"></i> Secure checkout with Stripe
@@ -442,58 +515,122 @@
     <div class="info-panel">
       <h3><i class="fas fa-info-circle"></i> How it works</h3>
       <ol>
-        <li>Choose your plan and click Subscribe Now</li>
+        <li>Select the Discord server that should receive Pro</li>codex
+        
         <li>Complete secure checkout through Stripe</li>
-        <li>Your Pro features activate instantly</li>
-        <li>Manage your subscription anytime from your dashboard</li>
+        <li>Stripe webhooks sync the subscription to that server</li>
+        <li>Use the billing portal from the authenticated dashboard to manage billing</li>
       </ol>
+      <p class="roadmap-note"><strong>Pro roadmap note:</strong> Pro subscribers get access to future additions as they ship, including beta apps and newer high-level features added to the DarkLock command and dashboard stack.</p>
     </div>
   </div>
 
 <script>
-  // Check authentication on page load using server-side cookie (HttpOnly)
+  let serverList = [];
+
+  function onServerSelect() {
+    const sel = document.getElementById('serverSelectPro');
+    const btn = document.getElementById('checkoutButtonPro');
+    const ctx = document.getElementById('serverContextPro');
+    const val = sel?.value || '';
+    if (val) {
+      btn.disabled = false;
+      const name = sel.options[sel.selectedIndex]?.text || val;
+      ctx.style.display = 'block';
+      ctx.className = 'status-message';
+      ctx.innerHTML = `Pro will activate for <strong>${name}</strong>.`;
+    } else {
+      btn.disabled = true;
+      ctx.style.display = 'none';
+    }
+  }
+
+  function populateServerSelect(servers) {
+    const sel = document.getElementById('serverSelectPro');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">-- Select a server --</option>';
+    for (const s of servers) {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.name;
+      sel.appendChild(opt);
+    }
+    // Pre-select if coming from dashboard
+    const params = new URLSearchParams(window.location.search);
+    const preselect = params.get('guild') || params.get('guildId') || localStorage.getItem('selectedGuildId') || '';
+    if (preselect) {
+      const match = servers.find(s => s.id === preselect);
+      if (match) { sel.value = preselect; onServerSelect(); }
+    }
+  }
+
   window.addEventListener('DOMContentLoaded', async () => {
     try {
       const res = await fetch('/api/me', { credentials: 'include' });
       if (!res.ok) throw new Error('Unauthorized');
       const data = await res.json();
       if (!data?.success) throw new Error('Unauthorized');
+
+      // Enable enterprise button immediately
+      const entBtn = document.getElementById('checkoutButtonEnterprise');
+      if (entBtn) entBtn.disabled = false;
+
+      // Load server list for Pro selector
+      const serversRes = await fetch('/api/servers/list', { credentials: 'include' });
+      if (serversRes.ok) {
+        serverList = await serversRes.json();
+        populateServerSelect(serverList);
+      } else {
+        const sel = document.getElementById('serverSelectPro');
+        if (sel) sel.innerHTML = '<option value="">Unable to load servers — refresh and try again</option>';
+      }
     } catch (_) {
-      // Not logged in — redirect to login, then return here after auth
-      window.location.href = '/login?next=/payment';
+      const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = `/login?next=${returnTo}`;
     }
   });
 
   async function checkout(plan) {
     try {
-      // Get current guild ID if available (from URL params or localStorage)
-      const urlParams = new URLSearchParams(window.location.search);
-      const guildId = urlParams.get('guild') || localStorage.getItem('selectedGuildId') || '';
-      
+      let guildId = '';
+      if (plan !== 'enterprise') {
+        const sel = document.getElementById('serverSelectPro');
+        guildId = sel?.value || '';
+        if (!guildId) {
+          alert('Select a Discord server before starting checkout.');
+          return;
+        }
+      }
+
+      const btnId = plan === 'enterprise' ? 'checkoutButtonEnterprise' : 'checkoutButtonPro';
+      const btn = document.getElementById(btnId);
+      const originalText = btn?.innerHTML;
+      if (btn) { btn.disabled = true; btn.textContent = 'Redirecting…'; }
+
+      const body = { plan };
+      if (guildId) body.guildId = guildId;
+
       const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         credentials: 'include',
-        headers: { 
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ plan, guildId })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Checkout API error:', errorData);
+        if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
         alert(errorData.error || 'Failed to create checkout session. Please try again.');
         return;
       }
-      
+
       const data = await response.json();
-      
       if (!data.url) {
+        if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
         alert('Failed to create checkout session. Please try again.');
         return;
       }
-      
-      // Redirect to Stripe Checkout
+
       window.location.href = data.url;
     } catch (error) {
       console.error('Checkout error:', error);

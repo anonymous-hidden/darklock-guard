@@ -744,24 +744,38 @@ class AntiSpam {
                 return;
             }
             
+            const canSendLog = (channel) => {
+                if (!channel?.isTextBased?.()) return false;
+                const perms = channel.permissionsFor?.(messageData.guild.members.me);
+                return Boolean(perms?.has('SendMessages'));
+            };
+
             // Find log channel with multiple fallbacks
             let logChannel = null;
+
+            // Use the shared Discord logger routing first so automod-specific channels work.
+            if (this.bot.discordLogger && typeof this.bot.discordLogger._getLogChannel === 'function') {
+                logChannel = await this.bot.discordLogger._getLogChannel(messageData.guild, 'automod').catch(() => null);
+                if (logChannel) {
+                    this.bot.logger.info(`✅ Using DiscordLogger automod channel: #${logChannel.name}`);
+                }
+            }
             
             // Try configured log channel first
-            if (config && config.log_channel_id) {
+            if (!logChannel && config && config.log_channel_id) {
                 logChannel = messageData.guild.channels.cache.get(config.log_channel_id);
-                if (logChannel && logChannel.isTextBased()) {
+                if (canSendLog(logChannel)) {
                     this.bot.logger.info(`✅ Using configured log channel: #${logChannel.name}`);
                 } else {
                     logChannel = null;
-                    this.bot.logger.warn(`⚠️ Configured log channel is not a text channel`);
+                    this.bot.logger.warn(`⚠️ Configured log channel is missing, not text-based, or not writable`);
                 }
             }
             
             // Fallback: find channel with 'log' or 'mod' in name
             if (!logChannel) {
                 logChannel = messageData.guild.channels.cache.find(c => 
-                    c.isTextBased() && (
+                    canSendLog(c) && (
                         c.name.toLowerCase().includes('log') || 
                         c.name.toLowerCase().includes('mod') ||
                         c.name.toLowerCase().includes('security')
@@ -775,7 +789,7 @@ class AntiSpam {
             // Final fallback: use the channel where spam occurred
             if (!logChannel) {
                 logChannel = messageData.channel;
-                if (logChannel.isTextBased()) {
+                if (canSendLog(logChannel)) {
                     this.bot.logger.warn(`⚠️ Using spam channel as fallback: #${logChannel.name}`);
                 } else {
                     logChannel = null;
@@ -788,9 +802,13 @@ class AntiSpam {
                 // Still send to dashboard and database even if Discord channel fails
             }
 
-            const actionTaken = action === 'TIMEOUT' ? 
-                `Timed out for ${Math.round(actionDuration / 60000)} minutes` : 
-                'Message deleted and user warned';
+            const actionTaken = (() => {
+                if (action === 'BAN') return 'Banned and recent messages removed';
+                if (action === 'KICK') return 'Kicked from the server';
+                if (action === 'TIMEOUT') return `Timed out for ${Math.round((actionDuration || 0) / 60000)} minutes`;
+                if (action === 'WARN') return 'Message deleted and warning recorded';
+                return 'Message deleted and incident logged';
+            })();
 
             // Build notification data for both Discord and Dashboard
             const notificationData = {
@@ -868,10 +886,17 @@ class AntiSpam {
                     this.bot.logger.error(`❌ Failed to send Discord notification:`, sendError);
                     
                     // Try fallback without buttons
-                    if (sendError.code === 50013) {
+                    if (sendError.code === 50013 || sendError.code === 50035) {
                         try {
                             await logChannel.send({ 
-                                content: `⚠️ **Spam Detected**\nUser: ${messageData.authorTag} (\`${messageData.authorId}\`)\nViolation: ${spamTypes.join(', ')}\nAction: ${actionTaken}`,
+                                content: [
+                                    '⚠️ **Spam Detected**',
+                                    `User: ${messageData.authorTag} (<@${messageData.authorId}>)`,
+                                    `ID: \`${messageData.authorId}\``,
+                                    `Channel: <#${messageData.channel.id}>`,
+                                    `Violation: ${spamTypes.join(', ')}`,
+                                    `Action: ${actionTaken}`
+                                ].join('\n'),
                             });
                             discordMessageSent = true;
                             this.bot.logger.info(`✅ Sent simplified spam notification (no buttons)`);

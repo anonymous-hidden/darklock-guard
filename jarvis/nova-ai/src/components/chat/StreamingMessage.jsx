@@ -6,6 +6,5 @@ import MessageBubble from './MessageBubble.jsx';
  * Reuses MessageBubble visually but appends the cursor.
  */
 export default function StreamingMessage({ message }) {
-  const text = (message.content || '') + '▍';
-  return <MessageBubble message={{ ...message, content: text }} />;
+  return <MessageBubble message={{ ...message, _streaming: true }} />;
 }

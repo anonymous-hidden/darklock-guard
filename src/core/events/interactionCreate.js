@@ -14,6 +14,26 @@ const { handleHelpInteraction, PREFIX: HELP_PREFIX } = require('../interactions/
 let _maintenanceCache = { data: { enabled: false }, expiresAt: 0 };
 const MAINTENANCE_CACHE_TTL = 10000; // 10 seconds
 
+function getPublicOrigin() {
+    const candidates = [
+        process.env.BASE_URL,
+        process.env.DASHBOARD_ORIGIN,
+        process.env.DOMAIN,
+        process.env.DASHBOARD_URL
+    ];
+
+    for (const raw of candidates) {
+        const value = String(raw || '').trim();
+        if (!value) continue;
+        try {
+            const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+            return new URL(withProtocol).origin;
+        } catch (_) {}
+    }
+
+    return process.env.NODE_ENV === 'production' ? 'https://darklock.net' : 'http://localhost:3001';
+}
+
 async function isBotInMaintenance() {
     const now = Date.now();
     if (now < _maintenanceCache.expiresAt) {
@@ -176,10 +196,28 @@ async function handleSlashCommand(interaction, bot) {
                     return await interaction.reply('❌ This feature requires the **Pro plan**.');
                 }
             } else if (requiredPlan === 'enterprise') {
-                const hasEnterprise = await bot.hasEnterpriseFeatures(interaction.guild.id);
-                if (!hasEnterprise) {
-                    return await interaction.reply('❌ This feature requires the **Enterprise plan**.');
+                const hasPro = await bot.hasProFeatures(interaction.guild.id);
+                if (!hasPro) {
+                    return await interaction.reply('❌ This feature requires the **Pro plan**.');
                 }
+            }
+        }
+
+        // Premium tier gating: command.premium = 'pro' | 'enterprise' | true (= 'pro')
+        if (interaction.guild && command.premium) {
+            const required = command.premium === true ? 'pro' : String(command.premium).toLowerCase();
+            const hasPro = await bot.hasProFeatures(interaction.guild.id);
+            if (required === 'pro' && !hasPro) {
+                return await interaction.reply({
+                    content: `🔒 **\`/${interaction.commandName}\` is a Pro command.**\nUpgrade your server plan at https://darklock.net/site/pricing to unlock it.`,
+                    ephemeral: true
+                });
+            }
+            if (required === 'enterprise' && !hasPro) {
+                return await interaction.reply({
+                    content: `🔒 **\`/${interaction.commandName}\` requires an Enterprise-level plan.**\nUpgrade your server plan at https://darklock.net/site/pricing to unlock it.`,
+                    ephemeral: true
+                });
             }
         }
 
@@ -478,7 +516,7 @@ async function handleButtonInteraction(interaction, bot) {
             }
             
             // Main verification button (verify_button)
-            if (interaction.customId === 'verify_button') {
+            if (interaction.customId === 'verify_button' || interaction.customId.startsWith('verify_method_')) {
                 await handleVerifyButton(interaction, bot);
                 return true;
             }
@@ -947,7 +985,7 @@ async function handleHelpBackButton(interaction, bot) {
             new ButtonBuilder()
                 .setLabel('Admin Panel')
                 .setStyle(ButtonStyle.Link)
-                .setURL(process.env.DASHBOARD_URL || 'https://discord-security-bot-uyx6.onrender.com/dashboard')
+                .setURL(process.env.DASHBOARD_URL || 'https://darklock.net/dashboard')
                 .setEmoji('📊'),
             new ButtonBuilder()
                 .setLabel('Support Server')
@@ -1162,8 +1200,7 @@ async function handleVerifyButton(interaction, bot) {
 
         } else if (method === 'web') {
             // For web verification
-            const dashboardUrl = process.env.DASHBOARD_URL || 'https://discord-security-bot-uyx6.onrender.com';
-            const verifyUrl = `${dashboardUrl}/verify/${guildId}/${member.id}`;
+            const verifyUrl = `${getPublicOrigin()}/verify/${guildId}/${member.id}?v=${Date.now().toString(36)}`;
             
             const { ButtonBuilder, ButtonStyle } = require('discord.js');
             const row = new ActionRowBuilder()
@@ -1182,8 +1219,7 @@ async function handleVerifyButton(interaction, bot) {
             });
         } else {
             // Default fallback - use web portal
-            const dashboardUrl = process.env.DASHBOARD_URL || 'https://discord-security-bot-uyx6.onrender.com';
-            const verifyUrl = `${dashboardUrl}/verify/${guildId}/${member.id}`;
+            const verifyUrl = `${getPublicOrigin()}/verify/${guildId}/${member.id}?v=${Date.now().toString(36)}`;
             
             const row = new ActionRowBuilder()
                 .addComponents(

@@ -340,40 +340,43 @@ const serverControlHandlers = {
     },
 
     async nuke(interaction, bot) {
-        await interaction.deferReply({ ephemeral: true });
-        const ch = interaction.channel;
-        if (!ch || ch.type !== ChannelType.GuildText) {
-            return interaction.editReply({ content: '❌ Please use this in a text channel.' });
-        }
-        try {
-            const position = ch.position;
-            const parent = ch.parent;
-            const newCh = await ch.clone({ reason: `Nuked by ${interaction.user.username}` });
-            await newCh.setPosition(position);
-            if (parent) await newCh.setParent(parent.id);
-            await ch.delete(`Nuked by ${interaction.user.username}`);
-            await newCh.send({ content: '💣 This channel has been nuked.' });
-            return; // Original interaction is deleted with channel
-        } catch (e) {
-            return interaction.editReply({ content: '❌ Failed to nuke channel. Check my permissions.' });
-        }
+        const response = { content: '❌ This destructive action has been disabled.', ephemeral: true };
+        if (interaction.deferred || interaction.replied) return interaction.editReply(response);
+        return interaction.reply(response);
     },
 
     async auditPerms(interaction, bot) {
         await interaction.deferReply({ ephemeral: true });
         const guild = interaction.guild;
         const dangerousPerms = [
-            PermissionsBitField.Flags.Administrator,
-            PermissionsBitField.Flags.ManageGuild,
-            PermissionsBitField.Flags.ManageChannels,
-            PermissionsBitField.Flags.ManageRoles,
-            PermissionsBitField.Flags.MentionEveryone
+            { name: 'Administrator', flag: PermissionsBitField.Flags.Administrator, risk: 'Full server control', score: 100 },
+            { name: 'Manage Roles', flag: PermissionsBitField.Flags.ManageRoles, risk: 'Can grant powerful roles or bypass moderation', score: 90 },
+            { name: 'Manage Server', flag: PermissionsBitField.Flags.ManageGuild, risk: 'Can change server-wide settings', score: 85 },
+            { name: 'Manage Webhooks', flag: PermissionsBitField.Flags.ManageWebhooks, risk: 'Can create message-sending endpoints', score: 75 },
+            { name: 'Ban Members', flag: PermissionsBitField.Flags.BanMembers, risk: 'Can remove members permanently', score: 70 },
+            { name: 'Kick Members', flag: PermissionsBitField.Flags.KickMembers, risk: 'Can remove members from the server', score: 60 },
+            { name: 'Manage Channels', flag: PermissionsBitField.Flags.ManageChannels, risk: 'Can delete, lock, or expose channels', score: 65 },
+            { name: 'Mention Everyone', flag: PermissionsBitField.Flags.MentionEveryone, risk: 'Can notify the whole server', score: 45 },
+            { name: 'Manage Messages', flag: PermissionsBitField.Flags.ManageMessages, risk: 'Can delete or pin other users messages', score: 40 },
+            { name: 'Moderate Members', flag: PermissionsBitField.Flags.ModerateMembers, risk: 'Can timeout members', score: 40 }
         ];
 
         const riskyRoles = guild.roles.cache
-            .filter(r => dangerousPerms.some(p => r.permissions.has(p)) && !r.managed)
-            .sort((a,b) => b.position - a.position)
-            .map(r => `${r} - ${r.permissions.toArray().filter(p => dangerousPerms.includes(PermissionsBitField.Flags[p]) ).length} critical perms`)
+            .filter(r => !r.managed)
+            .map(role => {
+                const matches = dangerousPerms.filter(p => role.permissions.has(p.flag));
+                return { role, matches, score: matches.reduce((sum, p) => sum + p.score, 0) };
+            })
+            .filter(r => r.matches.length)
+            .sort((a, b) => b.score - a.score || b.role.position - a.role.position)
+            .map(r => {
+                const details = r.matches
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 4)
+                    .map(p => `${p.name} - ${p.risk}`)
+                    .join('\n');
+                return `${r.role}\n${details}`;
+            })
             .slice(0, 20);
 
         const openChannels = guild.channels.cache
@@ -701,16 +704,16 @@ const goodbyeHandlers = {
 // ROLESCAN HANDLERS (Absorbed into /admin audit)
 // =====================================================
 const DANGEROUS_PERMISSIONS = {
-    Administrator: { flag: PermissionsBitField.Flags.Administrator, severity: 'CRITICAL', emoji: '🔴' },
-    ManageGuild: { flag: PermissionsBitField.Flags.ManageGuild, severity: 'CRITICAL', emoji: '🔴' },
-    ManageRoles: { flag: PermissionsBitField.Flags.ManageRoles, severity: 'CRITICAL', emoji: '🔴' },
-    BanMembers: { flag: PermissionsBitField.Flags.BanMembers, severity: 'HIGH', emoji: '🟠' },
-    KickMembers: { flag: PermissionsBitField.Flags.KickMembers, severity: 'HIGH', emoji: '🟠' },
-    ManageChannels: { flag: PermissionsBitField.Flags.ManageChannels, severity: 'HIGH', emoji: '🟠' },
-    ManageWebhooks: { flag: PermissionsBitField.Flags.ManageWebhooks, severity: 'HIGH', emoji: '🟠' },
-    MentionEveryone: { flag: PermissionsBitField.Flags.MentionEveryone, severity: 'MEDIUM', emoji: '🟡' },
-    ManageMessages: { flag: PermissionsBitField.Flags.ManageMessages, severity: 'MEDIUM', emoji: '🟡' },
-    ModerateMembers: { flag: PermissionsBitField.Flags.ModerateMembers, severity: 'MEDIUM', emoji: '🟡' }
+    Administrator: { flag: PermissionsBitField.Flags.Administrator, severity: 'CRITICAL', emoji: '🔴', risk: 'Full server control' },
+    ManageGuild: { flag: PermissionsBitField.Flags.ManageGuild, severity: 'CRITICAL', emoji: '🔴', risk: 'Can change server-wide settings' },
+    ManageRoles: { flag: PermissionsBitField.Flags.ManageRoles, severity: 'CRITICAL', emoji: '🔴', risk: 'Can grant powerful roles or bypass moderation' },
+    BanMembers: { flag: PermissionsBitField.Flags.BanMembers, severity: 'HIGH', emoji: '🟠', risk: 'Can remove members permanently' },
+    KickMembers: { flag: PermissionsBitField.Flags.KickMembers, severity: 'HIGH', emoji: '🟠', risk: 'Can remove members from the server' },
+    ManageChannels: { flag: PermissionsBitField.Flags.ManageChannels, severity: 'HIGH', emoji: '🟠', risk: 'Can delete, lock, or expose channels' },
+    ManageWebhooks: { flag: PermissionsBitField.Flags.ManageWebhooks, severity: 'HIGH', emoji: '🟠', risk: 'Can create message-sending endpoints' },
+    MentionEveryone: { flag: PermissionsBitField.Flags.MentionEveryone, severity: 'MEDIUM', emoji: '🟡', risk: 'Can notify the whole server' },
+    ManageMessages: { flag: PermissionsBitField.Flags.ManageMessages, severity: 'MEDIUM', emoji: '🟡', risk: 'Can delete or pin other users messages' },
+    ModerateMembers: { flag: PermissionsBitField.Flags.ModerateMembers, severity: 'MEDIUM', emoji: '🟡', risk: 'Can timeout members' }
 };
 const SEVERITY_ORDER = { 'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3 };
 
@@ -770,7 +773,11 @@ const rolescanHandlers = {
 
         const roleList = results.slice(0, 15).map(r => {
             const emoji = r.highestSeverity === 'CRITICAL' ? '🔴' : r.highestSeverity === 'HIGH' ? '🟠' : '🟡';
-            return `${emoji} ${r.role} (${r.permissions.length} perms, ${r.memberCount} members)`;
+            const permissions = r.permissions
+                .slice(0, 3)
+                .map(p => `${p.name}: ${p.risk}`)
+                .join('; ');
+            return `${emoji} ${r.role} (${r.memberCount} members)\n${permissions}`;
         }).join('\n');
 
         const embed = new EmbedBuilder()

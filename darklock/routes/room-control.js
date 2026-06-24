@@ -280,25 +280,6 @@ function panelPage(slug, session) {
     </section>
 
     <section class="tile">
-      <h2>Room sensor</h2>
-      <p class="sub" style="margin:0 0 14px">DHT11 — temperature &amp; humidity</p>
-      <div style="display:flex;gap:24px;align-items:center;margin-bottom:14px">
-        <div style="text-align:center">
-          <div id="sensorTemp" style="font-size:36px;font-weight:700;letter-spacing:-.02em">--</div>
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#8b91a3;margin-top:2px">°F</div>
-        </div>
-        <div style="text-align:center">
-          <div id="sensorHumidity" style="font-size:36px;font-weight:700;letter-spacing:-.02em">--</div>
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#8b91a3;margin-top:2px">% RH</div>
-        </div>
-      </div>
-      <div style="font-size:12px;color:#8b91a3" id="sensorUpdated">Not yet read</div>
-      <div class="btn-row" style="margin-top:12px">
-        <button class="btn" id="sensorRefresh">Read now</button>
-      </div>
-    </section>
-
-    <section class="tile">
       <h2>Songs (passive buzzers)</h2>
       <div class="btn-row" id="songRow">${songButtons}</div>
       <div style="margin-top:10px"><button class="btn" id="songStop">Stop song</button></div>
@@ -435,28 +416,6 @@ const PANEL_JS = `
   };
   refreshDevices();
   setInterval(refreshDevices, 30000);
-
-  // Sensor
-  async function readSensor(){
-    try {
-      const r = await fetch(base + '/api/sensor', { credentials:'same-origin' });
-      const j = await r.json();
-      if (j.ok) {
-        const tempC = Number(j.temp);
-        const tempF = Number.isFinite(tempC) ? Math.round((tempC * 9 / 5 + 32) * 10) / 10 : '--';
-        document.getElementById('sensorTemp').textContent = tempF;
-        document.getElementById('sensorHumidity').textContent = j.humidity;
-        document.getElementById('sensorUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
-      } else {
-        document.getElementById('sensorUpdated').textContent = 'Error: ' + (j.error || 'unknown');
-      }
-    } catch(e) {
-      document.getElementById('sensorUpdated').textContent = 'Network error';
-    }
-  }
-  document.getElementById('sensorRefresh').onclick = () => { readSensor(); showToast('Reading sensor…'); };
-  readSensor();
-  setInterval(readSensor, 60000);
 })();
 `;
 
@@ -614,13 +573,6 @@ function buildRouter() {
     api.get('/lights', async (req, res) => {
         try {
             const r = await bridgeFetch('GET', '/lights');
-            res.status(r.status).json(r.body);
-        } catch { res.status(502).json({ ok: false, error: 'bridge_unreachable' }); }
-    });
-
-    api.get('/sensor', async (req, res) => {
-        try {
-            const r = await bridgeFetch('GET', '/sensor');
             res.status(r.status).json(r.body);
         } catch { res.status(502).json({ ok: false, error: 'bridge_unreachable' }); }
     });

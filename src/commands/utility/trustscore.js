@@ -59,7 +59,7 @@ module.exports = {
             // Add warnings count if viewing self
             if (targetUser.id === interaction.user.id && result.factors.warnings > 0) {
                 embed.addFields({
-                    name: '⚠️ Active Warnings',
+                    name: 'Active Warnings',
                     value: `You have ${result.factors.warnings} active warning(s) affecting your score.`,
                     inline: false
                 });

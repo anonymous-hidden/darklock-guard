@@ -1,5 +1,5 @@
 /**
- * useOllama — binds the OllamaClient to the AI + App stores.
+ * useOllama — binds the provider-aware AI client to the AI + App stores.
  *
  * Exposes:
  *   - ready, modelHealth, models
@@ -8,7 +8,7 @@
  *   - setModel(name)
  */
 import { useCallback, useEffect, useRef } from 'react';
-import { ollama } from '@core/ai/OllamaClient.js';
+import { aiClient, AUTO_MODEL, parseModelRef, pickBestAiModel } from '@core/ai/AIClient.js';
 import { useAiStore } from '@store/aiStore.js';
 import { useAppStore } from '@store/appStore.js';
 
@@ -21,16 +21,19 @@ export function useOllama() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const h = await ollama.health();
-      if (cancelled) return;
-      appStore.setOllamaHealth(h);
-      if (h.ok) {
-        try {
-          const list = await ollama.listModels();
-          if (!cancelled) appStore.setModels(list);
-        } catch (err) {
-          if (!cancelled) appStore.setStatusMessage(`Model list failed: ${err.message}`);
-        }
+      try {
+        const list = await aiClient.listModels();
+        if (cancelled) return;
+        appStore.setModels(list);
+
+        const selectedRef = appStore.selectedModel === AUTO_MODEL
+          ? pickBestAiModel(list)
+          : appStore.selectedModel;
+        const selected = parseModelRef(selectedRef || '');
+        const h = await aiClient.health(selected.provider);
+        if (!cancelled) appStore.setOllamaHealth(h);
+      } catch (err) {
+        if (!cancelled) appStore.setStatusMessage(`Model list failed: ${err.message}`);
       }
     })();
     return () => { cancelled = true; };
@@ -44,7 +47,6 @@ export function useOllama() {
     if (aiStore.streaming) return;
 
     if (!agentic) aiStore.pushUser(text);
-    const assistantMsg = aiStore.pushAssistantStreaming('');
     aiStore.setStreaming(true);
     aiStore.logInfo('chat', agentic
       ? `↻ agentic re-invoke (tool results)`
@@ -55,12 +57,21 @@ export function useOllama() {
 
     const messages = aiStore.conversation.buildPayload({ extraSystem: opts.extraSystem || '' });
     const model = opts.model || appStore.selectedModel;
+    const resolvedModel = model === AUTO_MODEL
+      ? pickBestAiModel(appStore.models)
+      : model;
+    const modelProvider = parseModelRef(resolvedModel).provider;
+    const assistantMsg = aiStore.pushAssistantStreaming('');
 
     try {
-      const result = await ollama.chat({
-        model,
+      const result = await aiClient.chat({
+        provider: modelProvider,
+        model: resolvedModel,
         messages,
-        temperature: opts.temperature ?? 0.7,
+        temperature: opts.temperature ?? (agentic ? 0.25 : 0.45),
+        topP: opts.topP ?? 0.9,
+        numCtx: opts.numCtx ?? 6144,
+        numPredict: opts.numPredict ?? (agentic ? 650 : 900),
         signal: ac.signal,
         onToken: (_tok) => {
           tickRef.current += 1;
@@ -72,7 +83,7 @@ export function useOllama() {
           }
         },
         onMeta: (meta) => {
-          aiStore.logInfo('ollama', `done: model=${model} eval=${meta?.eval_count || 0}`);
+          aiStore.logInfo('ai', `done: provider=${modelProvider} model=${resolvedModel} eval=${meta?.eval_count || meta?.usage?.total_tokens || 0}`);
         },
       });
 
@@ -86,7 +97,7 @@ export function useOllama() {
     } catch (err) {
       const aborted = err?.name === 'AbortError' || /aborted/i.test(String(err?.message));
       aiStore.finishLastAssistant({ aborted, error: aborted ? null : String(err?.message || err) });
-      aiStore.logError('ollama', String(err?.message || err));
+      aiStore.logError('ai', String(err?.message || err));
       return { ok: false, error: String(err?.message || err), aborted };
     } finally {
       aiStore.setStreaming(false);
@@ -96,9 +107,15 @@ export function useOllama() {
 
   const abort = useCallback(() => aiStore.abort(), [aiStore]);
 
-  const setModel = useCallback((name) => {
+  const setModel = useCallback(async (name) => {
     if (!name) return;
     appStore.setSelectedModel(name);
+    const effective = name === AUTO_MODEL
+      ? pickBestAiModel(appStore.models)
+      : name;
+    const provider = parseModelRef(effective).provider;
+    const h = await aiClient.health(provider);
+    appStore.setOllamaHealth(h);
   }, [appStore]);
 
   return {

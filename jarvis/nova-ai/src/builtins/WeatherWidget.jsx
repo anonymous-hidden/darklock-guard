@@ -9,16 +9,29 @@ const DEFAULT_CITY = 'Kansas City, MO';
 const CHAT_WS_URL = 'ws://127.0.0.1:8951/ws/chat';
 
 function fallbackWeeklyOverview(place, daily) {
-  if (!daily?.time?.length) return `Nova overview for ${place}: forecast data is unavailable right now.`;
+  if (!daily?.time?.length) return `Jarvis overview for ${place}: forecast data is unavailable right now.`;
   const highs = daily.temperature_2m_max.map((n) => Math.round(n));
   const lows = daily.temperature_2m_min.map((n) => Math.round(n));
   const rainDays = daily.weather_code.filter((c) => [51, 53, 55, 61, 63, 65, 80, 81, 82].includes(c)).length;
   const stormDays = daily.weather_code.filter((c) => [95, 96, 99].includes(c)).length;
   const warmest = Math.max(...highs);
   const coolest = Math.min(...lows);
-  return `Nova weekly outlook for ${place}: highs around ${warmest}°F, lows near ${coolest}°F. ` +
+  return `Jarvis weekly outlook for ${place}: highs around ${warmest}°F, lows near ${coolest}°F. ` +
     `${rainDays ? `${rainDays} day(s) with rain expected.` : 'Mostly dry conditions expected.'} ` +
     `${stormDays ? `Storm risk on ${stormDays} day(s), so keep an umbrella handy.` : 'No major storm signal this week.'}`;
+}
+
+function getBrowserPosition() {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    return Promise.reject(new Error('device geolocation unavailable'));
+  }
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 5 * 60 * 1000,
+    });
+  });
 }
 
 export default function WeatherWidget() {
@@ -28,7 +41,9 @@ export default function WeatherWidget() {
   const [city, setCity] = useState(DEFAULT_CITY);
   const [overview, setOverview] = useState('');
   const [loadingOverview, setLoadingOverview] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [tab, setTab] = useState('forecast'); // forecast | radar
+  const hasIpc = typeof window !== 'undefined' && !!window.nova?.isElectron;
 
   const fetchWeather = useCallback(async (lat, lon, place) => {
     try {
@@ -64,7 +79,7 @@ export default function WeatherWidget() {
       }));
       const ws = new WebSocket(CHAT_WS_URL);
       const prompt = [
-        `You are Nova. Write a concise weekly weather overview for ${place}.`,
+        `You are Jarvis. Write a concise weekly weather overview for ${place}.`,
         'Style: 3 short bullets + one practical tip. Use °F. Avoid markdown headings.',
         `Forecast data: ${JSON.stringify(compact)}`,
       ].join('\n');
@@ -96,30 +111,103 @@ export default function WeatherWidget() {
     }
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(DEFAULT_CITY)}&count=1&country_code=US`);
-        const j = await res.json();
-        if (j.results?.length) {
-          const r = j.results[0];
-          setCoords({ lat: r.latitude, lon: r.longitude });
-          fetchWeather(r.latitude, r.longitude, `${r.name}${r.admin1 ? ', ' + r.admin1 : ''}`);
-        } else { setErr('default city not found'); }
-      } catch (e) { setErr(String(e?.message || e)); }
-    })();
+  const loadCityWeather = useCallback(async (name = DEFAULT_CITY) => {
+    const term = String(name || '').trim();
+    if (!term) return false;
+    try {
+      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(term)}&count=1`);
+      const j = await res.json();
+      if (!j.results?.length) { setErr('city not found'); return false; }
+      const r = j.results[0];
+      const label = `${r.name}${r.admin1 ? ', ' + r.admin1 : ''}`;
+      setCoords({ lat: r.latitude, lon: r.longitude });
+      setCity(label);
+      await fetchWeather(r.latitude, r.longitude, label);
+      return true;
+    } catch (e) {
+      setErr(String(e?.message || e));
+      return false;
+    }
   }, [fetchWeather]);
+
+  const useCurrentLocation = useCallback(async ({ fallback = true } = {}) => {
+    setLocating(true);
+    try {
+      if (!hasIpc || !window.nova?.control?.location) throw new Error('location bridge unavailable');
+      let loc = await window.nova.control.location();
+      if (loc?.ok && loc.accuracy !== 'approximate-ip') {
+        const label = loc.label || [loc.city, loc.region].filter(Boolean).join(', ') || 'Current location';
+        setCoords({ lat: Number(loc.lat), lon: Number(loc.lon) });
+        setCity(label);
+        await fetchWeather(Number(loc.lat), Number(loc.lon), label);
+        setErr(null);
+        return true;
+      }
+
+      try {
+        const pos = await getBrowserPosition();
+        const payload = {
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          accuracyMeters: pos.coords.accuracy,
+          accuracy: 'device',
+          source: 'device-geolocation',
+          label: 'Current location',
+        };
+        const saved = await window.nova?.control?.setLocation?.(payload);
+        loc = saved?.ok ? saved : { ok: true, ...payload };
+      } catch {}
+
+      if (!loc?.ok || !Number.isFinite(Number(loc.lat)) || !Number.isFinite(Number(loc.lon))) {
+        throw new Error(loc?.error || 'location unavailable');
+      }
+      const label = loc.accuracy === 'approximate-ip'
+        ? `${loc.label || 'Network location'} (approx)`
+        : loc.label || [loc.city, loc.region].filter(Boolean).join(', ') || 'Current location';
+      setCoords({ lat: Number(loc.lat), lon: Number(loc.lon) });
+      setCity(label);
+      await fetchWeather(Number(loc.lat), Number(loc.lon), label);
+      setErr(null);
+      return true;
+    } catch (e) {
+      if (fallback) {
+        setErr(`Location unavailable (${String(e?.message || e)}). Showing ${DEFAULT_CITY}.`);
+        await loadCityWeather(DEFAULT_CITY);
+      } else {
+        setErr(`Location unavailable: ${String(e?.message || e)}`);
+      }
+      return false;
+    } finally {
+      setLocating(false);
+    }
+  }, [fetchWeather, hasIpc, loadCityWeather]);
+
+  useEffect(() => {
+    useCurrentLocation({ fallback: true });
+  }, [useCurrentLocation]);
 
   const searchCity = async () => {
     if (!city.trim()) return;
+    await loadCityWeather(city);
+  };
+
+  const saveTypedLocation = async () => {
+    const term = city.trim();
+    if (!term || !hasIpc || !window.nova?.control?.setLocation) return;
+    setLocating(true);
     try {
-      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`);
-      const j = await res.json();
-      if (!j.results?.length) { setErr('city not found'); return; }
-      const r = j.results[0];
-      setCoords({ lat: r.latitude, lon: r.longitude });
-      fetchWeather(r.latitude, r.longitude, `${r.name}${r.admin1 ? ', ' + r.admin1 : ''}`);
-    } catch (e) { setErr(String(e?.message || e)); }
+      const loc = await window.nova.control.setLocation({ location: term });
+      if (!loc?.ok) throw new Error(loc?.error || 'could not save location');
+      const label = loc.label || loc.display_name || term;
+      setCoords({ lat: Number(loc.lat), lon: Number(loc.lon) });
+      setCity(label);
+      await fetchWeather(Number(loc.lat), Number(loc.lon), label);
+      setErr(null);
+    } catch (e) {
+      setErr(`Could not save location: ${String(e?.message || e)}`);
+    } finally {
+      setLocating(false);
+    }
   };
 
   const cur = data?.current;
@@ -142,6 +230,22 @@ export default function WeatherWidget() {
           className="nova-input text-[11px] flex-1 py-1"
         />
         <button onClick={searchCity} className="nova-btn text-[10.5px] px-2 py-1">Search</button>
+        <button
+          onClick={saveTypedLocation}
+          disabled={locating || !city.trim()}
+          className="nova-btn text-[10.5px] px-2 py-1"
+          title="Save this city as my location"
+        >
+          Set mine
+        </button>
+        <button
+          onClick={() => useCurrentLocation({ fallback: false })}
+          disabled={locating}
+          className="nova-btn text-[10.5px] px-2 py-1"
+          title="Use saved or device location"
+        >
+          {locating ? 'Locating…' : 'Use location'}
+        </button>
         <div className="ml-1 flex rounded overflow-hidden border border-nova-border/60 text-[10px]">
           <button onClick={() => setTab('forecast')}
             className={`px-2 py-1 ${tab === 'forecast' ? 'bg-nova-accent/20 text-nova-accent' : 'text-nova-muted hover:text-nova-text'}`}>
@@ -177,11 +281,11 @@ export default function WeatherWidget() {
               <div className="text-[10px] text-nova-muted text-right shrink-0 max-w-[110px] truncate">{data.place}</div>
             </div>
 
-            {/* Nova overview */}
+            {/* Jarvis overview */}
             {daily && (
               <div className="bg-nova-panel/60 border border-nova-border/60 rounded-lg p-2.5 backdrop-blur">
                 <div className="flex items-center justify-between mb-1">
-                  <div className="text-[10.5px] font-display tracking-wide text-nova-accent2">✦ Nova Weekly Overview</div>
+                  <div className="text-[10.5px] font-display tracking-wide text-nova-accent2">✦ Jarvis Weekly Overview</div>
                   {loadingOverview && <div className="text-[9.5px] font-mono text-nova-muted animate-pulse">thinking…</div>}
                 </div>
                 <div className="text-[11.5px] leading-relaxed whitespace-pre-wrap text-nova-text">

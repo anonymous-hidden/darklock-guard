@@ -14,6 +14,67 @@ class VerificationService {
         this.maxGlobalAttempts = 15; // Total attempts across ALL sessions before lockout
         this.cooldowns = new Map(); // userId -> lastAttempt timestamp
         this.cooldownMs = 5000; // 5 seconds between attempts
+        this.bot.logger?.info('[WebVerifyTrace] VerificationService loaded with public verify URL hardening', {
+            webVerifyBaseUrl: process.env.WEB_VERIFY_BASE_URL || null,
+            dashboardOrigin: process.env.DASHBOARD_ORIGIN || null,
+            baseUrl: process.env.BASE_URL || null,
+            domain: process.env.DOMAIN || null,
+            dashboardUrl: process.env.DASHBOARD_URL || null
+        });
+    }
+
+    normalizeMethod(method) {
+        const value = String(method || 'button').toLowerCase();
+        if (value === 'code') return 'captcha';
+        if (value === 'emoji') return 'reaction';
+        if (value === 'emoji_sequence') return 'sequence';
+        if (['button', 'captcha', 'reaction', 'sequence', 'web', 'auto'].includes(value)) {
+            return value;
+        }
+        return 'button';
+    }
+
+    methodFromCustomId(customId) {
+        if (!customId?.startsWith('verify_method_')) return null;
+        return this.normalizeMethod(customId.slice('verify_method_'.length));
+    }
+
+    getVerificationBaseUrl() {
+        const candidates = [
+            process.env.WEB_VERIFY_BASE_URL,
+            process.env.VERIFICATION_BASE_URL,
+            process.env.DASHBOARD_ORIGIN,
+            process.env.BASE_URL,
+            process.env.DOMAIN,
+            process.env.DASHBOARD_URL
+        ];
+
+        for (const raw of candidates) {
+            const value = String(raw || '').trim();
+            if (!value) continue;
+
+            try {
+                const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+                const url = new URL(withProtocol);
+                const hostname = url.hostname.toLowerCase();
+                if (hostname === 'admin.darklock.net' || hostname.startsWith('admin.')) {
+                    this.bot.logger?.warn('[WebVerifyTrace] skipping admin host for public verification links', {
+                        candidate: url.origin
+                    });
+                    continue;
+                }
+                return url.origin;
+            } catch (_) {
+                // Try the next configured URL.
+            }
+        }
+
+        return process.env.NODE_ENV === 'production' ? 'https://darklock.net' : 'http://localhost:3001';
+    }
+
+    buildWebVerifyUrl(token) {
+        const cacheBust = Date.now().toString(36);
+        return `${this.getVerificationBaseUrl()}/verify/${encodeURIComponent(token)}?v=${cacheBust}`;
     }
 
     /**
@@ -179,7 +240,7 @@ class VerificationService {
      */
     determineMethod(config, riskScore) {
         const profile = config.verification_profile || 'standard';
-        const configuredMethod = (config.verification_method || 'button').toLowerCase();
+        const configuredMethod = this.normalizeMethod(config.verification_method);
 
         if (profile === 'ultra') {
             return 'captcha'; // Ultra uses captcha + staff approval
@@ -192,11 +253,6 @@ class VerificationService {
         // Standard profile - use configured method
         if (configuredMethod === 'auto') {
             return riskScore >= 60 ? 'captcha' : 'button';
-        }
-
-        // Block legacy 'web' method - fall back to captcha
-        if (configuredMethod === 'web') {
-            return 'captcha';
         }
 
         return configuredMethod;
@@ -252,6 +308,43 @@ class VerificationService {
         return crypto.createHash('sha256').update(code.toLowerCase()).digest('hex');
     }
 
+    buildSequenceChallenge() {
+        const emojis = ['🍎', '🍊', '🍋', '🍇', '🍒', '🌟', '🎯', '🔵'];
+        const sequence = Array.from({ length: 4 }, () => emojis[Math.floor(Math.random() * emojis.length)]);
+        return { emojis, sequence, progress: 0 };
+    }
+
+    async startSequenceChallenge(interaction, effectiveGuildId, userId, session) {
+        const challenge = this.buildSequenceChallenge();
+        if (!session) {
+            await this.createSession(effectiveGuildId, userId, 'sequence', 0);
+        }
+
+        await this.bot.database?.run(
+            `UPDATE verification_sessions SET method = 'sequence', code_hash = ? WHERE guild_id = ? AND user_id = ? AND status = 'pending'`,
+            [JSON.stringify(challenge), effectiveGuildId, userId]
+        );
+
+        const makeButton = (emoji, index) => new ButtonBuilder()
+            .setCustomId(`verify_sequence_${effectiveGuildId}_${index}`)
+            .setLabel(emoji)
+            .setStyle(ButtonStyle.Secondary);
+
+        const rows = [
+            new ActionRowBuilder().addComponents(...challenge.emojis.slice(0, 5).map(makeButton)),
+            new ActionRowBuilder().addComponents(...challenge.emojis.slice(5).map((emoji, index) => makeButton(emoji, index + 5)))
+        ];
+
+        const payload = {
+            content: `🎯 **Emoji Sequence Verification**\n\nClick this sequence in order:\n**${challenge.sequence.join('  ')}**`,
+            components: rows,
+            flags: [MessageFlags.Ephemeral]
+        };
+
+        if (interaction.replied || interaction.deferred) return interaction.followUp(payload);
+        return interaction.reply(payload);
+    }
+
     /**
      * Get pending session for user
      */
@@ -272,6 +365,48 @@ class VerificationService {
             `SELECT * FROM verification_sessions WHERE token = ? AND status = 'pending'`,
             [token]
         );
+    }
+
+    async setSessionStatus(session, status, completedBy = null) {
+        if (!session?.id) return;
+        const guildId = session.guild_id || session.guildId;
+        const userId = session.user_id || session.userId;
+
+        if (guildId && userId) {
+            await this.bot.database?.run(
+                `DELETE FROM verification_sessions
+                 WHERE guild_id = ? AND user_id = ? AND status = ? AND id != ?`,
+                [guildId, userId, status, session.id]
+            );
+        }
+
+        if (completedBy !== null) {
+            await this.bot.database?.run(
+                `UPDATE verification_sessions
+                 SET status = ?, completed_at = CURRENT_TIMESTAMP, completed_by = ?
+                 WHERE id = ?`,
+                [status, completedBy, session.id]
+            );
+            return;
+        }
+
+        await this.bot.database?.run(
+            `UPDATE verification_sessions SET status = ? WHERE id = ?`,
+            [status, session.id]
+        );
+    }
+
+    async setPendingSessionsStatus(guildId, userId, status, completedBy = null) {
+        const sessions = await this.bot.database?.all(
+            `SELECT * FROM verification_sessions
+             WHERE guild_id = ? AND user_id = ? AND status = 'pending'
+             ORDER BY created_at DESC`,
+            [guildId, userId]
+        );
+
+        for (const session of sessions || []) {
+            await this.setSessionStatus(session, status, completedBy);
+        }
     }
 
     /**
@@ -341,15 +476,21 @@ class VerificationService {
                 embed.setDescription(`Welcome to **${member.guild.name}**!\n\nYour verification code is: **\`${session.code}\`**\n\nClick the button below and enter this code to verify.`);
                 components.push(new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
-                        .setCustomId(`verify_button`)
+                        .setCustomId('verify_method_captcha')
                         .setLabel('🔐 Enter Code')
                         .setStyle(ButtonStyle.Primary)
                 ));
                 break;
 
             case 'web': {
-                const baseUrl = process.env.BASE_URL || process.env.DASHBOARD_URL || process.env.DASHBOARD_ORIGIN || 'http://localhost:3001';
-                const verifyUrl = `${baseUrl}/verify/${session.token}`;
+                const verifyUrl = this.buildWebVerifyUrl(session.token);
+                this.bot.logger?.info('[WebVerifyTrace] DM web verification link generated', {
+                    guildId: member.guild.id,
+                    userId: member.id,
+                    method: session.method,
+                    tokenTail: session.token ? String(session.token).slice(-8) : null,
+                    verifyUrl
+                });
                 embed.setDescription(`Welcome to **${member.guild.name}**!\n\nClick the button below to complete verification through our secure portal.`);
                 components.push(new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
@@ -364,8 +505,18 @@ class VerificationService {
                 embed.setDescription(`Welcome to **${member.guild.name}**!\n\nClick the button below to start the emoji verification challenge.`);
                 components.push(new ActionRowBuilder().addComponents(
                     new ButtonBuilder()
-                        .setCustomId(`verify_button`)
+                        .setCustomId('verify_method_reaction')
                         .setLabel('🎯 Start Verification')
+                        .setStyle(ButtonStyle.Primary)
+                ));
+                break;
+
+            case 'sequence':
+                embed.setDescription(`Welcome to **${member.guild.name}**!\n\nClick the button below to start the emoji sequence challenge.`);
+                components.push(new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('verify_method_sequence')
+                        .setLabel('🎯 Start Sequence')
                         .setStyle(ButtonStyle.Primary)
                 ));
                 break;
@@ -470,8 +621,24 @@ class VerificationService {
                 return safeReply('✅ You are already verified!');
             }
 
-            const session = await this.getPendingSession(effectiveGuildId, userId);
-            const method = session?.method || config.verification_method || 'button';
+            let session = await this.getPendingSession(effectiveGuildId, userId);
+            const requestedMethod = this.methodFromCustomId(interaction.customId);
+            const riskScore = session?.risk_score ?? (member ? this.calculateRiskScore(member) : 0);
+            const configuredMethod = this.normalizeMethod(this.determineMethod(config, riskScore));
+            const configuredRawMethod = this.normalizeMethod(config.verification_method);
+            const method = requestedMethod && requestedMethod !== 'auto' && requestedMethod === configuredRawMethod
+                ? requestedMethod
+                : configuredMethod;
+
+            // Method changes used to leave users stuck on stale pending sessions.
+            // Keep the current guild config authoritative and rebuild sessions when needed.
+            if (session && this.normalizeMethod(session.method) !== method) {
+                await this.bot.database?.run(
+                    `DELETE FROM verification_sessions WHERE id = ?`,
+                    [session.id]
+                );
+                session = null;
+            }
 
             // Handle based on method
             if (method === 'button' || method === 'auto') {
@@ -508,10 +675,7 @@ class VerificationService {
                         this.bot.logger?.warn(`[VerificationService] Could not DM code to ${userId}: ${dmErr.message}`);
                         // SECURITY: Never post code in plaintext in a public channel.
                         // Mark session as failed so user can retry (counts toward global limit).
-                        await this.bot.database?.run(
-                            `UPDATE verification_sessions SET status = 'failed' WHERE guild_id = ? AND user_id = ? AND status = 'pending'`,
-                            [effectiveGuildId, userId]
-                        );
+                        await this.setPendingSessionsStatus(effectiveGuildId, userId, 'failed');
                         return safeReply('❌ **Could not send verification code.**\n\nPlease enable **DMs from server members** in your privacy settings, then click verify again.\n\n*Settings → Privacy & Safety → Allow direct messages from server members*');
                     }
                 }
@@ -519,10 +683,7 @@ class VerificationService {
                 // Check expiry
                 if (session.expires_at && new Date(session.expires_at) < new Date()) {
                     this.bot.logger?.info(`[VerificationService] Session expired`);
-                    await this.bot.database?.run(
-                        `UPDATE verification_sessions SET status = 'expired' WHERE id = ?`,
-                        [session.id]
-                    );
+                    await this.setSessionStatus(session, 'expired');
                     return safeReply('⏰ Your code expired. Click verify again to get a new code.');
                 }
 
@@ -554,6 +715,40 @@ class VerificationService {
                     this.bot.logger?.error(`[VerificationService] Modal stack: ${modalErr.stack}`);
                     return safeReply('❌ Failed to show verification modal. Please try again.');
                 }
+            }
+
+            if (method === 'web') {
+                const webSession = session || await this.createSession(effectiveGuildId, userId, 'web', 0);
+                const verifyUrl = this.buildWebVerifyUrl(webSession.token);
+                this.bot.logger?.info('[WebVerifyTrace] Interaction web verification link generated', {
+                    guildId: effectiveGuildId,
+                    userId,
+                    method,
+                    tokenTail: webSession.token ? String(webSession.token).slice(-8) : null,
+                    verifyUrl
+                });
+                const row = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setLabel('Open Verification Portal')
+                        .setStyle(ButtonStyle.Link)
+                        .setURL(verifyUrl)
+                );
+                if (interaction.replied || interaction.deferred) {
+                    return interaction.followUp({
+                        content: '🌐 **Web Verification Required**\n\nOpen the secure portal to complete verification.',
+                        components: [row],
+                        flags: [MessageFlags.Ephemeral]
+                    });
+                }
+                return interaction.reply({
+                    content: '🌐 **Web Verification Required**\n\nOpen the secure portal to complete verification.',
+                    components: [row],
+                    flags: [MessageFlags.Ephemeral]
+                });
+            }
+
+            if (method === 'sequence' || method === 'emoji_sequence') {
+                return this.startSequenceChallenge(interaction, effectiveGuildId, userId, session);
             }
 
             if (method === 'reaction' || method === 'emoji') {
@@ -668,10 +863,7 @@ class VerificationService {
                 );
 
                 if (attempts >= this.maxAttempts) {
-                    await this.bot.database?.run(
-                        `UPDATE verification_sessions SET status = 'failed' WHERE id = ?`,
-                        [session.id]
-                    );
+                    await this.setSessionStatus(session, 'failed');
                     return safeReply('❌ **Verification Failed**\n\nToo many incorrect attempts. Please click the main verify button to try again.');
                 }
 
@@ -680,6 +872,71 @@ class VerificationService {
         } catch (err) {
             this.bot.logger?.error(`[VerificationService] Emoji verify error: ${err.message}`);
             return safeReply('❌ An error occurred. Please try again.');
+        }
+    }
+
+    async handleSequenceVerify(interaction) {
+        const userId = interaction.user.id;
+        const parts = interaction.customId.split('_');
+        const guildId = parts[2];
+        const index = Number(parts[3]);
+
+        const safeReply = async (content) => {
+            try {
+                if (interaction.replied || interaction.deferred) {
+                    return interaction.followUp({ content, flags: [MessageFlags.Ephemeral] });
+                }
+                return interaction.reply({ content, flags: [MessageFlags.Ephemeral] });
+            } catch (err) {
+                this.bot.logger?.warn(`[VerificationService] Sequence reply failed: ${err.message}`);
+            }
+        };
+
+        if (!Number.isInteger(index)) return safeReply('❌ Invalid sequence button.');
+        if (this.isRateLimited(userId)) return safeReply('⏰ Please wait a few seconds before trying again.');
+        this.recordAttempt(userId);
+
+        try {
+            const session = await this.getPendingSession(guildId, userId);
+            if (!session) return safeReply('❌ No pending verification found. Please click the main verify button to start over.');
+
+            let challenge = null;
+            try {
+                challenge = JSON.parse(session.code_hash || '{}');
+            } catch {}
+            if (!challenge?.sequence || !challenge?.emojis) {
+                return safeReply('❌ Sequence expired. Click the main verify button to start again.');
+            }
+
+            const selected = challenge.emojis[index];
+            const expected = challenge.sequence[challenge.progress || 0];
+            if (selected !== expected) {
+                const attempts = (session.attempts || 0) + 1;
+                await this.bot.database?.run(
+                    `UPDATE verification_sessions SET attempts = ? WHERE id = ?`,
+                    [attempts, session.id]
+                );
+                if (attempts >= this.maxAttempts) {
+                    await this.setSessionStatus(session, 'failed');
+                    return safeReply('❌ Verification failed. Click the main verify button to try again.');
+                }
+                return safeReply(`❌ Wrong emoji. ${this.maxAttempts - attempts} attempt(s) remaining.`);
+            }
+
+            challenge.progress = (challenge.progress || 0) + 1;
+            if (challenge.progress >= challenge.sequence.length) {
+                await this.completeVerification(guildId, userId, 'sequence');
+                return safeReply('✅ **Verification Complete!**\n\nYou completed the emoji sequence. Welcome!');
+            }
+
+            await this.bot.database?.run(
+                `UPDATE verification_sessions SET code_hash = ? WHERE id = ?`,
+                [JSON.stringify(challenge), session.id]
+            );
+            return safeReply(`✅ Correct. Next emoji: **${challenge.sequence[challenge.progress]}**`);
+        } catch (err) {
+            this.bot.logger?.error(`[VerificationService] Sequence verify failed: ${err.message}`);
+            return safeReply('❌ An error occurred. Please try again or contact staff.');
         }
     }
 
@@ -740,10 +997,7 @@ class VerificationService {
 
             // Check expiry
             if (session.expires_at && new Date(session.expires_at) < new Date()) {
-                await this.bot.database?.run(
-                    `UPDATE verification_sessions SET status = 'expired' WHERE id = ?`,
-                    [session.id]
-                );
+                await this.setSessionStatus(session, 'expired');
                 return safeReply('⏰ Your code expired. Click verify again to get a new code.');
             }
 
@@ -759,10 +1013,7 @@ class VerificationService {
                 const updated = await this.bot.database?.get(`SELECT attempts FROM verification_sessions WHERE id = ?`, [session.id]);
                 
                 if (updated?.attempts >= this.maxAttempts) {
-                    await this.bot.database?.run(
-                        `UPDATE verification_sessions SET status = 'failed' WHERE id = ?`,
-                        [session.id]
-                    );
+                    await this.setSessionStatus(session, 'failed');
                     return safeReply('❌ Too many failed attempts. Please contact staff.');
                 }
 
@@ -810,13 +1061,7 @@ class VerificationService {
             }
         }
 
-        // Update session status
-        await this.bot.database?.run(
-            `UPDATE verification_sessions 
-             SET status = 'completed', completed_at = CURRENT_TIMESTAMP, completed_by = ?
-             WHERE guild_id = ? AND user_id = ? AND status = 'pending'`,
-            [completedBy || userId, guildId, userId]
-        );
+        await this.setPendingSessionsStatus(guildId, userId, 'completed', completedBy || userId);
 
         // Update verification_queue for compatibility
         await this.bot.database?.run(
@@ -932,11 +1177,7 @@ class VerificationService {
             return interaction.editReply({ content: `✅ Approved ${member.user.username}.` });
         } else {
             await member.kick(`Verification denied by ${interaction.user.username}`);
-            await this.bot.database?.run(
-                `UPDATE verification_sessions SET status = 'rejected', completed_by = ? 
-                 WHERE guild_id = ? AND user_id = ? AND status = 'pending'`,
-                [interaction.user.id, interaction.guild.id, targetId]
-            );
+            await this.setPendingSessionsStatus(interaction.guild.id, targetId, 'rejected', interaction.user.id);
             await interaction.message.edit({ components: [] });
             return interaction.editReply({ content: `❌ Denied and kicked ${member.user.username}.` });
         }
@@ -947,10 +1188,13 @@ class VerificationService {
      */
     async cleanupExpired() {
         try {
-            await this.bot.database?.run(
-                `UPDATE verification_sessions SET status = 'expired' 
+            const expired = await this.bot.database?.all(
+                `SELECT * FROM verification_sessions
                  WHERE status = 'pending' AND expires_at < CURRENT_TIMESTAMP`
             );
+            for (const session of expired || []) {
+                await this.setSessionStatus(session, 'expired');
+            }
         } catch {}
     }
 }

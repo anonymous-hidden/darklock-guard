@@ -20,7 +20,6 @@ const SECURITY_COMMANDS = new Set([
     // Complex standalone features
     'antinuke',
     'wordfilter',
-    'altdetect',
     
     // Security visibility
     'security',
@@ -66,7 +65,6 @@ const ADMIN_COMMANDS = new Set([
     'reactionroles',   // Standardized plural form
     'channelaccess',
     'serversetup',
-    'voicemonitor',
     'xp'
 ]);
 
@@ -81,6 +79,7 @@ const UTILITY_COMMANDS = new Set([
     'userinfo',
     'announce',
     'poll',
+    'invite',
     'invites',
     'schedule',
     'auditlog',

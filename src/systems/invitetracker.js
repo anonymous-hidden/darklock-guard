@@ -97,6 +97,12 @@ class InviteTracker {
     // Cache invites for a guild
     async cacheGuildInvites(guild) {
         try {
+            const me = guild.members.me || await guild.members.fetchMe().catch(() => null);
+            if (!me?.permissions?.has('ManageGuild')) {
+                this.bot.logger?.debug?.(`[InviteTracker] Skipping invite cache for ${guild.id}: missing Manage Server permission`);
+                return new Map();
+            }
+
             const invites = await guild.invites.fetch();
             const inviteMap = new Map();
 
@@ -124,14 +130,18 @@ class InviteTracker {
 
             return inviteMap;
         } catch (error) {
-            this.bot.logger.error(`Failed to cache invites for guild ${guild.id}:`, error);
+            if (error?.code === 50013 || /missing permissions/i.test(String(error?.message || error))) {
+                this.bot.logger?.debug?.(`[InviteTracker] Skipping invite cache for ${guild.id}: missing permissions`);
+            } else {
+                this.bot.logger.warn(`Failed to cache invites for guild ${guild.id}: ${error.message || error}`);
+            }
             return new Map();
         }
     }
 
     // Cache invites for all guilds
     async cacheAllGuildInvites() {
-        for (const guild of this.bot.guilds.cache.values()) {
+        for (const guild of this.bot.client.guilds.cache.values()) {
             await this.cacheGuildInvites(guild);
         }
         this.bot.logger.info(`Cached invites for ${this.inviteCache.size} guilds`);
@@ -529,7 +539,7 @@ class InviteTracker {
             .setTimestamp();
 
         if (joinRecord.inviter_id) {
-            const inviter = await this.bot.users.fetch(joinRecord.inviter_id).catch(() => null);
+            const inviter = await this.bot.client.users.fetch(joinRecord.inviter_id).catch(() => null);
             if (inviter) {
                 const stats = await this.getInviterStats(member.guild.id, inviter.id);
                 const effective = stats.regular_invites + stats.bonus_invites - stats.fake_invites - stats.left_invites;

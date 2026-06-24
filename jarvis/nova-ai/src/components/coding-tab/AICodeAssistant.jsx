@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import clsx from 'clsx';
-import { ollama } from '@core/ai/OllamaClient.js';
+import { aiClient } from '@core/ai/AIClient.js';
 import { CODING_MODE, PromptEngine, CODING_ACTIONS } from '@core/ai/PromptEngine.js';
 import { useAppStore } from '@store/appStore.js';
 import { useAiStore } from '@store/aiStore.js';
@@ -82,7 +82,7 @@ export default function AICodeAssistant({ filePath, fileContent }) {
     acRef.current = ac;
     try {
       let acc = '';
-      const result = await ollama.chat({
+      const result = await aiClient.chat({
         model, messages: next, temperature: 0.3, signal: ac.signal,
         onToken: (tok) => {
           acc += tok;
@@ -167,7 +167,7 @@ export default function AICodeAssistant({ filePath, fileContent }) {
             {m.error && <div className="mt-1 text-[11px] text-nova-err">error: {m.error}</div>}
           </div>
         ))}
-        {streaming && <LoadingStream label="Nova is thinking" />}
+        {streaming && <LoadingStream label="Jarvis is thinking" />}
         <div ref={endRef} />
       </div>
 

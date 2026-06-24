@@ -36,7 +36,7 @@ export default function WidgetStudio() {
       <aside className="w-[420px] border-r border-nova-border bg-nova-panel flex flex-col">
         <header className="px-4 py-3 border-b border-nova-border">
           <h2 className="font-display text-base text-nova-text">Widget Studio</h2>
-          <p className="text-xs text-nova-muted mt-0.5">Describe a widget. Nova plans, writes, validates, and saves it.</p>
+          <p className="text-xs text-nova-muted mt-0.5">Describe a widget. Jarvis plans, writes, validates, and saves it.</p>
         </header>
 
         <form onSubmit={onSubmit} className="p-3 flex flex-col gap-2 border-b border-nova-border">

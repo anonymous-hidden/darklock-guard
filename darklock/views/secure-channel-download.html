@@ -3,92 +3,360 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Download Darklock Secure Channel</title>
+    <title>Download Ridgeline</title>
     <link rel="stylesheet" href="/platform/static/css/main.css">
     <style>
-        *{box-sizing:border-box}
-        body{
-            background:radial-gradient(circle at 20% 20%,rgba(124,77,255,.08),transparent 30%),
-                        radial-gradient(circle at 80% 10%,rgba(0,212,255,.06),transparent 25%),#0b0f1a;
-            min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
-            font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:#f8fafc;padding:32px 16px;margin:0;
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+        :root {
+            --bg-core: #070a0f;
+            --bg-panel: #0e141f;
+            --bg-panel-2: #111926;
+            --bg-card: #121d2b;
+            --txt-main: #f6f7fb;
+            --txt-muted: #9ca9bb;
+            --txt-soft: #7f8ba0;
+            --line: rgba(143, 174, 212, 0.2);
+            --line-strong: rgba(142, 198, 255, 0.36);
+            --brand-a: #3fb6ff;
+            --brand-b: #ff4d7a;
+            --ok: #7ee7b1;
         }
-        .dl-container{width:min(900px,100%);padding:44px 40px;
-            background:linear-gradient(180deg,rgba(17,24,39,.95),rgba(10,14,26,.98));
-            border:1px solid rgba(124,77,255,.3);border-radius:20px;
-            box-shadow:0 28px 90px rgba(0,0,0,.55);text-align:center;}
-        .app-icon{width:88px;height:88px;border-radius:20px;margin-bottom:18px;
-            filter:drop-shadow(0 0 24px rgba(124,77,255,.4));object-fit:cover;}
-        h1{font-size:36px;margin:0 0 10px;
-            background:linear-gradient(135deg,#7c4dff,#00d4ff);
-            -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-        .badges{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
-        .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 14px;border-radius:20px;font-size:13px;font-weight:600}
-        .badge-ver{background:rgba(124,77,255,.12);border:1px solid rgba(124,77,255,.3);color:#a78bfa}
-        .badge-date{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#4ade80;font-size:11px;font-weight:700;letter-spacing:.4px}
-        .badge-e2e{background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.25);color:#67e8f9;font-size:11px;font-weight:700}
-        .desc{color:#94a3b8;line-height:1.7;margin-bottom:24px;font-size:15px;max-width:680px;margin-left:auto;margin-right:auto}
-        .features{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 32px;text-align:left}
-        .feat{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;
-            background:rgba(124,77,255,.04);border:1px solid rgba(124,77,255,.12);border-radius:10px}
-        .feat-check{flex-shrink:0;width:18px;height:18px;color:#4ade80;margin-top:1px}
-        .feat-text{font-size:13px;color:#e2e8f0;line-height:1.4}
-        .feat-text strong{color:#fff;display:block;font-size:13px}
-        .section-label{font-size:12px;font-weight:700;letter-spacing:1.2px;color:#4b5563;text-transform:uppercase;margin:0 0 18px}
-        .platforms{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px}
-        .plat-card{background:rgba(255,255,255,.02);border:1px solid rgba(124,77,255,.2);border-radius:16px;
-            padding:28px 22px 24px;text-align:center;transition:all .25s;position:relative}
-        .plat-card:hover{border-color:rgba(124,77,255,.5);transform:translateY(-3px);box-shadow:0 12px 32px rgba(124,77,255,.15)}
-        .plat-card.active{border-color:rgba(124,77,255,.5);background:rgba(124,77,255,.04)}
-        .plat-card.active::before{content:'YOUR PLATFORM';position:absolute;top:-11px;left:50%;transform:translateX(-50%);
-            padding:3px 14px;background:linear-gradient(135deg,#7c4dff,#00d4ff);border-radius:20px;
-            font-size:10px;font-weight:700;color:#fff;letter-spacing:.5px;white-space:nowrap}
-        .plat-icon{width:48px;height:48px;margin:0 auto 14px;color:#7c4dff}
-        .plat-name{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px}
-        .plat-desc{font-size:12px;color:#64748b;margin-bottom:20px}
-        .dl-btns{display:flex;flex-direction:column;gap:9px}
-        .dl-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;
-            border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;
-            transition:all .2s;cursor:pointer;border:none;color:#fff}
-        .dl-btn svg{width:16px;height:16px;flex-shrink:0}
-        .dl-btn.primary{background:linear-gradient(135deg,#7c4dff,#00d4ff);box-shadow:0 4px 18px rgba(124,77,255,.25)}
-        .dl-btn.primary:hover{box-shadow:0 6px 24px rgba(124,77,255,.4);filter:brightness(1.08);transform:translateY(-1px)}
-        .dl-btn.secondary{background:rgba(124,77,255,.08);border:1px solid rgba(124,77,255,.3);color:#a78bfa}
-        .dl-btn.secondary:hover{background:rgba(124,77,255,.18)}
-        .dl-btn.ios-btn{background:linear-gradient(135deg,#1c1c1e,#2c2c2e);border:1px solid rgba(255,255,255,.12)}
-        .dl-btn.ios-btn:hover{background:linear-gradient(135deg,#2c2c2e,#3a3a3c);box-shadow:0 6px 16px rgba(0,0,0,.4)}
-        .dl-btn.disabled{background:rgba(100,116,139,.06);border:1px solid rgba(100,116,139,.15);color:#475569;pointer-events:none;cursor:default}
-        .dl-meta{font-size:11px;opacity:.65;margin-top:3px;font-weight:400}
-        .snippet{margin-top:14px;padding:12px;background:rgba(0,0,0,.3);border:1px solid rgba(124,77,255,.1);border-radius:8px;text-align:left}
-        .snippet-title{font-size:10px;font-weight:700;color:#7c4dff;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
-        .snippet code{display:block;font-size:11px;color:#94a3b8;line-height:1.7;font-family:'JetBrains Mono','Fira Code',monospace;white-space:pre}
-        .sysreq{padding:18px 20px;background:rgba(10,14,26,.6);border:1px solid rgba(255,255,255,.04);
-            border-radius:12px;text-align:left;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:28px}
-        .sysreq-item{font-size:12px;color:#64748b;line-height:1.6}
-        .sysreq-item strong{color:#a78bfa;display:block;font-size:11px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
-        .footer-row{display:flex;justify-content:space-between;align-items:center;padding-top:20px;border-top:1px solid rgba(124,77,255,.12)}
-        .back-link{color:#7c4dff;text-decoration:none;font-size:14px;display:flex;align-items:center;gap:6px}
-        .back-link:hover{text-decoration:underline}
-        .hist-link{color:#64748b;text-decoration:none;font-size:13px}
-        .hist-link:hover{color:#a78bfa}
-        @media(max-width:700px){
-            .platforms{grid-template-columns:1fr}.features{grid-template-columns:1fr}
-            .sysreq{grid-template-columns:1fr}.dl-container{padding:28px 20px}
+        * { box-sizing: border-box; }
+        body {
+            background:
+                radial-gradient(900px 430px at 15% -10%, rgba(63, 182, 255, 0.2), transparent 60%),
+                radial-gradient(900px 440px at 95% 0%, rgba(255, 77, 122, 0.15), transparent 58%),
+                linear-gradient(180deg, #05080e 0%, #070b13 48%, #080d15 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--txt-main);
+            margin: 0;
+            padding: 36px 16px;
+            font-family: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        }
+        .dl-container {
+            width: min(980px, 100%);
+            padding: 42px 34px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            background:
+                linear-gradient(160deg, rgba(16, 25, 39, 0.95), rgba(9, 14, 23, 0.98));
+            box-shadow:
+                0 28px 100px rgba(0, 0, 0, 0.6),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+        .dl-container::before {
+            content: '';
+            position: absolute;
+            inset: -20% auto auto -12%;
+            width: 420px;
+            height: 420px;
+            border-radius: 999px;
+            background: radial-gradient(circle, rgba(63, 182, 255, 0.13), transparent 68%);
+            pointer-events: none;
+        }
+        .dl-container::after {
+            content: '';
+            position: absolute;
+            inset: auto -14% -24% auto;
+            width: 470px;
+            height: 470px;
+            border-radius: 999px;
+            background: radial-gradient(circle, rgba(255, 77, 122, 0.1), transparent 70%);
+            pointer-events: none;
+        }
+        .hero-top {
+            position: relative;
+            z-index: 1;
+            margin-bottom: 22px;
+        }
+        .app-icon {
+            width: 94px;
+            height: 98px;
+            border-radius: 22px;
+            margin: 4px auto 18px;
+            display: block;
+            object-fit: cover;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45));
+        }
+        h1 {
+            margin: 0;
+            font-size: clamp(32px, 4.1vw, 45px);
+            letter-spacing: 0.2px;
+            background: linear-gradient(90deg, #ffffff 2%, #9ed9ff 48%, #ff84a2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-sub {
+            margin: 9px auto 0;
+            max-width: 520px;
+            color: var(--txt-muted);
+            font-size: 14px;
+            letter-spacing: 0.28px;
+        }
+        .badges {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.45px;
+            text-transform: uppercase;
+        }
+        .badge-ver { background: rgba(63, 182, 255, 0.12); border: 1px solid rgba(63, 182, 255, 0.35); color: #9cd9ff; }
+        .badge-date { background: rgba(126, 231, 177, 0.12); border: 1px solid rgba(126, 231, 177, 0.35); color: #aaf2ce; }
+        .badge-e2e { background: rgba(255, 77, 122, 0.1); border: 1px solid rgba(255, 77, 122, 0.32); color: #ff9db8; }
+        .desc {
+            color: var(--txt-muted);
+            line-height: 1.8;
+            margin: 0 auto 26px;
+            font-size: 15px;
+            max-width: 700px;
+            position: relative;
+            z-index: 1;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 11px;
+            margin: 0 0 34px;
+            text-align: left;
+            position: relative;
+            z-index: 1;
+        }
+        .feat {
+            display: flex;
+            align-items: flex-start;
+            gap: 11px;
+            padding: 13px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            background: linear-gradient(160deg, rgba(16, 27, 42, 0.74), rgba(13, 21, 32, 0.74));
+        }
+        .feat-check { flex-shrink: 0; width: 18px; height: 18px; color: var(--ok); margin-top: 1px; }
+        .feat-text { font-size: 12.8px; color: #d7deea; line-height: 1.5; }
+        .feat-text strong { color: #ffffff; display: block; font-size: 12.8px; margin-bottom: 1px; }
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.6px;
+            color: var(--txt-soft);
+            text-transform: uppercase;
+            margin: 0 0 18px;
+            position: relative;
+            z-index: 1;
+        }
+        .platforms {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 34px;
+            position: relative;
+            z-index: 1;
+        }
+        .plat-card {
+            border-radius: 18px;
+            border: 1px solid var(--line);
+            background: linear-gradient(170deg, rgba(18, 29, 43, 0.92), rgba(14, 22, 33, 0.93));
+            padding: 27px 20px 22px;
+            text-align: center;
+            transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+            position: relative;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+        .plat-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--line-strong);
+            box-shadow: 0 16px 30px rgba(0, 0, 0, 0.36);
+        }
+        .plat-card.active {
+            border-color: rgba(255, 132, 162, 0.65);
+            background: linear-gradient(160deg, rgba(23, 33, 47, 0.96), rgba(18, 26, 38, 0.96));
+            box-shadow: 0 18px 34px rgba(0, 0, 0, 0.4);
+        }
+        .plat-card.active::before {
+            content: 'Detected Platform';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 4px 13px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--brand-a), var(--brand-b));
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .plat-icon { width: 46px; height: 46px; margin: 0 auto 13px; color: #8ec6ff; }
+        .plat-name { font-size: 21px; font-weight: 700; color: #fff; margin-bottom: 3px; }
+        .plat-desc { font-size: 12px; color: var(--txt-soft); margin-bottom: 18px; }
+        .dl-btns { display: flex; flex-direction: column; gap: 9px; }
+        .dl-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 15px;
+            border-radius: 11px;
+            font-size: 14px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: 1px solid transparent;
+            color: #fff;
+            letter-spacing: 0.2px;
+        }
+        .dl-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+        .dl-btn.primary {
+            background: linear-gradient(90deg, #2da6ff 0%, #ff4d7a 100%);
+            box-shadow: 0 10px 18px rgba(23, 40, 62, 0.5);
+        }
+        .dl-btn.primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+        .dl-btn.secondary {
+            background: rgba(63, 182, 255, 0.12);
+            border-color: rgba(63, 182, 255, 0.32);
+            color: #c6e8ff;
+        }
+        .dl-btn.secondary:hover { background: rgba(63, 182, 255, 0.2); }
+        .dl-btn.ios-btn {
+            background: linear-gradient(150deg, #1b2a3d, #2a1f2d);
+            border-color: rgba(255, 255, 255, 0.14);
+        }
+        .dl-btn.ios-btn:hover {
+            background: linear-gradient(150deg, #203146, #34263a);
+            box-shadow: 0 10px 18px rgba(0, 0, 0, 0.36);
+        }
+        .dl-meta {
+            font-size: 11px;
+            opacity: 0.78;
+            margin-top: 3px;
+            font-weight: 500;
+            color: #dde7f5;
+        }
+        .snippet {
+            margin-top: 14px;
+            padding: 12px;
+            background: rgba(7, 11, 17, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 10px;
+            text-align: left;
+        }
+        .snippet-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #9ed9ff;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            margin-bottom: 7px;
+        }
+        .snippet code {
+            display: block;
+            font-size: 11px;
+            color: #afbdd0;
+            line-height: 1.7;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            white-space: pre;
+        }
+        .sysreq {
+            padding: 18px 18px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: linear-gradient(160deg, rgba(10, 16, 24, 0.76), rgba(8, 13, 21, 0.76));
+            text-align: left;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 28px;
+            position: relative;
+            z-index: 1;
+        }
+        .sysreq-item {
+            font-size: 12px;
+            color: #b2bfd1;
+            line-height: 1.6;
+            padding: 10px 11px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .sysreq-item strong {
+            color: #dcecff;
+            display: block;
+            font-size: 10px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        .footer-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            position: relative;
+            z-index: 1;
+        }
+        .back-link {
+            color: #9ed9ff;
+            text-decoration: none;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+        }
+        .back-link:hover { color: #c7e9ff; }
+        .hist-link {
+            color: #8e9eb3;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .hist-link:hover { color: #c6d6ec; }
+        @media (max-width: 780px) {
+            .dl-container { padding: 30px 18px; }
+            .platforms, .features { grid-template-columns: 1fr; }
+            .sysreq { grid-template-columns: 1fr; }
+            .footer-row { flex-direction: column; gap: 12px; align-items: flex-start; }
         }
     </style>
 </head>
 <body>
     <div class="dl-container">
 
-        <img class="app-icon" src="/platform/static/icons/darklock-secure-channel.png" alt="Darklock Secure Channel"
+           <img class="app-icon" src="/platform/static/icons/ridgeline.png" alt="Ridgeline"
              onerror="this.style.display='none'">
 
-        <h1>Darklock Secure Channel</h1>
+           <h1>Ridgeline</h1>
+           <div class="hero-sub">Private, encrypted messaging built for teams and individuals who care about security.</div>
 
         <div class="badges">
             <span class="badge badge-ver">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                v1.2.2
+                v2.0.0
             </span>
             <span class="badge badge-date">APRIL 2026</span>
             <span class="badge badge-e2e">
@@ -98,51 +366,51 @@
         </div>
 
         <p class="desc">
-            End-to-end encrypted messaging with triple-layer encryption.
-            Your conversations stay yours — zero-knowledge relay, no server-side decryption,
-            no metadata logging. Built on X3DH + Double Ratchet with XChaCha20-Poly1305.
+            Ridgeline keeps your conversations private by default. Messages are encrypted on your device,
+            relayed without exposing plaintext, and never decrypted on the server. It is built on modern,
+            audited cryptographic patterns including X3DH, Double Ratchet, and XChaCha20-Poly1305.
         </p>
 
         <div class="features">
             <div class="feat">
                 <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feat-text"><strong>Triple-Layer Encryption</strong>X3DH key agreement + Double Ratchet protocol</div>
+                <div class="feat-text"><strong>Multi-Layer Encryption</strong>Uses X3DH key exchange and Double Ratchet for forward secrecy.</div>
             </div>
             <div class="feat">
                 <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feat-text"><strong>Zero-Knowledge Relay</strong>Server never sees plaintext or metadata</div>
+                <div class="feat-text"><strong>Zero-Knowledge Relay</strong>Our relay handles delivery, not message content.</div>
             </div>
             <div class="feat">
                 <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feat-text"><strong>Encrypted File Sharing</strong>Attachments encrypted before upload</div>
+                <div class="feat-text"><strong>Encrypted File Sharing</strong>Files are encrypted before upload and decrypted only by recipients.</div>
             </div>
             <div class="feat">
                 <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feat-text"><strong>Lock Screen Customization</strong>Personalize locked chat appearance, animations &amp; colors</div>
+                <div class="feat-text"><strong>Lock Screen Controls</strong>Customize the lock experience with themes, motion, and color options.</div>
             </div>
             <div class="feat">
                 <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feat-text"><strong>Camera Capture</strong>Take photos directly in chat using your webcam</div>
+                <div class="feat-text"><strong>Camera Capture</strong>Capture and share photos directly from your camera.</div>
             </div>
             <div class="feat">
                 <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feat-text"><strong>Self-Destructing Messages</strong>Auto-delete after configurable timer</div>
+                <div class="feat-text"><strong>Self-Destructing Messages</strong>Set automatic expiry timers for sensitive messages.</div>
             </div>
             <div class="feat">
                 <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feat-text"><strong>Chat Personalization</strong>Custom backgrounds, bubble styles, patterns &amp; color themes</div>
+                <div class="feat-text"><strong>Chat Personalization</strong>Adjust backgrounds, bubble styles, and color palettes to your taste.</div>
             </div>
             <div class="feat">
                 <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feat-text"><strong>User Profiles &amp; Nameplates</strong>Custom profiles with draggable layouts and nameplates</div>
+                <div class="feat-text"><strong>Profiles &amp; Nameplates</strong>Create personalized profiles with flexible layout options.</div>
             </div>
             <div class="feat">
                 <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feat-text"><strong>Screenshot Protection</strong>Detect and alert on screen capture</div>
+                <div class="feat-text"><strong>Screenshot Protection</strong>Receive alerts when a screen capture is detected.</div>
             </div>
             <div class="feat">
                 <svg class="feat-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                <div class="feat-text"><strong>Clipboard Auto-Clear</strong>Copied messages wiped after timeout</div>
+                <div class="feat-text"><strong>Clipboard Auto-Clear</strong>Copied text is cleared automatically after a short timeout.</div>
             </div>
         </div>
 
@@ -159,17 +427,17 @@
                     <a href="/platform/api/download/secure-channel-installer?format=deb" class="dl-btn primary">
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                         Download .deb
-                        <div class="dl-meta">Recommended · system-wide install</div>
+                        <div class="dl-meta">Recommended for Linux · system install</div>
                     </a>
                     <a href="/platform/api/download/secure-channel-installer?format=appimage" class="dl-btn secondary">
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                         Download AppImage
-                        <div class="dl-meta">Portable · no installation needed</div>
+                        <div class="dl-meta">Portable option · run without installation</div>
                     </a>
                 </div>
                 <div class="snippet">
-                    <div class="snippet-title">Quick Install</div>
-                    <code>sudo apt install ./DarklockSecureChannel-1.2.2-linux-amd64.deb</code>
+                    <div class="snippet-title">Install Command</div>
+                    <code>sudo apt install ./Ridgeline-2.0.0-linux-amd64.deb</code>
                 </div>
             </div>
 
@@ -182,12 +450,12 @@
                     <a href="/platform/api/download/secure-channel-installer?format=exe" class="dl-btn primary">
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                         Download .exe Installer
-                        <div class="dl-meta">NSIS installer · recommended</div>
+                        <div class="dl-meta">Standard Windows installer</div>
                     </a>
                 </div>
                 <div class="snippet">
-                    <div class="snippet-title">Note</div>
-                    <code>Electron-based · no extra runtime needed.</code>
+                    <div class="snippet-title">Compatibility Note</div>
+                    <code>No additional runtime is required on supported Windows versions.</code>
                 </div>
             </div>
 
@@ -200,11 +468,11 @@
                     <a href="/platform/api/download/secure-channel-installer?format=apk" class="dl-btn primary">
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                         Download .apk
-                        <div class="dl-meta">Sideload · ~4 MB</div>
+                        <div class="dl-meta">Direct APK download · about 4 MB</div>
                     </a>
                 </div>
                 <div class="snippet">
-                    <div class="snippet-title">Sideload Instructions</div>
+                    <div class="snippet-title">Install on Android</div>
                     <code>Settings → Security → Install unknown apps
 Enable for your browser, then open APK.</code>
                 </div>
@@ -216,16 +484,16 @@ Enable for your browser, then open APK.</code>
                 <div class="plat-name">iOS / Safari</div>
                 <div class="plat-desc">iPhone · iPad · any browser</div>
                 <div class="dl-btns">
-                    <a href="/app/secure-channel/" class="dl-btn ios-btn">
+                    <a href="/platform/download/ridgeline-ios" class="dl-btn ios-btn">
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                        Open Web App
-                        <div class="dl-meta">PWA · Add to Home Screen</div>
+                        Install via Safari
+                        <div class="dl-meta">Step-by-step iOS install flow</div>
                     </a>
                 </div>
                 <div class="snippet">
-                    <div class="snippet-title">Install on iPhone</div>
-                    <code>Open link in Safari → tap Share ↗
-→ "Add to Home Screen" → Add</code>
+                    <div class="snippet-title">Install on iPhone or iPad</div>
+                    <code>Tap Install via Safari → Open Ridgeline
+→ Share ↗ → Add to Home Screen</code>
                 </div>
             </div>
 
@@ -252,18 +520,18 @@ Enable for your browser, then open APK.</code>
             </div>
             <div class="sysreq-item">
                 <strong>Network</strong>
-                Connects to relay server<br>
-                WebSocket port 4101<br>
-                All traffic E2E encrypted
+                Connects to secure relay<br>
+                WebSocket transport (4101)<br>
+                End-to-end encrypted traffic
             </div>
         </div>
 
         <div class="footer-row">
             <a href="/platform" class="back-link">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-                Back to Platform
+                Back to Darklock Platform
             </a>
-            <a href="/platform/changelog" class="hist-link">View release history →</a>
+            <a href="/platform/changelog" class="hist-link">See release notes →</a>
         </div>
 
     </div>

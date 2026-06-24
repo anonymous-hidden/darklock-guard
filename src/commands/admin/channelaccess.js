@@ -388,9 +388,19 @@ module.exports = {
 
             // Check if bot can manage this role
             const botMember = interaction.guild.members.me;
+            if (role.id === interaction.guild.id || role.managed) {
+                return await interaction.editReply({
+                    content: `❌ I cannot assign **${role.name}** because it is managed by Discord or another integration.`
+                });
+            }
             if (role.position >= botMember.roles.highest.position) {
                 return await interaction.editReply({
                     content: `❌ I cannot assign the **${role.name}** role because it's higher than or equal to my highest role!`
+                });
+            }
+            if (role.position >= interaction.member.roles.highest.position && interaction.guild.ownerId !== interaction.user.id) {
+                return await interaction.editReply({
+                    content: `❌ You cannot add **${role.name}** because it is higher than or equal to your highest role.`
                 });
             }
 
@@ -403,6 +413,11 @@ module.exports = {
             // Grant the role access to the target channel
             const targetChannel = interaction.guild.channels.cache.get(panel.target_channel_id);
             if (targetChannel) {
+                if (!targetChannel.permissionsFor(botMember).has(['ManageChannels'])) {
+                    return await interaction.editReply({
+                        content: `❌ I cannot update permissions for ${targetChannel}. I need **Manage Channels** there.`
+                    });
+                }
                 try {
                     await targetChannel.permissionOverwrites.edit(role, {
                         ViewChannel: true,

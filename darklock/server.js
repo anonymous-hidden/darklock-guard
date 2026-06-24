@@ -20,6 +20,7 @@ const https = require('https');
 const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
+const net = require('net');
 
 // Database initialization
 const db = require('./utils/database');
@@ -71,6 +72,63 @@ function registerDiscordAuthAliases(app) {
 
     app.get(['/auth/discord', '/auth/discord/'], redirectWithQuery('/platform/auth/discord'));
     app.get(['/auth/discord/callback', '/auth/discord/callback/'], redirectWithQuery('/platform/auth/discord/callback'));
+}
+
+function getRequestHostname(req) {
+    const forwardedHost = (req.headers['x-forwarded-host'] || '').toString().split(',')[0].trim();
+    const host = (forwardedHost || req.get('host') || '').toLowerCase();
+    return host.split(':')[0];
+}
+
+function getAuthCookieDomain(req) {
+    if (process.env.NODE_ENV !== 'production') {
+        return undefined;
+    }
+
+    const hostname = getRequestHostname(req);
+    if (!hostname || hostname === 'localhost' || hostname === '127.0.0.1') {
+        return undefined;
+    }
+
+    if (hostname === 'darklock.net' || hostname.endsWith('.darklock.net')) {
+        return '.darklock.net';
+    }
+
+    return undefined;
+}
+
+function clearDashboardAuthCookies(req, res) {
+    const baseOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/'
+    };
+
+    // Clear host-scoped cookies first.
+    res.clearCookie('darklock_token', baseOptions);
+    res.clearCookie('dashboardToken', baseOptions);
+
+    // Also clear domain-scoped cookies used in production.
+    const domain = getAuthCookieDomain(req);
+    if (domain) {
+        res.clearCookie('darklock_token', { ...baseOptions, domain });
+        res.clearCookie('dashboardToken', { ...baseOptions, domain });
+    }
+}
+
+function verifyDashboardSessionToken(token) {
+    if (!token) {
+        return null;
+    }
+
+    try {
+        const jwt = require('jsonwebtoken');
+        const { requireEnv } = require('./utils/env-validator');
+        return jwt.verify(token, requireEnv('JWT_SECRET'));
+    } catch {
+        return null;
+    }
 }
 
 const SECURE_CHANNEL_VERSION_MANIFEST_PATH = path.join(__dirname, 'data', 'secure-channel-version.json');
@@ -150,6 +208,201 @@ function getBasicAuthCredentials(req) {
     } catch {
         return null;
     }
+}
+
+function checkLocalPortOpen(port, host = '127.0.0.1', timeoutMs = 1200) {
+    return new Promise((resolve) => {
+        const socket = new net.Socket();
+        let done = false;
+
+        const finish = (open) => {
+            if (done) return;
+            done = true;
+            try { socket.destroy(); } catch (_) {}
+            resolve(open);
+        };
+
+        socket.setTimeout(timeoutMs);
+        socket.once('connect', () => finish(true));
+        socket.once('timeout', () => finish(false));
+        socket.once('error', () => finish(false));
+
+        try {
+            socket.connect(port, host);
+        } catch (_) {
+            finish(false);
+        }
+    });
+}
+
+function parseTimestampMs(value) {
+    if (!value) return null;
+    const ms = Date.parse(value);
+    return Number.isNaN(ms) ? null : ms;
+}
+
+function readBotStatusSnapshot() {
+    const statusPath = path.join(
+        process.env.DATA_PATH || path.join(__dirname, '..', 'data'),
+        'bot_status.json'
+    );
+
+    try {
+        if (!fs.existsSync(statusPath)) {
+            return {
+                exists: false,
+                online: null,
+                timestampMs: null,
+                ageSec: null
+            };
+        }
+
+        const raw = fs.readFileSync(statusPath, 'utf8');
+        const parsed = JSON.parse(raw);
+        const timestampMs = parseTimestampMs(parsed.timestamp || parsed.last_heartbeat || parsed.updated_at);
+        const ageSec = typeof timestampMs === 'number'
+            ? Math.max(0, Math.floor((Date.now() - timestampMs) / 1000))
+            : null;
+
+        return {
+            exists: true,
+            online: parsed.online === true,
+            timestampMs,
+            ageSec,
+            guildCount: typeof parsed.guild_count === 'number' ? parsed.guild_count : null,
+            userCount: typeof parsed.user_count === 'number' ? parsed.user_count : null
+        };
+    } catch (_) {
+        return {
+            exists: false,
+            online: null,
+            timestampMs: null,
+            ageSec: null
+        };
+    }
+}
+
+async function buildRuntimeBotServiceStatus() {
+    const botPort = Number(process.env.BOT_PORT || 3001);
+    const staleMs = Number(process.env.BOT_STATUS_STALE_MS || 30000);
+
+    const [portOpen, snapshot] = await Promise.all([
+        checkLocalPortOpen(botPort),
+        Promise.resolve(readBotStatusSnapshot())
+    ]);
+
+    const fileFresh = typeof snapshot.timestampMs === 'number'
+        ? (Date.now() - snapshot.timestampMs) <= staleMs
+        : false;
+
+    let status = 'offline';
+    if (portOpen && (!snapshot.exists || (snapshot.online === true && fileFresh))) {
+        status = 'online';
+    } else if (portOpen || (snapshot.online === true && !fileFresh)) {
+        status = 'degraded';
+    }
+
+    let message;
+    if (status === 'online') {
+        message = `Bot reachable on port ${botPort}`;
+    } else if (status === 'degraded') {
+        if (portOpen && snapshot.exists && snapshot.online === true && !fileFresh) {
+            message = `Bot port open, but heartbeat stale (${snapshot.ageSec}s old)`;
+        } else if (portOpen) {
+            message = 'Bot port is reachable, but status telemetry is incomplete';
+        } else {
+            message = 'Bot telemetry shows online, but bot port is not reachable';
+        }
+    } else {
+        message = `Bot not reachable on port ${botPort}`;
+    }
+
+    return {
+        service_name: 'discord_bot',
+        display_name: 'Discord Bot',
+        status,
+        status_message: message,
+        last_check: new Date().toISOString(),
+        runtime: {
+            botPort,
+            botPortOpen: portOpen,
+            statusFilePresent: snapshot.exists,
+            statusFileOnline: snapshot.online,
+            heartbeatAgeSec: snapshot.ageSec,
+            guildCount: snapshot.guildCount,
+            userCount: snapshot.userCount
+        }
+    };
+}
+
+function withRuntimeBotService(services, runtimeBotService) {
+    const aliases = new Set(['discord_bot', 'discord-bot', 'discordbot', 'darklock-bot', 'bot']);
+    const incoming = Array.isArray(services) ? services : [];
+    const filtered = incoming.filter((svc) => !aliases.has(String(svc.service_name || '').toLowerCase()));
+    return [runtimeBotService, ...filtered];
+}
+
+function resolveServicePort(serviceName) {
+    const key = String(serviceName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const platformPort = Number(process.env.DARKLOCK_PORT || process.env.PORT || 3002);
+    const botPort = Number(process.env.BOT_PORT || 3001);
+
+    const mapping = {
+        api: platformPort,
+        dashboard: platformPort,
+        platform: platformPort,
+        darklockplatform: platformPort,
+        discordbot: botPort,
+        darklockbot: botPort,
+        bot: botPort,
+        notes: 3003,
+        notesserver: 3003,
+        darklocknotesserver: 3003,
+        roomcontrol: 3099,
+        roomcontrolbridge: 3099,
+        securechannelids: 4100,
+        securechannelrelay: 4101,
+        jarvisapi: 8950,
+        ollama: 11434,
+    };
+
+    return mapping[key] || null;
+}
+
+async function applyRuntimeReachabilityOverlay(services) {
+    const incoming = Array.isArray(services) ? services : [];
+    const botAliases = new Set(['discord_bot', 'discord-bot', 'discordbot', 'darklock-bot', 'bot']);
+
+    return Promise.all(incoming.map(async (svc) => {
+        const serviceName = String(svc?.service_name || '');
+        if (!serviceName || botAliases.has(serviceName.toLowerCase())) {
+            return svc;
+        }
+
+        const port = resolveServicePort(serviceName);
+        if (!port) {
+            return svc;
+        }
+
+        const reachable = await checkLocalPortOpen(port);
+        const status = String(svc?.status || '').toLowerCase() === 'maintenance'
+            ? 'maintenance'
+            : (reachable ? 'online' : 'offline');
+
+        return {
+            ...svc,
+            status,
+            status_message: reachable
+                ? (svc?.status_message || `Reachable on port ${port}`)
+                : `Not reachable on port ${port}`,
+            last_check: new Date().toISOString(),
+            runtime: {
+                ...(svc?.runtime || {}),
+                checkedPort: port,
+                reachable
+            }
+        };
+    }));
 }
 
 function sendRidgelineAuthChallenge(res) {
@@ -401,8 +654,19 @@ class DarklockPlatform {
         
         // UTF-8 charset for HTML responses
         this.app.use((req, res, next) => {
+            const acceptHeader = String(req.headers.accept || '').toLowerCase();
+            const isApiRequest = req.path === '/health' ||
+                req.path.startsWith('/api/') ||
+                req.path.startsWith('/platform/api/') ||
+                req.path === '/platform/maintenance/status' ||
+                req.path.startsWith('/platform/maintenance/status/');
+            const wantsJson = acceptHeader.includes('application/json');
+
             // Don't override Content-Type for static assets
-            if (!req.path.includes('/static/') && 
+            if (req.method === 'GET' &&
+                !isApiRequest &&
+                !wantsJson &&
+                !req.path.includes('/static/') && 
                 !req.path.startsWith('/site/css/') && 
                 !req.path.startsWith('/site/js/') && 
                 !req.path.startsWith('/site/images/') && 
@@ -652,7 +916,15 @@ class DarklockPlatform {
     setupRoutes() {
         // Darklock Guard Desktop API routes (for onboarding)
         // Favicon (prevent 404)
-        this.app.get("/favicon.ico", (req, res) => res.status(204).send());
+        this.app.get("/favicon.ico", (req, res) => {
+            console.log('[WebVerifyTrace] favicon request reached platform server', {
+                host: req.get('host'),
+                originalUrl: req.originalUrl,
+                referrer: req.get('referer') || null,
+                userAgent: req.get('user-agent') || null
+            });
+            res.status(204).send();
+        });
         
         this.setupGuardApiRoutes();
         
@@ -676,10 +948,23 @@ class DarklockPlatform {
         
         // Secure Channel PWA (mobile web app)
         const scPwaDist = path.join(__dirname, '../secure-channel/apps/dl-secure-channel-mobile/dist-pwa');
+        this.app.use('/app/secure-channel', (req, res, next) => {
+            const p = req.path || '';
+            if (p === '/' || p === '' || p === '/pwa.html' || p === '/sw.js') {
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+            }
+            next();
+        });
         this.app.use('/app/secure-channel', express.static(scPwaDist));
-        // SPA fallback — serve index.html for all sub-routes
+        this.app.get('/app/secure-channel', (req, res) => {
+            res.sendFile(path.join(scPwaDist, 'pwa.html'));
+        });
+        this.app.get('/app/secure-channel/', (req, res) => {
+            res.sendFile(path.join(scPwaDist, 'pwa.html'));
+        });
+        // SPA fallback — serve the PWA shell for all sub-routes
         this.app.get('/app/secure-channel/*', (req, res) => {
-            res.sendFile(path.join(scPwaDist, 'index.html'));
+            res.sendFile(path.join(scPwaDist, 'pwa.html'));
         });
         
         // Avatars folder for user avatars
@@ -692,10 +977,37 @@ class DarklockPlatform {
         
         // Bot dashboard route
         this.app.get('/dashboard', async (req, res) => {
-            const token = req.cookies?.darklock_token;
-            const hasDashToken = req.cookies?.dashboardToken;
-            if (hasDashToken || token) {
+            const hostname = getRequestHostname(req);
+
+            // The full bot dashboard (live servers, analytics, subscription, and all
+            // settings tabs) is served by the Discord bot process at admin.darklock.net,
+            // which holds the live Discord client and the bot database. This platform
+            // process has no live bot connection, so it can only render an empty shell
+            // with stub data. Send users to the real, bot-backed dashboard instead.
+            if (process.env.NODE_ENV === 'production' && hostname !== 'admin.darklock.net') {
+                return res.redirect('https://admin.darklock.net/dashboard');
+            }
+
+            const darklockToken = req.cookies?.darklock_token;
+            const dashboardToken = req.cookies?.dashboardToken;
+            const validDarklockSession = verifyDashboardSessionToken(darklockToken);
+            const validDashboardSession = verifyDashboardSessionToken(dashboardToken);
+            const hasValidSession = !!(validDarklockSession || validDashboardSession);
+
+            // On platform domain, keep unauthenticated users on the platform auth flow.
+            if (hostname === 'platform.darklock.net' && !hasValidSession) {
+                if (darklockToken || dashboardToken) {
+                    clearDashboardAuthCookies(req, res);
+                }
+                return res.redirect('/platform/dashboard');
+            }
+
+            if (hasValidSession) {
                 return res.sendFile(path.join(__dirname, '../src/dashboard/views/index-modern.html'));
+            }
+
+            if (darklockToken || dashboardToken) {
+                clearDashboardAuthCookies(req, res);
             }
 
             return res.redirect('/login');
@@ -720,7 +1032,10 @@ class DarklockPlatform {
 
         // Login page — redirect to admin dashboard login
         this.app.get('/login', (req, res) => {
-            return res.redirect('/platform/auth/login');
+            const rawNext = typeof req.query?.next === 'string' ? req.query.next : '/dashboard';
+            const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard';
+            const query = new URLSearchParams({ next }).toString();
+            return res.redirect(`/platform/auth/login?${query}`);
         });
 
         // Main homepage (with user state)
@@ -756,7 +1071,13 @@ class DarklockPlatform {
             // Read HTML file and inject user data
             const fs = require('fs');
             const { resolveView } = require('./utils/theme-resolver');
-            const htmlPath = resolveView('home.html');
+            let htmlPath = resolveView('home.html');
+            if (!fs.existsSync(htmlPath)) {
+                const fallbackPath = resolveView('ridgeline.html');
+                htmlPath = fs.existsSync(fallbackPath)
+                    ? fallbackPath
+                    : path.join(__dirname, 'views', 'status.html');
+            }
             let html = fs.readFileSync(htmlPath, 'utf8');
             
             // Inject user data into script
@@ -899,6 +1220,11 @@ class DarklockPlatform {
             res.sendFile(path.join(__dirname, 'views/secure-channel-download.html'));
         });
 
+        // Ridgeline iOS install page (Safari Add to Home Screen flow)
+        this.app.get('/platform/download/ridgeline-ios', requireRidgelineDownloadAuth, (req, res) => {
+            res.sendFile(path.join(__dirname, 'views/ridgeline-ios-download.html'));
+        });
+
         // Darklock Secure Channel - Installer download
         this.app.get('/platform/api/download/secure-channel-installer', requireRidgelineDownloadAuth, (req, res) => {
             const format = (req.query.format || 'deb').toLowerCase();
@@ -940,6 +1266,10 @@ class DarklockPlatform {
                     path.join(__dirname, 'downloads/DarklockSecureChannel-1.0.0-android.apk')
                 ]
             };
+
+            if (format === 'ios' || format === 'iphone' || format === 'ipad' || format === 'safari') {
+                return res.redirect(302, '/platform/download/ridgeline-ios');
+            }
 
             let searchFormats = [];
             if (format === 'deb' || format === 'linux') {
@@ -1147,6 +1477,11 @@ class DarklockPlatform {
                     </body>
                 </html>
             `);
+        });
+
+        // Darklock Guard - Public updates page (NO auth required)
+        this.app.get('/platform/shop', (req, res) => {
+            res.sendFile(path.join(__dirname, 'public', 'ridgeline-shop.html'));
         });
 
         // Darklock Guard - Public updates page (NO auth required)
@@ -1782,6 +2117,10 @@ class DarklockPlatform {
                     `).catch(() => []);
                 }) || [];
                 
+                const runtimeBotService = await buildRuntimeBotServiceStatus();
+                const mergedServices = withRuntimeBotService(services, runtimeBotService);
+                const liveServices = await applyRuntimeReachabilityOverlay(mergedServices);
+
                 res.json({
                     maintenance: maintenanceSetting?.value === 'true',
                     maintenanceMessage: maintenanceMsgSetting?.value || null,
@@ -1790,14 +2129,15 @@ class DarklockPlatform {
                         is_global: a.scope === 'global' || !a.scope,
                         target_app: a.app_id || null
                     })),
-                    services
+                    services: liveServices
                 });
             } catch (err) {
                 console.error('[Public API] Status error:', err);
+                const runtimeBotService = await buildRuntimeBotServiceStatus().catch(() => null);
                 res.json({
                     maintenance: false,
                     announcements: [],
-                    services: [
+                    services: runtimeBotService ? [runtimeBotService] : [
                         { service_name: 'api', display_name: 'API', status: 'online' },
                         { service_name: 'dashboard', display_name: 'Dashboard', status: 'online' }
                     ]
@@ -1937,20 +2277,26 @@ class DarklockPlatform {
         });
         
         // Health check endpoint for monitoring (public)
-        this.app.get('/platform/api/health', (req, res) => {
+        this.app.get('/platform/api/health', async (req, res) => {
             try {
                 const fs = require('fs');
                 const usersFileExists = fs.existsSync(path.join(process.env.DATA_PATH || path.join(__dirname, 'data'), 'users.json'));
                 const sessionsFileExists = fs.existsSync(path.join(process.env.DATA_PATH || path.join(__dirname, 'data'), 'sessions.json'));
+                const runtimeBotService = await buildRuntimeBotServiceStatus();
+
+                const overallStatus = runtimeBotService.status === 'online' ? 'healthy' : 'degraded';
                 
                 res.json({
-                    status: 'healthy',
+                    status: overallStatus,
                     uptime: process.uptime(),
                     timestamp: new Date().toISOString(),
                     checks: {
                         dataFiles: usersFileExists && sessionsFileExists ? 'ok' : 'warning',
-                        memory: process.memoryUsage().heapUsed < (1024 * 1024 * 1024) ? 'ok' : 'warning' // < 1GB heap
-                    }
+                        memory: process.memoryUsage().heapUsed < (1024 * 1024 * 1024) ? 'ok' : 'warning', // < 1GB heap
+                        bot: runtimeBotService.status
+                    },
+                    bot: runtimeBotService.runtime,
+                    botMessage: runtimeBotService.status_message
                 });
             } catch (err) {
                 res.status(500).json({
@@ -2152,12 +2498,8 @@ class DarklockPlatform {
         registerDiscordAuthAliases(this.app);
         this.app.use('/platform/auth', authRoutes);
         
-        // Polls page (GET /platform/polls) - simple route before API
+        // Polls page (GET /platform/polls) - public, no login required
         this.app.get('/platform/polls', (req, res) => {
-            const token = req.cookies?.darklock_token;
-            if (!token) {
-                return res.redirect('/platform/auth/login');
-            }
             res.type('html').sendFile(path.join(__dirname, 'views/polls.html'));
         });
         
@@ -2292,11 +2634,46 @@ class DarklockPlatform {
         
         // Web verification routes
         // GET route to serve the verification page HTML
-        this.app.get('/verify/:token', (req, res) => {
-            res.sendFile(path.join(__dirname, '../src/dashboard/views/web-verify.html'));
+        this.app.get(['/verify/:token', '/verify/:guildId/:userId'], (req, res) => {
+            const trace = {
+                host: req.get('host'),
+                originalUrl: req.originalUrl,
+                tokenTail: req.params.token ? String(req.params.token).slice(-8) : null,
+                guildId: req.params.guildId || null,
+                userId: req.params.userId || null,
+                userAgent: req.get('user-agent') || null
+            };
+            console.log('[WebVerifyTrace] GET /verify reached platform server', trace);
+            res.set({
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, private, max-age=0, s-maxage=0',
+                'Surrogate-Control': 'no-store',
+                'CDN-Cache-Control': 'no-store',
+                'Cloudflare-CDN-Cache-Control': 'no-store',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            });
+            res.sendFile(path.join(__dirname, '../src/dashboard/views/web-verify.html'), (err) => {
+                if (!err) return;
+                console.error('[WebVerifyTrace] Failed to send web-verify.html', {
+                    ...trace,
+                    error: err.message
+                });
+                if (!res.headersSent) res.status(err.statusCode || 500).send('Verification page unavailable');
+            });
         });
         
         // POST routes for verification API
+        this.app.use('/api/web-verify', (req, res, next) => {
+            res.set({
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, private, max-age=0, s-maxage=0',
+                'Surrogate-Control': 'no-store',
+                'CDN-Cache-Control': 'no-store',
+                'Cloudflare-CDN-Cache-Control': 'no-store',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            });
+            next();
+        });
         this.app.post('/api/web-verify/init', this.handleWebVerifyInit.bind(this));
         this.app.post('/api/web-verify/submit', this.handleWebVerifySubmit.bind(this));
         this.app.post('/api/web-verify/refresh', this.handleWebVerifyRefresh.bind(this));
@@ -2327,8 +2704,11 @@ class DarklockPlatform {
         this.app.get('/site/docs', (req, res) => {
             res.sendFile(path.join(siteViewsDir, 'documentation.html'));
         });
+        this.app.get('/site/status.html', (req, res) => {
+            res.redirect('/platform/status');
+        });
         this.app.get('/site/status', (req, res) => {
-            res.sendFile(path.join(siteViewsDir, 'status.html'));
+            res.redirect('/platform/status');
         });
         this.app.get('/site/bug-report', (req, res) => {
             res.sendFile(path.join(siteViewsDir, 'bug-reports.html'));
@@ -2368,19 +2748,17 @@ class DarklockPlatform {
         
         // Platform dashboard auth helper
         const dashAuth = async (req, res, next) => {
-            const token = req.cookies?.darklock_token || req.cookies?.dashboardToken;
-            if (!token) return res.status(401).json({ success: false, error: 'Authentication required' });
-            try {
-                const jwt = require('jsonwebtoken');
-                const { requireEnv } = require('./utils/env-validator');
-                const decoded = jwt.verify(token, requireEnv('JWT_SECRET'));
-                req.platformUser = decoded;
-                next();
-            } catch (err) {
-                res.clearCookie('darklock_token');
-                res.clearCookie('dashboardToken');
+            const darklockToken = req.cookies?.darklock_token;
+            const dashboardToken = req.cookies?.dashboardToken;
+            const decoded = verifyDashboardSessionToken(darklockToken) || verifyDashboardSessionToken(dashboardToken);
+
+            if (!decoded) {
+                clearDashboardAuthCookies(req, res);
                 return res.status(401).json({ success: false, error: 'Session expired' });
             }
+
+            req.platformUser = decoded;
+            next();
         };
 
         // Dashboard API - Stats (active apps, sessions)
@@ -2389,6 +2767,61 @@ class DarklockPlatform {
                 res.json({ success: true, stats: { activeApps: 1 } });
             } catch (err) {
                 res.status(500).json({ success: false, error: 'Failed to load stats' });
+            }
+        });
+
+        // Dashboard API - Available applications
+        this.app.get('/platform/dashboard/api/apps', dashAuth, async (req, res) => {
+            try {
+                const apps = [
+                    {
+                        id: 'discord-security-bot',
+                        name: 'Discord Security Bot',
+                        description: 'Advanced Discord server protection with anti-raid, anti-nuke, verification systems, and moderation tools.',
+                        icon: 'shield-check',
+                        status: 'active',
+                        url: '/dashboard',
+                        externalUrl: 'https://admin.darklock.net/dashboard',
+                        category: 'Security',
+                        features: ['Anti-Raid', 'Anti-Nuke', 'Verification', 'Moderation', 'Logging', 'Auto-Mod']
+                    },
+                    {
+                        id: 'darklock-guard',
+                        name: 'Darklock Guard',
+                        description: 'Desktop security application for real-time file integrity monitoring and zero-trust device authentication.',
+                        icon: 'monitor-shield',
+                        status: 'active',
+                        url: null,
+                        downloadUrl: '/platform/download/darklock-guard',
+                        category: 'Security',
+                        features: ['File Integrity', 'Zero-Trust Auth', 'Real-Time Monitor', 'Hardware Key']
+                    },
+                    {
+                        id: 'secure-channel',
+                        name: 'Secure Channel',
+                        description: 'End-to-end encrypted messaging platform with secure file sharing for teams and communities.',
+                        icon: 'message-lock',
+                        status: 'beta',
+                        url: 'https://channel.darklock.net',
+                        category: 'Communication',
+                        features: ['E2E Encryption', 'Secure Files', 'Servers', 'DMs']
+                    },
+                    {
+                        id: 'darklock-vpn',
+                        name: 'Darklock VPN',
+                        description: 'High-speed encrypted VPN service with built-in ad blocking and multi-hop routing.',
+                        icon: 'globe-lock',
+                        status: 'coming-soon',
+                        url: null,
+                        category: 'Privacy',
+                        features: ['Zero-Log Policy', 'WireGuard', 'Ad Blocking', 'Multi-Hop']
+                    }
+                ];
+
+                res.json({ success: true, apps });
+            } catch (err) {
+                console.error('[Dashboard API] apps error:', err);
+                res.status(500).json({ success: false, error: 'Failed to load applications' });
             }
         });
 
@@ -2455,7 +2888,28 @@ class DarklockPlatform {
             try {
                 const db = require('./utils/database');
                 const user = await db.getUserById(req.platformUser.userId);
-                if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+                if (!user) {
+                    const tokenUserId = String(req.platformUser.userId || req.platformUser.id || '0');
+                    const tokenAvatar = req.platformUser.avatar || null;
+                    let avatarUrl = null;
+                    if (tokenAvatar && /^\d+$/.test(tokenUserId)) {
+                        const ext = String(tokenAvatar).startsWith('a_') ? 'gif' : 'png';
+                        avatarUrl = `https://cdn.discordapp.com/avatars/${tokenUserId}/${tokenAvatar}.${ext}?size=128`;
+                    }
+
+                    return res.json({
+                        success: true,
+                        user: {
+                            id: tokenUserId,
+                            userId: tokenUserId,
+                            username: req.platformUser.username || 'User',
+                            globalName: req.platformUser.globalName || req.platformUser.username || 'User',
+                            role: req.platformUser.role || 'user',
+                            avatarUrl,
+                            avatar: null,
+                        }
+                    });
+                }
                 // Build a ready-to-use avatar URL (stored as full URL or local path)
                 let avatarUrl = null;
                 if (user.avatar && (user.avatar.startsWith('http') || user.avatar.startsWith('/'))) {
@@ -2479,6 +2933,33 @@ class DarklockPlatform {
             }
         });
 
+        // Bot status pill endpoint (polled by dashboard-live.js header pill)
+        this.app.get('/platform/api/bot/status', (req, res) => {
+            try {
+                const fs = require('fs');
+                const statusPath = path.join(process.env.DATA_PATH || path.join(__dirname, '..', 'data'), 'bot_status.json');
+                let bot = { online: false };
+                if (fs.existsSync(statusPath)) {
+                    const status = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
+                    const ts = status.timestamp ? new Date(status.timestamp).getTime() : 0;
+                    const fresh = ts > 0 && (Date.now() - ts) < 30000; // status written every 5s
+                    if (status.online && fresh) {
+                        bot = {
+                            online: true,
+                            ping: typeof status.ping === 'number' ? status.ping : null,
+                            uptime: typeof status.uptime === 'number' ? Math.floor(status.uptime / 1000) : 0,
+                            username: status.username || 'Bot',
+                            guilds: Number(status.guild_count || 0),
+                            users: Number(status.user_count || 0)
+                        };
+                    }
+                }
+                res.json({ bot });
+            } catch (err) {
+                res.json({ bot: { online: false } });
+            }
+        });
+
         // Bot dashboard compatibility API: /api/servers/list
         this.app.get('/api/servers/list', dashAuth, async (req, res) => {
             try {
@@ -2486,6 +2967,20 @@ class DarklockPlatform {
                 const fs = require('fs');
                 const path = require('path');
                 const user = await db.getUserById(req.platformUser.userId);
+                const tokenDiscordCandidate = String(
+                    req.platformUser?.oauthId
+                    || req.platformUser?.oauth_id
+                    || req.platformUser?.discordId
+                    || req.platformUser?.discord_id
+                    || req.platformUser?.userId
+                    || ''
+                );
+                const tokenDiscordUserId = /^\d+$/.test(tokenDiscordCandidate) ? tokenDiscordCandidate : null;
+                const resolvedDiscordUserId = (
+                    user?.oauth_provider === 'discord' && user?.oauth_id
+                )
+                    ? String(user.oauth_id)
+                    : tokenDiscordUserId;
 
                 // Load bot guild IDs from status file (written every 5s by the bot)
                 let botGuildIds = new Set();
@@ -2502,6 +2997,56 @@ class DarklockPlatform {
                 const settings = (typeof user?.settings === 'object' && user.settings) ? user.settings
                     : (() => { try { return JSON.parse(user?.settings || '{}'); } catch(_) { return {}; } })();
                 let allGuilds = Array.isArray(settings.discord_guilds) ? settings.discord_guilds : [];
+
+                // Fallback: legacy dashboard JWTs can carry guilds directly.
+                if (allGuilds.length === 0 && Array.isArray(req.platformUser.guilds)) {
+                    allGuilds = req.platformUser.guilds.map(g => ({
+                        id: String(g.id),
+                        name: g.name || 'Unknown Server',
+                        icon: g.icon ? (String(g.icon).startsWith('http') ? g.icon : `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64`) : null,
+                        isOwner: g.isOwner === true || g.owner === true,
+                        permissions: String(g.permissions || '0'),
+                        memberCount: Number(g.memberCount || 0)
+                    }));
+                }
+
+                // Last-resort fallback: derive manageable guilds from live bot membership.
+                if (
+                    allGuilds.length === 0
+                    && resolvedDiscordUserId
+                    && this.discordBot?.client?.guilds?.cache
+                ) {
+                    const discoveredGuilds = [];
+
+                    for (const guild of this.discordBot.client.guilds.cache.values()) {
+                        const isOwner = String(guild.ownerId) === resolvedDiscordUserId;
+                        let hasAdministrator = false;
+                        let hasManageGuild = false;
+
+                        if (!isOwner) {
+                            const member = await guild.members.fetch(resolvedDiscordUserId).catch(() => null);
+                            hasAdministrator = !!member?.permissions?.has?.('Administrator');
+                            hasManageGuild = !!member?.permissions?.has?.('ManageGuild');
+                        }
+
+                        const hasManageAccess = isOwner || hasAdministrator || hasManageGuild;
+
+                        if (!hasManageAccess) continue;
+
+                        discoveredGuilds.push({
+                            id: String(guild.id),
+                            name: guild.name || 'Unknown Server',
+                            icon: guild.iconURL ? guild.iconURL({ size: 64 }) : null,
+                            isOwner,
+                            permissions: isOwner || hasAdministrator ? '8' : '32',
+                            memberCount: Number(guild.memberCount || 0)
+                        });
+                    }
+
+                    if (discoveredGuilds.length > 0) {
+                        allGuilds = discoveredGuilds;
+                    }
+                }
 
                 // Filter: bot must be in the guild AND user must have Administrator or Manage Server permission
                 const ADMINISTRATOR = 0x8n;
@@ -2538,7 +3083,7 @@ class DarklockPlatform {
         this.app.get('/api/server-info', dashAuth, async (req, res) => {
             try {
                 const requestedId = String(req.query.guildId || '');
-                const guildCache = this.discordBot?.guilds?.cache;
+                const guildCache = this.discordBot?.client?.guilds?.cache;
                 const guild = guildCache
                     ? (requestedId ? guildCache.get(requestedId) : guildCache.first())
                     : null;
@@ -2562,7 +3107,7 @@ class DarklockPlatform {
         this.app.get('/api/analytics/overview', dashAuth, async (req, res) => {
             try {
                 const requestedId = String(req.query.guildId || '');
-                const guildCache = this.discordBot?.guilds?.cache;
+                const guildCache = this.discordBot?.client?.guilds?.cache;
                 const guild = guildCache
                     ? (requestedId ? guildCache.get(requestedId) : guildCache.first())
                     : null;
@@ -2814,7 +3359,13 @@ class DarklockPlatform {
             // Read HTML file and inject user data
             const fs = require('fs');
             const { resolveView } = require('./utils/theme-resolver');
-            const htmlPath = resolveView('home.html');
+            let htmlPath = resolveView('home.html');
+            if (!fs.existsSync(htmlPath)) {
+                const fallbackPath = resolveView('ridgeline.html');
+                htmlPath = fs.existsSync(fallbackPath)
+                    ? fallbackPath
+                    : path.join(__dirname, 'views', 'status.html');
+            }
             let html = fs.readFileSync(htmlPath, 'utf8');
             
             // Inject user data into script
@@ -2839,6 +3390,11 @@ class DarklockPlatform {
             return res.sendFile(path.join(__dirname, '../src/dashboard/views/access-share.html'));
         });
         
+        // Darklock Guard - Download page
+        existingApp.get('/platform/shop', (req, res) => {
+            res.sendFile(path.join(__dirname, 'public', 'ridgeline-shop.html'));
+        });
+
         // Darklock Guard - Download page
         existingApp.get('/platform/download/darklock-guard', (req, res) => {
             res.sendFile(path.join(__dirname, 'views/download-page.html'));
@@ -2865,6 +3421,17 @@ class DarklockPlatform {
             res.sendFile(scPage, (err) => {
                 if (err) {
                     console.error('[SecureChannel] sendFile error:', err.message, scPage);
+                    if (!res.headersSent) res.status(500).send('Error loading page');
+                }
+            });
+        });
+
+        // Ridgeline iOS install page (existingApp integration)
+        existingApp.get('/platform/download/ridgeline-ios', requireRidgelineDownloadAuth, (req, res) => {
+            const iosPage = path.join(__dirname, 'views', 'ridgeline-ios-download.html');
+            res.sendFile(iosPage, (err) => {
+                if (err) {
+                    console.error('[SecureChannel] iOS page sendFile error:', err.message, iosPage);
                     if (!res.headersSent) res.status(500).send('Error loading page');
                 }
             });
@@ -3121,6 +3688,10 @@ class DarklockPlatform {
                 ]
             };
 
+            if (format === 'ios' || format === 'iphone' || format === 'ipad' || format === 'safari') {
+                return res.redirect(302, '/platform/download/ridgeline-ios');
+            }
+
             let fmtKey;
             if (format === 'apk' || format === 'android') fmtKey = 'apk';
             else if (format === 'appimage') fmtKey = 'appimage';
@@ -3195,20 +3766,26 @@ class DarklockPlatform {
         });
         
         // Health check endpoint for monitoring (public)
-        existingApp.get('/platform/api/health', (req, res) => {
-            try{
+        existingApp.get('/platform/api/health', async (req, res) => {
+            try {
                 const fs = require('fs');
                 const usersFileExists = fs.existsSync(path.join(process.env.DATA_PATH || path.join(__dirname, 'data'), 'users.json'));
                 const sessionsFileExists = fs.existsSync(path.join(process.env.DATA_PATH || path.join(__dirname, 'data'), 'sessions.json'));
-                
+                const runtimeBotService = await buildRuntimeBotServiceStatus();
+
+                const overallStatus = runtimeBotService.status === 'online' ? 'healthy' : 'degraded';
+
                 res.json({
-                    status: 'healthy',
+                    status: overallStatus,
                     uptime: process.uptime(),
                     timestamp: new Date().toISOString(),
                     checks: {
                         dataFiles: usersFileExists && sessionsFileExists ? 'ok' : 'warning',
-                        memory: process.memoryUsage().heapUsed < (1024 * 1024 * 1024) ? 'ok' : 'warning' // < 1GB heap
-                    }
+                        memory: process.memoryUsage().heapUsed < (1024 * 1024 * 1024) ? 'ok' : 'warning', // < 1GB heap
+                        bot: runtimeBotService.status
+                    },
+                    bot: runtimeBotService.runtime,
+                    botMessage: runtimeBotService.status_message
                 });
             } catch (err) {
                 res.status(500).json({
@@ -3268,6 +3845,10 @@ class DarklockPlatform {
                     `).catch(() => []);
                 }) || [];
 
+                const runtimeBotService = await buildRuntimeBotServiceStatus();
+                const mergedServices = withRuntimeBotService(services, runtimeBotService);
+                const liveServices = await applyRuntimeReachabilityOverlay(mergedServices);
+
                 res.json({
                     maintenance: maintenanceSetting?.value === 'true',
                     maintenanceMessage: maintenanceMsgSetting?.value || null,
@@ -3276,14 +3857,15 @@ class DarklockPlatform {
                         is_global: a.scope === 'global' || !a.scope,
                         target_app: a.app_id || null
                     })),
-                    services
+                    services: liveServices
                 });
             } catch (err) {
                 console.error('[Public API] Status error:', err);
+                const runtimeBotService = await buildRuntimeBotServiceStatus().catch(() => null);
                 res.json({
                     maintenance: false,
                     announcements: [],
-                    services: [
+                    services: runtimeBotService ? [runtimeBotService] : [
                         { service_name: 'api', display_name: 'API', status: 'online' },
                         { service_name: 'dashboard', display_name: 'Dashboard', status: 'online' }
                     ]
@@ -3424,12 +4006,8 @@ class DarklockPlatform {
         registerDiscordAuthAliases(existingApp);
         existingApp.use('/platform/auth', authRoutes);
 
-        // Polls page + API routes (existing app mode)
+        // Polls page + API routes (existing app mode) - public page, no login required
         existingApp.get('/platform/polls', (req, res) => {
-            const token = req.cookies?.darklock_token;
-            if (!token) {
-                return res.redirect('/platform/auth/login');
-            }
             return res.type('html').sendFile(path.join(__dirname, 'views/polls.html'));
         });
         existingApp.use('/platform/polls/api', pollsRouter);
@@ -3541,19 +4119,17 @@ class DarklockPlatform {
         
         // Platform dashboard auth helper
         const dashAuth = async (req, res, next) => {
-            const token = req.cookies?.darklock_token || req.cookies?.dashboardToken;
-            if (!token) return res.status(401).json({ success: false, error: 'Authentication required' });
-            try {
-                const jwt = require('jsonwebtoken');
-                const { requireEnv } = require('./utils/env-validator');
-                const decoded = jwt.verify(token, requireEnv('JWT_SECRET'));
-                req.platformUser = decoded;
-                next();
-            } catch (err) {
-                res.clearCookie('darklock_token');
-                res.clearCookie('dashboardToken');
+            const darklockToken = req.cookies?.darklock_token;
+            const dashboardToken = req.cookies?.dashboardToken;
+            const decoded = verifyDashboardSessionToken(darklockToken) || verifyDashboardSessionToken(dashboardToken);
+
+            if (!decoded) {
+                clearDashboardAuthCookies(req, res);
                 return res.status(401).json({ success: false, error: 'Session expired' });
             }
+
+            req.platformUser = decoded;
+            next();
         };
 
         // Dashboard API - Stats (active apps, sessions)
@@ -3562,6 +4138,61 @@ class DarklockPlatform {
                 res.json({ success: true, stats: { activeApps: 1 } });
             } catch (err) {
                 res.status(500).json({ success: false, error: 'Failed to load stats' });
+            }
+        });
+
+        // Dashboard API - Available applications
+        existingApp.get('/platform/dashboard/api/apps', dashAuth, async (req, res) => {
+            try {
+                const apps = [
+                    {
+                        id: 'discord-security-bot',
+                        name: 'Discord Security Bot',
+                        description: 'Advanced Discord server protection with anti-raid, anti-nuke, verification systems, and moderation tools.',
+                        icon: 'shield-check',
+                        status: 'active',
+                        url: '/dashboard',
+                        externalUrl: 'https://admin.darklock.net/dashboard',
+                        category: 'Security',
+                        features: ['Anti-Raid', 'Anti-Nuke', 'Verification', 'Moderation', 'Logging', 'Auto-Mod']
+                    },
+                    {
+                        id: 'darklock-guard',
+                        name: 'Darklock Guard',
+                        description: 'Desktop security application for real-time file integrity monitoring and zero-trust device authentication.',
+                        icon: 'monitor-shield',
+                        status: 'active',
+                        url: null,
+                        downloadUrl: '/platform/download/darklock-guard',
+                        category: 'Security',
+                        features: ['File Integrity', 'Zero-Trust Auth', 'Real-Time Monitor', 'Hardware Key']
+                    },
+                    {
+                        id: 'secure-channel',
+                        name: 'Secure Channel',
+                        description: 'End-to-end encrypted messaging platform with secure file sharing for teams and communities.',
+                        icon: 'message-lock',
+                        status: 'beta',
+                        url: 'https://channel.darklock.net',
+                        category: 'Communication',
+                        features: ['E2E Encryption', 'Secure Files', 'Servers', 'DMs']
+                    },
+                    {
+                        id: 'darklock-vpn',
+                        name: 'Darklock VPN',
+                        description: 'High-speed encrypted VPN service with built-in ad blocking and multi-hop routing.',
+                        icon: 'globe-lock',
+                        status: 'coming-soon',
+                        url: null,
+                        category: 'Privacy',
+                        features: ['Zero-Log Policy', 'WireGuard', 'Ad Blocking', 'Multi-Hop']
+                    }
+                ];
+
+                res.json({ success: true, apps });
+            } catch (err) {
+                console.error('[Dashboard API] apps error:', err);
+                res.status(500).json({ success: false, error: 'Failed to load applications' });
             }
         });
 
@@ -3628,7 +4259,28 @@ class DarklockPlatform {
             try {
                 const db = require('./utils/database');
                 const user = await db.getUserById(req.platformUser.userId);
-                if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+                if (!user) {
+                    const tokenUserId = String(req.platformUser.userId || req.platformUser.id || '0');
+                    const tokenAvatar = req.platformUser.avatar || null;
+                    let avatarUrl = null;
+                    if (tokenAvatar && /^\d+$/.test(tokenUserId)) {
+                        const ext = String(tokenAvatar).startsWith('a_') ? 'gif' : 'png';
+                        avatarUrl = `https://cdn.discordapp.com/avatars/${tokenUserId}/${tokenAvatar}.${ext}?size=128`;
+                    }
+
+                    return res.json({
+                        success: true,
+                        user: {
+                            id: tokenUserId,
+                            userId: tokenUserId,
+                            username: req.platformUser.username || 'User',
+                            globalName: req.platformUser.globalName || req.platformUser.username || 'User',
+                            role: req.platformUser.role || 'user',
+                            avatarUrl,
+                            avatar: null,
+                        }
+                    });
+                }
                 // Build a ready-to-use avatar URL (stored as full URL or local path)
                 let avatarUrl = null;
                 if (user.avatar && (user.avatar.startsWith('http') || user.avatar.startsWith('/'))) {
@@ -3652,6 +4304,33 @@ class DarklockPlatform {
             }
         });
 
+        // Bot status pill endpoint (polled by dashboard-live.js header pill)
+        existingApp.get('/platform/api/bot/status', (req, res) => {
+            try {
+                const fs = require('fs');
+                const statusPath = path.join(process.env.DATA_PATH || path.join(__dirname, '..', 'data'), 'bot_status.json');
+                let bot = { online: false };
+                if (fs.existsSync(statusPath)) {
+                    const status = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
+                    const ts = status.timestamp ? new Date(status.timestamp).getTime() : 0;
+                    const fresh = ts > 0 && (Date.now() - ts) < 30000; // status written every 5s
+                    if (status.online && fresh) {
+                        bot = {
+                            online: true,
+                            ping: typeof status.ping === 'number' ? status.ping : null,
+                            uptime: typeof status.uptime === 'number' ? Math.floor(status.uptime / 1000) : 0,
+                            username: status.username || 'Bot',
+                            guilds: Number(status.guild_count || 0),
+                            users: Number(status.user_count || 0)
+                        };
+                    }
+                }
+                res.json({ bot });
+            } catch (err) {
+                res.json({ bot: { online: false } });
+            }
+        });
+
         // Bot dashboard compatibility API: /api/servers/list
         existingApp.get('/api/servers/list', dashAuth, async (req, res) => {
             try {
@@ -3659,6 +4338,20 @@ class DarklockPlatform {
                 const fs = require('fs');
                 const path = require('path');
                 const user = await db.getUserById(req.platformUser.userId);
+                const tokenDiscordCandidate = String(
+                    req.platformUser?.oauthId
+                    || req.platformUser?.oauth_id
+                    || req.platformUser?.discordId
+                    || req.platformUser?.discord_id
+                    || req.platformUser?.userId
+                    || ''
+                );
+                const tokenDiscordUserId = /^\d+$/.test(tokenDiscordCandidate) ? tokenDiscordCandidate : null;
+                const resolvedDiscordUserId = (
+                    user?.oauth_provider === 'discord' && user?.oauth_id
+                )
+                    ? String(user.oauth_id)
+                    : tokenDiscordUserId;
 
                 // Load bot guild IDs from status file (written every 5s by the bot)
                 let botGuildIds = new Set();
@@ -3675,6 +4368,56 @@ class DarklockPlatform {
                 const settings = (typeof user?.settings === 'object' && user.settings) ? user.settings
                     : (() => { try { return JSON.parse(user?.settings || '{}'); } catch(_) { return {}; } })();
                 let allGuilds = Array.isArray(settings.discord_guilds) ? settings.discord_guilds : [];
+
+                // Fallback: legacy dashboard JWTs can carry guilds directly.
+                if (allGuilds.length === 0 && Array.isArray(req.platformUser.guilds)) {
+                    allGuilds = req.platformUser.guilds.map(g => ({
+                        id: String(g.id),
+                        name: g.name || 'Unknown Server',
+                        icon: g.icon ? (String(g.icon).startsWith('http') ? g.icon : `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64`) : null,
+                        isOwner: g.isOwner === true || g.owner === true,
+                        permissions: String(g.permissions || '0'),
+                        memberCount: Number(g.memberCount || 0)
+                    }));
+                }
+
+                // Last-resort fallback: derive manageable guilds from live bot membership.
+                if (
+                    allGuilds.length === 0
+                    && resolvedDiscordUserId
+                    && this.discordBot?.client?.guilds?.cache
+                ) {
+                    const discoveredGuilds = [];
+
+                    for (const guild of this.discordBot.client.guilds.cache.values()) {
+                        const isOwner = String(guild.ownerId) === resolvedDiscordUserId;
+                        let hasAdministrator = false;
+                        let hasManageGuild = false;
+
+                        if (!isOwner) {
+                            const member = await guild.members.fetch(resolvedDiscordUserId).catch(() => null);
+                            hasAdministrator = !!member?.permissions?.has?.('Administrator');
+                            hasManageGuild = !!member?.permissions?.has?.('ManageGuild');
+                        }
+
+                        const hasManageAccess = isOwner || hasAdministrator || hasManageGuild;
+
+                        if (!hasManageAccess) continue;
+
+                        discoveredGuilds.push({
+                            id: String(guild.id),
+                            name: guild.name || 'Unknown Server',
+                            icon: guild.iconURL ? guild.iconURL({ size: 64 }) : null,
+                            isOwner,
+                            permissions: isOwner || hasAdministrator ? '8' : '32',
+                            memberCount: Number(guild.memberCount || 0)
+                        });
+                    }
+
+                    if (discoveredGuilds.length > 0) {
+                        allGuilds = discoveredGuilds;
+                    }
+                }
 
                 // Filter: bot must be in the guild AND user must have Administrator or Manage Server permission
                 const ADMINISTRATOR = 0x8n;
@@ -3711,7 +4454,7 @@ class DarklockPlatform {
         existingApp.get('/api/server-info', dashAuth, async (req, res) => {
             try {
                 const requestedId = String(req.query.guildId || '');
-                const guildCache = this.discordBot?.guilds?.cache;
+                const guildCache = this.discordBot?.client?.guilds?.cache;
                 const guild = guildCache
                     ? (requestedId ? guildCache.get(requestedId) : guildCache.first())
                     : null;
@@ -3735,7 +4478,7 @@ class DarklockPlatform {
         existingApp.get('/api/analytics/overview', dashAuth, async (req, res) => {
             try {
                 const requestedId = String(req.query.guildId || '');
-                const guildCache = this.discordBot?.guilds?.cache;
+                const guildCache = this.discordBot?.client?.guilds?.cache;
                 const guild = guildCache
                     ? (requestedId ? guildCache.get(requestedId) : guildCache.first())
                     : null;
@@ -3981,11 +4724,75 @@ class DarklockPlatform {
     /**
      * Web Verification Routes
      */
+    async proxyWebVerifyToBot(req, res, trace = {}) {
+        const botPort = Number(process.env.BOT_PORT || process.env.DASHBOARD_PORT || process.env.PORT_BOT || 3001);
+        const platformPort = Number(this.port || process.env.DARKLOCK_PORT || process.env.PORT || 3002);
+
+        if (!botPort || botPort === platformPort) {
+            console.warn('[WebVerifyTrace] proxy skipped: bot port unavailable or same as platform port', {
+                ...trace,
+                botPort,
+                platformPort
+            });
+            return false;
+        }
+
+        const upstreamUrl = `http://127.0.0.1:${botPort}${req.originalUrl || req.url}`;
+        console.warn('[WebVerifyTrace] proxying web verification request to bot dashboard', {
+            ...trace,
+            upstreamUrl
+        });
+
+        try {
+            const upstream = await fetch(upstreamUrl, {
+                method: req.method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Forwarded-Host': req.get('host') || '',
+                    'X-Forwarded-Proto': req.get('x-forwarded-proto') || req.protocol || 'https',
+                    'X-Darklock-Proxy': 'platform-web-verify'
+                },
+                body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body || {})
+            });
+
+            const contentType = upstream.headers.get('content-type') || 'application/json; charset=utf-8';
+            const body = await upstream.text();
+            res.status(upstream.status);
+            res.set('Content-Type', contentType);
+            res.set('X-Darklock-WebVerify-Proxied', '1');
+            return res.send(body);
+        } catch (error) {
+            console.error('[WebVerifyTrace] proxy to bot dashboard failed', {
+                ...trace,
+                upstreamUrl,
+                error: error.message
+            });
+            res.status(503).json({
+                error: 'Verification service unavailable',
+                detail: 'Bot dashboard API is not reachable from the platform server'
+            });
+            return true;
+        }
+    }
+
     async handleWebVerifyInit(req, res) {
         try {
             const { token, guildId, userId } = req.body;
+            const trace = {
+                host: req.get('host'),
+                hasToken: Boolean(token),
+                tokenTail: token ? String(token).slice(-8) : null,
+                guildId: guildId || null,
+                userId: userId || null,
+                userAgent: req.get('user-agent') || null
+            };
+            console.log('[WebVerifyTrace] init request reached platform server', trace);
 
             if (!this.discordBot?.database) {
+                console.warn('[WebVerifyTrace] init failed: bot database unavailable', trace);
+                const proxied = await this.proxyWebVerifyToBot(req, res, trace);
+                if (proxied) return;
                 return res.status(503).json({ error: 'Bot database not available' });
             }
 
@@ -3997,8 +4804,21 @@ class DarklockPlatform {
                 );
 
                 if (!session) {
+                    console.warn('[WebVerifyTrace] init token lookup failed', trace);
                     return res.status(404).json({ error: 'Invalid or expired verification link' });
                 }
+
+                const guild = this.discordBot.client?.guilds.cache.get(session.guild_id);
+                console.log('[WebVerifyTrace] init session found on platform server', {
+                    ...trace,
+                    sessionId: session.id,
+                    sessionGuildId: session.guild_id,
+                    sessionUserId: session.user_id,
+                    method: session.method,
+                    status: session.status,
+                    expiresAt: session.expires_at || null,
+                    guildFound: Boolean(guild)
+                });
 
                 // Check expiry
                 if (session.expires_at && new Date(session.expires_at) < new Date()) {
@@ -4006,10 +4826,18 @@ class DarklockPlatform {
                         `UPDATE verification_sessions SET status = 'expired' WHERE id = ?`,
                         [session.id]
                     );
-                    return res.status(410).json({ error: 'Verification link expired. Please request a new one.' });
+                    console.warn('[WebVerifyTrace] init session expired on platform server', {
+                        ...trace,
+                        sessionId: session.id,
+                        expiresAt: session.expires_at
+                    });
+                    return res.status(410).json({
+                        expired: true,
+                        error: 'Verification link expired. Please request a new one.',
+                        serverName: guild?.name || 'Unknown Server',
+                        guildName: guild?.name || 'Unknown Server'
+                    });
                 }
-
-                const guild = this.discordBot.client?.guilds.cache.get(session.guild_id);
 
                 // If method needs a visible code, generate a fresh one and update the session
                 let captchaCode = null;
@@ -4029,6 +4857,7 @@ class DarklockPlatform {
                     success: true,
                     guildId: session.guild_id,
                     userId: session.user_id,
+                    serverName: guild?.name || 'Unknown Server',
                     guildName: guild?.name || 'Unknown Server',
                     guildIcon: guild?.iconURL() || null,
                     method: session.method,
@@ -4041,6 +4870,7 @@ class DarklockPlatform {
 
             // Legacy: lookup by guildId/userId
             if (guildId && userId) {
+                console.log('[WebVerifyTrace] init legacy lookup starting on platform server', trace);
                 const session = await this.discordBot.database.get(
                     `SELECT * FROM verification_sessions 
                      WHERE guild_id = ? AND user_id = ? AND status = 'pending'
@@ -4050,10 +4880,19 @@ class DarklockPlatform {
 
                 if (session) {
                     const guild = this.discordBot.client?.guilds.cache.get(guildId);
+                    console.log('[WebVerifyTrace] init legacy session found on platform server', {
+                        ...trace,
+                        sessionId: session.id,
+                        method: session.method,
+                        status: session.status,
+                        expiresAt: session.expires_at || null,
+                        guildFound: Boolean(guild)
+                    });
                     return res.json({
                         success: true,
                         guildId,
                         userId,
+                        serverName: guild?.name || 'Unknown Server',
                         guildName: guild?.name || 'Unknown Server',
                         guildIcon: guild?.iconURL() || null,
                         method: session.method,
@@ -4065,9 +4904,10 @@ class DarklockPlatform {
                 }
             }
 
+            console.warn('[WebVerifyTrace] init found no pending verification on platform server', trace);
             return res.status(404).json({ error: 'No pending verification found' });
         } catch (error) {
-            debugLogger.error('[WebVerify] Init error:', error);
+            debugLogger.error('[WebVerifyTrace] Init error:', error);
             res.status(500).json({ error: 'Server error' });
         }
     }
@@ -4075,8 +4915,21 @@ class DarklockPlatform {
     async handleWebVerifySubmit(req, res) {
         try {
             const { token, code, challenge, guildId, userId } = req.body;
+            const trace = {
+                host: req.get('host'),
+                hasToken: Boolean(token),
+                tokenTail: token ? String(token).slice(-8) : null,
+                guildId: guildId || null,
+                userId: userId || null,
+                hasCode: Boolean(code),
+                userAgent: req.get('user-agent') || null
+            };
+            console.log('[WebVerifyTrace] submit request reached platform server', trace);
             
             if (!this.discordBot?.database) {
+                console.warn('[WebVerifyTrace] submit failed: bot database unavailable', trace);
+                const proxied = await this.proxyWebVerifyToBot(req, res, trace);
+                if (proxied) return;
                 return res.status(503).json({ error: 'Bot database not available' });
             }
 
@@ -4094,12 +4947,25 @@ class DarklockPlatform {
                     [guildId, userId]
                 );
             } else {
+                console.warn('[WebVerifyTrace] submit failed: missing identifiers', trace);
                 return res.status(400).json({ error: 'Token or guild/user IDs required' });
             }
 
             if (!session) {
+                console.warn('[WebVerifyTrace] submit session not found on platform server', trace);
                 return res.status(404).json({ error: 'Invalid or expired session' });
             }
+            console.log('[WebVerifyTrace] submit session found on platform server', {
+                ...trace,
+                sessionId: session.id,
+                sessionGuildId: session.guild_id,
+                sessionUserId: session.user_id,
+                method: session.method,
+                status: session.status,
+                expiresAt: session.expires_at || null,
+                attempts: session.attempts || 0,
+                hasCodeHash: Boolean(session.code_hash)
+            });
 
             // Check expiry
             if (session.expires_at && new Date(session.expires_at) < new Date()) {
@@ -4107,11 +4973,20 @@ class DarklockPlatform {
                     `UPDATE verification_sessions SET status = 'expired' WHERE id = ?`,
                     [session.id]
                 );
-                return res.status(410).json({ error: 'Session expired' });
+                console.warn('[WebVerifyTrace] submit session expired on platform server', {
+                    ...trace,
+                    sessionId: session.id,
+                    expiresAt: session.expires_at
+                });
+                return res.status(410).json({ expired: true, error: 'Session expired' });
             }
 
             // Simple challenge verification (for web method - no code needed)
             if (session.method === 'web') {
+                console.log('[WebVerifyTrace] completing web verification on platform server', {
+                    ...trace,
+                    sessionId: session.id
+                });
                 await this.completeWebVerification(session);
                 return res.json({ success: true, message: 'Verification complete!' });
             }
@@ -4161,20 +5036,37 @@ class DarklockPlatform {
 
     async handleWebVerifyRefresh(req, res) {
         try {
-            const { token } = req.body;
+            const { token, guildId, userId } = req.body;
 
             if (!this.discordBot?.database) {
+                const trace = {
+                    host: req.get('host'),
+                    hasToken: Boolean(token),
+                    tokenTail: token ? String(token).slice(-8) : null,
+                    guildId: guildId || null,
+                    userId: userId || null,
+                    userAgent: req.get('user-agent') || null
+                };
+                console.warn('[WebVerifyTrace] refresh failed: bot database unavailable', trace);
+                const proxied = await this.proxyWebVerifyToBot(req, res, trace);
+                if (proxied) return;
                 return res.status(503).json({ error: 'Bot database not available' });
             }
 
-            if (!token) {
-                return res.status(400).json({ error: 'Token required' });
+            if (!token && (!guildId || !userId)) {
+                return res.status(400).json({ error: 'Token or guild/user IDs required' });
             }
 
-            const session = await this.discordBot.database.get(
-                `SELECT * FROM verification_sessions WHERE token = ?`,
-                [token]
-            );
+            const session = token
+                ? await this.discordBot.database.get(
+                    `SELECT * FROM verification_sessions WHERE token = ?`,
+                    [token]
+                )
+                : await this.discordBot.database.get(
+                    `SELECT * FROM verification_sessions WHERE guild_id = ? AND user_id = ? AND status = 'pending'
+                     ORDER BY created_at DESC LIMIT 1`,
+                    [guildId, userId]
+                );
 
             if (!session || session.status !== 'pending') {
                 return res.status(404).json({ error: 'Invalid session' });
@@ -4226,31 +5118,79 @@ class DarklockPlatform {
     }
 
     async completeWebVerification(session) {
+        const trace = {
+            sessionId: session?.id || null,
+            guildId: session?.guild_id || null,
+            userId: session?.user_id || null,
+            method: session?.method || null
+        };
+        console.log('[WebVerifyTrace] complete start on platform server', trace);
+
         const guild = this.discordBot.client?.guilds.cache.get(session.guild_id);
-        if (!guild) throw new Error('Guild not found');
+        console.log('[WebVerifyTrace] complete guild lookup on platform server', {
+            ...trace,
+            guildFound: Boolean(guild),
+            guildName: guild?.name || null
+        });
+        if (!guild) {
+            console.error('[WebVerifyTrace] complete failed on platform server: guild not found', trace);
+            throw new Error('Guild not found');
+        }
 
         const member = await guild.members.fetch(session.user_id).catch(() => null);
-        if (!member) throw new Error('Member not found');
+        console.log('[WebVerifyTrace] complete member lookup on platform server', {
+            ...trace,
+            memberFound: Boolean(member)
+        });
+        if (!member) {
+            console.error('[WebVerifyTrace] complete failed on platform server: member not found', trace);
+            throw new Error('Member not found');
+        }
 
         const config = await this.discordBot.database?.getGuildConfig(session.guild_id);
+        console.log('[WebVerifyTrace] complete config loaded on platform server', {
+            ...trace,
+            hasConfig: Boolean(config),
+            verifiedRoleId: config?.verified_role_id || null,
+            unverifiedRoleId: config?.unverified_role_id || null
+        });
 
         // Add verified role
         if (config?.verified_role_id) {
             const role = guild.roles.cache.get(config.verified_role_id);
+            console.log('[WebVerifyTrace] complete verified role lookup on platform server', {
+                ...trace,
+                roleId: config.verified_role_id,
+                roleFound: Boolean(role)
+            });
             if (role) {
                 await member.roles.add(role).catch(() => {});
+                console.log('[WebVerifyTrace] complete verified role add attempted on platform server', {
+                    ...trace,
+                    roleId: role.id
+                });
             }
         }
 
         // Remove unverified role
         if (config?.unverified_role_id) {
             const role = guild.roles.cache.get(config.unverified_role_id);
+            console.log('[WebVerifyTrace] complete unverified role lookup on platform server', {
+                ...trace,
+                roleId: config.unverified_role_id,
+                roleFound: Boolean(role)
+            });
             if (role) {
                 await member.roles.remove(role).catch(() => {});
+                console.log('[WebVerifyTrace] complete unverified role remove attempted on platform server', {
+                    ...trace,
+                    roleId: role.id
+                });
             }
         }
 
         // Delete any old sessions for this user
+        console.log('[WebVerifyTrace] complete deleting old sessions on platform server', trace);
         await this.discordBot.database.run(
             `DELETE FROM verification_sessions 
              WHERE guild_id = ? AND user_id = ? AND id != ?`,
@@ -4258,6 +5198,7 @@ class DarklockPlatform {
         );
 
         // Update session status
+        console.log('[WebVerifyTrace] complete updating session status on platform server', trace);
         await this.discordBot.database.run(
             `UPDATE verification_sessions 
              SET status = 'completed', completed_at = CURRENT_TIMESTAMP, completed_by = ?
@@ -4277,6 +5218,7 @@ class DarklockPlatform {
             });
         }
 
+        console.log('[WebVerifyTrace] complete success on platform server', trace);
         debugLogger.log(`[WebVerify] Verified ${session.user_id} in ${session.guild_id}`);
     }
 

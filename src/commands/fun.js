@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -136,10 +136,60 @@ module.exports = {
                 await handleRate(interaction);
                 break;
             default:
-                await interaction.reply({ content: '❌ Unknown fun command.', ephemeral: true });
+                await replySafely(interaction, {
+                    content: '❌ Unknown fun command.',
+                    flags: MessageFlags.Ephemeral
+                });
         }
     }
 };
+
+function isStaleInteractionError(error) {
+    return error?.code === 10062 || error?.code === 40060
+        || /Unknown interaction|Interaction has already been acknowledged/i.test(error?.message || '');
+}
+
+async function deferReplySafely(interaction, options) {
+    if (interaction.deferred || interaction.replied) return true;
+
+    try {
+        await interaction.deferReply(options);
+        return true;
+    } catch (error) {
+        if (isStaleInteractionError(error)) return false;
+        throw error;
+    }
+}
+
+async function editReplySafely(interaction, payload) {
+    try {
+        return await interaction.editReply(payload);
+    } catch (error) {
+        if (isStaleInteractionError(error)) return null;
+        throw error;
+    }
+}
+
+async function replySafely(interaction, payload) {
+    try {
+        if (interaction.deferred || interaction.replied) {
+            return await interaction.followUp(payload);
+        }
+        return await interaction.reply(payload);
+    } catch (error) {
+        if (error?.code === 40060) {
+            try {
+                return await interaction.followUp(payload);
+            } catch (followUpError) {
+                if (isStaleInteractionError(followUpError)) return null;
+                throw followUpError;
+            }
+        }
+
+        if (isStaleInteractionError(error)) return null;
+        throw error;
+    }
+}
 
 // 8ball responses
 const eightBallResponses = {
@@ -247,29 +297,37 @@ async function handleAvatar(interaction) {
 }
 
 async function handleMeme(interaction) {
-    await interaction.deferReply();
+    const acknowledged = await deferReplySafely(interaction);
+    if (!acknowledged) return;
 
     try {
         const subreddits = ['memes', 'dankmemes', 'me_irl', 'wholesomememes', 'funny'];
-        const subreddit = subreddits[Math.floor(Math.random() * subreddits.length)];
-        
-        const response = await fetch(`https://www.reddit.com/r/${subreddit}/top.json?limit=50&t=day`, {
-            headers: { 'User-Agent': 'DarkLock-Bot/1.0' }
-        });
-        const data = await response.json();
-        
-        if (!data?.data?.children?.length) {
-            throw new Error('No meme found');
+        let subreddit;
+        let imagePosts = [];
+
+        for (const candidate of subreddits.sort(() => Math.random() - 0.5).slice(0, 3)) {
+            subreddit = candidate;
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            try {
+                const response = await fetch(`https://www.reddit.com/r/${candidate}/top.json?limit=50&t=day`, {
+                    headers: { 'User-Agent': 'DarkLock-Bot/1.0' },
+                    signal: controller.signal
+                });
+                if (!response.ok) throw new Error(`Reddit returned ${response.status}`);
+                const data = await response.json();
+                imagePosts = (data?.data?.children || [])
+                    .map(c => c.data)
+                    .filter(p => !p.is_video && !p.is_gallery && !p.over_18 && (p.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) || p.url?.includes('i.redd.it')));
+                if (imagePosts.length) break;
+            } catch (err) {
+                console.warn(`Meme feed skipped r/${candidate}: ${err.message}`);
+            } finally {
+                clearTimeout(timeout);
+            }
         }
 
-        // Filter to image posts only
-        const imagePosts = data.data.children
-            .map(c => c.data)
-            .filter(p => !p.is_video && !p.is_gallery && !p.over_18 && (p.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) || p.url?.includes('i.redd.it')));
-
-        if (imagePosts.length === 0) {
-            throw new Error('No image memes found');
-        }
+        if (imagePosts.length === 0) throw new Error('No image memes found');
 
         const post = imagePosts[Math.floor(Math.random() * imagePosts.length)];
 
@@ -280,15 +338,47 @@ async function handleMeme(interaction) {
             .setFooter({ text: `👍 ${post.ups} | r/${subreddit}` })
             .setTimestamp();
 
-        await interaction.editReply({ embeds: [embed] });
+        await editReplySafely(interaction, { embeds: [embed] });
     } catch (error) {
-        console.error('Meme fetch error:', error);
-        await interaction.editReply({ content: '❌ Failed to fetch a meme. Please try again!' });
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            try {
+                const response = await fetch('https://meme-api.com/gimme', {
+                    headers: { 'User-Agent': 'DarkLock-Bot/1.0' },
+                    signal: controller.signal
+                });
+                if (!response.ok) throw new Error(`Fallback meme API returned ${response.status}`);
+                const meme = await response.json();
+                if (!meme?.url || meme?.nsfw) throw new Error('Fallback returned no safe image');
+
+                const embed = new EmbedBuilder()
+                    .setTitle(String(meme.title || 'Random Meme').slice(0, 256))
+                    .setColor('#ff4500')
+                    .setImage(meme.url)
+                    .setFooter({ text: meme.subreddit ? `r/${meme.subreddit}` : 'Meme feed' })
+                    .setTimestamp();
+
+                return editReplySafely(interaction, { embeds: [embed] });
+            } finally {
+                clearTimeout(timeout);
+            }
+        } catch (fallbackError) {
+            console.warn(`Meme fetch unavailable: ${error.message}; fallback failed: ${fallbackError.message}`);
+        }
+
+        const fallback = [
+            'I could not reach the meme feed right now. Try again in a minute.',
+            'The meme feed is taking too long to respond. Nothing broke; it just timed out.',
+            'No clean image memes were available from the feed. Try again later.'
+        ];
+        await editReplySafely(interaction, { content: fallback[Math.floor(Math.random() * fallback.length)] });
     }
 }
 
 async function handleJoke(interaction) {
-    await interaction.deferReply();
+    const acknowledged = await deferReplySafely(interaction);
+    if (!acknowledged) return;
 
     try {
         const response = await fetch('https://official-joke-api.appspot.com/random_joke');
@@ -300,7 +390,7 @@ async function handleJoke(interaction) {
             .setDescription(`${joke.setup}\n\n||${joke.punchline}||`)
             .setTimestamp();
 
-        await interaction.editReply({ embeds: [embed] });
+        await editReplySafely(interaction, { embeds: [embed] });
     } catch (error) {
         console.error('Joke fetch error:', error);
         
@@ -321,7 +411,7 @@ async function handleJoke(interaction) {
             .setDescription(`${joke.setup}\n\n||${joke.punchline}||`)
             .setTimestamp();
 
-        await interaction.editReply({ embeds: [embed] });
+        await editReplySafely(interaction, { embeds: [embed] });
     }
 }
 
@@ -363,7 +453,10 @@ async function handlePoll(interaction) {
         }
     } catch (error) {
         console.error('Failed to create poll:', error);
-        await interaction.reply({ content: 'Failed to create the poll. Make sure the bot has permission to create polls in this channel.', ephemeral: true });
+        await replySafely(interaction, {
+            content: 'Failed to create the poll. Make sure the bot has permission to create polls in this channel.',
+            flags: MessageFlags.Ephemeral
+        });
     }
 }
 

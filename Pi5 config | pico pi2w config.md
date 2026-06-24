@@ -5,6 +5,7 @@ Pi5 config | pico pi2w config
 
 |=================ssh==================|
 Ip: 192.168.50.29/24
+or: 192.168.50.173
 password: 0131106761Cb
 username: darklock
 

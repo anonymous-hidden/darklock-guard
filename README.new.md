@@ -23,6 +23,57 @@ All apps, services, ports, and troubleshooting in one place.
 
 ---
 
+## ChatGPT Actions API (On-The-Go Health + Info)
+
+You can connect ChatGPT Actions to your DarkLock server and ask for live status.
+
+### Endpoints (token required)
+
+- `GET /api/chatgpt/health` — platform/db/process + live bot runtime snapshot
+- `GET /api/chatgpt/services` — reachability of key local services/ports
+- `GET /api/chatgpt/status` — one-call consolidated status summary for ChatGPT
+- `GET /api/chatgpt/info` — quick links and environment info
+
+### 1) Set token in environment
+
+Add to your server `.env`:
+
+```bash
+CHATGPT_ACTIONS_TOKEN=replace_with_a_long_random_token
+PUBLIC_BASE_URL=https://darklock.net
+```
+
+Then restart the platform service:
+
+```bash
+sudo systemctl restart darklock-platform
+```
+
+### 2) Test from terminal
+
+```bash
+curl -H "Authorization: Bearer $CHATGPT_ACTIONS_TOKEN" \
+  https://darklock.net/api/chatgpt/health
+
+curl -H "Authorization: Bearer $CHATGPT_ACTIONS_TOKEN" \
+  https://darklock.net/api/chatgpt/services
+
+curl -H "Authorization: Bearer $CHATGPT_ACTIONS_TOKEN" \
+  https://darklock.net/api/chatgpt/status
+
+curl -H "Authorization: Bearer $CHATGPT_ACTIONS_TOKEN" \
+  https://darklock.net/api/chatgpt/info
+```
+
+### 3) Use with ChatGPT Actions
+
+- OpenAPI spec file: `docs/CHATGPT_ACTIONS_OPENAPI.json`
+- Server URL in spec: `https://darklock.net/api`
+- In ChatGPT Actions, import/paste that OpenAPI schema
+- Set auth type to Bearer token and use the same `CHATGPT_ACTIONS_TOKEN`
+
+---
+
 ## Start / Stop Everything
 
 ```bash

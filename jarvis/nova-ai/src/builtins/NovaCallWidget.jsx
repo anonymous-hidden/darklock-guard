@@ -1,18 +1,18 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 
 /**
- * NovaCallWidget — sleek voice + facetime UI for Nova.
+ * NovaCallWidget — sleek voice + facetime UI for Jarvis.
  *
  * Three primary buttons:
  *   ☎ Call / End      — start/stop the call
- *   🎤 Mute           — toggle Nova's TTS output
+ *   🎤 Mute           — toggle Jarvis's TTS output
  *   📹 Facetime       — toggle camera; while on, frames are captured and
- *                       sent to /api/vision so Nova can SEE what you show her.
+ *                       sent to /api/vision so Jarvis can SEE what you show him.
  *
  * Pipeline:
  *   mic → Web SpeechRecognition (with type-fallback)
  *   ↓
- *   ws://127.0.0.1:8951/ws/chat   (full Nova brain + tools)
+ *   ws://127.0.0.1:8951/ws/chat   (full Jarvis brain + tools)
  *   ↓
  *   speechSynthesis (TTS)
  *
@@ -220,7 +220,7 @@ export default function NovaCallWidget() {
           videoRef.current.play().catch(() => {});
         }
       }, 50);
-      // Capture a frame every 6s and send to /api/vision so Nova can react.
+      // Capture a frame every 6s and send to /api/vision so Jarvis can react.
       visionTimerRef.current = setInterval(captureFrame, 6000);
       // Also capture once immediately
       setTimeout(captureFrame, 1500);
@@ -265,7 +265,7 @@ export default function NovaCallWidget() {
     } catch {}
   }, []);
 
-  /* ── ask Nova ──────────────────────────────────────────────────────── */
+  /* ── ask Jarvis ────────────────────────────────────────────────────── */
   const askNova = (text) => new Promise((resolve) => {
     const ws = wsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) { resolve(''); return; }
@@ -458,7 +458,7 @@ export default function NovaCallWidget() {
       <header className="flex items-center justify-between px-3 py-1.5 border-b border-nova-border/50 bg-nova-panel/40 backdrop-blur drag-region">
         <div className="flex items-center gap-2">
           <span className={`w-1.5 h-1.5 rounded-full ${state === 'IDLE' ? 'bg-nova-muted' : 'bg-nova-accent animate-pulse'}`} />
-          <span className="font-display text-xs tracking-wide">Nova</span>
+          <span className="font-display text-xs tracking-wide">Jarvis</span>
           <span className={`text-[9px] font-mono px-1 rounded ${
             wsState === 'open' ? 'text-nova-ok' : 'text-nova-warn'
           }`}>{wsState === 'open' ? '● live' : wsState}</span>
@@ -527,7 +527,7 @@ export default function NovaCallWidget() {
             {transcript.slice(-4).map((m, i) => (
               <div key={i} className="flex gap-1.5">
                 <span className={`shrink-0 ${m.role === 'user' ? 'text-nova-accent' : 'text-nova-accent2'}`}>
-                  {m.role === 'user' ? 'you' : 'nova'}
+                  {m.role === 'user' ? 'you' : 'jarvis'}
                 </span>
                 <span className="text-nova-text/90 flex-1 leading-tight">{m.text}</span>
               </div>
@@ -543,7 +543,7 @@ export default function NovaCallWidget() {
               value={typeDraft}
               onChange={(e) => setTypeDraft(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitTyped(); } }}
-              placeholder={sttBroken ? 'Type to Nova (mic STT unavailable)…' : 'Or type…'}
+              placeholder={sttBroken ? 'Type to Jarvis (mic STT unavailable)…' : 'Or type…'}
               className="nova-input text-[11px] flex-1 py-1"
             />
             <button
@@ -562,7 +562,7 @@ export default function NovaCallWidget() {
           <button
             onClick={() => setMuted((m) => !m)}
             disabled={state === 'IDLE'}
-            title={muted ? 'Unmute Nova' : 'Mute Nova'}
+            title={muted ? 'Unmute Jarvis' : 'Mute Jarvis'}
             className={[
               'w-11 h-11 rounded-full flex items-center justify-center text-base transition-all',
               'border backdrop-blur',
@@ -596,7 +596,7 @@ export default function NovaCallWidget() {
           <button
             onClick={() => facetime ? stopCamera() : startCamera()}
             disabled={state === 'IDLE'}
-            title={facetime ? 'Stop facetime' : 'Show Nova something (facetime)'}
+            title={facetime ? 'Stop facetime' : 'Show Jarvis something (facetime)'}
             className={[
               'w-11 h-11 rounded-full flex items-center justify-center text-base transition-all',
               'border backdrop-blur',
@@ -618,7 +618,7 @@ export default function NovaCallWidget() {
               value={voiceURI}
               onChange={(e) => setVoiceURI(e.target.value)}
               className="nova-input text-[10px] w-full py-1"
-              title="Nova's voice"
+              title="Jarvis's voice"
             >
               {voices.map((v) => (
                 <option key={v.voiceURI} value={v.voiceURI}>{v.name} · {v.lang}</option>

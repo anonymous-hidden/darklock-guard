@@ -1,6 +1,27 @@
 const { EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const verificationButtons = require('./guildMemberAdd-verification');
 
+function getPublicOrigin() {
+    const candidates = [
+        process.env.BASE_URL,
+        process.env.DASHBOARD_ORIGIN,
+        process.env.DOMAIN
+    ];
+
+    for (const raw of candidates) {
+        const value = String(raw || '').trim();
+        if (!value) continue;
+        try {
+            const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+            const url = new URL(withProtocol);
+            if (url.hostname === 'admin.darklock.net') continue;
+            return url.origin;
+        } catch (_) {}
+    }
+
+    return process.env.NODE_ENV === 'production' ? 'https://darklock.net' : 'http://localhost:3001';
+}
+
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction, bot) {
@@ -229,7 +250,7 @@ module.exports = {
         }
 
         // Handle main verification button in verification channel
-        if (interaction.isButton() && interaction.customId === 'verify_button') {
+        if (interaction.isButton() && (interaction.customId === 'verify_button' || interaction.customId.startsWith('verify_method_'))) {
             try {
                 const guildId = interaction.guild.id;
                 const member = interaction.member;
@@ -370,8 +391,7 @@ module.exports = {
                     });
                 } else if (method === 'web') {
                     // For web verification, redirect to web portal
-                    const dashboardUrl = process.env.DASHBOARD_URL || 'https://discord-security-bot-uyx6.onrender.com';
-                    const verifyUrl = `${dashboardUrl}/verify/${guildId}/${member.id}`;
+                    const verifyUrl = `${getPublicOrigin()}/verify/${guildId}/${member.id}?v=${Date.now().toString(36)}`;
                     
                     // Create a clickable button for easy access
                     const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');

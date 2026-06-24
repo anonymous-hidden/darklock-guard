@@ -20,12 +20,14 @@ const CHANNELS = [
   'calendar:changed',
   'calendar:add',
   'reminders:fired',
+  'discord:agent',
 ];
 
 function tone(channel) {
   if (channel.startsWith('voice-call')) return 'text-nova-ok';
   if (channel.startsWith('calendar'))   return 'text-nova-accent2';
   if (channel.startsWith('reminders'))  return 'text-nova-warn';
+  if (channel === 'discord:agent')      return 'text-nova-accent2';
   return 'text-nova-accent';
 }
 
@@ -45,6 +47,14 @@ function summarize(channel, payload) {
   if (channel === 'calendar:changed') return `calendar ${payload.reason || 'changed'}`;
   if (channel === 'calendar:add')     return `+ ${payload.title}`;
   if (channel === 'reminders:fired')  return `⏰ ${payload.title || 'reminder'}`;
+  if (channel === 'discord:agent') {
+    const event = payload.event || 'discord';
+    const recipient = payload.recipient ? ` ${payload.recipient}` : '';
+    const state = payload.sent ? 'sent' : 'logged';
+    const reason = payload.reason || payload.draft_preview || payload.reply_target_text_preview || '';
+    const conf = typeof payload.confidence === 'number' ? ` ${(payload.confidence * 100).toFixed(0)}%` : '';
+    return `${event}${recipient} ${state}${conf}${reason ? ` - ${String(reason).slice(0, 120)}` : ''}`;
+  }
   try { return JSON.stringify(payload).slice(0, 140); } catch { return String(payload); }
 }
 

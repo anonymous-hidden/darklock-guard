@@ -204,9 +204,9 @@ async function deleteAdmin(adminId) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  APP UPDATES (multi-app: secure-guard, secure-channel, secure-notes)
+//  APP UPDATES (multi-app: ridgeline + legacy secure-guard, secure-channel, secure-notes)
 // ═══════════════════════════════════════════════════════════════════════════════
-const VALID_APPS = ['secure-guard', 'secure-channel', 'secure-notes'];
+const VALID_APPS = ['ridgeline', 'secure-guard', 'secure-channel', 'secure-notes'];
 
 async function getAppUpdates({ limit = 50, offset = 0, channel, app } = {}) {
   let where = [];
@@ -262,6 +262,164 @@ async function createAppUpdate({ id, app, version, title, changelog, download_ur
 
 async function deleteAppUpdate(id) {
   return db.run(`DELETE FROM app_updates WHERE id = ?`, [id]);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SHOP CATALOG (Ridgeline)
+// ═══════════════════════════════════════════════════════════════════════════════
+function parseFeatures(featuresJson) {
+  if (!featuresJson) return [];
+  try {
+    const parsed = JSON.parse(featuresJson);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeShopProduct(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    features: parseFeatures(row.features_json),
+    price_dollars: Number(row.price_cents || 0) / 100,
+  };
+}
+
+async function getShopProducts({ app = 'ridgeline', includeUnpublished = false, limit = 100, offset = 0 } = {}) {
+  const where = ['app = ?'];
+  const params = [app];
+
+  if (!includeUnpublished) {
+    where.push('published = 1');
+  }
+
+  const rows = await db.all(`
+    SELECT * FROM shop_products
+    WHERE ${where.join(' AND ')}
+    ORDER BY sort_order ASC, created_at DESC
+    LIMIT ? OFFSET ?
+  `, [...params, limit, offset]);
+
+  return (rows || []).map(normalizeShopProduct);
+}
+
+async function getShopProductById(id) {
+  const row = await db.get(`SELECT * FROM shop_products WHERE id = ?`, [id]);
+  return normalizeShopProduct(row);
+}
+
+async function createShopProduct({
+  id,
+  app = 'ridgeline',
+  slug,
+  title,
+  subtitle,
+  description,
+  image_url,
+  badge,
+  price_cents,
+  currency = 'usd',
+  billing_type = 'one_time',
+  stripe_price_id,
+  features,
+  sort_order = 0,
+  published = false,
+  published_by,
+  created_by,
+}) {
+  const features_json = Array.isArray(features) ? JSON.stringify(features) : null;
+
+  await db.run(`
+    INSERT INTO shop_products (
+      id, app, slug, title, subtitle, description, image_url, badge,
+      price_cents, currency, billing_type, stripe_price_id, features_json,
+      sort_order, published, published_by, published_at, created_by, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN datetime('now') ELSE NULL END, ?, datetime('now'))
+  `, [
+    id,
+    app,
+    slug || null,
+    title,
+    subtitle || null,
+    description || null,
+    image_url || null,
+    badge || null,
+    price_cents,
+    (currency || 'usd').toLowerCase(),
+    billing_type,
+    stripe_price_id || null,
+    features_json,
+    sort_order,
+    published ? 1 : 0,
+    published ? (published_by || created_by || null) : null,
+    published ? 1 : 0,
+    created_by || null,
+  ]);
+
+  return getShopProductById(id);
+}
+
+async function updateShopProduct(id, patch = {}) {
+  const current = await db.get(`SELECT * FROM shop_products WHERE id = ?`, [id]);
+  if (!current) return null;
+
+  const nextFeatures = patch.features !== undefined
+    ? (Array.isArray(patch.features) ? JSON.stringify(patch.features) : null)
+    : current.features_json;
+
+  await db.run(`
+    UPDATE shop_products
+    SET
+      slug = COALESCE(?, slug),
+      title = COALESCE(?, title),
+      subtitle = COALESCE(?, subtitle),
+      description = COALESCE(?, description),
+      image_url = COALESCE(?, image_url),
+      badge = COALESCE(?, badge),
+      price_cents = COALESCE(?, price_cents),
+      currency = COALESCE(?, currency),
+      billing_type = COALESCE(?, billing_type),
+      stripe_price_id = COALESCE(?, stripe_price_id),
+      features_json = ?,
+      sort_order = COALESCE(?, sort_order),
+      updated_at = datetime('now')
+    WHERE id = ?
+  `, [
+    patch.slug,
+    patch.title,
+    patch.subtitle,
+    patch.description,
+    patch.image_url,
+    patch.badge,
+    patch.price_cents,
+    patch.currency ? String(patch.currency).toLowerCase() : undefined,
+    patch.billing_type,
+    patch.stripe_price_id,
+    nextFeatures,
+    patch.sort_order,
+    id,
+  ]);
+
+  return getShopProductById(id);
+}
+
+async function setShopProductPublished(id, published, adminEmail) {
+  await db.run(`
+    UPDATE shop_products
+    SET
+      published = ?,
+      published_by = ?,
+      published_at = CASE WHEN ? = 1 THEN datetime('now') ELSE NULL END,
+      updated_at = datetime('now')
+    WHERE id = ?
+  `, [published ? 1 : 0, published ? (adminEmail || null) : null, published ? 1 : 0, id]);
+
+  return getShopProductById(id);
+}
+
+async function deleteShopProduct(id) {
+  return db.run(`DELETE FROM shop_products WHERE id = ?`, [id]);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -383,6 +541,8 @@ module.exports = {
   getAdminUsers, getAdminById, getRoles, getRolePermissions, setRolePermission, updateAdminRole, deleteAdmin,
   // app updates
   getAppUpdates, getAppUpdateById, getLatestAppUpdate, getAllLatestUpdates, getAppUpdateHistory, createAppUpdate, deleteAppUpdate,
+  // shop
+  getShopProducts, getShopProductById, createShopProduct, updateShopProduct, setShopProductPublished, deleteShopProduct,
   // bug reports
   getBugReports, getBugReportById, createBugReport, updateBugReport, deleteBugReport,
   // audit

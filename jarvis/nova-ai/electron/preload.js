@@ -1,6 +1,6 @@
 /**
- * Nova AI — Preload (CommonJS, runs in isolated world)
- * Exposes a single `window.nova` bridge to the renderer.
+ * Jarvis AI — Preload (CommonJS, runs in isolated world)
+ * Exposes `window.jarvis` plus legacy `window.nova` for compatibility.
  */
 const { contextBridge, ipcRenderer } = require('electron');
 
@@ -11,7 +11,7 @@ const on = (channel, cb) => {
   return () => ipcRenderer.removeListener(channel, handler);
 };
 
-contextBridge.exposeInMainWorld('nova', {
+const bridgeApi = {
   platform: process.platform,
   isElectron: true,
 
@@ -19,7 +19,9 @@ contextBridge.exposeInMainWorld('nova', {
     /** Probe Ollama and return list of available models. */
     listModels: () => invoke('ai:listModels'),
     /** Health-check Ollama (returns { ok, version, error? }). */
-    health:     () => invoke('ai:health'),
+    health:     (payload) => invoke('ai:health', payload || {}),
+    /** Unified chat bridge (OpenAI/Ollama) from main process. */
+    chat:       (payload) => invoke('ai:chat', payload || {}),
   },
 
   widgets: {
@@ -80,6 +82,10 @@ contextBridge.exposeInMainWorld('nova', {
 
   /* ---------------- Direct controls (used by widgets) ---------------- */
   control: {
+    novaAi: {
+      status: () => invoke('control:novaAi:status'),
+      ensure: () => invoke('control:novaAi:ensure'),
+    },
     stats:      () => invoke('control:stats'),
     volume: {
       get:  ()      => invoke('control:volume:get'),
@@ -93,10 +99,26 @@ contextBridge.exposeInMainWorld('nova', {
     screenshot:        (p)            => invoke('control:screenshot', p || {}),
     spotify:           (action)       => invoke('control:spotify', action),
     openApp:           (name, args)   => invoke('control:openApp', { name, args }),
+    closeApp:          (name)         => invoke('control:closeApp', { name }),
+    killApp:           (name)         => invoke('control:killApp', { name }),
+    desktopSnapshot:   (p)            => invoke('control:desktopSnapshot', p || {}),
+    desktop: {
+      snapshot: (p) => invoke('control:desktopSnapshot', p || {}),
+      focus:    (p) => invoke('control:desktopFocus', p || {}),
+      read:     (p) => invoke('control:desktopRead', p || {}),
+      click:    (p) => invoke('control:desktopClick', p || {}),
+      type:     (p) => invoke('control:desktopType', p || {}),
+      key:      (p) => invoke('control:desktopKey', p || {}),
+      scroll:   (p) => invoke('control:desktopScroll', p || {}),
+    },
     openPath:          (t)            => invoke('control:openPath', t),
     shell:             (command, opts)=> invoke('control:shell', { command, ...(opts || {}) }),
     webSearch:         (query, limit) => invoke('control:webSearch', { query, limit }),
     webFetch:          (url)          => invoke('control:webFetch', url),
+    webFetchRaw:       (url)          => invoke('control:webFetchRaw', url),
+    location:          (p)            => invoke('control:location', p || {}),
+    setLocation:       (p)            => invoke('control:location:set', p || {}),
+    clearLocation:     ()             => invoke('control:location:clear'),
     map: {
       search:     (query, limit) => invoke('control:mapSearch', { query, limit }),
       directions: (from, to)     => invoke('control:mapDirections', { from, to }),
@@ -122,4 +144,7 @@ contextBridge.exposeInMainWorld('nova', {
     onTabChange:    (cb) => on('nova:tab', cb),
     onSay:          (cb) => on('nova:say', cb),
   },
-});
+};
+
+contextBridge.exposeInMainWorld('nova', bridgeApi);
+contextBridge.exposeInMainWorld('jarvis', bridgeApi);

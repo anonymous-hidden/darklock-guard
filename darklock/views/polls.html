@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/platform/static/css/site-fx.css">
     <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -478,7 +479,7 @@
 
 <!-- Main Content -->
 <div class="container">
-    <div class="header">
+    <div class="header reveal">
         <h1>Community Polls</h1>
         <p>Vote on what features and items you'd like to see added or removed</p>
         <div class="header-actions">
@@ -489,7 +490,7 @@
     </div>
 
     <!-- Filter Tabs -->
-    <div class="filter-tabs">
+    <div class="filter-tabs reveal">
         <button class="filter-tab active" data-filter="all">All Polls</button>
         <button class="filter-tab" data-filter="feature">Feature Requests</button>
         <button class="filter-tab" data-filter="removal">Removal Votes</button>
@@ -776,6 +777,7 @@ document.getElementById('createPollModal')?.addEventListener('click', function(e
     }
 });
 </script>
+<script src="/platform/static/js/site-fx.js"></script>
 
 </body>
 </html>

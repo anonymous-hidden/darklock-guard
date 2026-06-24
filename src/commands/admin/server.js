@@ -25,10 +25,6 @@ module.exports = {
                 .addChoices({ name: 'here', value: 'here' }, { name: 'all', value: 'all' }))
         )
         .addSubcommand(sc => sc
-            .setName('nuke')
-            .setDescription('Clone and delete this channel to clear all messages')
-        )
-        .addSubcommand(sc => sc
             .setName('audit-perms')
             .setDescription('Audit dangerous permissions on roles and channels')
         ),
@@ -42,8 +38,6 @@ module.exports = {
                 return this.unlock(interaction);
             case 'slowmode':
                 return this.slowmode(interaction);
-            case 'nuke':
-                return this.nuke(interaction);
             case 'audit-perms':
                 return this.audit(interaction);
         }
@@ -96,26 +90,6 @@ module.exports = {
         }
 
         return interaction.editReply({ content: `🐢 Slowmode ${seconds}s applied to ${affected} channel(s).` });
-    },
-
-    async nuke(interaction) {
-        await interaction.deferReply({ ephemeral: true });
-        const ch = interaction.channel;
-        if (!ch || ch.type !== ChannelType.GuildText) {
-            return interaction.editReply({ content: '❌ Please use this in a text channel.' });
-        }
-        try {
-            const position = ch.position;
-            const parent = ch.parent;
-            const newCh = await ch.clone({ reason: `Nuked by ${interaction.user.username}` });
-            await newCh.setPosition(position);
-            if (parent) await newCh.setParent(parent.id);
-            await ch.delete(`Nuked by ${interaction.user.username}`);
-            await newCh.send({ content: '💣 This channel has been nuked.' });
-            return interaction.editReply({ content: '✅ Channel nuked.' });
-        } catch (e) {
-            return interaction.editReply({ content: '❌ Failed to nuke channel. Check my permissions.' });
-        }
     },
 
     async audit(interaction) {

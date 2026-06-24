@@ -4,13 +4,14 @@
   "private": true,
   "main": "electron/main.js",
   "type": "module",
-  "description": "Nova AI — Electron + React desktop app with Ollama integration, widget builder, and embedded coding workspace.",
+  "description": "Jarvis — Electron + React desktop app with Ollama integration, widget builder, and embedded coding workspace.",
   "scripts": {
     "dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "dev:vite": "vite",
     "dev:electron": "electron .",
     "widget": "node scripts/launch-widgets.mjs",
     "build": "vite build",
+    "test:planner": "node tests/intent-planner.test.mjs",
     "start": "electron .",
     "preview": "vite preview"
   },

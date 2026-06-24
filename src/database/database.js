@@ -696,6 +696,8 @@ class Database {
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_block_ip_links INTEGER DEFAULT 0`); console.log('✅ Added phishing_block_ip_links'); } catch (e) {}
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_blacklist_domains TEXT DEFAULT '[]'`); console.log('✅ Added phishing_blacklist_domains'); } catch (e) {}
             try { await this.run(`ALTER TABLE guild_configs ADD COLUMN phishing_whitelist_domains TEXT DEFAULT '[]'`); console.log('✅ Added phishing_whitelist_domains'); } catch (e) {}
+            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antilinks_phishing_domains TEXT DEFAULT '[]'`); console.log('✅ Added antilinks_phishing_domains'); } catch (e) {}
+            try { await this.run(`ALTER TABLE guild_configs ADD COLUMN antilinks_iplogger_domains TEXT DEFAULT '[]'`); console.log('✅ Added antilinks_iplogger_domains'); } catch (e) {}
 
             // Migration 23: Ensure all core guild_configs columns exist
             // These are in CREATE TABLE but missing from DBs created before they were added
@@ -2407,6 +2409,10 @@ class Database {
         'phishing_action', 'phishing_log_all', 'phishing_dm_user', 'phishing_sensitivity',
         'phishing_block_shorteners', 'phishing_block_ip_links',
         'phishing_blacklist_domains', 'phishing_whitelist_domains',
+        // Anti-links / emoji spam
+        'antilinks_allowed_domains', 'antilinks_blocked_domains', 'antilinks_phishing_domains',
+        'antilinks_iplogger_domains', 'safe_browsing_enabled',
+        'emoji_spam_enabled', 'emoji_spam_max', 'emoji_spam_action', 'sticker_spam_max',
     ]);
 
     async updateGuildConfig(guildId, updates) {

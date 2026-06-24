@@ -1,6 +1,8 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
 
 module.exports = {
+    deprecated: true,
+    newCommand: null,
     data: new SlashCommandBuilder()
         .setName('voicemonitor')
         .setDescription('Configure voice channel monitoring')
@@ -267,7 +269,7 @@ module.exports = {
 
         if (!config) {
             return interaction.reply({ 
-                content: '❌ Voice monitoring is not configured. Use `/voicemonitor setup` to enable.',
+                content: '❌ Voice monitoring is disabled.',
                 ephemeral: true
             });
         }

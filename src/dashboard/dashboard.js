@@ -128,6 +128,7 @@ class SecurityDashboard {
             domain: process.env.DOMAIN,
             publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLISHABLE || ''
         };
+        this._stripePriceModeCache = new Map();
 
         // In-memory rate limit tracking for dashboard endpoints
         // SECURITY FIX: Use BoundedMap to prevent unbounded memory growth
@@ -209,7 +210,13 @@ class SecurityDashboard {
                     return res.status(503).json({ error: 'Stripe not configured' });
                 }
 
-                const { plan, guildId } = req.body;
+                if (this.isStripeLiveModeRequired() && this.hasStripeTestKeys()) {
+                    console.error('[Stripe Checkout] Production checkout blocked: test Stripe keys detected');
+                    return res.status(503).json({ error: 'Stripe live mode is required in production' });
+                }
+
+                const requestedPlan = String(req.body?.plan || 'pro').toLowerCase();
+                const guildId = String(req.body?.guildId || '').trim();
                 const userId = req.user?.userId; // From JWT
                 
                 if (!userId) {
@@ -253,11 +260,44 @@ class SecurityDashboard {
                     // Continue if table doesn't exist yet - this is fine for first-time setup
                 }
 
-                const priceId = plan === 'yearly' ? this.billingConfig.enterprisePriceId : this.billingConfig.proPriceId;
+                const validPlans = new Set(['pro', 'monthly', 'enterprise', 'starter']);
+                if (!validPlans.has(requestedPlan)) {
+                    return res.status(400).json({ error: 'Invalid plan selected' });
+                }
+
+                // Map requested plan to internal plan name + price ID
+                const isEnterprise = requestedPlan === 'enterprise';
+                const plan = isEnterprise ? 'enterprise' : 'pro';
+                const priceId = isEnterprise
+                    ? (this.billingConfig.enterprisePriceId || this.billingConfig.proPriceId)
+                    : this.billingConfig.proPriceId;
 
                 if (!priceId) {
-                    console.error('[Stripe Checkout] Invalid plan:', plan);
-                    return res.status(400).json({ error: 'Invalid plan selected' });
+                    console.error('[Stripe Checkout] Price ID not configured for plan:', plan);
+                    return res.status(503).json({ error: `Stripe ${plan} price is not configured` });
+                }
+
+                // Enterprise: user-wide — no specific guild required
+                // Pro: must select a guild
+                if (!isEnterprise) {
+                    if (!guildId) {
+                        return res.status(400).json({ error: 'Select a Discord server before starting checkout' });
+                    }
+                    try {
+                        this.validateGuildId(guildId);
+                    } catch (validationError) {
+                        return res.status(400).json({ error: 'Invalid Discord server selected' });
+                    }
+                    const guildAccess = await this.checkGuildAccess(userId, guildId, true);
+                    if (!guildAccess?.authorized) {
+                        return res.status(403).json({ error: guildAccess?.error || 'You do not have access to this Discord server' });
+                    }
+                }
+
+                const priceModeCheck = await this.validateStripePriceMode(priceId);
+                if (!priceModeCheck.ok) {
+                    console.error('[Stripe Checkout] Price mode validation failed:', priceModeCheck.error);
+                    return res.status(503).json({ error: priceModeCheck.error });
                 }
 
                 // Get user's Discord token from server-side cache to fetch email
@@ -276,6 +316,7 @@ class SecurityDashboard {
                 }
 
                 console.log('[Stripe Checkout] Creating session with metadata:', { userId, guildId, plan });
+                const baseUrl = process.env.DASHBOARD_ORIGIN || this.billingConfig.domain || 'http://localhost:3001';
 
                 const session = await this.stripe.checkout.sessions.create({
                     payment_method_types: ['card'],
@@ -288,17 +329,19 @@ class SecurityDashboard {
                     subscription_data: {
                         metadata: {
                             user_id: userId,
-                            guild_id: guildId || '',
-                            plan: plan
+                            guild_id: isEnterprise ? '' : (guildId || ''),
+                            plan: plan,
+                            ...(isEnterprise ? { all_guilds: 'true' } : {})
                         }
                     },
                     metadata: {
                         user_id: userId,
-                        guild_id: guildId || '',
-                        plan: plan
+                        guild_id: isEnterprise ? '' : (guildId || ''),
+                        plan: plan,
+                        ...(isEnterprise ? { all_guilds: 'true' } : {})
                     },
-                    success_url: `${process.env.DASHBOARD_ORIGIN || 'http://localhost:3001'}/payment-success.html?session_id={CHECKOUT_SESSION_ID}`,
-                    cancel_url: `${process.env.DASHBOARD_ORIGIN || 'http://localhost:3001'}/payment-failed.html?error=cancelled`,
+                    success_url: `${baseUrl}/payment-success.html?session_id={CHECKOUT_SESSION_ID}`,
+                    cancel_url: `${baseUrl}/payment-failed.html?error=cancelled`,
                 });
 
                 console.log('[Stripe Checkout] Session created:', session.id);
@@ -419,13 +462,14 @@ class SecurityDashboard {
                     // Save subscription info
                     this.bot.database.db.run(
                         `INSERT OR REPLACE INTO stripe_subscriptions 
-                         (subscription_id, customer_id, customer_email, status, plan_type, current_period_start, current_period_end, updated_at) 
-                         VALUES (?, ?, ?, 'active', ?, ?, ?, datetime('now'))`,
+                         (subscription_id, customer_id, customer_email, guild_id, user_id, status, plan_type, current_period_start, current_period_end, updated_at) 
+                         VALUES (?, ?, ?, ?, ?, 'active', 'pro', ?, ?, datetime('now'))`,
                         [
                             subscriptionId,
                             customerId,
                             customerEmail,
-                            session.line_items?.data?.[0]?.price?.id || 'unknown',
+                            metadataGuildId || null,
+                            userId,
                             session.subscription?.current_period_start,
                             session.subscription?.current_period_end
                         ],
@@ -442,8 +486,7 @@ class SecurityDashboard {
                 // Bind subscription to a guild so /commands and dashboard tier checks work
                 if (metadataGuildId && this.bot?.database?.setGuildSubscription) {
                     try {
-                        const priceId = session.line_items?.data?.[0]?.price?.id || null;
-                        const plan = priceId === this.billingConfig.enterprisePriceId ? 'enterprise' : 'pro';
+                        const plan = 'pro';
                         await this.bot.database.setGuildSubscription(metadataGuildId, {
                             plan,
                             status: 'active',
@@ -460,36 +503,35 @@ class SecurityDashboard {
                 }
 
                 // Send email
-                console.log('[Stripe Session] Attempting to send email to:', customerEmail);
-                try {
-                    const emailUtil = require('../utils/email');
-                    const emailSent = await emailUtil.sendEmail({
-                        to: customerEmail,
-                        subject: 'Ã¢Å“Â¨ Guardian Pro Activation Code',
-                        text: `Hi there,
+                if (customerEmail) {
+                    console.log('[Stripe Session] Attempting to send email to:', customerEmail);
+                    try {
+                        const emailUtil = require('../utils/email');
+                        const emailSent = await emailUtil.sendEmail({
+                            to: customerEmail,
+                            subject: 'DarkLock Pro Activation Code',
+                            text: `Hi there,
 
-Thank you for subscribing to Guardian Pro Ã¢â‚¬â€ we're excited to help you unlock the full power of GuardianBot.
+Thank you for subscribing to DarkLock Pro.
 
 Your activation code is:
 
-Ã¢Å¾Â¡Ã¯Â¸Â ${code}
+${code}
 
-Enter this code in your GuardianBot Dashboard to enable all Pro-only features, including advanced protection tools, real-time alerts, enhanced analytics, and priority automation.
+Your selected Discord server is being upgraded automatically. Keep this code as a fallback if you need to activate Pro manually.
 
-Ã°Å¸â€œâ€¦ Your subscription will automatically renew monthly at ${session.amount_total / 100} ${session.currency?.toUpperCase() || 'USD'} until you cancel.
-You can manage your subscription anytime through your dashboard or by contacting support.
+Stripe manages the subscription amount and billing interval shown during checkout. You can manage billing through the authenticated DarkLock dashboard when a billing profile exists for the server.
 
-If you need help at any point, our support team is here for you.
-Just reply to this email or reach out through your dashboard.
+If you need help, use the support channel linked on darklock.net.
 
-Thank you for choosing GuardianBot Ã¢â‚¬â€ your server is now safer than ever.
-
-Stay protected,
-The GuardianBot Team`
-                    });
-                    console.log('[Stripe Session] Email send result:', emailSent ? 'SUCCESS' : 'FAILED');
-                } catch (e) {
-                    console.error('[Stripe Session] Failed to send activation code email:', e.message, e.stack);
+DarkLock`
+                        });
+                        console.log('[Stripe Session] Email send result:', emailSent ? 'SUCCESS' : 'FAILED');
+                    } catch (e) {
+                        console.error('[Stripe Session] Failed to send activation code email:', e.message, e.stack);
+                    }
+                } else {
+                    console.log('[Stripe Session] No customer email available; skipping activation email');
                 }
 
                 console.log('[Stripe Session] Sending response with code:', code);
@@ -507,123 +549,6 @@ The GuardianBot Team`
                     : error.message;
                 res.status(500).json({ error: errorMessage });
             }
-        });
-
-        // Stripe webhook for subscription events (renewals, cancellations, payment failures)
-        this.app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
-            const sig = req.headers['stripe-signature'];
-            const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-            if (!webhookSecret) {
-                console.warn('[Stripe Webhook] No webhook secret configured');
-                return res.status(400).send('Webhook secret not configured');
-            }
-
-            let event;
-            try {
-                event = this.stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-            } catch (err) {
-                console.error('[Stripe Webhook] Signature verification failed:', err.message);
-                return res.status(400).send(`Webhook Error: ${err.message}`);
-            }
-
-            console.log('[Stripe Webhook] Event received:', event.type);
-
-            // Handle subscription events
-            switch (event.type) {
-                case 'customer.subscription.created':
-                case 'customer.subscription.updated':
-                    const subscription = event.data.object;
-                    if (this.bot?.database?.db) {
-                        this.bot.database.db.run(
-                            `INSERT OR REPLACE INTO stripe_subscriptions 
-                             (subscription_id, customer_id, customer_email, status, current_period_start, current_period_end, updated_at) 
-                             VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
-                            [
-                                subscription.id,
-                                subscription.customer,
-                                subscription.customer_email || null,
-                                subscription.status,
-                                subscription.current_period_start,
-                                subscription.current_period_end
-                            ],
-                            (err) => {
-                                if (err) console.error('[Stripe Webhook] Failed to update subscription:', err);
-                                else console.log('[Stripe Webhook] Subscription updated:', subscription.id, '- Status:', subscription.status);
-                            }
-                        );
-                    }
-                    // Mirror to guild_subscriptions if the subscription has guild metadata
-                    try {
-                        const guildId = subscription.metadata?.guild_id || subscription.metadata?.guildId;
-                        if (guildId && this.bot?.database?.setGuildSubscription) {
-                            const priceId = subscription.items?.data?.[0]?.price?.id || null;
-                            const plan = priceId === this.billingConfig.enterprisePriceId ? 'enterprise' : 'pro';
-                            const validStatuses = new Set(['active', 'trialing', 'past_due', 'canceled', 'unpaid', 'incomplete']);
-                            const status = validStatuses.has(subscription.status) ? subscription.status : 'inactive';
-                            await this.bot.database.setGuildSubscription(guildId, {
-                                plan: status === 'canceled' || status === 'unpaid' ? 'free' : plan,
-                                status: status === 'trialing' ? 'active' : status,
-                                current_period_end: subscription.current_period_end || null,
-                                stripe_customer_id: subscription.customer,
-                                stripe_subscription_id: subscription.id
-                            });
-                            console.log('[Stripe Webhook] Guild subscription mirrored:', guildId, plan, status);
-                        }
-                    } catch (e) {
-                        console.error('[Stripe Webhook] Failed to mirror guild subscription:', e.message);
-                    }
-                    break;
-
-                case 'customer.subscription.deleted':
-                    const deletedSub = event.data.object;
-                    if (this.bot?.database?.db) {
-                        this.bot.database.db.run(
-                            `UPDATE stripe_subscriptions SET status = 'canceled', updated_at = datetime('now') WHERE subscription_id = ?`,
-                            [deletedSub.id],
-                            (err) => {
-                                if (err) console.error('[Stripe Webhook] Failed to cancel subscription:', err);
-                                else console.log('[Stripe Webhook] Subscription canceled:', deletedSub.id);
-                            }
-                        );
-                    }
-                    try {
-                        const guildId = deletedSub.metadata?.guild_id || deletedSub.metadata?.guildId;
-                        if (guildId && this.bot?.database?.setPlanFree) {
-                            await this.bot.database.setPlanFree(guildId);
-                            console.log('[Stripe Webhook] Guild downgraded to free:', guildId);
-                        }
-                    } catch (e) {
-                        console.error('[Stripe Webhook] Failed to downgrade guild:', e.message);
-                    }
-                    break;
-
-                case 'invoice.payment_succeeded':
-                    const invoice = event.data.object;
-                    console.log('[Stripe Webhook] Payment succeeded for subscription:', invoice.subscription);
-                    // Subscription automatically continues - no action needed
-                    break;
-
-                case 'invoice.payment_failed':
-                    const failedInvoice = event.data.object;
-                    console.warn('[Stripe Webhook] Payment failed for subscription:', failedInvoice.subscription);
-                    // Optionally notify the customer or admin
-                    if (this.bot?.database?.db) {
-                        this.bot.database.db.run(
-                            `UPDATE stripe_subscriptions SET status = 'past_due', updated_at = datetime('now') WHERE subscription_id = ?`,
-                            [failedInvoice.subscription],
-                            (err) => {
-                                if (err) console.error('[Stripe Webhook] Failed to update subscription status:', err);
-                            }
-                        );
-                    }
-                    break;
-
-                default:
-                    console.log('[Stripe Webhook] Unhandled event type:', event.type);
-            }
-
-            res.json({ received: true });
         });
 
         // ============================
@@ -761,7 +686,15 @@ The GuardianBot Team`
         // Serve localization files from workspace root
         this.app.use('/locale', express.static(path.join(process.cwd(), 'locale')));
         // Quiet missing favicon with a no-content response
-        this.app.get('/favicon.ico', (req, res) => res.status(204).end());
+        this.app.get('/favicon.ico', (req, res) => {
+            this.bot.logger?.info('[WebVerifyTrace] favicon request reached dashboard server', {
+                host: req.get('host'),
+                originalUrl: req.originalUrl,
+                referrer: req.get('referer') || null,
+                userAgent: req.get('user-agent') || null
+            });
+            res.status(204).end();
+        });
         // Serve console static assets
         this.app.use('/console', express.static(path.join(__dirname, 'public')));
         // Direct route to payment page (handle both /payment and /payment.html)
@@ -868,8 +801,8 @@ The GuardianBot Team`
                 verify_color TEXT,
                 verify_success TEXT,
                 verify_kick_hours INTEGER DEFAULT 24,
-                log_edits INTEGER DEFAULT 1,
-                log_deletes INTEGER DEFAULT 1,
+                log_edits INTEGER DEFAULT 0,
+                log_deletes INTEGER DEFAULT 0,
                 log_members INTEGER DEFAULT 1,
                 log_roles INTEGER DEFAULT 0,
                 log_channels INTEGER DEFAULT 0,
@@ -1019,11 +952,46 @@ The GuardianBot Team`
         });
 
         // Web verification page (public - no auth required)
-        this.app.get('/verify/:token', (req, res) => {
-            res.sendFile(path.join(__dirname, 'views/web-verify.html'));
+        this.app.get(['/verify/:token', '/verify/:guildId/:userId'], (req, res) => {
+            const trace = {
+                host: req.get('host'),
+                originalUrl: req.originalUrl,
+                tokenTail: req.params.token ? String(req.params.token).slice(-8) : null,
+                guildId: req.params.guildId || null,
+                userId: req.params.userId || null,
+                userAgent: req.get('user-agent') || null
+            };
+            this.bot.logger?.info('[WebVerifyTrace] GET /verify reached dashboard server', trace);
+            res.set({
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, private, max-age=0, s-maxage=0',
+                'Surrogate-Control': 'no-store',
+                'CDN-Cache-Control': 'no-store',
+                'Cloudflare-CDN-Cache-Control': 'no-store',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            });
+            res.sendFile(path.join(__dirname, 'views/web-verify.html'), (err) => {
+                if (!err) return;
+                this.bot.logger?.error('[WebVerifyTrace] Failed to send web-verify.html', {
+                    ...trace,
+                    error: err.message
+                });
+                if (!res.headersSent) res.status(err.statusCode || 500).send('Verification page unavailable');
+            });
         });
 
         // Web verification API endpoints
+        this.app.use('/api/web-verify', (req, res, next) => {
+            res.set({
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, private, max-age=0, s-maxage=0',
+                'Surrogate-Control': 'no-store',
+                'CDN-Cache-Control': 'no-store',
+                'Cloudflare-CDN-Cache-Control': 'no-store',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            });
+            next();
+        });
         this.app.post('/api/web-verify/init', this.handleWebVerifyInit.bind(this));
         this.app.post('/api/web-verify/submit', this.handleWebVerifySubmit.bind(this));
         this.app.post('/api/web-verify/refresh', this.handleWebVerifyRefresh.bind(this));
@@ -3254,18 +3222,26 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
     // CRITICAL SECURITY: Validate required secrets at startup
     validateSecrets() {
-        const requiredSecrets = [
+        const requiredSecrets = new Set([
             'JWT_SECRET',
             'DISCORD_TOKEN',
             'DISCORD_CLIENT_SECRET',
             'INTERNAL_API_KEY'
-        ];
+        ]);
 
         const stripeSecretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET;
+        const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLISHABLE;
+        const billingEnabled = Boolean(stripeSecretKey || process.env.STRIPE_PRO_PRICE_ID || process.env.STRIPE_ENTERPRISE_PRICE_ID);
+        const enforceLiveStripe = this.isStripeLiveModeRequired();
 
         // Stripe secrets are required only if billing is enabled
-        if (stripeSecretKey || process.env.STRIPE_PRO_PRICE_ID || process.env.STRIPE_ENTERPRISE_PRICE_ID) {
-            requiredSecrets.push('STRIPE_SECRET_KEY');
+        if (billingEnabled) {
+            requiredSecrets.add('STRIPE_SECRET_KEY');
+            requiredSecrets.add('STRIPE_WEBHOOK_SECRET');
+            requiredSecrets.add('STRIPE_PRO_PRICE_ID');
+            if (enforceLiveStripe) {
+                requiredSecrets.add('STRIPE_PUBLISHABLE_KEY');
+            }
         }
 
         // Strongly recommended but not hard-fatal: OAUTH_STATE_SECRET.
@@ -3281,11 +3257,19 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         for (const secret of requiredSecrets) {
             const value = secret === 'STRIPE_SECRET_KEY'
                 ? (process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET)
+                : secret === 'STRIPE_PUBLISHABLE_KEY'
+                    ? (process.env.STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLISHABLE)
                 : process.env[secret];
             
             // Check if secret is missing
             if (!value) {
-                missingSecrets.push(secret === 'STRIPE_SECRET_KEY' ? 'STRIPE_SECRET_KEY (or legacy STRIPE_SECRET)' : secret);
+                missingSecrets.push(
+                    secret === 'STRIPE_SECRET_KEY'
+                        ? 'STRIPE_SECRET_KEY (or legacy STRIPE_SECRET)'
+                        : secret === 'STRIPE_PUBLISHABLE_KEY'
+                            ? 'STRIPE_PUBLISHABLE_KEY (or legacy STRIPE_PUBLISHABLE)'
+                            : secret
+                );
                 continue;
             }
 
@@ -3305,6 +3289,24 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 }
                 this.bot?.logger?.warn(msg);
             }
+
+            if (enforceLiveStripe && secret === 'STRIPE_SECRET_KEY' && value.startsWith('sk_test_')) {
+                const msg = '[Stripe Warning] STRIPE_SECRET_KEY is a test key. Replace with sk_live_ key before accepting real payments.';
+                if (this.bot?.logger?.warn) this.bot.logger.warn(msg);
+                else console.warn(msg);
+            }
+
+            if (enforceLiveStripe && secret === 'STRIPE_PUBLISHABLE_KEY' && value.startsWith('pk_test_')) {
+                const msg = '[Stripe Warning] STRIPE_PUBLISHABLE_KEY is a test key. Replace with pk_live_ key before accepting real payments.';
+                if (this.bot?.logger?.warn) this.bot.logger.warn(msg);
+                else console.warn(msg);
+            }
+        }
+
+        if (enforceLiveStripe && this.hasStripeTestKeys()) {
+            const msg = '[Stripe Warning] Stripe live mode is enabled but test-mode keys are configured. Checkout is blocked until live keys are set.';
+            if (this.bot?.logger?.warn) this.bot.logger.warn(msg);
+            else console.warn(msg);
         }
 
         // Fail on missing required secrets
@@ -3320,7 +3322,16 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             throw new Error(msg);
         }
 
-        this.bot?.logger?.info('[Security] Ã¢Å“â€¦ All required secrets validated');
+        if (billingEnabled) {
+            if (stripePublishableKey) {
+                this.bot?.logger?.info('[Billing] Stripe configuration validated for checkout + webhook flow');
+            }
+            if (!process.env.STRIPE_ENTERPRISE_PRICE_ID) {
+                this.bot?.logger?.warn('[Billing] STRIPE_ENTERPRISE_PRICE_ID not set; enterprise checkout will remain unavailable.');
+            }
+        }
+
+        this.bot?.logger?.info('[Security] All required secrets validated');
     }
 
     // Input validation helpers
@@ -3887,21 +3898,35 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
     async handleLogout(req, res) {
         this.bot.logger.info(`[AUTH] User logged out`);
-        
-        // Clear the dashboardToken cookie
-        res.clearCookie('dashboardToken', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/'
-        });
-        
-        // Clear any other auth cookies
-        res.clearCookie('authToken', { path: '/' });
-        res.clearCookie('userId', { path: '/' });
-        
+
+        const clearCookieEverywhere = (name) => {
+            // Clear both secure and non-secure variants to avoid env/proxy mismatches.
+            res.clearCookie(name, {
+                httpOnly: true,
+                secure: false,
+                sameSite: 'lax',
+                path: '/'
+            });
+            res.clearCookie(name, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'lax',
+                path: '/'
+            });
+            res.clearCookie(name, { path: '/' });
+        };
+
+        clearCookieEverywhere('dashboardToken');
+        clearCookieEverywhere('authToken');
+        clearCookieEverywhere('userId');
+
+        const wantsJson = (req.headers.accept || '').includes('application/json');
+        if (req.xhr || wantsJson) {
+            return res.json({ success: true, redirect: '/login' });
+        }
+
         // Keep users in the bot dashboard login flow
-        res.redirect('/login');
+        return res.redirect('/login');
     }
 
     async debugDatabase(req, res) {
@@ -4209,6 +4234,45 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         return null;
     }
 
+    isStripeLiveModeRequired() {
+        return process.env.NODE_ENV === 'production' || process.env.STRIPE_ENFORCE_LIVE === 'true';
+    }
+
+    hasStripeTestKeys() {
+        const secretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET || '';
+        const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLISHABLE || '';
+        return secretKey.startsWith('sk_test_') || publishableKey.startsWith('pk_test_');
+    }
+
+    async validateStripePriceMode(priceId) {
+        if (!this.stripe || !priceId) {
+            return { ok: false, error: 'Stripe price validation unavailable' };
+        }
+
+        const cacheKey = `${priceId}:${this.isStripeLiveModeRequired() ? 'live' : 'any'}`;
+        const cached = this._stripePriceModeCache?.get(cacheKey);
+        if (cached && Date.now() < cached.expiresAt) {
+            return cached.result;
+        }
+
+        try {
+            const price = await this.stripe.prices.retrieve(priceId);
+            const isLive = Boolean(price?.livemode);
+            if (this.isStripeLiveModeRequired() && !isLive) {
+                const result = { ok: false, error: 'Configured Stripe price is in test mode while live mode is required' };
+                this._stripePriceModeCache.set(cacheKey, { result, expiresAt: Date.now() + 60000 });
+                return result;
+            }
+
+            const result = { ok: true, livemode: isLive };
+            this._stripePriceModeCache.set(cacheKey, { result, expiresAt: Date.now() + 60000 });
+            return result;
+        } catch (error) {
+            const message = error?.message || 'Unable to retrieve configured Stripe price';
+            return { ok: false, error: message };
+        }
+    }
+
     normalizeStripeStatus(status) {
         const normalized = (status || '').toLowerCase();
         if (['active', 'trialing'].includes(normalized)) return 'active';
@@ -4237,6 +4301,21 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
         try {
             switch (event.type) {
+                case 'checkout.session.completed': {
+                    const session = event.data.object;
+                    if (session?.mode === 'subscription' && session.subscription) {
+                        const liveSubscription = await this.stripe.subscriptions.retrieve(session.subscription);
+                        const mergedMetadata = {
+                            ...(session.metadata || {}),
+                            ...(liveSubscription.metadata || {})
+                        };
+                        await this.processSubscriptionEvent({
+                            ...liveSubscription,
+                            metadata: mergedMetadata
+                        });
+                    }
+                    break;
+                }
                 case 'customer.subscription.created':
                 case 'customer.subscription.updated':
                     await this.processSubscriptionEvent(event.data.object);
@@ -4244,6 +4323,14 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 case 'customer.subscription.deleted':
                     await this.processSubscriptionEvent(event.data.object, 'canceled');
                     break;
+                case 'invoice.payment_succeeded': {
+                    const invoice = event.data.object;
+                    if (invoice?.subscription) {
+                        const subscription = await this.stripe.subscriptions.retrieve(invoice.subscription);
+                        await this.processSubscriptionEvent(subscription);
+                    }
+                    break;
+                }
                 case 'invoice.payment_failed':
                     await this.handleInvoicePaymentFailed(event.data.object);
                     break;
@@ -4272,11 +4359,71 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         const plan = planFromPrice || (metadata.plan ? String(metadata.plan).toLowerCase() : null) || existing?.plan || 'free';
         const status = overrideStatus || this.normalizeStripeStatus(subscription.status);
         const periodEnd = subscription.current_period_end || null;
+        const customerId = subscription.customer || subscription.customer_id || null;
+        const customerEmail = subscription.customer_email || null;
 
         console.log('[Stripe Webhook] Parsed data:', { guildId, userId, plan, status });
 
+        // Keep stripe_subscriptions synchronized so dashboard premium checks stay accurate.
+        if (this.bot?.database?.db && subscription.id && customerId) {
+            this.bot.database.db.run(
+                `INSERT INTO stripe_subscriptions
+                 (subscription_id, customer_id, customer_email, guild_id, user_id, status, plan_type, current_period_start, current_period_end, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                 ON CONFLICT(subscription_id) DO UPDATE SET
+                    customer_id = excluded.customer_id,
+                    customer_email = COALESCE(excluded.customer_email, stripe_subscriptions.customer_email),
+                    guild_id = COALESCE(excluded.guild_id, stripe_subscriptions.guild_id),
+                    user_id = COALESCE(excluded.user_id, stripe_subscriptions.user_id),
+                    status = excluded.status,
+                    plan_type = COALESCE(excluded.plan_type, stripe_subscriptions.plan_type),
+                    current_period_start = excluded.current_period_start,
+                    current_period_end = excluded.current_period_end,
+                    updated_at = datetime('now')`,
+                [
+                    subscription.id,
+                    customerId,
+                    customerEmail,
+                    guildId || null,
+                    userId || null,
+                    status,
+                    plan,
+                    subscription.current_period_start || null,
+                    periodEnd
+                ],
+                (err) => {
+                    if (err) {
+                        this.bot.logger?.error('Failed to sync stripe_subscriptions row:', err.message || err);
+                    }
+                }
+            );
+        }
+
         if (!guildId) {
-            console.warn('[Stripe Webhook] Ã¢Å¡Â Ã¯Â¸Â No guildId in subscription metadata - user will need to link manually');
+            // Enterprise user-wide subscription: apply to all guilds the user is a member of
+            if (plan === 'enterprise' && userId && this.bot?.client?.guilds?.cache) {
+                let applied = 0;
+                for (const [, guild] of this.bot.client.guilds.cache) {
+                    const isMember = guild.members.cache.has(userId) ||
+                        await guild.members.fetch(userId).then(() => true).catch(() => false);
+                    if (isMember) {
+                        await this.bot.applySubscriptionUpdate({
+                            guildId: guild.id,
+                            userId,
+                            plan,
+                            status,
+                            currentPeriodEnd: periodEnd,
+                            stripeCustomerId: customerId,
+                            stripeSubscriptionId: subscription.id || null
+                        }).catch(e => console.error(`[Stripe Webhook] Failed to apply enterprise to guild ${guild.id}:`, e.message));
+                        applied++;
+                    }
+                }
+                console.log(`[Stripe Webhook] Enterprise applied to ${applied} guilds for user ${userId}`);
+            } else {
+                console.warn('[Stripe Webhook] No guildId in subscription metadata - user will need to link manually');
+            }
+            return;
         }
 
         await this.bot.applySubscriptionUpdate({
@@ -4285,7 +4432,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             plan,
             status,
             currentPeriodEnd: periodEnd,
-            stripeCustomerId: subscription.customer || subscription.customer_id || null,
+            stripeCustomerId: customerId,
             stripeSubscriptionId: subscription.id || null
         });
     }
@@ -4320,6 +4467,20 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 stripeCustomerId: customerId,
                 stripeSubscriptionId: subscriptionId || subscription?.id || null
             });
+
+            if (subscriptionId && this.bot?.database?.db) {
+                this.bot.database.db.run(
+                    `UPDATE stripe_subscriptions
+                     SET status = 'past_due', updated_at = datetime('now')
+                     WHERE subscription_id = ?`,
+                    [subscriptionId],
+                    (err) => {
+                        if (err) {
+                            this.bot.logger?.warn('Failed to mark subscription past_due in stripe_subscriptions:', err.message || err);
+                        }
+                    }
+                );
+            }
         } catch (error) {
             this.bot.logger?.error('Failed to handle payment failure event:', error);
         }
@@ -9621,6 +9782,29 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             const s = req.body;
             if (!s || typeof s !== 'object') return res.status(400).json({ error: 'Invalid settings' });
 
+            const normalizeListEntry = (value) => {
+                let raw = String(value || '').trim().toLowerCase();
+                if (!raw) return null;
+                raw = raw.replace(/^<|>$/g, '').replace(/[),.;]+$/g, '');
+
+                try {
+                    const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
+                    const parsed = new URL(withScheme);
+                    return (parsed.hostname || raw).replace(/^www\./, '');
+                } catch (_) {
+                    return raw.replace(/^www\./, '').split('/')[0].split(':')[0] || null;
+                }
+            };
+
+            const normalizeDomainList = (value) => {
+                const input = Array.isArray(value) ? value : [];
+                return [...new Set(input.map(normalizeListEntry).filter(Boolean))];
+            };
+
+            const blacklistedDomains = normalizeDomainList(s.blacklistedDomains);
+            const whitelistedDomains = normalizeDomainList(s.whitelistedDomains);
+            const beforeConfig = await this.bot.database.get('SELECT * FROM guild_configs WHERE guild_id = ?', [guild.id]).catch(() => ({}));
+
             // Build updates only for columns that exist
             const updates = {
                 antiphishing_enabled: s.enabled ? 1 : 0,
@@ -9631,8 +9815,9 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 phishing_sensitivity: s.sensitivity || 'medium',
                 phishing_block_shorteners: s.blockShorteners ? 1 : 0,
                 phishing_block_ip_links: s.blockIpLinks ? 1 : 0,
-                phishing_blacklist_domains: JSON.stringify(Array.isArray(s.blacklistedDomains) ? s.blacklistedDomains : []),
-                phishing_whitelist_domains: JSON.stringify(Array.isArray(s.whitelistedDomains) ? s.whitelistedDomains : [])
+                phishing_blacklist_domains: JSON.stringify(blacklistedDomains),
+                phishing_whitelist_domains: JSON.stringify(whitelistedDomains),
+                antilinks_phishing_domains: JSON.stringify(blacklistedDomains)
             };
 
             // Check which columns exist to avoid errors
@@ -9648,6 +9833,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             }
 
             if (Object.keys(validUpdates).length > 0) {
+                await this.bot.database.run('INSERT OR IGNORE INTO guild_configs (guild_id) VALUES (?)', [guild.id]).catch(() => {});
                 const setClauses = Object.keys(validUpdates).map(key => `${key} = ?`).join(', ');
                 const vals = [...Object.values(validUpdates), guild.id];
                 await this.bot.database.run(`UPDATE guild_configs SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?`, vals);
@@ -9664,6 +9850,38 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     this.bot.antiMaliciousLinks.guildDomainCache.delete(guild.id);
                 }
             } catch (e) { /* ignore */ }
+
+            try {
+                if (this.bot.linkAnalyzer?.analysisCache?.clear) this.bot.linkAnalyzer.analysisCache.clear();
+            } catch (e) { /* ignore */ }
+
+            try {
+                if (typeof this.bot.emitSettingChange === 'function') {
+                    const changedBy = req.user?.discordId || req.user?.id || req.user?.userId || 'Dashboard';
+                    const emitKeys = [
+                        'anti_phishing_enabled',
+                        'phishing_action',
+                        'phishing_log_all',
+                        'phishing_dm_user',
+                        'phishing_sensitivity',
+                        'phishing_block_shorteners',
+                        'phishing_block_ip_links',
+                        'phishing_blacklist_domains',
+                        'phishing_whitelist_domains'
+                    ];
+
+                    for (const key of emitKeys) {
+                        if (!Object.prototype.hasOwnProperty.call(validUpdates, key)) continue;
+                        const oldValue = beforeConfig?.[key];
+                        const newValue = validUpdates[key];
+                        if (String(oldValue ?? '') !== String(newValue ?? '')) {
+                            await this.bot.emitSettingChange(guild.id, changedBy, key, newValue, oldValue, 'security');
+                        }
+                    }
+                }
+            } catch (e) {
+                this.bot.logger?.warn && this.bot.logger.warn('emitSettingChange failed in saveAntiPhishingSettings:', e?.message || e);
+            }
 
             this.bot.logger?.info(`Anti-phishing settings updated for guild ${guild.id}`);
             res.json({ success: true, message: 'Settings saved successfully' });
@@ -9807,8 +10025,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
                 // Free: Event Toggles
                 mod_logging: !!(logToggles.mod_logging ?? true),
-                log_edits: !!(logToggles.log_edits ?? true),
-                log_deletes: !!(logToggles.log_deletes ?? true),
+                log_edits: !!(logToggles.log_edits ?? false),
+                log_deletes: !!(logToggles.log_deletes ?? false),
                 log_members: !!(logToggles.log_members ?? true),
                 log_roles: !!(logToggles.log_roles ?? false),
                 log_channels: !!(logToggles.log_channels ?? false),
@@ -11360,9 +11578,17 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
     // Multi-Server Management Functions
     async getUserServers(req, res) {
         try {
-            // Get user ID and access token from JWT token
+            // Get Discord user ID and access token context
             const userId = req.user?.discordId || req.user?.userId;
-            const accessToken = req.user?.accessToken;
+            let accessToken = req.user?.accessToken;
+
+            // Access token is intentionally not stored in JWT. Pull from server-side cache.
+            if (!accessToken && userId && this.discordTokenCache?.get) {
+                const cached = this.discordTokenCache.get(userId);
+                if (cached?.accessToken && (!cached.expiresAt || cached.expiresAt > Date.now())) {
+                    accessToken = cached.accessToken;
+                }
+            }
             
             this.bot.logger.info(`[SERVERS] Getting servers for user: ${userId}`);
             
@@ -11376,8 +11602,10 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 return res.json({ servers: [], googleUser: true });
             }
 
-            // Privileged dashboard users can manage all bot guilds
-            if (this.isPrivilegedDashboardUser(req.user)) {
+            // Only the built-in local admin account can bypass guild access checks.
+            // OAuth users (even with elevated roles) must still be filtered to guilds
+            // they own/manage/have granted access to.
+            if (req.user?.provider === 'local' && req.user?.userId === 'admin') {
                 const botGuilds = Array.from(this.bot.client.guilds.cache.values()).map(guild => ({
                     id: guild.id,
                     name: guild.name,
@@ -11407,6 +11635,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     this.bot.logger.warn(`[SERVERS] Failed to fetch user guilds from Discord API:`, apiError.message);
                 }
             }
+            const userGuildMap = new Map((userGuilds || []).map(g => [String(g.id), g]));
 
             // Get bot guilds
             const botGuilds = this.bot.client.guilds.cache;
@@ -11439,8 +11668,30 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     let isAdmin = false;
                     let isOwner = false;
 
+                    const userGuild = userGuildMap.get(String(guildId));
+
+                    // Fast-path using Discord OAuth guild permissions when available.
+                    if (userGuild) {
+                        isOwner = userGuild.owner === true || userGuild.isOwner === true;
+                        if (isOwner) {
+                            hasAccess = true;
+                            isAdmin = true;
+                            accessReason = 'owner';
+                        } else {
+                            try {
+                                const perms = BigInt(userGuild.permissions || 0);
+                                const hasManagePerms = (perms & 0x8n) !== 0n || (perms & 0x20n) !== 0n;
+                                if (hasManagePerms) {
+                                    hasAccess = true;
+                                    isAdmin = true;
+                                    accessReason = 'discord_permissions';
+                                }
+                            } catch (_) {}
+                        }
+                    }
+
                     // Check 1: Is user the server owner?
-                    if (guild.ownerId === userId) {
+                    if (!hasAccess && guild.ownerId === userId) {
                         hasAccess = true;
                         isOwner = true;
                         isAdmin = true;
@@ -11453,8 +11704,17 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                         accessReason = 'explicit_grant';
                     }
 
-                    // Check 3: Verify user is a member and check permissions
-                    const member = await guild.members.fetch(userId).catch(() => null);
+                    // Check 3: Verify user is a member and check permissions when needed.
+                    // If OAuth guild info is missing for a guild, fall back to a live member
+                    // permission check so owner/admin/manage-server access still works.
+                    const needsMemberCheck = !hasAccess && (!userGuild || roleAccessMap.has(guildId));
+                    let member = null;
+                    if (needsMemberCheck) {
+                        member = guild.members.cache.get(userId) || await Promise.race([
+                            guild.members.fetch(userId).catch(() => null),
+                            new Promise(resolve => setTimeout(() => resolve(null), 2500))
+                        ]);
+                    }
                     
                     if (member) {
                         // Check 4: Does user have Discord admin/manage permissions?
@@ -11480,24 +11740,26 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                             }
                         }
 
-                        if (hasAccess) {
-                            userServers.push({
-                                id: guild.id,
-                                name: guild.name,
-                                icon: guild.iconURL({ dynamic: true, size: 128 }) || null,
-                                memberCount: guild.memberCount,
-                                owner: isOwner,
-                                hasBot: true,
-                                isAdmin: isAdmin,
-                                canManage: isAdmin,
-                                accessType: accessReason
-                            });
-                            
-                            this.bot.logger.debug(`[SERVERS] User ${userId} has access to ${guild.name} (${accessReason})`);
-                        } else {
+                        if (!hasAccess) {
                             this.bot.logger.debug(`[SERVERS] User ${userId} is member of ${guild.name} but has no dashboard access`);
                         }
-                    } else if (hasAccess) {
+                    }
+
+                    if (hasAccess) {
+                        userServers.push({
+                            id: guild.id,
+                            name: guild.name,
+                            icon: guild.iconURL({ dynamic: true, size: 128 }) || null,
+                            memberCount: guild.memberCount,
+                            owner: isOwner,
+                            hasBot: true,
+                            isAdmin: isAdmin,
+                            canManage: isAdmin,
+                            accessType: accessReason
+                        });
+
+                        this.bot.logger.debug(`[SERVERS] User ${userId} has access to ${guild.name} (${accessReason})`);
+                    } else if (grantedGuildIds.has(guildId)) {
                         // User has explicit grant but is not a member - still show it
                         userServers.push({
                             id: guild.id,
@@ -11545,8 +11807,8 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
             const userId = req.user?.discordId || req.user?.userId;
             
-            // Privileged dashboard users can access all servers
-            if (this.isPrivilegedDashboardUser(req.user)) {
+            // Keep legacy local admin override only.
+            if (req.user?.provider === 'local' && req.user?.userId === 'admin') {
                 return res.json({ 
                     success: true, 
                     server: {
@@ -14490,6 +14752,15 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
     async handleWebVerifyInit(req, res) {
         try {
             const { token, guildId, userId } = req.body;
+            const trace = {
+                host: req.get('host'),
+                hasToken: Boolean(token),
+                tokenTail: token ? String(token).slice(-8) : null,
+                guildId: guildId || null,
+                userId: userId || null,
+                userAgent: req.get('user-agent') || null
+            };
+            this.bot.logger?.info('[WebVerifyTrace] init request received', trace);
 
             // Lookup by token first
             if (token) {
@@ -14499,8 +14770,21 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 );
 
                 if (!session) {
+                    this.bot.logger?.warn('[WebVerifyTrace] init token lookup failed', trace);
                     return res.status(404).json({ error: 'Invalid or expired verification link' });
                 }
+
+                const guild = this.bot.client.guilds.cache.get(session.guild_id);
+                this.bot.logger?.info('[WebVerifyTrace] init session found', {
+                    ...trace,
+                    sessionId: session.id,
+                    sessionGuildId: session.guild_id,
+                    sessionUserId: session.user_id,
+                    method: session.method,
+                    status: session.status,
+                    expiresAt: session.expires_at || null,
+                    guildFound: Boolean(guild)
+                });
 
                 // Check expiry
                 if (session.expires_at && new Date(session.expires_at) < new Date()) {
@@ -14508,10 +14792,18 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                         `UPDATE verification_sessions SET status = 'expired' WHERE id = ?`,
                         [session.id]
                     );
-                    return res.status(410).json({ error: 'Verification link expired. Please request a new one.' });
+                    this.bot.logger?.warn('[WebVerifyTrace] init session expired', {
+                        ...trace,
+                        sessionId: session.id,
+                        expiresAt: session.expires_at
+                    });
+                    return res.status(410).json({
+                        expired: true,
+                        error: 'Verification link expired. Please request a new one.',
+                        serverName: guild?.name || 'Unknown Server',
+                        guildName: guild?.name || 'Unknown Server'
+                    });
                 }
-
-                const guild = this.bot.client.guilds.cache.get(session.guild_id);
 
                 // If method needs a visible code, generate a fresh one and update the session
                 let captchaCode = null;
@@ -14531,6 +14823,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     success: true,
                     guildId: session.guild_id,
                     userId: session.user_id,
+                    serverName: guild?.name || 'Unknown Server',
                     guildName: guild?.name || 'Unknown Server',
                     guildIcon: guild?.iconURL() || null,
                     method: session.method,
@@ -14543,6 +14836,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
             // Legacy: lookup by guildId/userId
             if (guildId && userId) {
+                this.bot.logger?.info('[WebVerifyTrace] init legacy lookup starting', trace);
                 const session = await this.bot.database?.get(
                     `SELECT * FROM verification_sessions 
                      WHERE guild_id = ? AND user_id = ? AND status = 'pending'
@@ -14552,10 +14846,19 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
 
                 if (session) {
                     const guild = this.bot.client.guilds.cache.get(guildId);
+                    this.bot.logger?.info('[WebVerifyTrace] init legacy session found', {
+                        ...trace,
+                        sessionId: session.id,
+                        method: session.method,
+                        status: session.status,
+                        expiresAt: session.expires_at || null,
+                        guildFound: Boolean(guild)
+                    });
                     return res.json({
                         success: true,
                         guildId,
                         userId,
+                        serverName: guild?.name || 'Unknown Server',
                         guildName: guild?.name || 'Unknown Server',
                         guildIcon: guild?.iconURL() || null,
                         method: session.method,
@@ -14567,9 +14870,10 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                 }
             }
 
+            this.bot.logger?.warn('[WebVerifyTrace] init found no pending verification', trace);
             return res.status(404).json({ error: 'No pending verification found' });
         } catch (error) {
-            this.bot.logger?.error('Web verify init error:', error);
+            this.bot.logger?.error('[WebVerifyTrace] init error:', error);
             res.status(500).json({ error: 'Server error' });
         }
     }
@@ -14579,11 +14883,17 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
      */
     async handleWebVerifySubmit(req, res) {
         try {
-            console.log('[WebVerify] Raw body:', JSON.stringify(req.body));
             const { token, code, challenge, guildId, userId } = req.body;
-            
-            console.log('[WebVerify] Submit received:', { hasToken: !!token, hasGuildId: !!guildId, hasUserId: !!userId, hasCode: !!code });
-            this.bot.logger?.info('[WebVerify] Submit received:', { hasToken: !!token, hasGuildId: !!guildId, hasUserId: !!userId, hasCode: !!code });
+            const trace = {
+                host: req.get('host'),
+                hasToken: Boolean(token),
+                tokenTail: token ? String(token).slice(-8) : null,
+                guildId: guildId || null,
+                userId: userId || null,
+                hasCode: Boolean(code),
+                userAgent: req.get('user-agent') || null
+            };
+            this.bot.logger?.info('[WebVerifyTrace] submit request received', trace);
 
             // Allow legacy fallback when token is missing but guild/user provided
             let session = null;
@@ -14599,16 +14909,26 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     [guildId, userId]
                 );
             } else {
-                this.bot.logger?.warn('[WebVerify] Submit failed: no token or guild/user IDs');
+                this.bot.logger?.warn('[WebVerifyTrace] submit failed: missing identifiers', trace);
                 return res.status(400).json({ error: 'Token or guild/user IDs required' });
             }
 
             if (!session) {
-                this.bot.logger?.warn('[WebVerify] Session not found:', { token, guildId, userId });
+                this.bot.logger?.warn('[WebVerifyTrace] submit session not found', trace);
                 return res.status(404).json({ error: 'Invalid or expired session' });
             }
 
-            this.bot.logger?.info('[WebVerify] Session found:', { method: session.method, hasCodeHash: !!session.code_hash });
+            this.bot.logger?.info('[WebVerifyTrace] submit session found', {
+                ...trace,
+                sessionId: session.id,
+                sessionGuildId: session.guild_id,
+                sessionUserId: session.user_id,
+                method: session.method,
+                status: session.status,
+                expiresAt: session.expires_at || null,
+                attempts: session.attempts || 0,
+                hasCodeHash: Boolean(session.code_hash)
+            });
 
             // Check expiry
             if (session.expires_at && new Date(session.expires_at) < new Date()) {
@@ -14616,13 +14936,21 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
                     `UPDATE verification_sessions SET status = 'expired' WHERE id = ?`,
                     [session.id]
                 );
-                return res.status(410).json({ error: 'Session expired' });
+                this.bot.logger?.warn('[WebVerifyTrace] submit session expired', {
+                    ...trace,
+                    sessionId: session.id,
+                    expiresAt: session.expires_at
+                });
+                return res.status(410).json({ expired: true, error: 'Session expired' });
             }
 
             // Simple challenge verification (for web method - no code needed)
             if (session.method === 'web') {
                 // Web verification just requires clicking - verify immediately
-                this.bot.logger?.info('[WebVerify] Completing web verification (no code needed)');
+                this.bot.logger?.info('[WebVerifyTrace] completing web verification', {
+                    ...trace,
+                    sessionId: session.id
+                });
                 await this.completeWebVerification(session);
                 return res.json({ success: true, message: 'Verification complete!' });
             }
@@ -14675,16 +15003,22 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
      */
     async handleWebVerifyRefresh(req, res) {
         try {
-            const { token } = req.body;
+            const { token, guildId, userId } = req.body;
 
-            if (!token) {
-                return res.status(400).json({ error: 'Token required' });
+            if (!token && (!guildId || !userId)) {
+                return res.status(400).json({ error: 'Token or guild/user IDs required' });
             }
 
-            const session = await this.bot.database?.get(
-                `SELECT * FROM verification_sessions WHERE token = ?`,
-                [token]
-            );
+            const session = token
+                ? await this.bot.database?.get(
+                    `SELECT * FROM verification_sessions WHERE token = ?`,
+                    [token]
+                )
+                : await this.bot.database?.get(
+                    `SELECT * FROM verification_sessions WHERE guild_id = ? AND user_id = ? AND status = 'pending'
+                     ORDER BY created_at DESC LIMIT 1`,
+                    [guildId, userId]
+                );
 
             if (!session || session.status !== 'pending') {
                 return res.status(404).json({ error: 'Invalid session' });
@@ -14739,31 +15073,79 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
      * Complete web verification and assign roles
      */
     async completeWebVerification(session) {
+        const trace = {
+            sessionId: session?.id || null,
+            guildId: session?.guild_id || null,
+            userId: session?.user_id || null,
+            method: session?.method || null
+        };
+        this.bot.logger?.info('[WebVerifyTrace] complete start', trace);
+
         const guild = this.bot.client.guilds.cache.get(session.guild_id);
-        if (!guild) throw new Error('Guild not found');
+        this.bot.logger?.info('[WebVerifyTrace] complete guild lookup', {
+            ...trace,
+            guildFound: Boolean(guild),
+            guildName: guild?.name || null
+        });
+        if (!guild) {
+            this.bot.logger?.error('[WebVerifyTrace] complete failed: guild not found', trace);
+            throw new Error('Guild not found');
+        }
 
         const member = await guild.members.fetch(session.user_id).catch(() => null);
-        if (!member) throw new Error('Member not found');
+        this.bot.logger?.info('[WebVerifyTrace] complete member lookup', {
+            ...trace,
+            memberFound: Boolean(member)
+        });
+        if (!member) {
+            this.bot.logger?.error('[WebVerifyTrace] complete failed: member not found', trace);
+            throw new Error('Member not found');
+        }
 
         const config = await this.bot.database?.getGuildConfig(session.guild_id);
+        this.bot.logger?.info('[WebVerifyTrace] complete config loaded', {
+            ...trace,
+            hasConfig: Boolean(config),
+            verifiedRoleId: config?.verified_role_id || null,
+            unverifiedRoleId: config?.unverified_role_id || null
+        });
 
         // Add verified role
         if (config?.verified_role_id) {
             const role = guild.roles.cache.get(config.verified_role_id);
+            this.bot.logger?.info('[WebVerifyTrace] complete verified role lookup', {
+                ...trace,
+                roleId: config.verified_role_id,
+                roleFound: Boolean(role)
+            });
             if (role) {
                 await member.roles.add(role).catch(() => {});
+                this.bot.logger?.info('[WebVerifyTrace] complete verified role add attempted', {
+                    ...trace,
+                    roleId: role.id
+                });
             }
         }
 
         // Remove unverified role
         if (config?.unverified_role_id) {
             const role = guild.roles.cache.get(config.unverified_role_id);
+            this.bot.logger?.info('[WebVerifyTrace] complete unverified role lookup', {
+                ...trace,
+                roleId: config.unverified_role_id,
+                roleFound: Boolean(role)
+            });
             if (role) {
                 await member.roles.remove(role).catch(() => {});
+                this.bot.logger?.info('[WebVerifyTrace] complete unverified role remove attempted', {
+                    ...trace,
+                    roleId: role.id
+                });
             }
         }
 
         // Delete any old sessions for this user to avoid UNIQUE constraint issues
+        this.bot.logger?.info('[WebVerifyTrace] complete deleting old sessions', trace);
         await this.bot.database?.run(
             `DELETE FROM verification_sessions 
              WHERE guild_id = ? AND user_id = ? AND id != ?`,
@@ -14771,6 +15153,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
         );
 
         // Update session status
+        this.bot.logger?.info('[WebVerifyTrace] complete updating session status', trace);
         await this.bot.database?.run(
             `UPDATE verification_sessions 
              SET status = 'completed', completed_at = CURRENT_TIMESTAMP, completed_by = ?
@@ -14790,6 +15173,7 @@ ${Object.entries(colors).map(([key, value]) => `    ${key}: ${value};`).join('\n
             });
         }
 
+        this.bot.logger?.info('[WebVerifyTrace] complete success', trace);
         this.bot.logger?.info(`[WebVerify] Verified ${session.user_id} in ${session.guild_id}`);
     }
 

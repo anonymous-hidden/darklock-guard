@@ -9,7 +9,25 @@ const ZONES = [
 ];
 
 function fmt(d, tz) {
-  return d.toLocaleTimeString([], { hour12: true, hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: tz });
+  return d.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: tz });
+}
+
+function fmtShort(d, tz) {
+  return d.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', timeZone: tz });
+}
+
+function fmtLocalParts(d) {
+  const parts = new Intl.DateTimeFormat([], {
+    hour12: true,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(d);
+  const byType = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  return {
+    time: `${byType.hour ?? '00'}:${byType.minute ?? '00'}:${byType.second ?? '00'}`,
+    period: (byType.dayPeriod || '').toUpperCase(),
+  };
 }
 function fmtDate(d, tz) {
   return d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', timeZone: tz });
@@ -60,6 +78,7 @@ export default function ClockWidget() {
   const ms = swElapsed;
   const sw = `${String(Math.floor(ms/3600000)).padStart(2,'0')}:${String(Math.floor((ms%3600000)/60000)).padStart(2,'0')}:${String(Math.floor((ms%60000)/1000)).padStart(2,'0')}.${String(Math.floor((ms%1000)/10)).padStart(2,'0')}`;
   const mood = sleepStatus(now);
+  const local = fmtLocalParts(now);
 
   return (
     <div className="h-full flex flex-col p-4 gap-3 text-nova-text bg-[radial-gradient(circle_at_20%_15%,rgba(0,212,255,.16),transparent_42%),radial-gradient(circle_at_80%_10%,rgba(124,92,255,.14),transparent_40%),linear-gradient(180deg,#0a0c14_0%,#070910_100%)]">
@@ -75,7 +94,12 @@ export default function ClockWidget() {
       {tab === 'clock' ? (
         <div className="flex-1 flex flex-col gap-3">
           <div className="text-center bg-nova-panel/60 border border-nova-border/80 backdrop-blur rounded-2xl px-3 py-4 shadow-[0_10px_30px_rgba(0,0,0,.35)]">
-            <div className="font-display text-5xl tabular-nums tracking-wide">{fmt(now)}</div>
+            <div className="flex items-end justify-center gap-2">
+              <div className="font-mono text-5xl tabular-nums tracking-[0.08em] leading-none text-nova-accent drop-shadow-[0_0_14px_rgba(0,212,255,.25)]">{local.time}</div>
+              {local.period && (
+                <span className="mb-[3px] rounded border border-nova-border/80 bg-nova-panel2/80 px-1.5 py-0.5 text-[10px] font-mono tracking-wide text-nova-muted">{local.period}</span>
+              )}
+            </div>
             <div className="text-xs text-nova-muted mt-1">{fmtDate(now)}</div>
             <div className={`text-[11px] mt-2 font-mono ${mood.tone}`}>{mood.label}</div>
             <div className="text-[10.5px] text-nova-muted mt-0.5">{mood.note}</div>
@@ -84,7 +108,7 @@ export default function ClockWidget() {
             {ZONES.slice(1).map((z) => (
               <div key={z.label} className="flex justify-between bg-nova-panel/70 border border-nova-border/70 px-2 py-1.5 rounded-lg">
                 <span className="text-nova-muted">{z.label}</span>
-                <span className="font-mono tabular-nums">{fmt(now, z.tz)}</span>
+                <span className="font-mono tabular-nums tracking-wide">{fmtShort(now, z.tz)}</span>
               </div>
             ))}
           </div>
@@ -95,7 +119,7 @@ export default function ClockWidget() {
         </div>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-nova-panel/55 border border-nova-border/70 rounded-2xl">
-          <div className="font-display text-4xl tabular-nums tracking-wide">{sw}</div>
+          <div className="font-mono text-4xl tabular-nums tracking-[0.06em]">{sw}</div>
           <div className="flex gap-2">
             <button onClick={swToggle} className="nova-btn-primary text-sm">{swRunning ? 'Pause' : 'Start'}</button>
             <button onClick={swReset} className="nova-btn text-sm">Reset</button>

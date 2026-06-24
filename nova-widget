@@ -7,7 +7,7 @@
 #
 # Available widgets:
 #   nova-call, nova-chat, clock, calculator, notes, todo, sysmon,
-#   spotify, weather, calendar, map, news, room-control
+#   spotify, weather, calendar, map, news, room-control, widget-theme
 #
 # Examples:
 #   nova-widget clock
@@ -33,6 +33,7 @@ Nova widgets:
   map            World map, location search, directions
   news           Daily Nova news brief
   room-control   Lights, buzzer, sensor, and bridge health
+  widget-theme   Theme + desktop mode controls for all widgets
 EOF
   exit 0
 fi

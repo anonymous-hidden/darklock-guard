@@ -3,7 +3,7 @@
  */
 import { useCallback, useMemo, useRef, useEffect } from 'react';
 import { WidgetBuilder, detectWidgetIntent } from '@core/ai/WidgetBuilder.js';
-import { ollama } from '@core/ai/OllamaClient.js';
+import { aiClient } from '@core/ai/AIClient.js';
 import { useWidgetStore } from '@store/widgetStore.js';
 import { useAppStore } from '@store/appStore.js';
 import { useAiStore } from '@store/aiStore.js';
@@ -31,7 +31,7 @@ export function useWidgetBuilder() {
   }, []);
 
   const builder = useMemo(() => new WidgetBuilder({
-    ollama,
+    ollama: aiClient,
     model: astore.selectedModel,
     ipcSave: async (widget) => {
       const res = await window.nova?.widgets?.save?.(widget);

@@ -3,6 +3,12 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+    function getCookie(name) {
+        const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const match = document.cookie.match(new RegExp('(?:^|; )' + escapedName + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+
     // Get form elements
     const loginForm = document.getElementById('loginForm');
     const signupForm = document.getElementById('signupForm');
@@ -61,11 +67,17 @@ document.addEventListener('DOMContentLoaded', () => {
             hideError();
             
             try {
+                const csrfToken = getCookie('_csrf_token');
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                if (csrfToken) {
+                    headers['x-csrf-token'] = csrfToken;
+                }
+
                 const response = await fetch('/platform/auth/login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers,
                     body: JSON.stringify({ username, password, totpCode }),
                     credentials: 'include'
                 });
@@ -122,11 +134,17 @@ document.addEventListener('DOMContentLoaded', () => {
             hideError();
             
             try {
+                const csrfToken = getCookie('_csrf_token');
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                if (csrfToken) {
+                    headers['x-csrf-token'] = csrfToken;
+                }
+
                 const response = await fetch('/platform/auth/signup', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers,
                     body: JSON.stringify({ username, email, password, confirmPassword }),
                     credentials: 'include'
                 });

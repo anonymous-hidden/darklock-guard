@@ -72,7 +72,7 @@ export default function WidgetGallery() {
       {widgets.length === 0 ? (
         <div className="rounded-lg border border-dashed border-nova-border p-8 text-center text-nova-muted">
           <div className="font-display text-base text-nova-text mb-1">No widgets yet</div>
-          <div className="text-sm">Ask Nova to build your first widget — try "build a calculator" in the chat.</div>
+          <div className="text-sm">Ask Jarvis to build your first widget — try "build a calculator" in the chat.</div>
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-nova-border p-6 text-center text-nova-muted text-sm">

@@ -8,7 +8,7 @@ import { BUILTIN_WIDGETS, getBuiltin } from '@builtins/registry.js';
 
 export const useBuiltinStore = create((set, get) => ({
   /** ids that are currently docked in the in-app dashboard */
-  docked: ['nova-call', 'nova-chat', 'clock'],
+  docked: ['nova-call', 'nova-chat', 'clock', 'widget-theme'],
   /** map of id -> opened desktop popout window id */
   poppedOut: {},
   list: BUILTIN_WIDGETS,

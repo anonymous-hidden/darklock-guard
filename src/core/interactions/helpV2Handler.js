@@ -21,11 +21,11 @@ const helpCommand = require('../../commands/utility/help');
 // Import constants from help command
 const {
     PREFIX,
-    BUTTON_CATEGORY,
-    BUTTON_BACK,
-    BUTTON_TICKET,
-    MODAL_TICKET,
-    HELP_CATEGORIES
+    ID_CAT,
+    ID_BACK,
+    ID_TICKET,
+    ID_MODAL,
+    CATEGORIES
 } = helpCommand;
 
 /**
@@ -52,25 +52,25 @@ async function handleHelpInteraction(interaction, bot) {
 
     try {
         // BUTTON: Category selection
-        if (customId.startsWith(BUTTON_CATEGORY)) {
+        if (customId.startsWith(ID_CAT)) {
             await handleCategoryButton(interaction, bot);
             return true;
         }
 
         // BUTTON: Back to main menu
-        if (customId === BUTTON_BACK) {
+        if (customId === ID_BACK) {
             await handleBackButton(interaction, bot);
             return true;
         }
 
         // BUTTON: Create ticket (shows modal)
-        if (customId.startsWith(BUTTON_TICKET)) {
+        if (customId.startsWith(ID_TICKET)) {
             await handleTicketButton(interaction, bot);
             return true;
         }
 
         // MODAL: Ticket submission
-        if (customId.startsWith(MODAL_TICKET)) {
+        if (customId.startsWith(ID_MODAL)) {
             await handleTicketModal(interaction, bot);
             return true;
         }
@@ -101,13 +101,13 @@ async function handleHelpInteraction(interaction, bot) {
  * Updates the message with category details
  */
 async function handleCategoryButton(interaction, bot) {
-    const categoryKey = interaction.customId.replace(BUTTON_CATEGORY, '');
+    const categoryKey = interaction.customId.replace(ID_CAT, '');
     
-    if (!HELP_CATEGORIES[categoryKey]) {
+    if (!CATEGORIES[categoryKey]) {
         return interaction.update({ 
-            content: '❌ Unknown category', 
-            embeds: [], 
-            components: [] 
+            content: 'Unknown help page. Please run `/help` again.',
+            embeds: [helpCommand.buildMainEmbed(interaction.client)],
+            components: helpCommand.buildMainComponents()
         });
     }
 
@@ -137,7 +137,7 @@ async function handleBackButton(interaction, bot) {
  * CRITICAL: Do NOT defer before showModal!
  */
 async function handleTicketButton(interaction, bot) {
-    const categoryKey = interaction.customId.replace(BUTTON_TICKET, '');
+    const categoryKey = interaction.customId.replace(ID_TICKET, '');
     const modal = helpCommand.buildTicketModal(categoryKey);
 
     // showModal() is the acknowledgement - do not defer first!
@@ -152,13 +152,13 @@ async function handleTicketModal(interaction, bot) {
     // IMMEDIATELY defer - this is required for modal submissions
     await interaction.deferReply({ ephemeral: true });
 
-    const categoryKey = interaction.customId.replace(MODAL_TICKET, '');
-    const cat = HELP_CATEGORIES[categoryKey] || { label: 'General', emoji: '📋' };
+    const categoryKey = interaction.customId.replace(ID_MODAL, '');
+    const cat = CATEGORIES[categoryKey] || { label: 'General' };
 
     // Extract form values
-    const subject = interaction.fields.getTextInputValue('ticket_subject');
-    const category = interaction.fields.getTextInputValue('ticket_category');
-    const description = interaction.fields.getTextInputValue('ticket_description');
+    const subject = interaction.fields.getTextInputValue('subject');
+    const category = interaction.fields.getTextInputValue('category');
+    const description = interaction.fields.getTextInputValue('description');
 
     // Generate ticket ID
     const ticketId = `TKT-${Date.now().toString(36).toUpperCase()}`;
@@ -207,7 +207,7 @@ async function handleTicketModal(interaction, bot) {
         .setColor(ticketCreated ? 0x00ff00 : 0xffaa00)
         .addFields(
             { name: 'Ticket ID', value: `\`${ticketId}\``, inline: true },
-            { name: 'Category', value: `${cat.emoji} ${category}`, inline: true },
+            { name: 'Category', value: category || cat.label || 'General', inline: true },
             { name: 'Status', value: '🔄 Open', inline: true },
             { name: 'Subject', value: subject, inline: false },
             { name: 'Description', value: description.slice(0, 500) + (description.length > 500 ? '...' : ''), inline: false }
@@ -280,7 +280,7 @@ async function notifyStaff(interaction, bot, ticketId, category, subject, descri
         .setColor(0xff9900)
         .addFields(
             { name: 'User', value: `${interaction.user.username} (${interaction.user.id})`, inline: false },
-            { name: 'Category', value: `${cat.emoji} ${category}`, inline: true },
+            { name: 'Category', value: category || cat.label || 'General', inline: true },
             { name: 'Status', value: '🔄 Open', inline: true },
             { name: 'Subject', value: subject, inline: false },
             { name: 'Description', value: description.slice(0, 800) + (description.length > 800 ? '...' : ''), inline: false }

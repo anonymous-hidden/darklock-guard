@@ -9,6 +9,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const premiumManager = require('../utils/premium');
 const db = require('../utils/database');
 const emailService = require('../utils/email');
+const Q = require('../admin-v4/db/queries');
 
 // Import requireAuth from dashboard routes
 const { requireAuth } = require('../admin-v4/middleware');
@@ -96,6 +97,119 @@ router.post('/create-checkout', requireAuth, async (req, res) => {
     } catch (error) {
         console.error('[Premium] Error creating checkout:', error);
         res.status(500).json({ error: 'Failed to create checkout session' });
+    }
+});
+
+/**
+ * Create Stripe checkout session for Ridgeline shop item
+ * The amount charged is always sourced from server-side catalog data.
+ */
+router.post('/shop/checkout', requireAuth, async (req, res) => {
+    try {
+        if (!process.env.STRIPE_SECRET_KEY) {
+            return res.status(503).json({ error: 'Stripe not configured' });
+        }
+
+        const { itemId, quantity } = req.body || {};
+        const qty = Math.max(1, Math.min(Number(quantity) || 1, 10));
+
+        if (!itemId || typeof itemId !== 'string') {
+            return res.status(400).json({ error: 'itemId is required' });
+        }
+
+        const item = await Q.getShopProductById(itemId);
+        if (!item || item.published !== 1) {
+            return res.status(404).json({ error: 'Shop item not found' });
+        }
+
+        if (!Number.isInteger(item.price_cents) || item.price_cents < 50) {
+            return res.status(400).json({ error: 'Invalid item pricing configuration' });
+        }
+
+        const currency = String(item.currency || 'usd').toLowerCase();
+        const billingType = item.billing_type || 'one_time';
+        const mode = billingType === 'one_time' ? 'payment' : 'subscription';
+
+        let customerId = null;
+        const premium = await db.getUserPremium(req.user.id).catch(() => null);
+        if (premium && premium.stripe_customer_id) {
+            customerId = premium.stripe_customer_id;
+        }
+
+        if (!customerId) {
+            const customer = await stripe.customers.create({
+                email: req.user.email,
+                metadata: {
+                    userId: req.user.id.toString(),
+                    username: req.user.username || '',
+                },
+            });
+            customerId = customer.id;
+        }
+
+        let lineItem;
+        if (item.stripe_price_id) {
+            lineItem = { price: item.stripe_price_id, quantity: qty };
+        } else if (mode === 'subscription') {
+            const interval = billingType === 'year' ? 'year' : 'month';
+            lineItem = {
+                quantity: qty,
+                price_data: {
+                    currency,
+                    unit_amount: item.price_cents,
+                    recurring: { interval },
+                    product_data: {
+                        name: item.title,
+                        description: item.subtitle || item.description || undefined,
+                    },
+                },
+            };
+        } else {
+            lineItem = {
+                quantity: qty,
+                price_data: {
+                    currency,
+                    unit_amount: item.price_cents,
+                    product_data: {
+                        name: item.title,
+                        description: item.subtitle || item.description || undefined,
+                    },
+                },
+            };
+        }
+
+        const origin = process.env.APP_URL || 'http://localhost:5001';
+        const session = await stripe.checkout.sessions.create({
+            customer: customerId,
+            payment_method_types: ['card'],
+            line_items: [lineItem],
+            mode,
+            success_url: `${origin}/platform/shop?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${origin}/platform/shop?checkout=cancelled`,
+            metadata: {
+                source: 'ridgeline_shop',
+                userId: req.user.id.toString(),
+                username: req.user.username || '',
+                email: req.user.email || '',
+                itemId: item.id,
+                itemTitle: item.title,
+                quantity: String(qty),
+                unitAmount: String(item.price_cents),
+                currency,
+                billingType,
+            },
+        });
+
+        return res.json({
+            success: true,
+            url: session.url,
+            sessionId: session.id,
+            amountCents: item.price_cents * qty,
+            currency,
+        });
+    } catch (error) {
+        console.error('[Premium] Shop checkout error:', error);
+        return res.status(500).json({ error: 'Failed to create shop checkout session' });
     }
 });
 

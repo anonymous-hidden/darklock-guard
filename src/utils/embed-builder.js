@@ -221,36 +221,43 @@ class StandardEmbedBuilder {
      * Create a spam detection embed with full details
      */
     spamDetection(username, userId, channelId, spamTypes, warningCount, actionTaken, accountAge, messageContent, userAvatar, severity) {
-        const severityColor = severity === 'HIGH' ? 0xff0000 : severity === 'MEDIUM' ? 0xffa500 : 0xffff00;
-        
+        const severityColor = severity === 'HIGH' ? 0xff3b30 : severity === 'MEDIUM' ? 0xffa000 : 0xf2c94c;
+        const severityLabel = severity || 'LOW';
+        const cleanTypes = (Array.isArray(spamTypes) ? spamTypes : [])
+            .map(type => String(type || '').replace(/_/g, ' ').toLowerCase())
+            .filter(Boolean);
+        const typeText = cleanTypes.length
+            ? cleanTypes.map(type => `• ${type}`).join('\n')
+            : 'Unknown pattern';
+        const safeContent = String(messageContent || '').trim().replace(/```/g, '` ` `');
+        const truncatedContent = safeContent.length > 350
+            ? `${safeContent.substring(0, 350)}...`
+            : safeContent;
+
         const embed = new EmbedBuilder()
             .setColor(severityColor)
-            .setTitle('🚨 Spam Detected')
-            .setDescription(`User **${username}** was flagged for spam`)
+            .setTitle('🚫 Spam Detection')
+            .setDescription(`Automated protection flagged **${username || 'Unknown user'}** and applied the configured response.`)
             .addFields(
-                { name: '👤 User', value: `<@${userId}>\n\`${userId}\``, inline: true },
-                { name: '📍 Channel', value: `<#${channelId}>`, inline: true },
-                { name: '⚠️ Warning Count', value: `${warningCount}/5`, inline: true },
-                { name: '🏷️ Spam Types', value: spamTypes.map(t => `• ${t.replace('_', ' ')}`).join('\n'), inline: true },
-                { name: '⏰ Account Age', value: accountAge || 'Unknown', inline: true },
-                { name: '🔧 Action Taken', value: actionTaken, inline: true }
+                { name: 'User', value: userId ? `<@${userId}>\n\`${userId}\`` : 'Unknown user', inline: true },
+                { name: 'Channel', value: channelId ? `<#${channelId}>\n\`${channelId}\`` : 'Unknown channel', inline: true },
+                { name: 'Severity', value: severityLabel, inline: true },
+                { name: 'Patterns', value: typeText.substring(0, 1024), inline: true },
+                { name: 'Warnings', value: `${warningCount || 0}`, inline: true },
+                { name: 'Action', value: actionTaken || 'Logged only', inline: true },
+                { name: 'Account Age', value: accountAge || 'Unknown', inline: true }
             )
             .setTimestamp()
             .setFooter(this.footer);
         
-        // Add message content if available
-        if (messageContent && messageContent.length > 0) {
-            const truncatedContent = messageContent.length > 300 
-                ? messageContent.substring(0, 300) + '...' 
-                : messageContent;
+        if (truncatedContent) {
             embed.addFields({
-                name: '💬 Message Content',
+                name: 'Message Sample',
                 value: `\`\`\`${truncatedContent}\`\`\``,
                 inline: false
             });
         }
         
-        // Add user avatar if available
         if (userAvatar) {
             embed.setThumbnail(userAvatar);
         }

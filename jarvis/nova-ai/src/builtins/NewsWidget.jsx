@@ -1,10 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const OLLAMA_CHAT = 'http://127.0.0.1:11434/api/chat';
-const FALLBACK_MODELS = ['llama3.1:8b', 'llama3:8b', 'llama3.2:3b', 'mistral:7b', 'gemma3:4b'];
+const OLLAMA_GENERATE = 'http://127.0.0.1:11434/api/generate';
+const FALLBACK_MODELS = ['llama3.2:3b', 'gemma3:4b', 'llama3.2:1b', 'qwen2.5:3b', 'mistral:7b', 'llama3.1:8b', 'llama3:8b'];
+const FRESH_WINDOW_MS = 48 * 60 * 60 * 1000;
+const GENERIC_NEWS_WORDS = new Set(['news', 'today', 'latest', 'current', 'headline', 'headlines', 'breaking']);
 
 /* ── RSS feeds (freely accessible, no API key, no bot detection) ── */
 const RSS_FEEDS = [
+  { url: 'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en', label: 'Google News'  },
   { url: 'https://feeds.bbci.co.uk/news/world/rss.xml',          label: 'BBC World'    },
   { url: 'https://feeds.bbci.co.uk/news/technology/rss.xml',     label: 'BBC Tech'     },
   { url: 'https://feeds.npr.org/1001/rss.xml',                    label: 'NPR'          },
@@ -20,11 +24,45 @@ function stripTags(html) {
   return String(html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function parseDate(value) {
+  const t = Date.parse(value || '');
+  return Number.isFinite(t) ? t : 0;
+}
+
+function relTime(ts) {
+  if (!ts) return '';
+  const mins = Math.max(0, Math.round((Date.now() - ts) / 60000));
+  if (mins < 60) return `${mins || 1}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function preferFresh(items) {
+  const now = Date.now();
+  const fresh = items.filter((item) => {
+    const ts = Number(item.publishedAt) || 0;
+    return ts > 0 && ts <= now + 30 * 60 * 1000 && now - ts <= FRESH_WINDOW_MS;
+  });
+  if (fresh.length >= Math.min(6, items.length)) return fresh;
+  if (!fresh.length) return items;
+  const freshSet = new Set(fresh);
+  return [...fresh, ...items.filter((item) => !freshSet.has(item))];
+}
+
 async function fetchRss(feed) {
   try {
-    const r = await fetch(feed.url, { signal: AbortSignal.timeout(10000) });
-    if (!r.ok) return [];
-    const xml = await r.text();
+    let xml = '';
+    const rawFetch = window.nova?.control?.webFetchRaw;
+    if (rawFetch) {
+      const r = await rawFetch(feed.url);
+      if (!r?.ok || !r.body) return [];
+      xml = r.body;
+    } else {
+      const r = await fetch(feed.url, { signal: AbortSignal.timeout(10000) });
+      if (!r.ok) return [];
+      xml = await r.text();
+    }
     const parser = new DOMParser();
     const doc = parser.parseFromString(xml, 'application/xml');
     const items = Array.from(doc.querySelectorAll('item, entry'));
@@ -33,27 +71,38 @@ async function fetchRss(feed) {
       const title   = stripTags(get('title'));
       const snippet = stripTags(get('description') || get('summary') || get('content'));
       const url     = (el.querySelector('link')?.getAttribute('href') || get('link') || '').trim();
-      return title ? { title, snippet: snippet.slice(0, 200), url, source: feed.label } : null;
+      const publishedAt = parseDate(get('pubDate') || get('updated') || get('published'));
+      return title ? { title, snippet: snippet.slice(0, 200), url, source: feed.label, publishedAt } : null;
     }).filter(Boolean);
   } catch { return []; }
 }
 
 async function fetchAllRss(topicFilter) {
-  const results = await Promise.allSettled(RSS_FEEDS.map(fetchRss));
+  const feeds = [...RSS_FEEDS];
+  const q = String(topicFilter || '').trim();
+  if (q) {
+    feeds.unshift({
+      url: `https://news.google.com/rss/search?q=${encodeURIComponent(`${q} news`)}&hl=en-US&gl=US&ceid=US:en`,
+      label: 'Google News',
+    });
+  }
+  const results = await Promise.allSettled(feeds.map(fetchRss));
   const all = results.flatMap((r) => r.status === 'fulfilled' ? r.value : []);
-  if (!topicFilter) return all;
-  const kw = topicFilter.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-  if (!kw.length) return all;
-  const scored = all.map((item) => {
+  all.sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
+  const current = preferFresh(all);
+  if (!topicFilter) return current.slice(0, 24);
+  const kw = topicFilter.toLowerCase().split(/\s+/).filter((w) => w.length > 3 && !GENERIC_NEWS_WORDS.has(w));
+  if (!kw.length) return current.slice(0, 24);
+  const scored = current.map((item) => {
     const hay = `${item.title} ${item.snippet} ${item.source}`.toLowerCase();
     const hits = kw.filter((w) => hay.includes(w)).length;
     return { item, hits };
   });
-  scored.sort((a, b) => b.hits - a.hits);
+  scored.sort((a, b) => (b.hits - a.hits) || ((b.item.publishedAt || 0) - (a.item.publishedAt || 0)));
   // Return scored matches first, then fill up to 20 with everything else
   const matched = scored.filter((s) => s.hits > 0).map((s) => s.item);
   const rest    = scored.filter((s) => s.hits === 0).map((s) => s.item);
-  return [...matched, ...rest].slice(0, 20);
+  return [...matched, ...rest].slice(0, 24);
 }
 
 function todayLabel() {
@@ -86,16 +135,16 @@ async function getModel() {
 }
 
 export default function NewsWidget() {
-  const [topic, setTopic] = useState('top world technology security news today');
+  const [topic, setTopic] = useState('latest world technology security');
   const [results, setResults] = useState([]);
   const [brief, setBrief] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const abortRef = useRef(null);
 
-  const sourceText = useMemo(() => results.slice(0, 6).map((r, i) => `${i + 1}. ${r.title} - ${r.snippet} (${r.url})`).join('\n'), [results]);
+  const sourceText = useMemo(() => results.slice(0, 6).map((r, i) => `${i + 1}. ${r.title} - ${r.snippet} ${r.publishedAt ? `[${new Date(r.publishedAt).toLocaleString()}]` : ''} (${r.url})`).join('\n'), [results]);
 
-  // Calls Ollama directly — bypasses the Nova AI agent loop at port 8951
+  // Calls Ollama directly — bypasses the Jarvis AI agent loop at port 8951
   // which runs tools like NEWS: and easily exceeds 16-second timeouts.
   const askNova = useCallback(async (items) => {
     if (abortRef.current) { try { abortRef.current.abort(); } catch {} }
@@ -112,14 +161,15 @@ export default function NewsWidget() {
 
     const prompt = [
       'You are writing a concise daily news brief. Use only the provided snippets — do not invent facts.',
+      'Prefer the newest articles. If an item is older than 48 hours, mention that it is older instead of presenting it as breaking.',
       'Write exactly 5 tight bullet points (one sentence each), then one short "Watch next:" line.',
       'Plain text only. No markdown headings, no bold, no asterisks.',
       '',
-      items.slice(0, 8).map((r, i) => `${i + 1}. ${r.title} — ${r.snippet}`).join('\n'),
+      items.slice(0, 8).map((r, i) => `${i + 1}. ${r.title} — ${r.snippet}${r.publishedAt ? ` — published ${new Date(r.publishedAt).toLocaleString()}` : ''}`).join('\n'),
     ].join('\n');
 
     try {
-      const resp = await fetch(OLLAMA_CHAT, {
+      let resp = await fetch(OLLAMA_CHAT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: ac.signal,
@@ -130,6 +180,21 @@ export default function NewsWidget() {
           options: { temperature: 0.3, num_predict: 450 },
         }),
       });
+      let mode = 'chat';
+      if (resp.status === 404) {
+        mode = 'generate';
+        resp = await fetch(OLLAMA_GENERATE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: ac.signal,
+          body: JSON.stringify({
+            model,
+            prompt,
+            stream: true,
+            options: { temperature: 0.3, num_predict: 450 },
+          }),
+        });
+      }
 
       if (!resp.ok) throw new Error(`Ollama returned HTTP ${resp.status}. Is it running?`);
 
@@ -148,8 +213,9 @@ export default function NewsWidget() {
           if (!line.trim()) continue;
           try {
             const msg = JSON.parse(line);
-            if (msg.message?.content) {
-              full += msg.message.content;
+            const token = mode === 'generate' ? msg.response : msg.message?.content;
+            if (token) {
+              full += token;
               setBrief(cleanBrief(full));
             }
             if (msg.done) { reader.cancel(); break; }
@@ -157,7 +223,7 @@ export default function NewsWidget() {
         }
       }
 
-      if (!full.trim()) setBrief('⚠ Nova returned an empty response. Try refreshing.');
+      if (!full.trim()) setBrief('⚠ Jarvis returned an empty response. Try refreshing.');
     } catch (e) {
       if (e.name === 'AbortError') return;
       setBrief(`⚠ Could not reach Ollama (${OLLAMA_CHAT}).\nMake sure Ollama is running: ollama serve\n\nError: ${e.message}`);
@@ -207,9 +273,9 @@ export default function NewsWidget() {
       <div className="flex-1 min-h-0 grid grid-cols-[1fr_1fr] overflow-hidden">
         <section className="min-h-0 overflow-y-auto p-3 border-r border-nova-border/60">
           {error && <div className="text-[11px] text-nova-err font-mono mb-2">{error}</div>}
-          <div className="text-[10px] uppercase tracking-wider text-nova-accent2 mb-2">Nova Brief</div>
+          <div className="text-[10px] uppercase tracking-wider text-nova-accent2 mb-2">Jarvis Brief</div>
           <div className="text-[12px] leading-relaxed whitespace-pre-wrap bg-nova-panel/55 border border-nova-border/50 rounded-lg p-3 min-h-[170px]">
-            {brief || (busy ? 'Collecting today’s headlines...' : 'Waiting for Nova.')}
+            {brief || (busy ? 'Collecting today’s headlines...' : 'Waiting for Jarvis.')}
           </div>
         </section>
         <section className="min-h-0 overflow-y-auto p-2 space-y-1.5">
@@ -218,7 +284,7 @@ export default function NewsWidget() {
             <button key={`${r.url}-${idx}`} onClick={() => window.nova?.control?.openPath?.(r.url)} className="w-full text-left border border-nova-border/40 bg-nova-panel/45 hover:border-nova-accent/50 rounded-lg px-2 py-2">
               <div className="text-[12px] line-clamp-2">{r.title}</div>
               <div className="text-[10.5px] text-nova-muted line-clamp-2 mt-1">{r.snippet}</div>
-              {r.source && <div className="text-[9.5px] text-nova-accent2 mt-1">{r.source}</div>}
+              {(r.source || r.publishedAt) && <div className="text-[9.5px] text-nova-accent2 mt-1">{[r.source, relTime(r.publishedAt)].filter(Boolean).join(' · ')}</div>}
             </button>
           ))}
           {!results.length && !busy && <div className="text-xs text-nova-muted p-4 text-center">No stories loaded.</div>}

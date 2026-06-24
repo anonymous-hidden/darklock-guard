@@ -1,6 +1,33 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const crypto = require('crypto');
 
+function getPublicOrigin() {
+    const candidates = [
+        process.env.WEB_VERIFY_BASE_URL,
+        process.env.VERIFICATION_BASE_URL,
+        process.env.DASHBOARD_ORIGIN,
+        process.env.BASE_URL,
+        process.env.DOMAIN,
+        process.env.DASHBOARD_URL,
+        process.env.BACKEND_URL,
+    ];
+
+    for (const raw of candidates) {
+        const value = String(raw || '').trim();
+        if (!value) continue;
+
+        try {
+            const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+            const url = new URL(withProtocol);
+            const hostname = url.hostname.toLowerCase();
+            if (hostname === 'admin.darklock.net' || hostname.startsWith('admin.')) continue;
+            return url.origin;
+        } catch (_) {}
+    }
+
+    return process.env.NODE_ENV === 'production' ? 'https://darklock.net' : 'http://localhost:3001';
+}
+
 /**
  * Enhanced Verification System
  * Supports: Image Captcha, Emoji Verification, Web Captcha, Adaptive Difficulty
@@ -195,7 +222,7 @@ class VerificationSystem {
         try {
             // Generate unique verification token
             const token = crypto.randomBytes(32).toString('hex');
-            const verifyUrl = `${process.env.BACKEND_URL || 'http://localhost:3001'}/verify/${token}`;
+            const verifyUrl = `${getPublicOrigin()}/verify/${token}?v=${Date.now().toString(36)}`;
 
             const embed = new EmbedBuilder()
                 .setTitle('🔒 Advanced Verification Required')

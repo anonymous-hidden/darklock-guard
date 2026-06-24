@@ -30,7 +30,14 @@ export class RemindersStore {
 
   async list() {
     const s = await this._read();
-    return s.reminders.sort((a, b) => a.fireAt - b.fireAt);
+    const now = Date.now();
+    const active = s.reminders.filter((r) => !r.fired && Number(r.fireAt) > now);
+    if (active.length !== s.reminders.length) {
+      s.reminders = active;
+      await this._write(s);
+    }
+    for (const r of active) this._schedule(r);
+    return active.sort((a, b) => a.fireAt - b.fireAt);
   }
 
   async add({ message, fireAt, fromNow }) {

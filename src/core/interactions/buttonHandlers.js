@@ -173,14 +173,16 @@ async function handleSpamAction(interaction, bot) {
 
     try {
         const targetMember = await guild.members.fetch(targetUserId).catch(() => null);
-        
-        if (!targetMember) {
+        const targetUser = targetMember?.user || await bot.client.users.fetch(targetUserId).catch(() => null);
+        const targetName = targetUser?.username || targetUser?.tag || targetUserId;
+        const targetRef = targetUser || { id: targetUserId, username: targetName };
+        const moderatorRef = member.user || { id: member.id, username: member.id };
+
+        if (!targetMember && !['warn', 'ban', 'whitelist'].includes(action)) {
             return interaction.editReply({
-                content: '❌ User not found. They may have left the server.'
+                content: '❌ User not found in this server. They may have left, so this action cannot be applied.'
             });
         }
-
-        const targetUser = targetMember.user;
 
         switch (action) {
             case 'remove':
@@ -203,12 +205,19 @@ async function handleSpamAction(interaction, bot) {
                             'Manual review: timeout removed after spam detection'
                         ]);
 
+                        await bot.discordLogger?.logModAction(guild, {
+                            action: 'timeout_removed',
+                            target: targetRef,
+                            moderator: moderatorRef,
+                            reason: 'Manual review: timeout removed after spam detection'
+                        }).catch(() => {});
+
                         await interaction.editReply({
-                            content: `✅ Removed timeout from ${targetUser.username}`
+                            content: `✅ Removed timeout from ${targetName}`
                         });
                     } else {
                         await interaction.editReply({
-                            content: `ℹ️ ${targetUser.username} is not currently timed out.`
+                            content: `ℹ️ ${targetName} is not currently timed out.`
                         });
                     }
                 } catch (removeErr) {
@@ -241,7 +250,7 @@ async function handleSpamAction(interaction, bot) {
 
                 // Try to DM the user
                 try {
-                    await targetUser.send({
+                    await targetUser?.send({
                         embeds: [{
                             title: '⚠️ Additional Warning',
                             description: `You received an additional warning in **${guild.name}** from a moderator.`,
@@ -257,8 +266,16 @@ async function handleSpamAction(interaction, bot) {
                     // User has DMs disabled
                 }
 
+                await bot.discordLogger?.logModAction(guild, {
+                    action: 'warn',
+                    target: targetRef,
+                    moderator: moderatorRef,
+                    reason: 'Additional warning after spam detection',
+                    details: `Total warnings: ${newWarningCount}`
+                }).catch(() => {});
+
                 await interaction.editReply({
-                    content: `✅ Added warning to ${targetUser.username} (Total: ${newWarningCount})`
+                    content: `✅ Added warning to ${targetName} (Total: ${newWarningCount})`
                 });
                 break;
 
@@ -266,6 +283,11 @@ async function handleSpamAction(interaction, bot) {
                 if (!member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
                     return interaction.editReply({
                         content: '❌ You need Kick Members permission to use this action.'
+                    });
+                }
+                if (!targetMember) {
+                    return interaction.editReply({
+                        content: '❌ User is not in the server, so they cannot be kicked.'
                     });
                 }
 
@@ -286,7 +308,7 @@ async function handleSpamAction(interaction, bot) {
 
                 // Emit to audit trail and dashboard console
                 if (typeof bot.broadcastConsole === 'function') {
-                    bot.broadcastConsole(guild.id, `[KICK] ${targetUser.username} (${targetUserId}) by ${member.user.username} (${member.id})`);
+                    bot.broadcastConsole(guild.id, `[KICK] ${targetName} (${targetUserId}) by ${member.user.username} (${member.id})`);
                 }
                 if (bot.forensicsManager) {
                     await bot.forensicsManager.logAuditEvent({
@@ -294,14 +316,20 @@ async function handleSpamAction(interaction, bot) {
                         eventType: 'kick',
                         eventCategory: 'moderation',
                         executor: { id: member.id, tag: member.user.username },
-                        target: { id: targetUserId, name: targetUser.username, type: 'user' },
+                        target: { id: targetUserId, name: targetName, type: 'user' },
                         reason: 'Kicked after spam detection review',
                         canReplay: true
                     });
                 }
+                await bot.discordLogger?.logModAction(guild, {
+                    action: 'kick',
+                    target: targetRef,
+                    moderator: moderatorRef,
+                    reason: 'Kicked after spam detection review'
+                }).catch(() => {});
 
                 await interaction.editReply({
-                    content: `✅ Kicked ${targetUser.username} from the server`
+                    content: `✅ Kicked ${targetName} from the server`
                 });
                 break;
 
@@ -332,7 +360,7 @@ async function handleSpamAction(interaction, bot) {
 
                 // Emit to audit trail and dashboard console
                 if (typeof bot.broadcastConsole === 'function') {
-                    bot.broadcastConsole(guild.id, `[BAN] ${targetUser.username} (${targetUserId}) by ${member.user.username} (${member.id})`);
+                    bot.broadcastConsole(guild.id, `[BAN] ${targetName} (${targetUserId}) by ${member.user.username} (${member.id})`);
                 }
                 if (bot.forensicsManager) {
                     await bot.forensicsManager.logAuditEvent({
@@ -340,14 +368,21 @@ async function handleSpamAction(interaction, bot) {
                         eventType: 'ban',
                         eventCategory: 'moderation',
                         executor: { id: member.id, tag: member.user.username },
-                        target: { id: targetUserId, name: targetUser.username, type: 'user' },
+                        target: { id: targetUserId, name: targetName, type: 'user' },
                         reason: 'Banned after spam detection review',
                         canReplay: true
                     });
                 }
+                await bot.discordLogger?.logModAction(guild, {
+                    action: 'ban',
+                    target: targetRef,
+                    moderator: moderatorRef,
+                    reason: 'Banned after spam detection review',
+                    details: 'Deleted recent messages from the last 24 hours'
+                }).catch(() => {});
 
                 await interaction.editReply({
-                    content: `✅ Banned ${targetUser.username} from the server`
+                    content: `✅ Banned ${targetName} from the server`
                 });
                 break;
 
@@ -360,12 +395,19 @@ async function handleSpamAction(interaction, bot) {
                 });
 
                 // Remove timeout if any
-                if (targetMember.communicationDisabledUntil) {
+                if (targetMember?.communicationDisabledUntil) {
                     await targetMember.timeout(null, `Whitelisted by ${member.user.username}`);
                 }
+                await bot.discordLogger?.logModAction(guild, {
+                    action: 'whitelist',
+                    target: targetRef,
+                    moderator: moderatorRef,
+                    reason: 'Whitelisted after spam detection review',
+                    details: 'Trust score set to 100'
+                }).catch(() => {});
 
                 await interaction.editReply({
-                    content: `✅ Whitelisted ${targetUser.username}. Trust score set to maximum.`
+                    content: `✅ Whitelisted ${targetName}. Trust score set to maximum.`
                 });
                 break;
 
@@ -384,10 +426,16 @@ async function handleSpamAction(interaction, bot) {
                             (guild_id, action_type, target_user_id, moderator_id, reason)
                             VALUES (?, ?, ?, ?, ?)
                         `, [guild.id, 'TIMEOUT_REMOVED', targetUserId, member.id, 'Manual untimeout after spam detection']);
+                        await bot.discordLogger?.logModAction(guild, {
+                            action: 'timeout_removed',
+                            target: targetRef,
+                            moderator: moderatorRef,
+                            reason: 'Manual untimeout after spam detection'
+                        }).catch(() => {});
                         
-                        await interaction.editReply({ content: `✅ Removed timeout from ${targetUser.username}` });
+                        await interaction.editReply({ content: `✅ Removed timeout from ${targetName}` });
                     } else {
-                        await interaction.editReply({ content: `ℹ️ ${targetUser.username} is not currently timed out.` });
+                        await interaction.editReply({ content: `ℹ️ ${targetName} is not currently timed out.` });
                     }
                 } catch (untimeoutError) {
                     bot.logger?.error && bot.logger.error('[SPAM_ACTION] Untimeout failed:', untimeoutError);
@@ -412,7 +460,11 @@ async function handleSpamAction(interaction, bot) {
                     .setColor(0x00ff00)
                     .addFields({
                         name: '✅ Action Taken',
-                        value: `${member.user.username} used: **${action.toUpperCase()}**`,
+                        value: [
+                            `Actor: ${member.user} (\`${member.id}\`)`,
+                            `Target: ${targetUser ? `${targetUser} ` : ''}(\`${targetUserId}\`)`,
+                            `Action: **${action.toUpperCase()}**`
+                        ].join('\n'),
                         inline: false
                     });
 

@@ -10,7 +10,7 @@ const QUICK_ACTIONS = [
   { id: 'new-chat',        title: 'New chat',         description: 'Reset conversation, jump to Chat.', icon: '✦', accent: 'accent',  goto: 'chat',          onAct: 'reset' },
   { id: 'build-widget',    title: 'Build a widget',   description: 'Open the Widget Studio.',           icon: '◆', accent: 'accent2', goto: 'widget-studio' },
   { id: 'open-coding',     title: 'Coding workspace', description: 'Monaco editor + AI assistant.',     icon: '⌘', accent: 'ok',       goto: 'coding' },
-  { id: 'transparency',    title: 'Transparency log', description: 'Watch what Nova is doing.',         icon: '◉', accent: 'accent',   onAct: 'transparency' },
+  { id: 'transparency',    title: 'Transparency log', description: 'Watch what Jarvis is doing.',       icon: '◉', accent: 'accent',   onAct: 'transparency' },
 ];
 
 export default function CommandCenter() {
@@ -42,7 +42,7 @@ export default function CommandCenter() {
         <header className="flex items-end justify-between">
           <div>
             <h1 className="font-display text-2xl text-nova-text">Command Center</h1>
-            <p className="text-sm text-nova-muted mt-1">Everything Nova can do — at a glance.</p>
+            <p className="text-sm text-nova-muted mt-1">Everything Jarvis can do — at a glance.</p>
           </div>
           {info && (
             <div className="text-[11px] font-mono text-nova-muted">

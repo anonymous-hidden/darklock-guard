@@ -109,6 +109,11 @@
                 <a href="/platform/auth/forgot-password">Forgot password?</a>
             </div>
             <button type="submit" class="btn-submit" id="submitBtn">Sign In</button>
+
+            <button type="button" class="oauth-btn" id="passkeyBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 10 0v3"/><circle cx="12" cy="16" r="1.5"/></svg>
+                Sign in with Passkey
+            </button>
         </form>
 
         <div class="divider">or continue with</div>
@@ -123,14 +128,22 @@
     <a href="/platform" class="back-link">← Back to home</a>
 </div>
 
+<script src="/platform/static/js/passkeys.js"></script>
 <script>
     const form = document.getElementById('loginForm');
     const alert_ = document.getElementById('alert');
     const btn = document.getElementById('submitBtn');
+    const passkeyBtn = document.getElementById('passkeyBtn');
 
     function showAlert(msg, type = 'error') {
         alert_.textContent = msg;
         alert_.className = 'alert ' + type;
+    }
+
+    function getCookie(name) {
+        const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const match = document.cookie.match(new RegExp('(?:^|; )' + escapedName + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : '';
     }
 
     form.addEventListener('submit', async (e) => {
@@ -140,19 +153,26 @@
         alert_.className = 'alert';
 
         try {
+            const identifier = document.getElementById('email').value.trim();
+            const csrfToken = getCookie('_csrf_token');
+            const headers = { 'Content-Type': 'application/json' };
+            if (csrfToken) {
+                headers['x-csrf-token'] = csrfToken;
+            }
+
             const res = await fetch('/platform/auth/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 credentials: 'same-origin',
                 body: JSON.stringify({
-                    email: document.getElementById('email').value,
+                    username: identifier,
                     password: document.getElementById('password').value
                 })
             });
             const data = await res.json();
             if (data.success) {
                 showAlert('Login successful! Redirecting...', 'success');
-                setTimeout(() => window.location.href = data.redirect || 'https://admin.darklock.net/dashboard', 500);
+                setTimeout(() => window.location.href = data.redirect || '/platform/dashboard', 500);
             } else {
                 showAlert(data.error || 'Login failed');
             }
@@ -166,6 +186,30 @@
     document.getElementById('discordBtn').addEventListener('click', () => {
         window.location.href = '/platform/auth/discord';
     });
+
+    if (!window.DarklockPasskeys || !window.DarklockPasskeys.isSupported()) {
+        passkeyBtn.disabled = true;
+        passkeyBtn.textContent = 'Passkeys unavailable';
+    } else {
+        passkeyBtn.addEventListener('click', async () => {
+            const identifier = document.getElementById('email').value.trim();
+            if (!identifier) {
+                showAlert('Enter your email first');
+                return;
+            }
+
+            passkeyBtn.disabled = true;
+            try {
+                const data = await window.DarklockPasskeys.beginAuthentication({ identifier });
+                showAlert('Passkey accepted. Redirecting...', 'success');
+                setTimeout(() => window.location.href = data.redirect || '/platform/dashboard', 350);
+            } catch (error) {
+                showAlert(error.message || 'Passkey sign-in failed');
+            } finally {
+                passkeyBtn.disabled = false;
+            }
+        });
+    }
 </script>
 </body>
 </html>

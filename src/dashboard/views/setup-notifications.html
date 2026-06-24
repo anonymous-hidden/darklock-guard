@@ -447,10 +447,10 @@
                 <div class="event-grid">
                     <div class="event-item"><input type="checkbox" id="evt_join" checked><i class="fas fa-sign-in-alt"></i><label for="evt_join">Member Joins</label></div>
                     <div class="event-item"><input type="checkbox" id="evt_leave" checked><i class="fas fa-sign-out-alt"></i><label for="evt_leave">Member Leaves</label></div>
-                    <div class="event-item"><input type="checkbox" id="evt_nickname" checked><i class="fas fa-id-card"></i><label for="evt_nickname">Nickname Changes</label></div>
-                    <div class="event-item"><input type="checkbox" id="evt_avatar" checked><i class="fas fa-image"></i><label for="evt_avatar">Avatar Changes</label></div>
-                    <div class="event-item"><input type="checkbox" id="evt_role_update" checked><i class="fas fa-user-tag"></i><label for="evt_role_update">Role Assigned/Removed</label></div>
-                    <div class="event-item"><input type="checkbox" id="evt_voice" checked><i class="fas fa-headset"></i><label for="evt_voice">Voice Activity</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_nickname"><i class="fas fa-id-card"></i><label for="evt_nickname">Nickname Changes</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_avatar"><i class="fas fa-image"></i><label for="evt_avatar">Avatar Changes</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_role_update"><i class="fas fa-user-tag"></i><label for="evt_role_update">Role Assigned/Removed</label></div>
+                    <div class="event-item"><input type="checkbox" id="evt_voice"><i class="fas fa-headset"></i><label for="evt_voice">Voice Activity</label></div>
                 </div>
             </div>
         </div>
@@ -830,8 +830,8 @@
 
                 // Event Toggles (free)
                 setChecked('modLogging', s.mod_logging !== false);
-                setChecked('logEdits', s.log_edits !== false);
-                setChecked('logDeletes', s.log_deletes !== false);
+                setChecked('logEdits', !!s.log_edits);
+                setChecked('logDeletes', !!s.log_deletes);
                 setChecked('logMembers', s.log_members !== false);
                 setChecked('logRoles', !!s.log_roles);
                 setChecked('logChannels', !!s.log_channels);
@@ -865,10 +865,10 @@
                 setChecked('evt_suspicious', events.suspicious !== false);
                 setChecked('evt_join', events.join !== false);
                 setChecked('evt_leave', events.leave !== false);
-                setChecked('evt_nickname', events.nickname !== false);
-                setChecked('evt_avatar', events.avatar !== false);
-                setChecked('evt_role_update', events.role_update !== false);
-                setChecked('evt_voice', events.voice !== false);
+                setChecked('evt_nickname', !!events.nickname);
+                setChecked('evt_avatar', !!events.avatar);
+                setChecked('evt_role_update', !!events.role_update);
+                setChecked('evt_voice', !!events.voice);
 
                 // Premium: Webhooks
                 setValue('webhookPrimary', s.webhook_primary || '');

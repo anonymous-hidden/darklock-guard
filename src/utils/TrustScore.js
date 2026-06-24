@@ -8,10 +8,71 @@ class TrustScore {
     }
 
     async initialize() {
+        await this.ensureSchema();
         await this.db.run(`CREATE INDEX IF NOT EXISTS idx_user_records_trust_score ON user_records(guild_id, user_id, trust_score)`).catch(() => {});
         await this.db.run(`CREATE INDEX IF NOT EXISTS idx_warnings_user_active ON warnings(guild_id, user_id, active)`).catch(() => {});
         await this.db.run(`CREATE INDEX IF NOT EXISTS idx_strikes_user_active ON strikes(guild_id, user_id, active)`).catch(() => {});
         return true;
+    }
+
+    async ensureSchema() {
+        const columns = [
+            ['spam_flags', 'INTEGER DEFAULT 0'],
+            ['recent_incidents', 'INTEGER DEFAULT 0'],
+            ['last_incident_at', 'DATETIME'],
+            ['trust_score_cached', 'INTEGER'],
+            ['trust_score_updated_at', 'DATETIME'],
+            ['manual_override', 'INTEGER DEFAULT 0'],
+            ['risk_score', 'INTEGER DEFAULT 50'],
+            ['behavior_score', 'INTEGER DEFAULT 50']
+        ];
+
+        for (const [name, def] of columns) {
+            await this.db.run(`ALTER TABLE user_records ADD COLUMN ${name} ${def}`).catch(err => {
+                if (!/duplicate column/i.test(String(err?.message || err))) throw err;
+            }).catch(() => {});
+        }
+
+        await this.db.run(`
+            CREATE TABLE IF NOT EXISTS warnings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                moderator_id TEXT,
+                reason TEXT,
+                active INTEGER DEFAULT 1,
+                expires_at DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `).catch(() => {});
+
+        await this.db.run(`
+            CREATE TABLE IF NOT EXISTS strikes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                moderator_id TEXT,
+                reason TEXT,
+                severity INTEGER DEFAULT 1,
+                active INTEGER DEFAULT 1,
+                expires_at DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `).catch(() => {});
+
+        await this.db.run(`
+            CREATE TABLE IF NOT EXISTS user_verifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                verified INTEGER DEFAULT 0,
+                verified_at DATETIME,
+                verified_by TEXT,
+                verification_method TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(guild_id, user_id)
+            )
+        `).catch(() => {});
     }
 
     clamp(score) {
@@ -73,7 +134,7 @@ class TrustScore {
     async calculateScore(guildId, userId, { force = false } = {}) {
         const record = await this.ensureRecord(guildId, userId);
         const cachedAt = record?.trust_score_updated_at ? new Date(record.trust_score_updated_at).getTime() : 0;
-        if (!force && record?.trust_score_cached !== null && cachedAt && Date.now() - cachedAt < this.cacheTtlMs) {
+        if (!force && record?.trust_score_cached !== null && record?.trust_score_cached !== undefined && cachedAt && Date.now() - cachedAt < this.cacheTtlMs) {
             const score = this.clamp(record.trust_score_cached);
             return { score, level: this.getLevel(score), factors: await this.buildFactors(guildId, userId, record, score) };
         }

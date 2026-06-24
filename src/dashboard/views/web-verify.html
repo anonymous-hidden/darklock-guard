@@ -19,6 +19,7 @@
 </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- WEB_VERIFY_PARSER_V2_MAIN -->
     <title>Verification - DarkLock</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -504,9 +505,51 @@
         function showError(message) {
             document.getElementById('errorMessage').innerHTML = `
                 <i class="fas fa-exclamation-triangle"></i>
-                <span>${message}</span>
+                <span>${escapeHtml(message)}</span>
             `;
             showState(errorState);
+        }
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        async function readApiResponse(response) {
+            // Always read text first so we can safely handle mismatched content-types.
+            const text = await response.text().catch(() => '');
+            const contentType = response.headers.get('content-type') || '';
+
+            if (text) {
+                try {
+                    return JSON.parse(text);
+                } catch (_) {
+                    // Fall through to non-JSON handling below.
+                }
+            }
+
+            console.warn('[WebVerify] Non-JSON API response', {
+                status: response.status,
+                contentType,
+                preview: text.slice(0, 160)
+            });
+
+            if (response.status === 503 || response.headers.get('x-darklock-fallback') === '1') {
+                return {
+                    success: false,
+                    serviceUnavailable: true,
+                    error: 'DarkLock verification is temporarily unavailable. Please try again in a few minutes.'
+                };
+            }
+
+            return {
+                success: false,
+                error: `Verification service returned an unexpected response (${response.status}).`
+            };
         }
 
         let method = 'captcha';
@@ -515,16 +558,22 @@
             try {
                 const response = await fetch('/api/web-verify/init', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     body: JSON.stringify({ token, guildId, userId })
                 });
 
-                const data = await response.json();
+                const data = await readApiResponse(response);
 
                 if (!response.ok) {
                     if (data.expired) {
-                        document.getElementById('serverNameExpired').textContent = data.serverName || 'Unknown Server';
+                        document.getElementById('serverNameExpired').textContent = data.serverName || data.guildName || 'Unknown Server';
                         showState(expiredState);
+                    } else if (data.serviceUnavailable) {
+                        showError(data.error || 'DarkLock verification is temporarily unavailable. Please try again in a few minutes.');
                     } else {
                         showError(data.error || 'Failed to load verification');
                     }
@@ -532,7 +581,7 @@
                 }
 
                 // Set server name
-                const serverName = data.serverName || 'Unknown Server';
+                const serverName = data.serverName || data.guildName || 'Unknown Server';
                 document.getElementById('serverName').textContent = serverName;
                 document.getElementById('serverNameCaptcha').textContent = serverName;
                 document.getElementById('serverNameSuccess').textContent = serverName;
@@ -608,11 +657,15 @@
 
                 const response = await fetch('/api/web-verify/submit', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     body: JSON.stringify(payload)
                 });
 
-                const data = await response.json();
+                const data = await readApiResponse(response);
 
                 if (data.success) {
                     showState(successState);
@@ -652,11 +705,15 @@
             try {
                 const response = await fetch('/api/web-verify/refresh', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     body: JSON.stringify({ token, guildId, userId })
                 });
 
-                const data = await response.json();
+                const data = await readApiResponse(response);
 
                 if (data.success && data.captchaCode) {
                     document.getElementById('captchaDisplay').textContent = data.captchaCode;

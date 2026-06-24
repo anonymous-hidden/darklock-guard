@@ -44,39 +44,28 @@ function createBillingRoutes(dashboard) {
                 id: 'free',
                 name: 'Free',
                 price: 0,
+                priceLabel: '$0',
                 interval: null,
                 features: [
                     'Basic moderation',
-                    '1 guild',
                     'Standard anti-spam',
-                    'Community support'
+                    'Anti-raid detection',
+                    'Welcome messages'
                 ]
             },
             {
                 id: 'pro',
                 name: 'Pro',
-                price: 999, // $9.99 in cents
-                interval: 'month',
+                price: null,
+                priceLabel: 'Shown in Stripe Checkout',
+                interval: null,
+                stripePriceConfigured: Boolean(dashboard.billingConfig?.proPriceId),
                 features: [
-                    'Advanced moderation',
-                    '5 guilds',
-                    'Enhanced anti-raid',
-                    'Priority support',
-                    'Custom branding'
-                ]
-            },
-            {
-                id: 'enterprise',
-                name: 'Enterprise',
-                price: 2999, // $29.99 in cents
-                interval: 'month',
-                features: [
-                    'Full security suite',
-                    'Unlimited guilds',
-                    'Anti-nuke protection',
-                    'Dedicated support',
-                    'SLA guarantee',
-                    'Custom integrations'
+                    'Pro-gated bot commands',
+                    'Anti-nuke and webhook protection commands',
+                    'Anti-phishing and automod command access',
+                    'Server backup and analytics commands',
+                    'Guild subscription synced from Stripe webhooks'
                 ]
             }
         ];
@@ -106,6 +95,10 @@ function createBillingRoutes(dashboard) {
 
             if (!guildId || !planId) {
                 return res.status(400).json({ error: 'Guild ID and plan ID required' });
+            }
+
+            if (String(planId).toLowerCase() !== 'pro') {
+                return res.status(400).json({ error: 'Only the Pro plan is available for checkout' });
             }
 
             const hasAccess = await dashboard.checkGuildAccess(req.user.userId, guildId);

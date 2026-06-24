@@ -169,7 +169,7 @@ class LanguageSystem {
     /**
      * SET LANGUAGE - Updates DB and cache
      */
-    async setLanguage(guildId, language) {
+    async setLanguage(guildId, language, userId = 'System') {
         // Validate language
         if (!this.supportedLanguages.includes(language)) {
             return { 
@@ -203,6 +203,20 @@ class LanguageSystem {
 
         // Update cache IMMEDIATELY
         this.cache.set(guildId, language);
+
+        if (typeof this.bot.emitSettingChange === 'function') {
+            await this.bot.emitSettingChange(guildId, userId, 'guild_language', language, null, 'configuration').catch(() => {});
+        }
+
+        if (this.bot.dashboard?.broadcastToGuild) {
+            this.bot.dashboard.broadcastToGuild(guildId, {
+                type: 'dashboard_setting_update',
+                guildId,
+                setting: 'guild_language',
+                after: language,
+                changedBy: userId
+            });
+        }
 
         this.bot.logger?.info(`[Language] Guild ${guildId} language set to ${language}`);
         return { success: true, language };

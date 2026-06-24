@@ -10,19 +10,23 @@ import { RemindersStore } from '../services/reminders-store.js';
 import { buildToolRegistry, describeTools } from '../services/tools.js';
 import * as sc from '../services/system-control.js';
 
-export function registerControlIpc(ipcMain, { rootDir, getMainWindow, openWidget }) {
+export function registerControlIpc(ipcMain, { rootDir, getMainWindow, openWidget, broadcast: broadcastAll }) {
   const notes     = new NotesStore({ rootDir });
   const todos     = new TodosStore({ rootDir });
   const reminders = new RemindersStore({ rootDir });
 
   reminders.onFire = (r) => {
-    sc.notify({ title: 'Nova Reminder', body: r.message });
+    sc.notify({ title: 'Jarvis Reminder', body: r.message });
     const w = getMainWindow?.();
     if (w && !w.isDestroyed()) w.webContents.send('reminder:fired', r);
   };
   reminders.startAll().catch(() => {});
 
   const broadcast = (channel, payload) => {
+    if (typeof broadcastAll === 'function') {
+      broadcastAll(channel, payload);
+      return;
+    }
     const w = getMainWindow?.();
     if (w && !w.isDestroyed()) w.webContents.send(channel, payload);
   };
@@ -83,10 +87,23 @@ export function registerControlIpc(ipcMain, { rootDir, getMainWindow, openWidget
   ipcMain.handle('control:screenshot',    (_e, p)    => sc.takeScreenshot(p || {}));
   ipcMain.handle('control:spotify',       (_e, a)    => sc.spotifyControl(a));
   ipcMain.handle('control:openApp',       (_e, p)    => sc.openApp(p?.name, p?.args || []));
+  ipcMain.handle('control:closeApp',      (_e, p)    => sc.closeApp(p?.name));
+  ipcMain.handle('control:killApp',       (_e, p)    => sc.killApp(p?.name));
+  ipcMain.handle('control:desktopSnapshot', (_e, p)  => sc.desktopSnapshot(p || {}));
+  ipcMain.handle('control:desktopFocus',  (_e, p)    => sc.desktopFocus(p || {}));
+  ipcMain.handle('control:desktopRead',   (_e, p)    => sc.desktopRead(p || {}));
+  ipcMain.handle('control:desktopClick',  (_e, p)    => sc.desktopClick(p || {}));
+  ipcMain.handle('control:desktopType',   (_e, p)    => sc.desktopType(p || {}));
+  ipcMain.handle('control:desktopKey',    (_e, p)    => sc.desktopKey(p || {}));
+  ipcMain.handle('control:desktopScroll', (_e, p)    => sc.desktopScroll(p || {}));
   ipcMain.handle('control:openPath',      (_e, t)    => sc.openPath(t));
   ipcMain.handle('control:shell',         (_e, p)    => sc.runShell(p?.command, p));
   ipcMain.handle('control:webSearch',     (_e, p)    => sc.webSearch(p?.query, p));
   ipcMain.handle('control:webFetch',      (_e, u)    => sc.webFetch(u));
+  ipcMain.handle('control:webFetchRaw',   (_e, u)    => sc.webFetchRaw(u));
+  ipcMain.handle('control:location',      (_e, p)    => sc.getCurrentLocation(p || {}));
+  ipcMain.handle('control:location:set',  (_e, p)    => sc.setCurrentLocationOverride(p || {}));
+  ipcMain.handle('control:location:clear',()         => sc.clearCurrentLocationOverride());
   ipcMain.handle('control:mapSearch',     (_e, p)    => sc.mapSearch(p?.query, p));
   ipcMain.handle('control:mapDirections', (_e, p)    => sc.mapDirections(p?.from, p?.to));
   ipcMain.handle('control:room',          (_e, p)    => sc.roomControlRequest(p?.path, p?.method || 'GET', p?.body || null));

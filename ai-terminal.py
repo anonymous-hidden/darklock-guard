@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Nova Terminal v2 — Nova-grade local AI with memory, tools, and browser bridge.
+Jarvis Terminal v2 — Jarvis-grade local AI with memory, tools, and browser bridge.
 
 Usage:
-    python3 ai-terminal.py              # Start with default model (qwen2.5:32b)
-    python3 ai-terminal.py llama3.1:8b  # Start with specific model
+    python3 ai-terminal.py              # Start with default small model
+    python3 ai-terminal.py llama3.2:3b  # Start with specific model
 """
 
 import sys
@@ -30,6 +30,7 @@ import shutil
 import threading
 import asyncio
 import uuid
+import email.utils
 from typing import Optional
 from pathlib import Path
 from urllib.parse import quote, urljoin, urlparse
@@ -78,12 +79,14 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 DEFAULT_CONFIG = {
     "ollama_url": "http://localhost:11434",
-    "default_model": "qwen2.5:32b",
-    "fast_model": "llama3.1:8b",
+    "default_model": "llama3.2:3b",
+    "fast_model": "llama3.2:3b",
     "auto_route": True,
-    "temperature": 0.7,
+    "temperature": 0.45,
+    "num_ctx": 2048,
+    "num_predict": 450,
     "owner": "Cayden",
-    "ai_name": "Nova",
+    "ai_name": "Jarvis",
     "timezone": "America/Chicago",
     "city": "Kansas City",
     "personality": "casual",
@@ -117,6 +120,31 @@ def load_config() -> dict:
         # Remove stale location/weather keys so defaults always win
         for k in _always_from_defaults:
             saved.pop(k, None)
+        # Older installs forced every desktop chat turn through a 32B model at
+        # high temperature. That is accurate but too slow for this workstation's
+        # widget UX; keep heavy routing available while making auto mode snappy.
+        if saved.get("default_model") in {"qwen2.5:32b", "qwen2.5:14b"}:
+            saved["default_model"] = os.environ.get("NOVA_HEAVY_MODEL", DEFAULT_CONFIG["default_model"])
+        if saved.get("fast_model") in {"llama3.1:8b", "qwen2.5:14b", "qwen2.5:32b"}:
+            saved["fast_model"] = os.environ.get("NOVA_FAST_MODEL", DEFAULT_CONFIG["fast_model"])
+        try:
+            saved_temp = float(saved.get("temperature", DEFAULT_CONFIG["temperature"]) or 0)
+        except (TypeError, ValueError):
+            saved_temp = DEFAULT_CONFIG["temperature"]
+        if saved_temp > 0.55:
+            saved["temperature"] = DEFAULT_CONFIG["temperature"]
+        try:
+            if int(saved.get("num_ctx", DEFAULT_CONFIG["num_ctx"]) or 0) > 3072:
+                saved["num_ctx"] = DEFAULT_CONFIG["num_ctx"]
+        except (TypeError, ValueError):
+            saved["num_ctx"] = DEFAULT_CONFIG["num_ctx"]
+        try:
+            if int(saved.get("num_predict", DEFAULT_CONFIG["num_predict"]) or 0) > 700:
+                saved["num_predict"] = DEFAULT_CONFIG["num_predict"]
+        except (TypeError, ValueError):
+            saved["num_predict"] = DEFAULT_CONFIG["num_predict"]
+        saved.setdefault("num_ctx", DEFAULT_CONFIG["num_ctx"])
+        saved.setdefault("num_predict", DEFAULT_CONFIG["num_predict"])
         return {**DEFAULT_CONFIG, **saved}
     return dict(DEFAULT_CONFIG)
 
@@ -396,7 +424,7 @@ class MemoryDB:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# SYSTEM PROMPT BUILDER — Nova-style dynamic context assembly
+# SYSTEM PROMPT BUILDER — Jarvis-style dynamic context assembly
 # ═══════════════════════════════════════════════════════════════════════════════
 
 REASONING_SYSTEM = (
@@ -415,6 +443,14 @@ TOOL_INSTRUCTIONS = (
     "You have access to tools. To use a tool, output the EXACT command on its own line.\n"
     "You can use MULTIPLE tools in a single response — just put each on its own line.\n"
     "After each tool runs, you'll receive the results and can use more tools or give a final answer.\n\n"
+    "TOOL-FIRST ROUTING:\n"
+    "  If Cayden asks you to do something a listed tool can actually do, call the tool immediately.\n"
+    "  Do not say you cannot access the computer, browser, lights, Spotify, weather, notes, reminders,\n"
+    "  calendar, files, code search, widgets, or system stats when a listed tool covers it.\n"
+    "  For current facts, news, weather, prices, websites, or recommendations, use live tools before answering.\n"
+    "  For room/Govee light requests, use LIGHTS_* or SCENE instead of giving instructions.\n"
+    "  For Jarvis desktop UI requests, use WIDGET_OPEN/WIDGET_CLOSE, MAP_*, NOTES_WRITE, or CALENDAR_*.\n"
+    "  If a tool fails, report the exact failure and the next practical fix; never pretend success.\n\n"
     "LIVE BROWSER — READ (reads Cayden's actual open Chrome tab):\n"
     "  BROWSER_PAGE:              — read the page Cayden currently has open in Chrome\n"
     "  BROWSER_TABS:              — list all open tabs in Chrome\n"
@@ -426,7 +462,15 @@ TOOL_INSTRUCTIONS = (
     "  BROWSER_TYPE: <text>       — type text at the cursor / into the focused element\n"
     "  BROWSER_KEY: <key> [mods]  — press a key (Enter, Tab, Backspace, etc. + optional ctrl/shift/alt)\n"
     "  BROWSER_SELECT_ALL:        — select all text (Ctrl+A)\n"
+    "  BROWSER_SCROLL: <down|up|top|bottom|pixels> — scroll the active webpage\n"
     "  BROWSER_JS: <code>         — execute JavaScript in the page\n\n"
+    "CRITICAL OPEN-SITE RULE:\n"
+    "  If Cayden says 'open YouTube', 'open a YouTube tab', 'open Netflix',\n"
+    "  'go to <site>', or anything similar, emit BROWSER_NAVIGATE immediately.\n"
+    "  Do NOT explain who owns the site. Do NOT ask permission. Do NOT say you\n"
+    "  lack web access. Examples:\n"
+    "    BROWSER_NAVIGATE: https://www.youtube.com/\n"
+    "    BROWSER_NAVIGATE: https://www.netflix.com/\n\n"
     "GOOGLE DOCS / RICH TEXT WORKFLOW:\n"
     "  ★ PREFERRED (fast, reliable): use the GDOCS_* API tools. If Cayden gives you a\n"
     "    Google Doc URL, or says 'the doc I have open', USE GDOCS_APPEND / GDOCS_REPLACE\n"
@@ -465,6 +509,12 @@ TOOL_INSTRUCTIONS = (
     "  3. Repeat CLICK or SEARCH until you have REAL data (prices, ratings, stock)\n"
     "  4. BROWSER_NAVIGATE: <best_url> — open the best result in Cayden's Chrome\n"
     "  5. Give your recommendation citing THE ACTUAL DATA you read\n\n"
+    "VISIBLE SHOPPING / COMPARISON WORKFLOW:\n"
+    "  If Cayden asks to find the best/cheapest/reliable product, car, deal,\n"
+    "  or anything that needs comparison, he wants to WATCH browser actions.\n"
+    "  Use BROWSER_NAVIGATE to open real results, BROWSER_PAGE to read, BROWSER_SCROLL\n"
+    "  to inspect more, BROWSER_CLICK to open promising options, then compare the real\n"
+    "  page data. Do not answer from generic memory when the browser bridge is connected.\n\n"
     "OTHER TOOLS:\n"
     "  OPEN_URL: <url>           — open a URL in the user's browser (fallback)\n"
     "  RUN_CMD: <command>        — run a shell command (user confirms first)\n"
@@ -484,7 +534,7 @@ TOOL_INSTRUCTIONS = (
     "  SET_REMINDER: <time> | <label>  — schedule a reminder (e.g. SET_REMINDER: at 3:30pm | call mom)\n"
     "  SET_TIMER: <duration> | <label> — start a countdown timer (e.g. SET_TIMER: 5 minutes | pasta done)\n"
     "  LIST_REMINDERS:           — show all pending reminders and timers\n"
-    "  CANCEL_REMINDER: <id>     — cancel a pending reminder by its ID number\n"
+    "  CANCEL_REMINDER: <id>     — cancel a pending reminder by its exact ID from LIST_REMINDERS\n"
     "  LIGHTS_ON: [device]       — turn Govee lights on (all if blank, or specify name)\n"
     "  LIGHTS_OFF: [device]      — turn Govee lights off\n"
     "  LIGHTS_COLOR: <color> [| device]  — set light color (e.g. LIGHTS_COLOR: red  or  LIGHTS_COLOR: blue | desk)\n"
@@ -497,7 +547,7 @@ TOOL_INSTRUCTIONS = (
     "  SPOTIFY_VOLUME: <0-100>   — set Spotify volume\n"
     "  SPOTIFY_NOW:              — get currently playing track info\n\n"
     "NEWS & BRIEFING:\n"
-    "  NEWS:                     — fetch top news headlines (live RSS, no API key needed)\n"
+    "  NEWS: [topic]             — fetch current headlines sorted by publish time\n"
     "  MORNING_BRIEFING:         — full morning briefing (weather + news + reminders + system)\n\n"
     "LIGHT SCENES (mood presets that set color + brightness in one shot):\n"
     "  SCENE: <name>             — apply a named ambiance scene\n"
@@ -634,7 +684,7 @@ def build_system_prompt(cfg: dict, memory: MemoryDB, reasoning: bool,
         # Inject real-time browser bridge status so AI knows what it can do
         if bridge_connected:
             parts.append(
-                f"BROWSER BRIDGE STATUS: CONNECTED — the Nova Chrome extension is live "
+                f"BROWSER BRIDGE STATUS: CONNECTED — the Jarvis Chrome extension is live "
                 f"on ws://localhost:{bridge_port}/browser-bridge. You CAN see {owner}'s "
                 f"current Chrome tab. Use BROWSER_PAGE: to read it."
             )
@@ -643,7 +693,7 @@ def build_system_prompt(cfg: dict, memory: MemoryDB, reasoning: bool,
                 f"BROWSER BRIDGE STATUS: NOT CONNECTED — the bridge server is running on "
                 f"port {bridge_port} but the Chrome extension hasn't connected yet. "
                 f"If {owner} asks what you see in their browser, explain this clearly "
-                f"and tell them to check their Nova extension settings "
+                f"and tell them to check their Jarvis extension settings "
                 f"(backend URL: ws://localhost:{bridge_port}/browser-bridge). "
                 f"Do NOT give a privacy lecture — the issue is a disconnected extension, not privacy."
             )
@@ -778,12 +828,12 @@ def pick_model(text: str, cfg: dict) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# BROWSER BRIDGE SERVER — WebSocket server for Nova Chrome extension
+# BROWSER BRIDGE SERVER — WebSocket server for Jarvis Chrome extension
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class BrowserBridgeServer:
     """
-    Lightweight WebSocket server that accepts the Nova browser extension.
+    Lightweight WebSocket server that accepts the Jarvis browser extension.
     The extension connects to ws://localhost:<port>/browser-bridge and this
     server relays commands from the AI to Chrome and returns the results.
 
@@ -799,6 +849,7 @@ class BrowserBridgeServer:
         self._pending: dict = {}       # cmd_id -> (threading.Event, dict)
         self._running = False
         self._start_error: str = ""
+        self.last_url: str = ""
 
     # ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -873,7 +924,7 @@ class BrowserBridgeServer:
             return {
                 "error": (
                     f"Chrome extension not connected. "
-                    f"Make sure the Nova extension is enabled and points to "
+                    f"Make sure the Jarvis extension is enabled and points to "
                     f"ws://localhost:{self.actual_port}/browser-bridge"
                 )
             }
@@ -916,7 +967,34 @@ class BrowserBridgeServer:
         if result.get("title"):
             parts.append(f"Title: {result['title']}")
         if result.get("url"):
+            self.last_url = result["url"]
             parts.append(f"URL: {result['url']}")
+        controls = result.get("controls") if isinstance(result.get("controls"), list) else []
+        if controls:
+            lines = ["Visible controls:"]
+            for c in controls[:30]:
+                label = c.get("text") or c.get("selector") or c.get("tag") or "control"
+                selector = c.get("selector") or label
+                visible = "" if c.get("visible", True) else " hidden"
+                lines.append(
+                    f"  {c.get('index', '?')}. {c.get('tag', 'el')}"
+                    f"{visible} selector={selector!r} text={label!r}"
+                )
+            parts.append("\n".join(lines))
+        links = result.get("links") if isinstance(result.get("links"), list) else []
+        if links:
+            link_lines = ["Top links:"]
+            for link in links[:20]:
+                link_lines.append(
+                    f"  {link.get('index', '?')}. {link.get('text') or '(untitled)'} — {link.get('url', '')}"
+                )
+            parts.append("\n".join(link_lines))
+        scroll = result.get("scroll") if isinstance(result.get("scroll"), dict) else None
+        if scroll:
+            parts.append(
+                f"Scroll: y={scroll.get('y', 0)} / "
+                f"{scroll.get('height', '?')} viewport={scroll.get('viewport', '?')}"
+            )
         if result.get("text"):
             parts.append(result["text"])
         return "\n\n".join(parts) if parts else "No content returned"
@@ -925,11 +1003,26 @@ class BrowserBridgeServer:
         result = self.send_command("get_tabs")
         return result.get("tabs", []) if "error" not in result else []
 
+    def open_tab(self, url: str = "about:blank", active: bool = True) -> dict:
+        return self.send_command("open_tab", {"url": url, "active": active})
+
+    def switch_tab(self, tab_id: int) -> dict:
+        return self.send_command("switch_tab", {"id": tab_id})
+
+    def close_tab(self, tab_id: int) -> dict:
+        return self.send_command("close_tab", {"id": tab_id})
+
     def navigate(self, url: str) -> dict:
-        return self.send_command("navigate", {"url": url})
+        result = self.send_command("navigate", {"url": url})
+        if "error" not in result:
+            self.last_url = result.get("url") or url
+        return result
 
     def get_active_tab(self) -> dict:
-        return self.send_command("get_active_tab")
+        result = self.send_command("get_active_tab")
+        if result.get("url"):
+            self.last_url = result["url"]
+        return result
 
     def get_links(self) -> list:
         result = self.send_command("get_links")
@@ -951,6 +1044,9 @@ class BrowserBridgeServer:
         if modifiers:
             args["modifiers"] = modifiers
         return self.send_command("press_key", args)
+
+    def scroll_page(self, amount: str = "down") -> dict:
+        return self.send_command("scroll", {"amount": amount})
 
     def focus_element(self, selector: str) -> dict:
         return self.send_command("focus_element", {"selector": selector})
@@ -1434,20 +1530,164 @@ def ollama_list_models(url: str = None) -> list[dict]:
     except Exception:
         return []
 
+
+def _model_name(value) -> str:
+    return str((value or {}).get("name") if isinstance(value, dict) else value or "").strip()
+
+
+_LOW_VRAM_MODEL_PREFERENCES = (
+    "llama3.2:1b",
+    "llama3.2:3b",
+    "gemma3:1b",
+    "gemma3:4b",
+    "qwen2.5:0.5b",
+    "qwen2.5:1.5b",
+    "qwen2.5:3b",
+    "phi3:mini",
+    "mistral:7b",
+    "llama3.1:8b",
+)
+
+
+def _model_size_score(name: str) -> float:
+    text = (name or "").lower()
+    m = re.search(r"(\d+(?:\.\d+)?)\s*b\b", text)
+    if m:
+        try:
+            return float(m.group(1))
+        except ValueError:
+            pass
+    if "mini" in text:
+        return 3.8
+    if "small" in text:
+        return 7.0
+    return 99.0
+
+
+def _prefer_low_vram_model(names: list[str]) -> str:
+    if not names:
+        return ""
+    for wanted in _LOW_VRAM_MODEL_PREFERENCES:
+        wanted_base = wanted.split(":", 1)[0]
+        for name in names:
+            if name == wanted or name.split(":", 1)[0] == wanted_base:
+                return name
+    return sorted(names, key=_model_size_score)[0]
+
+
+def _resolve_installed_model(preferred: str, cfg: dict, url: str = None) -> str:
+    preferred = str(preferred or "").strip()
+    models = ollama_list_models(url)
+    names = [_model_name(m) for m in models if _model_name(m)]
+    if not names:
+        return preferred or cfg.get("fast_model") or cfg.get("default_model", "")
+    preferred_size = _model_size_score(preferred)
+    if preferred in names and preferred_size <= 7.5:
+        return preferred
+    preferred_base = preferred.split(":", 1)[0] if preferred else ""
+    if preferred_base and preferred_size <= 7.5:
+        for name in names:
+            if name.split(":", 1)[0] == preferred_base:
+                return name
+    low_vram = _prefer_low_vram_model(names)
+    if low_vram:
+        return low_vram
+    for candidate in (cfg.get("fast_model"), cfg.get("default_model")):
+        if candidate in names:
+            return candidate
+        base = str(candidate or "").split(":", 1)[0]
+        if base:
+            for name in names:
+                if name.split(":", 1)[0] == base:
+                    return name
+    return sorted(names, key=_model_size_score)[0]
+
+
+def _ollama_messages_to_prompt(messages: list[dict]) -> str:
+    parts: list[str] = []
+    for msg in messages:
+        role = str(msg.get("role", "user")).upper()
+        content = str(msg.get("content", "")).strip()
+        if content:
+            parts.append(f"{role}:\n{content}")
+    parts.append("ASSISTANT:")
+    return "\n\n".join(parts)
+
+
+def _ollama_endpoint_error(url: str, status: int, body: str = "") -> str:
+    detail = f" HTTP {status}" + (f": {body[:300]}" if body else "")
+    if "model" in body.lower() and "not found" in body.lower():
+        return (
+            f"**Error:** Ollama is running, but the requested model is not installed.{detail}\n\n"
+            "Jarvis will try to use an installed model automatically after restart. "
+            "You can also run `ollama list` to see installed models or `ollama pull llama3.1:8b`."
+        )
+    if status == 404:
+        return (
+            f"**Error:** Ollama answered on {url}, but `/api/chat` was not found.{detail}\n\n"
+            "This usually means port 11434 is not the Ollama server, or Ollama is too old. "
+            "Check with `curl http://localhost:11434/api/version`, then restart Ollama with `ollama serve`."
+        )
+    return f"**Error:** Ollama request failed on {url}.{detail}"
+
+
+def _ollama_generate_stream(model: str, messages: list[dict], temperature: float, url: str):
+    payload = {
+        "model": model,
+        "prompt": _ollama_messages_to_prompt(messages),
+        "stream": True,
+        "options": {
+            "temperature": temperature,
+            "num_ctx": int(CFG.get("num_ctx", 6144)),
+            "num_predict": int(CFG.get("num_predict", 900)),
+        },
+    }
+    with requests.post(f"{url}/api/generate", json=payload, stream=True, timeout=300) as r:
+        if not r.ok:
+            body = r.text if r is not None else ""
+            yield _ollama_endpoint_error(url, r.status_code, body)
+            return
+        for line in r.iter_lines():
+            if not line:
+                continue
+            chunk = json.loads(line)
+            if isinstance(chunk.get("response"), str):
+                yield chunk["response"]
+            if chunk.get("done"):
+                yield {"__meta__": {
+                    "total_duration": chunk.get("total_duration"),
+                    "eval_count": chunk.get("eval_count"),
+                    "eval_duration": chunk.get("eval_duration"),
+                }}
+
 def ollama_chat_stream(model: str, messages: list[dict], temperature: float,
                        url: str = None):
     url = url or CFG["ollama_url"]
+    model = _resolve_installed_model(model, CFG, url)
     payload = {
         "model": model,
         "messages": messages,
         "stream": True,
-        "options": {"temperature": temperature},
+        "options": {
+            "temperature": temperature,
+            "num_ctx": int(CFG.get("num_ctx", 6144)),
+            "num_predict": int(CFG.get("num_predict", 900)),
+        },
     }
     try:
         with requests.post(
             f"{url}/api/chat", json=payload, stream=True, timeout=300,
         ) as r:
-            r.raise_for_status()
+            if r.status_code == 404:
+                # Older Ollama builds only expose /api/generate. Use a
+                # prompt fallback instead of surfacing a raw 404 to Jarvis.
+                for chunk in _ollama_generate_stream(model, messages, temperature, url):
+                    yield chunk
+                return
+            if not r.ok:
+                body = r.text if r is not None else ""
+                yield _ollama_endpoint_error(url, r.status_code, body)
+                return
             for line in r.iter_lines():
                 if line:
                     chunk = json.loads(line)
@@ -1460,23 +1700,28 @@ def ollama_chat_stream(model: str, messages: list[dict], temperature: float,
                             "eval_duration": chunk.get("eval_duration"),
                         }}
     except requests.ConnectionError:
-        yield "\n\n**Error:** Cannot connect to Ollama. Is it running?"
+        yield (
+            f"\n\n**Error:** Cannot connect to Ollama at {url}. "
+            "Start it with `ollama serve`, or use Jarvis's `start ai` button."
+        )
+    except requests.Timeout:
+        yield f"\n\n**Error:** Ollama at {url} timed out."
     except Exception as e:
-        yield f"\n\n**Error:** {e}"
+        yield f"\n\n**Error:** Ollama runtime failed: {e}"
 
 # ─── Proactive Voice ─────────────────────────────────────────────────────────
 
 class ProactiveVoice:
-    """Background thread that generates unprompted messages from Nova.
+    """Background thread that generates unprompted messages from Jarvis.
 
     Triggers:
-    - IDLE: No user input for X minutes → Nova checks in
+    - IDLE: No user input for X minutes → Jarvis checks in
     - TIME: Morning greeting, midday nudge, night wind-down
     - SYSTEM: CPU/RAM spikes worth mentioning
     - RANDOM: Occasional thoughts, observations, memory callbacks
     """
 
-    IDLE_MINUTES = 12          # minutes of silence before Nova speaks up
+    IDLE_MINUTES = 12          # minutes of silence before Jarvis speaks up
     MIN_GAP_MINUTES = 8        # minimum gap between any two proactive messages
     SYSTEM_CPU_THRESHOLD = 85  # % CPU to trigger a warning
     SYSTEM_RAM_THRESHOLD = 90  # % RAM to trigger a warning
@@ -1550,7 +1795,7 @@ class ProactiveVoice:
         self._followup_eligible = False  # user replied, no need to follow up
 
     def touch_response(self):
-        """Call after Nova finishes a response — enables follow-up window."""
+        """Call after Jarvis finishes a response — enables follow-up window."""
         self._last_response_time = time.time()
         # Only mark eligible if there's actual conversation to follow up on
         if len(self.terminal.messages) >= 4:
@@ -1732,7 +1977,7 @@ class ReminderManager:
     """Background thread that fires reminders and timers when their time arrives.
 
     Reminders are stored in memory only — they do not survive a restart.
-    Nova sets them via tool calls; the thread wakes every 5 s and fires any
+    Jarvis sets them via tool calls; the thread wakes every 5 s and fires any
     that are due.
     """
 
@@ -1818,6 +2063,59 @@ class ReminderManager:
         })
 
 
+# Shared reminder store used by the Jarvis Electron Reminders widget.
+_NOVA_REMINDERS_FILE = Path(__file__).resolve().parent / "jarvis" / "nova-ai" / "data" / "reminders.json"
+
+
+def _reminder_store_read() -> dict:
+    try:
+        raw = _NOVA_REMINDERS_FILE.read_text("utf-8")
+        data = json.loads(raw)
+        if isinstance(data.get("reminders"), list):
+            return data
+    except Exception:
+        pass
+    return {"version": 1, "reminders": []}
+
+
+def _reminder_store_write(data: dict) -> None:
+    _NOVA_REMINDERS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _NOVA_REMINDERS_FILE.write_text(json.dumps(data, indent=2), "utf-8")
+
+
+def _reminder_store_add(message: str, fire_at: datetime.datetime) -> dict:
+    data = _reminder_store_read()
+    entry = {
+        "id": f"r_{uuid.uuid4().hex[:10]}",
+        "message": message or "Reminder",
+        "fireAt": int(fire_at.timestamp() * 1000),
+        "createdAt": int(time.time() * 1000),
+        "fired": False,
+    }
+    data["reminders"].append(entry)
+    _reminder_store_write(data)
+    return entry
+
+
+def _reminder_store_list_pending() -> list[dict]:
+    now_ms = int(time.time() * 1000)
+    data = _reminder_store_read()
+    pending = [r for r in data.get("reminders", []) if not r.get("fired") and int(r.get("fireAt", 0)) > now_ms]
+    pending.sort(key=lambda r: int(r.get("fireAt", 0)))
+    return pending
+
+
+def _reminder_store_cancel(reminder_id: str) -> bool:
+    rid = str(reminder_id).strip().lstrip("#")
+    data = _reminder_store_read()
+    before = len(data.get("reminders", []))
+    data["reminders"] = [r for r in data.get("reminders", []) if str(r.get("id")) != rid]
+    if len(data["reminders"]) == before:
+        return False
+    _reminder_store_write(data)
+    return True
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # GOVEE LIGHT CONTROLLER
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1877,25 +2175,97 @@ def _govee_parse_color(color_str: str) -> tuple[int, int, int]:
     )
 
 
+def _room_bridge_token() -> str:
+    if os.environ.get("ROOM_BRIDGE_TOKEN"):
+        return os.environ["ROOM_BRIDGE_TOKEN"].strip()
+    token_path = Path(__file__).resolve().parent / "data" / "room-bridge-token.txt"
+    try:
+        return token_path.read_text().strip()
+    except Exception:
+        return ""
+
+
+def _room_bridge_request(method: str, path_part: str, body: dict | None = None) -> tuple[bool, dict | str]:
+    token = _room_bridge_token()
+    if not token:
+        return False, "room bridge token not found"
+    port = int(os.environ.get("ROOM_BRIDGE_PORT", "3099"))
+    host = os.environ.get("ROOM_BRIDGE_HOST", "127.0.0.1")
+    url = f"http://{host}:{port}{path_part}"
+    try:
+        r = requests.request(
+            method,
+            url,
+            json=body,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=4,
+        )
+        try:
+            data = r.json()
+        except Exception:
+            data = r.text
+        ok = 200 <= r.status_code < 300 and not (isinstance(data, dict) and data.get("ok") is False)
+        return ok, data
+    except Exception as e:
+        return False, str(e)
+
+
+def _fmt_room_bridge(action: str, ok: bool, data: dict | str) -> str:
+    if not ok:
+        return f"room bridge failed: {data}"
+    if isinstance(data, dict):
+        affected = data.get("affected")
+        if affected is not None:
+            suffix = "s" if affected != 1 else ""
+            return f"{action} via room bridge ({affected} device{suffix})"
+        devices = data.get("devices")
+        if isinstance(devices, list):
+            suffix = "s" if len(devices) != 1 else ""
+            return f"{action} via room bridge ({len(devices)} device{suffix})"
+    return f"{action} via room bridge"
+
+
 def _govee_get_api_key() -> str:
-    """Resolve Govee API key: env var → main .env → jarvis .env."""
-    key = os.environ.get("GOVEE_API_KEY", "")
+    """Resolve Govee API key: env var → supported .env locations."""
+    key = os.environ.get("GOVEE_API_KEY", "").strip().strip('"').strip("'")
     if key:
         return key
-    # Try main .env
+    root = Path(__file__).resolve().parent
     for env_file in [
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"),
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "jarvis", ".env"),
+        root / ".env",
+        root / "jarvis" / ".env",
+        root / "jarvis" / "nova-ai" / ".env",
     ]:
-        if os.path.exists(env_file):
-            with open(env_file) as f:
+        if env_file.exists():
+            with env_file.open("r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
-                    if line.startswith("GOVEE_API_KEY="):
-                        val = line.split("=", 1)[1].strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    name, raw = line.split("=", 1)
+                    if name.strip() == "GOVEE_API_KEY":
+                        val = raw.strip().strip('"').strip("'")
                         if val:
                             return val
     return ""
+
+
+def govee_config_status() -> dict:
+    key = _govee_get_api_key()
+    locations = [
+        str(Path(__file__).resolve().parent / ".env"),
+        str(Path(__file__).resolve().parent / "jarvis" / ".env"),
+        str(Path(__file__).resolve().parent / "jarvis" / "nova-ai" / ".env"),
+    ]
+    return {
+        "configured": bool(key),
+        "message": (
+            "GOVEE_API_KEY configured."
+            if key else
+            "GOVEE_API_KEY missing. Add GOVEE_API_KEY=your-key to .env, jarvis/.env, or jarvis/nova-ai/.env."
+        ),
+        "locations": locations,
+    }
 
 
 class GoveeController:
@@ -2324,6 +2694,51 @@ class SpotifyClient:
             return str(result.get("error", result))
         return f"Playing: {artists} — {title}"
 
+    def search_and_play_playlist(self, query: str) -> str:
+        from urllib.parse import quote as _quote
+        clean = re.sub(r"(?i)\b(play|playlist|mix|songs?\s+from|my)\b", " ", query or "")
+        clean = re.sub(r"\s+", " ", clean).strip() or query
+        search = self._req("GET", f"/search?q={_quote(clean)}&type=playlist&limit=5")
+        if "error" in search:
+            return search["error"]
+        playlists = search.get("playlists", {}).get("items", [])
+        playlists = [p for p in playlists if p]
+        if not playlists:
+            return f"No playlists found for '{query}'."
+        q_words = [w for w in re.findall(r"[a-z0-9]+", clean.lower()) if len(w) > 2]
+        def _score(p):
+            name = (p.get("name") or "").lower()
+            owner = ((p.get("owner") or {}).get("display_name") or "").lower()
+            score = sum(15 for w in q_words if w in name)
+            if "cayden" in owner:
+                score += 10
+            if "spotify" not in owner:
+                score += 3
+            return score
+        playlist = sorted(playlists, key=_score, reverse=True)[0]
+        uri = playlist.get("uri")
+        name = playlist.get("name") or clean
+        if not uri:
+            return f"I found '{name}', but Spotify did not return a playable playlist URI."
+        result = self._req("PUT", "/me/player/play", json={"context_uri": uri})
+        if result.get("reason") == "NO_ACTIVE_DEVICE" or (
+            isinstance(result.get("error"), dict) and result["error"].get("reason") == "NO_ACTIVE_DEVICE"
+        ) or result.get("status") == 404:
+            err = self._ensure_active_device()
+            if err:
+                return err
+            result = self._req("PUT", "/me/player/play", json={"context_uri": uri})
+        if "error" in result and not result.get("ok"):
+            return str(result.get("error", result))
+        return f"Playing playlist: {name}"
+
+    def search_and_play_any(self, query: str) -> str:
+        if re.search(r"(?i)\b(playlist|mix|songs?\s+from)\b", query or ""):
+            res = self.search_and_play_playlist(query)
+            if not re.search(r"(?i)^No playlists found", res):
+                return res
+        return self.search_and_play(query)
+
     def pause(self) -> str:
         result = self._req("PUT", "/me/player/pause")
         return result.get("error", "Paused.")
@@ -2366,19 +2781,57 @@ def _get_spotify() -> SpotifyClient:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 _RSS_FEEDS = [
-    ("AP News",  "https://feeds.apnews.com/rss/apf-topnews"),
-    ("Reuters",  "https://feeds.reuters.com/reuters/topNews"),
-    ("NPR",      "https://feeds.npr.org/1001/rss.xml"),
-    ("BBC",      "http://feeds.bbci.co.uk/news/rss.xml"),
+    ("Google News", "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en"),
+    ("BBC",         "https://feeds.bbci.co.uk/news/rss.xml"),
+    ("BBC World",   "https://feeds.bbci.co.uk/news/world/rss.xml"),
+    ("AP News",     "https://feeds.apnews.com/rss/apf-topnews"),
+    ("NPR",         "https://feeds.npr.org/1001/rss.xml"),
 ]
+_NEWS_FRESH_WINDOW_SECONDS = 48 * 60 * 60
+_NEWS_GENERIC_KEYWORDS = {"news", "today", "latest", "current", "headline", "headlines", "breaking"}
 
 
-def fetch_news_headlines(max_items: int = 5) -> str:
+def _rss_item_time(item) -> float:
+    for tag in ("pubDate", "updated", "published"):
+        el = item.find(tag)
+        if el is not None and el.text:
+            try:
+                return email.utils.parsedate_to_datetime(el.text.strip()).timestamp()
+            except Exception:
+                pass
+    return 0.0
+
+
+def _prefer_fresh_headlines(headlines: list[dict]) -> list[dict]:
+    now = time.time()
+    fresh = [
+        h for h in headlines
+        if h.get("ts") and h["ts"] <= now + 30 * 60 and now - h["ts"] <= _NEWS_FRESH_WINDOW_SECONDS
+    ]
+    if len(fresh) >= min(6, len(headlines)):
+        return fresh
+    if not fresh:
+        return headlines
+    fresh_ids = {id(h) for h in fresh}
+    return fresh + [h for h in headlines if id(h) not in fresh_ids]
+
+
+def fetch_news_headlines(max_items: int = 5, topic: str = "") -> str:
     """Fetch top news headlines via RSS. Returns formatted string."""
     import xml.etree.ElementTree as ET
+    from urllib.parse import urlencode
     headlines: list[dict] = []
     rss_headers = {"User-Agent": "Mozilla/5.0 (compatible; nova-terminal/1.0)"}
-    for source, url in _RSS_FEEDS:
+    feeds = list(_RSS_FEEDS)
+    topic = (topic or "").strip()
+    if topic:
+        feeds.insert(0, ("Google News", "https://news.google.com/rss?" + urlencode({
+            "q": f"{topic} news",
+            "hl": "en-US",
+            "gl": "US",
+            "ceid": "US:en",
+        })))
+    for source, url in feeds:
         try:
             r = requests.get(url, timeout=8, headers=rss_headers)
             r.raise_for_status()
@@ -2388,32 +2841,42 @@ def fetch_news_headlines(max_items: int = 5) -> str:
                 if title_el is not None and title_el.text:
                     title = title_el.text.strip()
                     if title and not any(h["title"] == title for h in headlines):
-                        headlines.append({"source": source, "title": title})
-                        if len(headlines) >= max_items:
-                            break
-            if len(headlines) >= max_items:
-                break
+                        link_el = item.find("link")
+                        headlines.append({
+                            "source": source,
+                            "title": title,
+                            "url": link_el.text.strip() if link_el is not None and link_el.text else "",
+                            "ts": _rss_item_time(item),
+                        })
         except Exception:
             continue
-    # Fallback to Google News RSS
-    if not headlines:
-        try:
-            r = requests.get(
-                "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en",
-                timeout=8, headers=rss_headers,
-            )
-            root = ET.fromstring(r.text)
-            for item in root.findall(".//item")[:max_items]:
-                title_el = item.find("title")
-                if title_el is not None and title_el.text:
-                    headlines.append({"source": "Google News", "title": title_el.text.strip()})
-        except Exception:
-            pass
     if not headlines:
         return "No news headlines available right now."
+    headlines.sort(key=lambda h: h.get("ts") or 0, reverse=True)
+    headlines = _prefer_fresh_headlines(headlines)
+    if topic:
+        keywords = [
+            w.lower()
+            for w in re.findall(r"[a-zA-Z0-9]+", topic)
+            if len(w) > 3 and w.lower() not in _NEWS_GENERIC_KEYWORDS
+        ]
+        for h in headlines:
+            hay = h["title"].lower()
+            h["hits"] = sum(1 for w in keywords if w in hay)
+        matched = [h for h in headlines if h.get("hits", 0) > 0]
+        if matched:
+            headlines = matched
+        headlines.sort(key=lambda h: (h.get("hits", 0), h.get("ts") or 0), reverse=True)
+    else:
+        headlines.sort(key=lambda h: h.get("ts") or 0, reverse=True)
+    headlines = headlines[:max_items]
     lines = [f"Top {len(headlines)} headlines:"]
     for i, h in enumerate(headlines, 1):
-        lines.append(f"  {i}. [{h['source']}] {h['title']}")
+        when = ""
+        if h.get("ts"):
+            dt = datetime.datetime.fromtimestamp(h["ts"])
+            when = f" — {dt.strftime('%b %d, %I:%M %p')}"
+        lines.append(f"  {i}. [{h['source']}] {h['title']}{when}")
     return "\n".join(lines)
 
 
@@ -3187,6 +3650,43 @@ class GoogleSlidesClient:
         return f"Replaced {n} occurrence(s) of '{find}' in presentation {pid}."
 
 
+_RUN_CMD_BLOCKLIST = [
+    re.compile(r"\brm\s+-rf\s+/(?!\w)", re.I),
+    re.compile(r"\bdd\s+if=.*of=/dev/[sh]d[a-z]", re.I),
+    re.compile(r":\(\)\{:\|:&\};:"),
+    re.compile(r"\bmkfs\.", re.I),
+    re.compile(r"\bshutdown\b", re.I),
+    re.compile(r"\breboot\b", re.I),
+    re.compile(r"\bsudo\b", re.I),
+    re.compile(r"\b(doas|pkexec|su)\b", re.I),
+    re.compile(r"\b(passwd|useradd|usermod|groupadd|visudo)\b", re.I),
+    re.compile(r"\b(systemctl|service)\s+(start|stop|restart|enable|disable|mask)\b", re.I),
+    re.compile(r"\b(apt|apt-get|dnf|yum|pacman|zypper|brew)\s+(install|remove|purge|upgrade|dist-upgrade)\b", re.I),
+    re.compile(r">\s*/dev/sd[a-z]", re.I),
+]
+
+_RUN_CMD_PHYSICAL_APPROVAL = [
+    re.compile(r"\brm\b", re.I),
+    re.compile(r"\bmv\b.*\s/(etc|usr|var|boot|opt)\b", re.I),
+    re.compile(r"\bchmod\b", re.I),
+    re.compile(r"\bchown\b", re.I),
+    re.compile(r"\bkill(all)?\b", re.I),
+    re.compile(r"\bdocker\b", re.I),
+    re.compile(r"\b(npm|pnpm|yarn)\s+(install|add|remove|update)\b", re.I),
+]
+
+
+def _run_cmd_safety(command: str) -> dict:
+    cmd = str(command or "").strip()
+    for rx in _RUN_CMD_BLOCKLIST:
+        if rx.search(cmd):
+            return {"allowed": False, "approval_required": False, "reason": f"blocked by safety filter: {rx.pattern}"}
+    for rx in _RUN_CMD_PHYSICAL_APPROVAL:
+        if rx.search(cmd):
+            return {"allowed": True, "approval_required": True, "reason": f"requires physical approval: {rx.pattern}"}
+    return {"allowed": True, "approval_required": False, "reason": ""}
+
+
 # ─── Terminal App ─────────────────────────────────────────────────────────────
 
 class AITerminal:
@@ -3621,7 +4121,7 @@ class AITerminal:
                     f"but Chrome extension is not connected.[/warning]"
                 )
                 console.print(
-                    f"  [muted]In the Nova extension settings, set backend URL to "
+                    f"  [muted]In the Jarvis extension settings, set backend URL to "
                     f"ws://localhost:{self.bridge.actual_port}/browser-bridge[/muted]"
                 )
             return True
@@ -3663,7 +4163,7 @@ class AITerminal:
             if not arg:
                 if self.attack_target:
                     console.print(f"  [success]Attack mode active.[/success] target: [accent]{self.attack_target}[/accent]")
-                    console.print("  [muted]Use /stopattack to exit. Just talk to Nova — it'll probe with BROWSER_JS.[/muted]")
+                    console.print("  [muted]Use /stopattack to exit. Just talk to Jarvis — it'll probe with BROWSER_JS.[/muted]")
                 else:
                     console.print("  [muted]Usage: /attack <url>   (e.g. /attack http://localhost:3001)[/muted]")
                 return True
@@ -3677,12 +4177,12 @@ class AITerminal:
                     console.print(f"  [warning]Could not auto-navigate: {nav['error']}[/warning]")
             else:
                 console.print(
-                    f"  [warning]Bridge not connected — load the Nova extension and open {url} manually.[/warning]"
+                    f"  [warning]Bridge not connected — load the Jarvis extension and open {url} manually.[/warning]"
                 )
             console.print(Panel(
                 f"[accent]PEN-TEST MODE ARMED[/accent]\n"
                 f"target: [success]{url}[/success]\n\n"
-                f"Nova now treats this site as your sanctioned red-team target.\n"
+                f"Jarvis now treats this site as your sanctioned red-team target.\n"
                 f"It has an advanced pen-test toolkit (CSP-immune, server-side):\n"
                 f"  • [accent]PENTEST_RECON:[/accent]        full passive recon\n"
                 f"  • [accent]PENTEST_ENUM:[/accent]         enumerate 80 common admin/api/leak paths\n"
@@ -4184,7 +4684,7 @@ class AITerminal:
         r'|SET_REMINDER|SET_TIMER|LIST_REMINDERS|CANCEL_REMINDER'
         r'|LIGHTS_ON|LIGHTS_OFF|LIGHTS_COLOR|LIGHTS_BRIGHTNESS|LIGHTS_LIST'
         r'|BROWSER_PAGE|BROWSER_TABS|BROWSER_NAVIGATE|BROWSER_CLICK'
-        r'|BROWSER_TYPE|BROWSER_KEY|BROWSER_SELECT_ALL|BROWSER_FOCUS|BROWSER_READ_SELECTION|BROWSER_JS'
+        r'|BROWSER_TYPE|BROWSER_KEY|BROWSER_SELECT_ALL|BROWSER_SCROLL|BROWSER_FOCUS|BROWSER_READ_SELECTION|BROWSER_JS'
         r'|NEWS|MORNING_BRIEFING|SCENE'
         r'|SPOTIFY_PLAY|SPOTIFY_PAUSE|SPOTIFY_SKIP|SPOTIFY_VOLUME|SPOTIFY_NOW'
         r'|PI_SSH|PI_HEALTH|INDEX_PROJECT|SEARCH_CODE):([^`]*)`+',
@@ -4207,7 +4707,7 @@ class AITerminal:
             _seen.add(key)
             return True
 
-        # ── Live Chrome browser (via Nova extension) ──────────────────
+        # ── Live Chrome browser (via Jarvis extension) ────────────────
         # BROWSER_PAGE: optionally accepts a URL — navigate first, then read
         for m in re.finditer(r'^BROWSER_PAGE:[ \t]*(\S*)', text, re.MULTILINE):
             url_arg = m.group(1).strip()
@@ -4230,7 +4730,7 @@ class AITerminal:
                 results.append(
                     f"[LIVE BROWSER] NOT CONNECTED — Chrome extension is not connected "
                     f"to the terminal bridge (ws://localhost:{self.bridge.actual_port}/browser-bridge). "
-                    f"Tell Cayden to check that the Nova extension is enabled."
+                    f"Tell Cayden to check that the Jarvis extension is enabled."
                 )
 
         if _once("BROWSER_TABS") and re.search(r'^BROWSER_TABS:', text, re.MULTILINE):
@@ -4335,6 +4835,22 @@ class AITerminal:
             else:
                 results.append("[LIVE BROWSER] NOT CONNECTED — Chrome extension offline.")
 
+        # BROWSER_SCROLL: <down|up|top|bottom|pixels>
+        for m in re.finditer(r'^BROWSER_SCROLL:\s*(.*)', text, re.MULTILINE):
+            amount = (m.group(1).strip() or "down")
+            if not _once(f"BROWSER_SCROLL:{amount}"):
+                continue
+            has_tool = True
+            if self.bridge.connected:
+                console.print(f"  [info]Scrolling Chrome: {amount}[/info]")
+                result = self.bridge.scroll_page(amount)
+                if result.get("error"):
+                    results.append(f"[BROWSER SCROLL] Error: {result['error']}")
+                else:
+                    results.append(f"[BROWSER SCROLL] Scrolled {amount}. Use BROWSER_PAGE: to read the updated viewport/page.")
+            else:
+                results.append("[LIVE BROWSER] NOT CONNECTED — Chrome extension offline.")
+
         # BROWSER_FOCUS: <selector> — focus an element
         for m in re.finditer(r'^BROWSER_FOCUS:\s*(.+)', text, re.MULTILINE):
             selector = m.group(1).strip()
@@ -4401,7 +4917,8 @@ class AITerminal:
                         results.append(f"[BROWSER JS] Error: {err_msg}")
                 else:
                     self._js_csp_blocked_url = None  # clear any stale block on success
-                    results.append(f"[BROWSER JS] Result: {result.get('result', 'OK')}")
+                    js_value = result.get("value", result.get("result", "OK"))
+                    results.append(f"[BROWSER JS] Result: {js_value}")
             else:
                 results.append("[LIVE BROWSER] NOT CONNECTED — Chrome extension offline.")
 
@@ -4631,6 +5148,11 @@ class AITerminal:
                 continue
             has_tool = True
             console.print(f"\n  [warning]Run:[/warning] {cmd}")
+            safety = _run_cmd_safety(cmd)
+            if not safety["allowed"]:
+                results.append(f"[COMMAND REJECTED] {safety['reason']}")
+                console.print(f"  [error]Rejected: {safety['reason']}[/error]")
+                continue
 
             # Auto-confirm safe read-only pen-test commands targeting the attack_target host.
             auto_ok = False
@@ -4657,14 +5179,29 @@ class AITerminal:
             if auto_ok:
                 console.print(f"  [muted](auto-approved: pen-test target host)[/muted]")
                 confirm = "y"
+                approved = True
+            elif self.headless or self.session is None:
+                results.append(
+                    "[COMMAND NEEDS PHYSICAL APPROVAL] RUN_CMD is disabled in desktop headless chat. "
+                    "Use OPEN_TERMINAL_CMD: <command> so Cayden can approve it in a visible terminal."
+                )
+                console.print("  [muted]Skipped: headless desktop chat requires OPEN_TERMINAL_CMD[/muted]")
+                continue
             else:
                 try:
-                    confirm = self.session.prompt(
-                        [("class:prompt", "  Confirm? [y/N] ")], default="",
-                    )
+                    if safety["approval_required"]:
+                        confirm = self.session.prompt(
+                            [("class:prompt", "  Protected command. Type RUN to confirm: ")], default="",
+                        )
+                        approved = confirm.strip() == "RUN"
+                    else:
+                        confirm = self.session.prompt(
+                            [("class:prompt", "  Confirm? [y/N] ")], default="",
+                        )
+                        approved = confirm.strip().lower() == "y"
                 except (KeyboardInterrupt, EOFError):
-                    confirm = ""
-            if confirm.strip().lower() == "y":
+                    approved = False
+            if approved:
                 try:
                     result = subprocess.run(
                         cmd, shell=True, capture_output=True, text=True, timeout=30
@@ -4784,9 +5321,9 @@ class AITerminal:
                 results.append(f"[REMINDER] Error: {err}")
                 console.print(f"  [error]{err}[/error]")
             else:
-                entry = self.reminders.add(label or f"Reminder at {fire_at.strftime('%I:%M %p')}", fire_at)
+                entry = _reminder_store_add(label or f"Reminder at {fire_at.strftime('%I:%M %p')}", fire_at)
                 friendly = fire_at.strftime("%A, %B %d at %I:%M %p")
-                results.append(f"[REMINDER SET] #{entry['id']} — \"{entry['label']}\" — fires at {friendly}")
+                results.append(f"[REMINDER SET] {entry['id']} — \"{entry['message']}\" — fires at {friendly} (saved to Reminders widget)")
                 console.print(f"  [success]Reminder #{entry['id']} set for {friendly}[/success]")
 
         # SET_TIMER: <duration> | <label>
@@ -4812,38 +5349,38 @@ class AITerminal:
                     friendly_delta = f"{delta_secs // 60}m {delta_secs % 60}s"
                 else:
                     friendly_delta = f"{delta_secs}s"
-                entry = self.reminders.add(label or f"Timer ({friendly_delta})", fire_at)
-                results.append(f"[TIMER SET] #{entry['id']} — \"{entry['label']}\" — fires in {friendly_delta}")
+                entry = _reminder_store_add(label or f"Timer ({friendly_delta})", fire_at)
+                results.append(f"[TIMER SET] {entry['id']} — \"{entry['message']}\" — fires in {friendly_delta} (saved to Reminders widget)")
                 console.print(f"  [success]Timer #{entry['id']} set for {friendly_delta}[/success]")
 
         # LIST_REMINDERS:
         if _once("LIST_REMINDERS") and re.search(r'^LIST_REMINDERS:', text, re.MULTILINE):
             has_tool = True
-            pending = self.reminders.list_pending()
+            pending = _reminder_store_list_pending()
             if not pending:
                 results.append("[REMINDERS] No pending reminders or timers.")
             else:
                 lines = []
                 for r in pending:
-                    delta = r["fire_at"] - datetime.datetime.now()
-                    secs = max(int(delta.total_seconds()), 0)
+                    fire_at = datetime.datetime.fromtimestamp(int(r["fireAt"]) / 1000)
+                    secs = max(int((fire_at - datetime.datetime.now()).total_seconds()), 0)
                     if secs >= 3600:
                         in_str = f"in ~{secs // 3600}h {(secs % 3600) // 60}m"
                     elif secs >= 60:
                         in_str = f"in ~{secs // 60}m {secs % 60}s"
                     else:
                         in_str = f"in ~{secs}s"
-                    lines.append(f"  #{r['id']} — \"{r['label']}\" — {r['fire_at'].strftime('%I:%M %p')} ({in_str})")
+                    lines.append(f"  {r['id']} — \"{r['message']}\" — {fire_at.strftime('%I:%M %p')} ({in_str})")
                 results.append("[REMINDERS]\n" + "\n".join(lines))
 
         # CANCEL_REMINDER: <id>
-        for m in re.finditer(r'^CANCEL_REMINDER:\s*(\d+)', text, re.MULTILINE):
-            rid = int(m.group(1))
+        for m in re.finditer(r'^CANCEL_REMINDER:\s*(\S+)', text, re.MULTILINE):
+            rid = m.group(1).strip()
             if not _once(f"CANCEL_REMINDER:{rid}"):
                 continue
             has_tool = True
-            if self.reminders.cancel(rid):
-                results.append(f"[REMINDER CANCELLED] #{rid} removed.")
+            if _reminder_store_cancel(rid):
+                results.append(f"[REMINDER CANCELLED] {rid} removed from Reminders widget.")
                 console.print(f"  [success]Reminder #{rid} cancelled[/success]")
             else:
                 results.append(f"[REMINDER CANCEL] #{rid} not found.")
@@ -4868,7 +5405,8 @@ class AITerminal:
             m2 = re.search(r'^LIGHTS_ON:\s*(.*)', text, re.MULTILINE)
             hint = m2.group(1).strip() if m2 else None
             console.print(f"  [info]Govee lights on{(' (' + hint + ')') if hint else ''}...[/info]")
-            res = _govee_run(lambda: _get_govee().turn_on(hint or None), "on")
+            ok, data = _room_bridge_request("POST", "/lights/power", {"on": True, "device": hint or None})
+            res = _fmt_room_bridge("on", ok, data) if ok else _govee_run(lambda: _get_govee().turn_on(hint or None), "on")
             results.append(f"[LIGHTS] {res}")
             console.print(f"  [success]{res}[/success]")
 
@@ -4877,7 +5415,8 @@ class AITerminal:
             m2 = re.search(r'^LIGHTS_OFF:\s*(.*)', text, re.MULTILINE)
             hint = m2.group(1).strip() if m2 else None
             console.print(f"  [info]Govee lights off{(' (' + hint + ')') if hint else ''}...[/info]")
-            res = _govee_run(lambda: _get_govee().turn_off(hint or None), "off")
+            ok, data = _room_bridge_request("POST", "/lights/power", {"on": False, "device": hint or None})
+            res = _fmt_room_bridge("off", ok, data) if ok else _govee_run(lambda: _get_govee().turn_off(hint or None), "off")
             results.append(f"[LIGHTS] {res}")
             console.print(f"  [success]{res}[/success]")
 
@@ -4892,7 +5431,12 @@ class AITerminal:
             else:
                 color_part, hint = raw, None
             console.print(f"  [info]Setting lights to {color_part}...[/info]")
-            res = _govee_run(lambda cp=color_part, h=hint: _get_govee().set_color(cp, h), f"color {color_part}")
+            try:
+                r, g, b = _govee_parse_color(color_part)
+                ok, data = _room_bridge_request("POST", "/lights/color", {"r": r, "g": g, "b": b, "device": hint or None})
+                res = _fmt_room_bridge(f"color {color_part}", ok, data) if ok else _govee_run(lambda cp=color_part, h=hint: _get_govee().set_color(cp, h), f"color {color_part}")
+            except ValueError as e:
+                res = str(e)
             results.append(f"[LIGHTS] {res}")
             console.print(f"  [success]{res}[/success]")
 
@@ -4912,14 +5456,16 @@ class AITerminal:
                 results.append(f"[LIGHTS] Invalid brightness '{bright_part}' — use a number 1-100.")
                 continue
             console.print(f"  [info]Setting brightness to {level}%...[/info]")
-            res = _govee_run(lambda l=level, h=hint: _get_govee().set_brightness(l, h), f"brightness {level}%")
+            ok, data = _room_bridge_request("POST", "/lights/brightness", {"value": level, "device": hint or None})
+            res = _fmt_room_bridge(f"brightness {level}%", ok, data) if ok else _govee_run(lambda l=level, h=hint: _get_govee().set_brightness(l, h), f"brightness {level}%")
             results.append(f"[LIGHTS] {res}")
             console.print(f"  [success]{res}[/success]")
 
         if _once("LIGHTS_LIST") and re.search(r'^LIGHTS_LIST:', text, re.MULTILINE):
             has_tool = True
             console.print("  [info]Fetching Govee devices...[/info]")
-            res = _govee_run(lambda: _get_govee().list_devices(), "list")
+            ok, data = _room_bridge_request("GET", "/lights")
+            res = _fmt_room_bridge("list", ok, data) if ok else _govee_run(lambda: _get_govee().list_devices(), "list")
             results.append(f"[LIGHTS LIST]\n{res}")
 
         # ── Light Scenes ──────────────────────────────────────────────
@@ -4929,7 +5475,8 @@ class AITerminal:
                 continue
             has_tool = True
             console.print(f"  [info]Applying scene '{scene}'...[/info]")
-            res = _govee_run(lambda s=scene: apply_light_scene(s), f"scene {scene}")
+            ok, data = _room_bridge_request("POST", "/lights/scene", {"scene": scene})
+            res = _fmt_room_bridge(f"scene {scene}", ok, data) if ok else _govee_run(lambda s=scene: apply_light_scene(s), f"scene {scene}")
             results.append(f"[SCENE] {res}")
             console.print(f"  [success]{res}[/success]")
 
@@ -4938,7 +5485,9 @@ class AITerminal:
             has_tool = True
             console.print("  [info]Fetching news headlines...[/info]")
             try:
-                news = fetch_news_headlines(max_items=5)
+                m2 = re.search(r'^NEWS:\s*(.*)', text, re.MULTILINE)
+                topic = m2.group(1).strip() if m2 else ""
+                news = fetch_news_headlines(max_items=7, topic=topic)
                 results.append(f"[NEWS]\n{news}")
             except Exception as e:
                 results.append(f"[NEWS] Error: {e}")
@@ -5072,7 +5621,7 @@ class AITerminal:
         """HTTP probe used by pen-test tools. Returns dict with status, headers, body."""
         try:
             req_headers = {
-                "User-Agent": "Nova-PenTest/2.0 (sanctioned red-team)",
+                "User-Agent": "Jarvis-PenTest/2.0 (sanctioned red-team)",
                 "Accept": "*/*",
             }
             if headers:
@@ -5424,7 +5973,7 @@ class AITerminal:
         r'|SET_REMINDER|SET_TIMER|LIST_REMINDERS|CANCEL_REMINDER'
         r'|LIGHTS_ON|LIGHTS_OFF|LIGHTS_COLOR|LIGHTS_BRIGHTNESS|LIGHTS_LIST'
         r'|BROWSER_PAGE|BROWSER_TABS|BROWSER_NAVIGATE|BROWSER_CLICK'
-        r'|BROWSER_TYPE|BROWSER_KEY|BROWSER_SELECT_ALL|BROWSER_FOCUS|BROWSER_READ_SELECTION|BROWSER_JS'
+        r'|BROWSER_TYPE|BROWSER_KEY|BROWSER_SELECT_ALL|BROWSER_SCROLL|BROWSER_FOCUS|BROWSER_READ_SELECTION|BROWSER_JS'
         r'|PENTEST_RECON|PENTEST_HEADERS|PENTEST_ENUM|PENTEST_PROBE|PENTEST_FUZZ'
         r'|PENTEST_JS_BUNDLES|PENTEST_AUTH_BYPASS'
         r'|NEWS|MORNING_BRIEFING|SCENE'
@@ -5622,7 +6171,7 @@ class AITerminal:
                 r'|SET_REMINDER|SET_TIMER|LIST_REMINDERS|CANCEL_REMINDER'
                 r'|LIGHTS_ON|LIGHTS_OFF|LIGHTS_COLOR|LIGHTS_BRIGHTNESS|LIGHTS_LIST'
                 r'|BROWSER_PAGE|BROWSER_TABS|BROWSER_NAVIGATE|BROWSER_CLICK'
-                r'|BROWSER_TYPE|BROWSER_KEY|BROWSER_SELECT_ALL|BROWSER_FOCUS'
+                r'|BROWSER_TYPE|BROWSER_KEY|BROWSER_SELECT_ALL|BROWSER_SCROLL|BROWSER_FOCUS'
                 r'|BROWSER_READ_SELECTION|BROWSER_JS'
                 r'|PENTEST_RECON|PENTEST_HEADERS|PENTEST_ENUM|PENTEST_PROBE'
                 r'|PENTEST_FUZZ|PENTEST_JS_BUNDLES|PENTEST_AUTH_BYPASS):[^\n]*\n?',
@@ -5667,7 +6216,7 @@ class AITerminal:
 
     # ── Main loop ─────────────────────────────────────────────────────────
 
-    def run(self):
+    def run(self, initial_text: str = ""):
         self.print_header()
 
         models = ollama_list_models()
@@ -5691,6 +6240,13 @@ class AITerminal:
 
         self.proactive.start()
         self.reminders.start()
+
+        initial_text = (initial_text or "").strip()
+        if initial_text:
+            _dim("  Initial task loaded from Jarvis desktop.")
+            console.print()
+            self.proactive.touch()
+            self.stream_response(initial_text)
 
         while self.running:
             try:
@@ -5733,13 +6289,30 @@ class AITerminal:
 
 def main():
     model = None
-    if len(sys.argv) > 1:
-        model = sys.argv[1]
+    initial_text = ""
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg in ("--prompt", "--task") and i + 1 < len(args):
+            initial_text = args[i + 1]
+            i += 2
+            continue
+        if arg == "--prompt-file" and i + 1 < len(args):
+            try:
+                initial_text = Path(args[i + 1]).read_text("utf-8")
+            except Exception as exc:
+                initial_text = f"Could not read prompt file {args[i + 1]}: {exc}"
+            i += 2
+            continue
+        if not arg.startswith("--") and model is None:
+            model = arg
+        i += 1
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     app = AITerminal(model=model)
-    app.run()
+    app.run(initial_text=initial_text)
 
 
 if __name__ == "__main__":

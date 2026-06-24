@@ -3,7 +3,7 @@
  * Handles member updates including role conflicts and timeout notifications
  */
 
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, AuditLogEvent } = require('discord.js');
 
 module.exports = {
     name: 'guildMemberUpdate',
@@ -49,6 +49,9 @@ async function handleTimeoutNotifications(oldMember, newMember, bot) {
             
             const timeoutUntil = new Date(isTimedOut);
             const duration = Math.round((timeoutUntil - Date.now()) / 1000 / 60); // minutes
+            const audit = bot.discordLogger
+                ? await bot.discordLogger._executor(newMember.guild, AuditLogEvent.MemberUpdate, newMember.id).catch(() => null)
+                : null;
             
             // Broadcast to dashboard console
             if (typeof bot.broadcastConsole === 'function') {
@@ -78,6 +81,7 @@ async function handleTimeoutNotifications(oldMember, newMember, bot) {
                     .setDescription(`**${newMember.user.username}** has been timed out`)
                     .addFields(
                         { name: '👤 User', value: `${newMember.user.username}\n<@${newMember.user.id}>\n\`${newMember.user.id}\``, inline: true },
+                        { name: 'Actor', value: audit?.user ? `${audit.user.username}\n<@${audit.user.id}>\n\`${audit.user.id}\`` : '*Not resolved from audit log*', inline: true },
                         { name: '⏰ Duration', value: `${duration} minutes`, inline: true },
                         { name: '🕐 Until', value: `<t:${Math.floor(timeoutUntil.getTime() / 1000)}:F>`, inline: true }
                     )
@@ -119,11 +123,11 @@ async function handleTimeoutNotifications(oldMember, newMember, bot) {
                     eventType: 'TIMEOUT',
                     guildId: newMember.guild.id,
                     channelId: null,
-                    moderatorId: null,
-                    moderatorTag: null,
+                    moderatorId: audit?.user?.id || null,
+                    moderatorTag: audit?.user?.tag || audit?.user?.username || null,
                     targetId: newMember.user.id,
                     targetTag: newMember.user.username,
-                    reason: `Timed out for ${duration} minutes`,
+                    reason: audit?.reason || `Timed out for ${duration} minutes`,
                     details: {
                         duration: duration,
                         until: timeoutUntil.toISOString()

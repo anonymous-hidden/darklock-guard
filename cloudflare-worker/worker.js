@@ -301,6 +301,45 @@ function buildMaintenancePage(requestedUrl) {
 </html>`;
 }
 
+function isApiRequestPath(pathname) {
+  return pathname.startsWith('/api/') ||
+    pathname.startsWith('/api/web-verify/') ||
+    pathname === '/api/web-verify' ||
+    pathname.startsWith('/platform/api/') ||
+    pathname === '/api' ||
+    pathname === '/platform/api';
+}
+
+function sanitizeResponseHeaders(headers) {
+  const newHeaders = new Headers(headers);
+  // Strip Cloudflare-injected report-only CSP that sets connect-src 'none'.
+  newHeaders.delete('Content-Security-Policy-Report-Only');
+  return newHeaders;
+}
+
+function buildApiFallback(requestedUrl, cause = 'origin_unavailable') {
+  const url = new URL(requestedUrl);
+  return {
+    success: false,
+    error: 'Darklock services are temporarily unavailable. Please try again in a few minutes.',
+    fallback: true,
+    cause,
+    path: url.pathname,
+    timestamp: new Date().toISOString()
+  };
+}
+
+function apiFallbackResponse(requestedUrl, cause, status = 503) {
+  return new Response(JSON.stringify(buildApiFallback(requestedUrl, cause)), {
+    status,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store, no-cache",
+      "X-Darklock-Fallback": "1",
+    },
+  });
+}
+
 // ── Worker entry point ────────────────────────────────────────────────────────
 export default {
   async fetch(request, env, ctx) {
@@ -309,8 +348,16 @@ export default {
     try {
       const response = await fetch(request);
 
-      // Origin returned a server-side error → show maintenance page
-      if (OFFLINE_STATUSES.has(response.status)) {
+      const requestPath = new URL(request.url).pathname;
+      const isApiPath = isApiRequestPath(requestPath);
+
+      // Secure Channel should always pass through the origin response directly.
+      // It is a public app shell, not a maintenance-gated page.
+      if (!requestPath.startsWith('/app/secure-channel') && OFFLINE_STATUSES.has(response.status)) {
+        if (isApiPath) {
+          return apiFallbackResponse(request.url, `origin_status_${response.status}`);
+        }
+
         return new Response(buildMaintenancePage(request.url), {
           status: 503,
           headers: {
@@ -321,10 +368,33 @@ export default {
         });
       }
 
-      // Strip the report-only CSP that Cloudflare injects automatically —
-      // it sets connect-src 'none' which blocks our own API calls on /admin.
-      const newHeaders = new Headers(response.headers);
-      newHeaders.delete('Content-Security-Policy-Report-Only');
+      // API paths must always return JSON. If upstream/challenge returns HTML,
+      // normalize to a JSON fallback payload so clients never crash on parse.
+      if (isApiPath) {
+        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+        const bodyText = await response.text();
+        const looksLikeJson = contentType.includes('application/json') || /^[\s\r\n]*[\[{]/.test(bodyText);
+
+        if (!looksLikeJson) {
+          return apiFallbackResponse(
+            request.url,
+            `non_json_upstream_status_${response.status}`,
+            response.status >= 400 ? response.status : 503
+          );
+        }
+
+        const apiHeaders = sanitizeResponseHeaders(response.headers);
+        apiHeaders.set('Content-Type', 'application/json; charset=utf-8');
+        apiHeaders.set('Cache-Control', 'no-store, no-cache');
+        return new Response(bodyText, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: apiHeaders,
+        });
+      }
+
+      // Strip Cloudflare-injected report-only CSP that can break first-party API calls.
+      const newHeaders = sanitizeResponseHeaders(response.headers);
 
       return new Response(response.body, {
         status: response.status,
@@ -334,6 +404,11 @@ export default {
 
     } catch (err) {
       // Network / tunnel error — Pi 5 is unreachable
+      const requestPath = new URL(request.url).pathname;
+      if (isApiRequestPath(requestPath)) {
+        return apiFallbackResponse(request.url, 'origin_fetch_failed');
+      }
+
       return new Response(buildMaintenancePage(request.url), {
         status: 503,
         headers: {

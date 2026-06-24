@@ -116,6 +116,26 @@ class DarklockDatabase {
         `);
 
         await this.run(`
+            CREATE TABLE IF NOT EXISTS passkey_credentials (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                credential_id_hash TEXT UNIQUE NOT NULL,
+                credential_id_enc TEXT NOT NULL,
+                public_key_enc TEXT NOT NULL,
+                counter_enc TEXT NOT NULL,
+                transports_enc TEXT,
+                device_type_enc TEXT,
+                backed_up_enc TEXT,
+                aaguid_enc TEXT,
+                metadata_enc TEXT,
+                created_at TEXT NOT NULL,
+                last_used_at TEXT,
+                revoked_at TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+
+        await this.run(`
             CREATE TABLE IF NOT EXISTS user_settings (
                 user_id TEXT PRIMARY KEY,
                 notifications_enabled INTEGER DEFAULT 1,
@@ -169,6 +189,8 @@ class DarklockDatabase {
         await this.run(`CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`);
         await this.run(`CREATE INDEX IF NOT EXISTS idx_updates_published_at ON updates(published_at)`);
         await this.run(`CREATE INDEX IF NOT EXISTS idx_updates_version ON updates(version)`);
+        await this.run(`CREATE INDEX IF NOT EXISTS idx_passkeys_user_id ON passkey_credentials(user_id)`);
+        await this.run(`CREATE INDEX IF NOT EXISTS idx_passkeys_credential_hash ON passkey_credentials(credential_id_hash)`);
 
         // Premium subscription tables
         await this.run(`
@@ -545,12 +567,155 @@ class DarklockDatabase {
         `, [new Date().toISOString(), jti]);
     }
 
+    async revokeSessionById(sessionId) {
+        await this.run(`
+            UPDATE sessions
+            SET revoked_at = ?
+            WHERE id = ?
+        `, [new Date().toISOString(), sessionId]);
+    }
+
+    async revokeUserSessionsExcept(userId, currentJti) {
+        await this.run(`
+            UPDATE sessions
+            SET revoked_at = ?
+            WHERE user_id = ? AND jti != ? AND revoked_at IS NULL
+        `, [new Date().toISOString(), userId, currentJti]);
+    }
+
     async revokeAllUserSessions(userId) {
         await this.run(`
             UPDATE sessions 
             SET revoked_at = ? 
             WHERE user_id = ? AND revoked_at IS NULL
         `, [new Date().toISOString(), userId]);
+    }
+
+    /**
+     * PASSKEY METHODS
+     */
+
+    async createPasskeyCredential(data) {
+        const now = new Date().toISOString();
+
+        await this.run(`
+            INSERT INTO passkey_credentials (
+                user_id,
+                credential_id_hash,
+                credential_id_enc,
+                public_key_enc,
+                counter_enc,
+                transports_enc,
+                device_type_enc,
+                backed_up_enc,
+                aaguid_enc,
+                metadata_enc,
+                created_at,
+                last_used_at,
+                revoked_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+            ON CONFLICT(credential_id_hash) DO UPDATE SET
+                user_id = excluded.user_id,
+                credential_id_enc = excluded.credential_id_enc,
+                public_key_enc = excluded.public_key_enc,
+                counter_enc = excluded.counter_enc,
+                transports_enc = excluded.transports_enc,
+                device_type_enc = excluded.device_type_enc,
+                backed_up_enc = excluded.backed_up_enc,
+                aaguid_enc = excluded.aaguid_enc,
+                metadata_enc = excluded.metadata_enc,
+                last_used_at = excluded.last_used_at,
+                revoked_at = NULL
+        `, [
+            data.userId,
+            data.credentialIdHash,
+            data.credentialIdEnc,
+            data.publicKeyEnc,
+            data.counterEnc,
+            data.transportsEnc || null,
+            data.deviceTypeEnc || null,
+            data.backedUpEnc || null,
+            data.aaguidEnc || null,
+            data.metadataEnc || null,
+            now,
+            now
+        ]);
+
+        return this.getPasskeyCredentialByHash(data.credentialIdHash);
+    }
+
+    async getPasskeyCredentialByHash(credentialIdHash) {
+        return this.get(`
+            SELECT
+                id,
+                user_id AS userId,
+                credential_id_hash AS credentialIdHash,
+                credential_id_enc AS credentialIdEnc,
+                public_key_enc AS publicKeyEnc,
+                counter_enc AS counterEnc,
+                transports_enc AS transportsEnc,
+                device_type_enc AS deviceTypeEnc,
+                backed_up_enc AS backedUpEnc,
+                aaguid_enc AS aaguidEnc,
+                metadata_enc AS metadataEnc,
+                created_at AS createdAt,
+                last_used_at AS lastUsedAt,
+                revoked_at AS revokedAt
+            FROM passkey_credentials
+            WHERE credential_id_hash = ?
+            LIMIT 1
+        `, [credentialIdHash]);
+    }
+
+    async getPasskeyCredentialsByUser(userId) {
+        return this.all(`
+            SELECT
+                id,
+                user_id AS userId,
+                credential_id_hash AS credentialIdHash,
+                credential_id_enc AS credentialIdEnc,
+                public_key_enc AS publicKeyEnc,
+                counter_enc AS counterEnc,
+                transports_enc AS transportsEnc,
+                device_type_enc AS deviceTypeEnc,
+                backed_up_enc AS backedUpEnc,
+                aaguid_enc AS aaguidEnc,
+                metadata_enc AS metadataEnc,
+                created_at AS createdAt,
+                last_used_at AS lastUsedAt,
+                revoked_at AS revokedAt
+            FROM passkey_credentials
+            WHERE user_id = ? AND revoked_at IS NULL
+            ORDER BY created_at ASC
+        `, [userId]);
+    }
+
+    async updatePasskeyCredentialUsage(credentialIdHash, counterEnc, backedUpEnc = null) {
+        const fields = ['counter_enc = ?', 'last_used_at = ?'];
+        const values = [counterEnc, new Date().toISOString()];
+
+        if (backedUpEnc !== null && backedUpEnc !== undefined) {
+            fields.push('backed_up_enc = ?');
+            values.push(backedUpEnc);
+        }
+
+        values.push(credentialIdHash);
+
+        await this.run(`
+            UPDATE passkey_credentials
+            SET ${fields.join(', ')}
+            WHERE credential_id_hash = ?
+        `, values);
+
+        return this.getPasskeyCredentialByHash(credentialIdHash);
+    }
+
+    async revokePasskeyCredentialByHash(credentialIdHash) {
+        await this.run(`
+            UPDATE passkey_credentials
+            SET revoked_at = ?
+            WHERE credential_id_hash = ?
+        `, [new Date().toISOString(), credentialIdHash]);
     }
 
     async cleanupExpiredSessions() {

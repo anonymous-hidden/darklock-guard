@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import { BUILD_STAGES, useWidgetStore } from '@store/widgetStore.js';
 
 const STAGE_LABELS = {
-  analyze:  'Nova is analyzing your request',
+  analyze:  'Jarvis is analyzing your request',
   plan:     'Planning component structure',
   write:    'Writing component code',
   parse:    'Parsing and validating output',

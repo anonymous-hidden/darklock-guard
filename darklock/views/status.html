@@ -6,520 +6,871 @@
     <title>System Status | Darklock Platform</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/platform/static/css/main.css">
+    <link rel="stylesheet" href="/platform/static/css/site-fx.css">
     <style>
-        /* ── Layout ── */
-        .status-container {
-            max-width: 1100px;
+        :root {
+            --status-good: #22c55e;
+            --status-warn: #f59e0b;
+            --status-bad: #ef4444;
+            --status-info: #818cf8;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at 8% 12%, rgba(99, 102, 241, 0.2), transparent 35%),
+                radial-gradient(circle at 88% 10%, rgba(6, 182, 212, 0.17), transparent 35%),
+                radial-gradient(circle at 50% 100%, rgba(139, 92, 246, 0.2), transparent 50%),
+                var(--bg);
+        }
+
+        .status-shell {
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 2rem 2rem 4rem;
+            padding: 2rem 1.25rem 4rem;
         }
 
-        /* ── Announcement Banner ── */
-        .announcement-banner {
-            padding: 0.7rem 2rem;
-            text-align: center;
-            font-size: 0.88rem;
-            font-weight: 500;
-            display: none;
-        }
-        .announcement-banner.visible { display: block; }
-        .announcement-inner { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-        .ann-warning  { background: rgba(245,158,11,0.1); border-bottom: 1px solid rgba(245,158,11,0.25); color: #f59e0b; }
-        .ann-critical { background: rgba(239,68,68,0.1);  border-bottom: 1px solid rgba(239,68,68,0.25);  color: #ef4444; }
-
-        /* ── Page Header ── */
-        .status-header {
-            text-align: center;
-            padding: 3.5rem 0 2.5rem;
-        }
-        .status-header h1 { font-size: 2.6rem; font-weight: 700; margin-bottom: 0.5rem; }
-        .status-updated  { color: var(--text-secondary); font-size: 0.83rem; margin-top: 0.4rem; }
-
-        /* ── Overall Banner ── */
-        .status-overall {
-            border-radius: 16px;
-            padding: 2.5rem;
-            text-align: center;
-            margin-bottom: 2.5rem;
-            transition: background 0.4s;
-        }
-        .status-overall h2 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.4rem; color: #fff; }
-        .status-overall p  { color: rgba(255,255,255,0.88); font-size: 1rem; }
-
-        .ov-operational { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); }
-        .ov-partial     { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-        .ov-outage      { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
-        .ov-maintenance { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); }
-        .ov-loading     { background: linear-gradient(135deg, #374151 0%, #1f2937 100%); }
-
-        /* ── Services ── */
-        .services-grid { display: grid; gap: 0.85rem; margin-bottom: 2.5rem; }
-
-        .service-card {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.25rem 1.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            transition: border-color 0.2s;
-        }
-        .service-card:hover { border-color: var(--border-hover); }
-
-        .service-info { display: flex; align-items: center; gap: 1rem; }
-
-        .service-icon {
-            width: 44px; height: 44px;
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            background: var(--bg-elevated);
-            flex-shrink: 0;
-            color: var(--text-secondary);
-        }
-        .service-icon svg { width: 22px; height: 22px; }
-
-        .service-details h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.2rem; }
-        .service-details p  { color: var(--text-secondary); font-size: 0.82rem; margin: 0; }
-
-        /* ── Status Badges ── */
-        .status-badge {
-            display: flex; align-items: center; gap: 0.45rem;
-            padding: 0.4rem 0.9rem;
-            border-radius: 99px;
-            font-weight: 600;
-            font-size: 0.8rem;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-        .status-indicator {
-            width: 7px; height: 7px; border-radius: 50%;
-            background: currentColor;
-            flex-shrink: 0;
-        }
-        .badge-operational { background: rgba(34,197,94,0.1);  color: #22c55e; }
-        .badge-degraded    { background: rgba(245,158,11,0.1); color: #f59e0b; }
-        .badge-outage      { background: rgba(239,68,68,0.1);  color: #ef4444; }
-        .badge-maintenance { background: rgba(99,102,241,0.1); color: #818cf8; }
-        .badge-unknown     { background: rgba(139,148,163,0.1);color: #8b8fa3; }
-
-        /* ── Metrics ── */
-        .metrics-grid {
+        .status-hero {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            grid-template-columns: 1.5fr 1fr;
             gap: 1rem;
-            margin-bottom: 2.5rem;
+            margin: 2rem 0 1.5rem;
         }
-        .metric-card {
-            background: var(--bg-surface);
+
+        .hero-main,
+        .hero-side,
+        .panel {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+        }
+
+        .hero-main {
+            padding: 1.4rem;
+        }
+
+        .hero-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.75rem;
+            border-radius: 999px;
+            background: rgba(129, 140, 248, 0.14);
+            color: #c7d2fe;
+            font-size: 0.74rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--status-good);
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); }
+            70% { box-shadow: 0 0 0 9px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        .hero-title {
+            font-size: clamp(1.65rem, 3.8vw, 2.4rem);
+            line-height: 1.15;
+            margin-bottom: 0.4rem;
+            letter-spacing: -0.02em;
+        }
+
+        .hero-sub {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .hero-side {
+            padding: 1.1rem;
+            display: grid;
+            gap: 0.75rem;
+            align-content: start;
+        }
+
+        .hero-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 1.35rem 1.5rem;
-        }
-        .metric-card h4 {
-            font-size: 0.75rem; font-weight: 600;
+            padding: 0.75rem 0.8rem;
+            background: rgba(255, 255, 255, 0.02);
+            font-size: 0.84rem;
             color: var(--text-secondary);
-            text-transform: uppercase; letter-spacing: 0.06em;
-            margin-bottom: 0.6rem;
         }
-        .metric-value {
-            font-size: 1.9rem; font-weight: 700;
-            margin-bottom: 0.25rem;
-            font-variant-numeric: tabular-nums;
-        }
-        .metric-sub { font-size: 0.8rem; color: var(--text-secondary); }
 
-        /* ── Uptime ── */
-        .incidents-section { margin-bottom: 2.5rem; }
-        .incidents-section h2 { font-size: 1.35rem; font-weight: 700; margin-bottom: 1.25rem; }
+        .hero-row strong {
+            color: var(--text);
+            font-size: 0.88rem;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .overall-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-radius: 999px;
+            padding: 0.5rem 0.9rem;
+            font-size: 0.82rem;
+            font-weight: 700;
+            border: 1px solid transparent;
+        }
+
+        .pill-good { color: var(--status-good); background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.25); }
+        .pill-warn { color: var(--status-warn); background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.25); }
+        .pill-bad  { color: var(--status-bad);  background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.25); }
+        .pill-info { color: var(--status-info); background: rgba(129, 140, 248, 0.12); border-color: rgba(129, 140, 248, 0.25); }
+
+        .refresh-btn {
+            border: 1px solid var(--glass-border);
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 10px;
+            padding: 0.55rem 0.95rem;
+            font-size: 0.84rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--border-hover);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat {
+            padding: 1rem;
+            border-radius: 14px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+        }
+
+        .stat .k {
+            font-size: 0.74rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 0.4rem;
+            font-weight: 600;
+        }
+
+        .stat .v {
+            font-size: 1.5rem;
+            line-height: 1.1;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.2rem;
+        }
+
+        .stat .sub {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            gap: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .panel {
+            padding: 1rem;
+        }
+
+        .panel h2 {
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.01em;
+        }
+
+        .checks-list,
+        .services-list,
+        .alerts-list {
+            display: grid;
+            gap: 0.65rem;
+        }
+
+        .row {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0.7rem 0.8rem;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .row-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .row-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .row-sub {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.76rem;
+            font-weight: 700;
+            border-radius: 999px;
+            padding: 0.26rem 0.62rem;
+            white-space: nowrap;
+        }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .good { color: var(--status-good); background: rgba(34, 197, 94, 0.11); }
+        .warn { color: var(--status-warn); background: rgba(245, 158, 11, 0.11); }
+        .bad  { color: var(--status-bad);  background: rgba(239, 68, 68, 0.11); }
+        .info { color: var(--status-info); background: rgba(129, 140, 248, 0.11); }
+
+        .mini {
+            font-size: 0.73rem;
+            color: var(--text-secondary);
+        }
+
+        .uptime-wrap {
+            margin-top: 1rem;
+        }
 
         .uptime-bar {
-            width: 100%; height: 36px;
-            background: var(--bg-elevated);
-            border-radius: 8px;
-            overflow: hidden;
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(90, 1fr);
             gap: 2px;
+            background: rgba(255, 255, 255, 0.03);
             padding: 4px;
+            border-radius: 10px;
         }
+
         .uptime-day {
-            flex: 1;
-            background: #22c55e;
+            height: 14px;
             border-radius: 3px;
-            opacity: 0.85;
-            transition: opacity 0.15s;
-            cursor: default;
-        }
-        .uptime-day:hover { opacity: 1; }
-        .uptime-day.degraded { background: #f59e0b; }
-        .uptime-day.outage   { background: #ef4444; }
-
-        .uptime-legend {
-            display: flex; justify-content: space-between;
-            margin-top: 0.6rem;
-            color: var(--text-secondary); font-size: 0.78rem;
+            background: var(--status-good);
+            opacity: 0.88;
         }
 
-        /* ── Incidents ── */
-        .incident {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.35rem 1.5rem;
-            margin-bottom: 0.85rem;
-        }
-        .incident-header {
-            display: flex; justify-content: space-between; align-items: flex-start;
-            margin-bottom: 0.65rem; gap: 1rem;
-        }
-        .incident-title { font-size: 0.98rem; font-weight: 600; }
-        .incident-time  { color: var(--text-secondary); font-size: 0.8rem; white-space: nowrap; }
-        .incident p     { color: var(--text-secondary); font-size: 0.88rem; line-height: 1.55; margin: 0; }
+        .uptime-day.warn { background: var(--status-warn); }
+        .uptime-day.bad { background: var(--status-bad); }
 
-        /* ── Footer ── */
-        .status-footer {
-            text-align: center; padding: 2rem;
-            color: var(--text-muted); font-size: 0.82rem;
+        .legend {
+            margin-top: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+        }
+
+        .foot {
+            margin-top: 1.5rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
             border-top: 1px solid var(--border);
+            padding-top: 1rem;
+        }
+
+        @media (max-width: 1024px) {
+            .status-hero,
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 580px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .status-shell {
+                padding: 1rem 0.8rem 3rem;
+            }
+
+            .hero-main,
+            .hero-side,
+            .panel,
+            .stat {
+                border-radius: 12px;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="nav">
-        <div class="nav-container">
+    <nav class="nav" id="mainNav">
+        <div class="nav-inner">
             <a href="/platform" class="nav-brand">
-                <img src="/platform/static/icons/darklock-logo.png" alt="Darklock" width="26" height="26" style="border-radius:6px;">
-                <span class="brand-text">Darklock</span>
+                <img src="/platform/static/icons/darklock-logo.png" alt="Darklock">
+                <span>Darklock</span>
             </a>
-            <div class="nav-links">
-                <a href="/platform" class="nav-link">Home</a>
-                <a href="/platform/docs" class="nav-link">Documentation</a>
-                <a href="/platform/status" class="nav-link active">Status</a>
-                <a href="/platform/auth/login" class="btn btn-primary btn-sm">Sign In</a>
+            <div class="nav-links" id="navLinks">
+                <a href="/platform">Home</a>
+                <a href="/platform/docs">Docs</a>
+                <a href="/platform/ridgeline">Ridgeline</a>
+                <a href="/platform/status">Status</a>
+                <a href="/platform/auth/login" class="btn-cta">Sign In</a>
             </div>
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">☰</button>
         </div>
     </nav>
 
-    <!-- Announcement banner (shown when maintenance or critical alert active) -->
-    <div class="announcement-banner" id="ann-banner">
-        <div class="announcement-inner">
-            <span id="ann-icon"></span>
-            <span id="ann-text"></span>
-        </div>
-    </div>
-
-    <div class="status-container">
-        <div class="status-header">
-            <h1 id="page-title">⏳ System Status</h1>
-            <p class="status-updated" id="last-updated">Fetching status…</p>
-        </div>
-
-        <!-- Overall Status Banner -->
-        <div class="status-overall ov-loading" id="overall-banner">
-            <h2 id="overall-title">Checking…</h2>
-            <p id="overall-subtitle">Loading service information</p>
-        </div>
-
-        <!-- Services (populated by JS) -->
-        <div class="services-grid" id="services-grid"></div>
-
-        <!-- Metrics -->
-        <div class="metrics-grid">
-            <div class="metric-card">
-                <h4>Server Uptime</h4>
-                <div class="metric-value" id="m-uptime">—</div>
-                <div class="metric-sub"  id="m-uptime-sub">Loading…</div>
+    <main class="status-shell">
+        <section class="status-hero reveal">
+            <div class="hero-main">
+                <div class="hero-kicker"><span class="live-dot"></span> Live Infrastructure Telemetry</div>
+                <h1 class="hero-title" id="hero-title">Darklock Platform Status</h1>
+                <p class="hero-sub" id="hero-sub">Real-time service state, endpoint checks, and health diagnostics.</p>
             </div>
-            <div class="metric-card">
-                <h4>Services Online</h4>
-                <div class="metric-value" id="m-services">—</div>
-                <div class="metric-sub"  id="m-services-sub">Checking…</div>
+            <div class="hero-side">
+                <div class="hero-row"><span>Overall</span><strong id="overall-text">Checking...</strong></div>
+                <div class="hero-row"><span>Last Refresh</span><strong id="last-refresh">--:--:--</strong></div>
+                <div class="hero-row"><span>Auto Refresh</span><strong>12s</strong></div>
             </div>
-            <div class="metric-card">
-                <h4>API Health</h4>
-                <div class="metric-value" id="m-health">—</div>
-                <div class="metric-sub"  id="m-health-sub">Checking…</div>
-            </div>
-            <div class="metric-card">
-                <h4>Last Refreshed</h4>
-                <div class="metric-value" id="m-updated">—</div>
-                <div class="metric-sub">Auto-refreshes every 30s</div>
-            </div>
+        </section>
+
+        <div class="toolbar">
+            <div id="overall-pill" class="overall-pill pill-info"><span class="dot"></span> Initializing checks</div>
+            <button id="refresh-btn" class="refresh-btn" type="button">Refresh Now</button>
         </div>
 
-        <!-- 90-day uptime bar (decorative — no historical data yet) -->
-        <div class="incidents-section">
-            <h2>90-Day Uptime History</h2>
-            <div class="uptime-bar" id="uptime-bar"></div>
-            <div class="uptime-legend">
-                <span>90 days ago</span>
-                <span>Today</span>
-            </div>
-        </div>
+        <section class="stats-grid stagger">
+            <article class="stat">
+                <div class="k">API Health</div>
+                <div class="v" id="stat-api">--</div>
+                <div class="sub" id="stat-api-sub">Checking API health endpoint</div>
+            </article>
+            <article class="stat">
+                <div class="k">Services Online</div>
+                <div class="v" id="stat-services">--</div>
+                <div class="sub" id="stat-services-sub">Waiting for service feed</div>
+            </article>
+            <article class="stat">
+                <div class="k">Server Uptime</div>
+                <div class="v" id="stat-uptime">--</div>
+                <div class="sub" id="stat-uptime-sub">Awaiting uptime signal</div>
+            </article>
+            <article class="stat">
+                <div class="k">Bot Reach</div>
+                <div class="v" id="stat-reach">--</div>
+                <div class="sub" id="stat-reach-sub">Loading server and user metrics</div>
+            </article>
+        </section>
 
-        <!-- Announcements / Incidents -->
-        <div class="incidents-section">
-            <h2>Notices &amp; Announcements</h2>
-            <div id="incidents-list"></div>
-        </div>
-    </div>
+        <section class="grid">
+            <article class="panel reveal glow-track">
+                <h2>Live Endpoint Checks</h2>
+                <div class="checks-list" id="checks-list"></div>
+                <div class="uptime-wrap">
+                    <h2 style="margin-bottom:0.6rem;">90-Day Uptime Pattern</h2>
+                    <div class="uptime-bar" id="uptime-bar"></div>
+                    <div class="legend"><span>90 days ago</span><span>today</span></div>
+                </div>
+            </article>
 
-    <footer class="status-footer">
-        &copy; 2026 Darklock &mdash; Status refreshes automatically every 30 seconds.
-    </footer>
+            <article class="panel reveal glow-track">
+                <h2>Platform Services</h2>
+                <div class="services-list" id="services-list"></div>
+            </article>
+        </section>
 
+        <section class="panel reveal">
+            <h2>Announcements and Incidents</h2>
+            <div class="alerts-list" id="alerts-list"></div>
+        </section>
+
+        <footer class="foot">
+            Status data updates automatically every 12 seconds using live platform APIs.
+        </footer>
+    </main>
+
+    <script>document.querySelectorAll('.stats-grid .stat').forEach(function(s){s.classList.add('reveal');});</script>
+    <script src="/platform/static/js/site-fx.js"></script>
     <script>
     (function () {
         'use strict';
 
-        /* ── Helpers ── */
+        var REFRESH_MS = 12000;
+
+        function el(id) { return document.getElementById(id); }
+
+        function esc(s) {
+            return (s || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
         function fmtUptime(secs) {
-            if (!secs && secs !== 0) return '—';
-            const d = Math.floor(secs / 86400);
-            const h = Math.floor((secs % 86400) / 3600);
-            const m = Math.floor((secs % 3600) / 60);
+            if (secs == null || isNaN(secs)) return '--';
+            var d = Math.floor(secs / 86400);
+            var h = Math.floor((secs % 86400) / 3600);
+            var m = Math.floor((secs % 3600) / 60);
             if (d > 0) return d + 'd ' + h + 'h';
             if (h > 0) return h + 'h ' + m + 'm';
-            return m + 'm ' + Math.floor(secs % 60) + 's';
+            return m + 'm';
         }
 
-        function norm(s) {
-            s = (s || '').toLowerCase();
-            if (['online','operational','ok','up'].includes(s))           return 'operational';
-            if (['degraded','slow','partial','partial_outage'].includes(s)) return 'degraded';
-            if (['offline','down','major_outage','outage'].includes(s))     return 'outage';
-            if (s === 'maintenance')                                        return 'maintenance';
-            return 'unknown';
+        function normStatus(raw) {
+            var s = (raw || '').toLowerCase();
+            if (['online', 'ok', 'up', 'operational', 'healthy'].indexOf(s) !== -1) return 'good';
+            if (['degraded', 'partial_outage', 'warning'].indexOf(s) !== -1) return 'warn';
+            if (['offline', 'down', 'major_outage', 'outage', 'unhealthy'].indexOf(s) !== -1) return 'bad';
+            if (['maintenance'].indexOf(s) !== -1) return 'info';
+            return 'info';
         }
 
-        const STATUS_LABEL = {
-            operational: 'Operational',
-            degraded:    'Degraded',
-            outage:      'Major Outage',
-            maintenance: 'Maintenance',
-            unknown:     'Unknown'
-        };
-
-        /* ── Service icons keyed by substring of service_name ── */
-        function svcIcon(name) {
-            const n = (name || '').toLowerCase();
-            if (n.includes('auth') || n.includes('login'))
-                return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>';
-            if (n.includes('database') || n.includes('db'))
-                return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>';
-            if (n.includes('bot') || n.includes('discord'))
-                return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><path d="M8 15h.01M16 15h.01"/></svg>';
-            if (n.includes('guard') || n.includes('download'))
-                return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>';
-            if (n.includes('api'))
-                return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>';
-            /* fallback: dashboard/monitor */
-            return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>';
+        function statusLabel(level) {
+            if (level === 'good') return 'Operational';
+            if (level === 'warn') return 'Degraded';
+            if (level === 'bad') return 'Outage';
+            return 'Info';
         }
 
-        /* ── Render: service cards ── */
-        function renderServices(services) {
-            const grid = document.getElementById('services-grid');
-            if (!services || services.length === 0) {
-                grid.innerHTML = '<div class="incident"><p>No service data available.</p></div>';
-                return;
-            }
-            grid.innerHTML = services.map(function (s) {
-                const status = norm(s.status);
-                const label  = STATUS_LABEL[status] || status;
-                const checked = s.last_check ? new Date(s.last_check).toLocaleTimeString() : '—';
-                const desc   = s.status_message || ('Last check: ' + checked);
-                return [
-                    '<div class="service-card">',
-                    '  <div class="service-info">',
-                    '    <div class="service-icon">' + svcIcon(s.service_name) + '</div>',
-                    '    <div class="service-details">',
-                    '      <h3>' + escHtml(s.display_name || s.service_name) + '</h3>',
-                    '      <p>'  + escHtml(desc) + '</p>',
-                    '    </div>',
-                    '  </div>',
-                    '  <div class="status-badge badge-' + status + '">',
-                    '    <span class="status-indicator"></span>' + label,
-                    '  </div>',
-                    '</div>'
-                ].join('');
-            }).join('');
-        }
-
-        /* ── Render: overall banner ── */
-        function renderOverall(services, maintenance) {
-            const banner   = document.getElementById('overall-banner');
-            const title    = document.getElementById('overall-title');
-            const subtitle = document.getElementById('overall-subtitle');
-            const pageH    = document.getElementById('page-title');
-
-            banner.className = 'status-overall';
-
-            if (maintenance) {
-                banner.classList.add('ov-maintenance');
-                title.textContent    = 'Scheduled Maintenance';
-                subtitle.textContent = 'We are currently performing maintenance. Some services may be temporarily unavailable.';
-                pageH.textContent    = '🔧 System Status';
-                return;
-            }
-
-            const statuses = (services || []).map(function (s) { return norm(s.status); });
-            if (statuses.some(function (s) { return s === 'outage'; })) {
-                banner.classList.add('ov-outage');
-                title.textContent    = 'Service Disruption';
-                subtitle.textContent = 'One or more services are experiencing a major outage. Our team is investigating.';
-                pageH.textContent    = '🔴 System Status';
-            } else if (statuses.some(function (s) { return s === 'degraded'; })) {
-                banner.classList.add('ov-partial');
-                title.textContent    = 'Degraded Performance';
-                subtitle.textContent = 'Some services are running slower than expected. We are actively monitoring.';
-                pageH.textContent    = '🟡 System Status';
-            } else {
-                banner.classList.add('ov-operational');
-                title.textContent    = 'All Systems Operational';
-                subtitle.textContent = 'All platform services are running normally.';
-                pageH.textContent    = '🟢 System Status';
-            }
-        }
-
-        /* ── Render: metrics ── */
-        function renderMetrics(health, services) {
-            /* Uptime */
-            var uptime = (health && health.uptime != null) ? fmtUptime(health.uptime) : '—';
-            document.getElementById('m-uptime').textContent     = uptime;
-            document.getElementById('m-uptime-sub').textContent = health ? 'Server process uptime' : 'Unavailable';
-
-            /* Services online */
-            var total = (services || []).length;
-            var op    = (services || []).filter(function (s) { return norm(s.status) === 'operational'; }).length;
-            document.getElementById('m-services').textContent     = total ? (op + '/' + total) : '—';
-            document.getElementById('m-services-sub').textContent = total === 0 ? 'No services tracked'
-                : (op === total ? 'All operational' : (total - op) + ' issue' + (total - op > 1 ? 's' : ''));
-
-            /* API health */
-            if (health) {
-                var healthy = health.status === 'healthy';
-                var mH = document.getElementById('m-health');
-                mH.textContent = healthy ? '✓ Healthy' : '⚠ Degraded';
-                mH.style.color = healthy ? 'var(--success)' : 'var(--warning)';
-                document.getElementById('m-health-sub').textContent = healthy ? 'API is responding normally' : 'API may be degraded';
-            } else {
-                document.getElementById('m-health').textContent     = '—';
-                document.getElementById('m-health-sub').textContent = 'Could not reach health endpoint';
-            }
-
-            /* Last updated */
-            document.getElementById('m-updated').textContent = new Date().toLocaleTimeString();
-        }
-
-        /* ── Render: announcements/incidents list ── */
-        function renderAnnouncements(announcements) {
-            var list = document.getElementById('incidents-list');
-            if (!announcements || announcements.length === 0) {
-                list.innerHTML = [
-                    '<div class="incident">',
-                    '  <div class="incident-header">',
-                    '    <div class="incident-title">✅ No active notices</div>',
-                    '    <div class="incident-time">All clear</div>',
-                    '  </div>',
-                    '  <p>No active incidents or announcements at this time.</p>',
-                    '</div>'
-                ].join('');
-                return;
-            }
-            list.innerHTML = announcements.map(function (a) {
-                var icon = a.type === 'critical' ? '🚨' : a.type === 'incident' ? '🔴' : a.type === 'warning' ? '⚠️' : '📢';
-                var scope = a.is_global ? 'Platform-wide' : (a.target_app || 'General');
-                return [
-                    '<div class="incident">',
-                    '  <div class="incident-header">',
-                    '    <div class="incident-title">' + icon + ' ' + escHtml(a.title) + '</div>',
-                    '    <div class="incident-time">' + escHtml(scope) + '</div>',
-                    '  </div>',
-                    '  <p>' + escHtml(a.content) + '</p>',
-                    '</div>'
-                ].join('');
-            }).join('');
-        }
-
-        /* ── Render: top announcement banner ── */
-        function renderBanner(maintenance, maintenanceMessage, announcements) {
-            var banner = document.getElementById('ann-banner');
-            var icon   = document.getElementById('ann-icon');
-            var text   = document.getElementById('ann-text');
-
-            if (maintenance) {
-                banner.classList.add('visible', 'ann-warning');
-                banner.classList.remove('ann-critical');
-                icon.textContent = '🔧';
-                text.textContent = maintenanceMessage || 'Scheduled maintenance is currently in progress.';
-                return;
-            }
-
-            var critical = (announcements || []).find(function (a) { return a.type === 'critical'; });
-            if (critical) {
-                banner.classList.add('visible', 'ann-critical');
-                banner.classList.remove('ann-warning');
-                icon.textContent = '🚨';
-                text.textContent = critical.title;
-            }
-        }
-
-        /* ── Build uptime bar (decorative, no historical data yet) ── */
-        function buildUptimeBar(services) {
-            var bar  = document.getElementById('uptime-bar');
-            var days = 90;
-            /* All days shown as operational; last day reflects current status */
-            var last = 'operational';
-            if (services && services.length) {
-                var statuses = services.map(function (s) { return norm(s.status); });
-                if (statuses.some(function (s) { return s === 'outage'; }))   last = 'outage';
-                else if (statuses.some(function (s) { return s === 'degraded'; })) last = 'degraded';
-            }
-            var html = [];
-            for (var i = 0; i < days; i++) {
-                var cls = (i === days - 1) ? (' ' + (last !== 'operational' ? last : '')) : '';
-                html.push('<div class="uptime-day' + cls.trim() + '" title="' + (days - i) + ' days ago"></div>');
-            }
-            bar.innerHTML = html.join('');
-        }
-
-        /* ── XSS-safe text helper ── */
-        function escHtml(str) {
-            return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-        }
-
-        /* ── Main fetch & render ── */
-        function load() {
-            Promise.all([
-                fetch('/api/public/status').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-                fetch('/api/health').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
-            ]).then(function (results) {
-                var statusData = results[0];
-                var healthData = results[1];
-
-                var services           = (statusData && statusData.services)           || [];
-                var maintenance        = (statusData && statusData.maintenance)        || false;
-                var maintenanceMessage = (statusData && statusData.maintenanceMessage) || null;
-                var announcements      = (statusData && statusData.announcements)      || [];
-
-                renderOverall(services, maintenance);
-                renderServices(services);
-                renderMetrics(healthData, services);
-                renderAnnouncements(announcements);
-                renderBanner(maintenance, maintenanceMessage, announcements);
-                buildUptimeBar(services);
-
-                document.getElementById('last-updated').textContent =
-                    'Last updated: ' + new Date().toLocaleTimeString();
+        function fetchJson(url, timeoutMs) {
+            timeoutMs = timeoutMs || 6000;
+            var ctrl = new AbortController();
+            var t = setTimeout(function () { ctrl.abort(); }, timeoutMs);
+            var start = performance.now();
+            return fetch(url, {
+                cache: 'no-store',
+                headers: { 'Accept': 'application/json' },
+                signal: ctrl.signal
+            }).then(function (res) {
+                clearTimeout(t);
+                var latency = Math.max(1, Math.round(performance.now() - start));
+                var ct = (res.headers.get('content-type') || '').toLowerCase();
+                if (!res.ok || ct.indexOf('application/json') === -1) {
+                    throw new Error('Bad response');
+                }
+                return res.json().then(function (data) {
+                    return { ok: true, data: data, latency: latency, url: url };
+                });
+            }).catch(function (err) {
+                clearTimeout(t);
+                return { ok: false, error: err && err.message ? err.message : 'Request failed', url: url };
             });
         }
 
+        function fetchFallback(urls, timeoutMs) {
+            var idx = 0;
+            function next() {
+                if (idx >= urls.length) return Promise.resolve({ ok: false, error: 'All endpoints failed' });
+                return fetchJson(urls[idx++], timeoutMs).then(function (r) {
+                    if (r.ok) return r;
+                    return next();
+                });
+            }
+            return next();
+        }
+
+        function fetchText(url, timeoutMs) {
+            timeoutMs = timeoutMs || 6000;
+            var ctrl = new AbortController();
+            var t = setTimeout(function () { ctrl.abort(); }, timeoutMs);
+            var start = performance.now();
+            return fetch(url, {
+                cache: 'no-store',
+                signal: ctrl.signal
+            }).then(function (res) {
+                clearTimeout(t);
+                var latency = Math.max(1, Math.round(performance.now() - start));
+                if (!res.ok) {
+                    throw new Error('Bad response');
+                }
+                return { ok: true, latency: latency, url: url };
+            }).catch(function (err) {
+                clearTimeout(t);
+                return { ok: false, error: err && err.message ? err.message : 'Request failed', url: url };
+            });
+        }
+
+        function fetchTextFallback(urls, timeoutMs) {
+            var idx = 0;
+            function next() {
+                if (idx >= urls.length) return Promise.resolve({ ok: false, error: 'All endpoints failed' });
+                return fetchText(urls[idx++], timeoutMs).then(function (r) {
+                    if (r.ok) return r;
+                    return next();
+                });
+            }
+            return next();
+        }
+
+        function normalizeStatusPayload(raw) {
+            if (!raw) {
+                return { services: [], announcements: [], maintenance: false, maintenanceMessage: null };
+            }
+
+            if (Array.isArray(raw.services)) {
+                return {
+                    services: raw.services,
+                    announcements: Array.isArray(raw.announcements) ? raw.announcements : [],
+                    maintenance: !!raw.maintenance,
+                    maintenanceMessage: raw.maintenanceMessage || null
+                };
+            }
+
+            if (raw.success && Array.isArray(raw.services)) {
+                return {
+                    services: raw.services.map(function (s) {
+                        return {
+                            service_name: s.service_name || s.name || 'service',
+                            display_name: s.display_name || s.name || s.service_name || 'Service',
+                            status: s.status,
+                            status_message: s.latency != null ? ('Latency: ' + s.latency + 'ms') : null,
+                            last_check: s.last_check || s.lastCheck || null
+                        };
+                    }),
+                    announcements: [],
+                    maintenance: false,
+                    maintenanceMessage: null
+                };
+            }
+
+            return { services: [], announcements: [], maintenance: false, maintenanceMessage: null };
+        }
+
+        function renderChecks(items) {
+            var root = el('checks-list');
+            if (!items || !items.length) {
+                root.innerHTML = '<div class="row"><div class="row-title">No checks available</div></div>';
+                return;
+            }
+
+            root.innerHTML = items.map(function (it) {
+                var cls = it.level || 'info';
+                var label = statusLabel(cls);
+                var meta = [];
+                if (typeof it.latency === 'number') meta.push(it.latency + 'ms');
+                if (it.path) meta.push(it.path);
+                var summary = meta.join(' • ');
+                return [
+                    '<div class="row">',
+                    '  <div class="row-top">',
+                    '    <div class="row-title">' + esc(it.name) + '</div>',
+                    '    <div class="badge ' + cls + '"><span class="dot"></span>' + esc(label) + '</div>',
+                    '  </div>',
+                    '  <div class="row-sub">' + esc(it.message || 'No details') + '</div>',
+                    '  <div class="mini" style="margin-top:0.35rem;">' + esc(summary) + '</div>',
+                    '</div>'
+                ].join('');
+            }).join('');
+        }
+
+        function renderServices(services) {
+            var root = el('services-list');
+            if (!services || !services.length) {
+                root.innerHTML = '<div class="row"><div class="row-title">No service records available</div><div class="row-sub">The API returned no tracked services.</div></div>';
+                return;
+            }
+
+            root.innerHTML = services.map(function (s) {
+                var cls = normStatus(s.status);
+                var checked = s.last_check ? new Date(s.last_check).toLocaleTimeString() : 'No timestamp';
+                return [
+                    '<div class="row">',
+                    '  <div class="row-top">',
+                    '    <div class="row-title">' + esc(s.display_name || s.service_name || 'Service') + '</div>',
+                    '    <div class="badge ' + cls + '"><span class="dot"></span>' + esc(statusLabel(cls)) + '</div>',
+                    '  </div>',
+                    '  <div class="row-sub">' + esc(s.status_message || 'Last check: ' + checked) + '</div>',
+                    '</div>'
+                ].join('');
+            }).join('');
+        }
+
+        function renderAlerts(maintenance, maintenanceMessage, announcements) {
+            var root = el('alerts-list');
+            var rows = [];
+
+            if (maintenance) {
+                rows.push([
+                    '<div class="row">',
+                    '  <div class="row-top">',
+                    '    <div class="row-title">Scheduled Maintenance</div>',
+                    '    <div class="badge info"><span class="dot"></span>Info</div>',
+                    '  </div>',
+                    '  <div class="row-sub">' + esc(maintenanceMessage || 'Maintenance mode is enabled for platform systems.') + '</div>',
+                    '</div>'
+                ].join(''));
+            }
+
+            if (Array.isArray(announcements) && announcements.length) {
+                announcements.forEach(function (a) {
+                    var cls = a.type === 'critical' ? 'bad' : (a.type === 'warning' || a.type === 'incident' ? 'warn' : 'info');
+                    rows.push([
+                        '<div class="row">',
+                        '  <div class="row-top">',
+                        '    <div class="row-title">' + esc(a.title || 'Platform Notice') + '</div>',
+                        '    <div class="badge ' + cls + '"><span class="dot"></span>' + esc((a.type || 'notice').toUpperCase()) + '</div>',
+                        '  </div>',
+                        '  <div class="row-sub">' + esc(a.content || '') + '</div>',
+                        '</div>'
+                    ].join(''));
+                });
+            }
+
+            if (!rows.length) {
+                rows.push('<div class="row"><div class="row-title">No active notices</div><div class="row-sub">All monitored services are clear right now.</div></div>');
+            }
+
+            root.innerHTML = rows.join('');
+        }
+
+        function renderUptime(services, checks) {
+            var root = el('uptime-bar');
+            var lastClass = 'good';
+
+            var hasBadService = (services || []).some(function (s) { return normStatus(s.status) === 'bad'; });
+            var hasWarnService = (services || []).some(function (s) { return normStatus(s.status) === 'warn'; });
+            var failedChecks = (checks || []).filter(function (c) { return c.level === 'bad'; }).length;
+
+            if (hasBadService || failedChecks > 0) lastClass = 'bad';
+            else if (hasWarnService) lastClass = 'warn';
+
+            var blocks = [];
+            for (var i = 0; i < 90; i++) {
+                var cls = i === 89 ? (' ' + lastClass) : '';
+                blocks.push('<div class="uptime-day' + cls + '"></div>');
+            }
+            root.innerHTML = blocks.join('');
+        }
+
+        function updateTopStatus(maintenance, services, checks) {
+            var overall = 'good';
+            var label = 'All Systems Operational';
+            var sub = 'All critical paths are passing checks.';
+
+            var hasBadService = (services || []).some(function (s) { return normStatus(s.status) === 'bad'; });
+            var hasWarnService = (services || []).some(function (s) { return normStatus(s.status) === 'warn'; });
+            var badChecks = (checks || []).filter(function (c) { return c.level === 'bad'; }).length;
+            var warnChecks = (checks || []).filter(function (c) { return c.level === 'warn'; }).length;
+
+            if (maintenance) {
+                overall = 'info';
+                label = 'Maintenance In Progress';
+                sub = 'Planned maintenance mode is enabled.';
+            } else if (hasBadService || badChecks > 0) {
+                overall = 'bad';
+                label = 'Service Disruption';
+                sub = 'One or more checks are failing and require attention.';
+            } else if (hasWarnService || warnChecks > 0) {
+                overall = 'warn';
+                label = 'Degraded Performance';
+                sub = 'Some systems are responding but not fully healthy.';
+            }
+
+            el('hero-title').textContent = label;
+            el('hero-sub').textContent = sub;
+            el('overall-text').textContent = label;
+
+            var pill = el('overall-pill');
+            pill.className = 'overall-pill';
+            if (overall === 'good') pill.classList.add('pill-good');
+            else if (overall === 'warn') pill.classList.add('pill-warn');
+            else if (overall === 'bad') pill.classList.add('pill-bad');
+            else pill.classList.add('pill-info');
+            pill.innerHTML = '<span class="dot"></span>' + label;
+        }
+
+        function updateMetrics(health, services, stats) {
+            if (health) {
+                var healthLevel = normStatus(health.status);
+                el('stat-api').textContent = health.status ? health.status.toUpperCase() : 'HEALTHY';
+                el('stat-api').style.color = healthLevel === 'bad' ? 'var(--status-bad)' : (healthLevel === 'warn' ? 'var(--status-warn)' : 'var(--status-good)');
+                el('stat-api-sub').textContent = 'API health endpoint is responding';
+
+                el('stat-uptime').textContent = fmtUptime(health.uptime);
+                el('stat-uptime-sub').textContent = 'Process uptime from health telemetry';
+            } else {
+                el('stat-api').textContent = '--';
+                el('stat-api-sub').textContent = 'Could not reach health endpoint';
+                el('stat-uptime').textContent = '--';
+                el('stat-uptime-sub').textContent = 'Uptime unavailable';
+            }
+
+            var total = (services || []).length;
+            var good = (services || []).filter(function (s) { return normStatus(s.status) === 'good'; }).length;
+            el('stat-services').textContent = total ? (good + '/' + total) : '--';
+            el('stat-services-sub').textContent = total ? 'Tracked service components online' : 'No service rows returned';
+
+            if (stats && typeof stats.servers === 'number' && typeof stats.users === 'number') {
+                el('stat-reach').textContent = stats.servers + ' srv';
+                el('stat-reach-sub').textContent = stats.users + ' users across monitored servers';
+            } else {
+                el('stat-reach').textContent = '--';
+                el('stat-reach-sub').textContent = 'Bot reach metrics unavailable';
+            }
+        }
+
+        function runChecks() {
+            return Promise.all([
+                fetchFallback(['/platform/api/public/status', '/api/public/status', '/api/status']),
+                fetchFallback(['/platform/api/health', '/api/health']),
+                fetchFallback(['/platform/api/stats', '/api/stats']),
+                fetchFallback(['/platform/maintenance/status?scope=platform', '/api/maintenance/status?scope=platform']),
+                fetchTextFallback(['/platform/docs'])
+            ]).then(function (results) {
+                var statusRes = results[0];
+                var healthRes = results[1];
+                var statsRes = results[2];
+                var maintenanceRes = results[3];
+                var docsRes = results[4];
+
+                var statusPayload = normalizeStatusPayload(statusRes.ok ? statusRes.data : null);
+                var maintenanceFromEndpoint = maintenanceRes.ok && maintenanceRes.data && maintenanceRes.data.maintenance && maintenanceRes.data.maintenance.enabled;
+
+                var checks = [
+                    {
+                        name: 'Public Status Feed',
+                        level: statusRes.ok ? 'good' : 'bad',
+                        latency: statusRes.latency,
+                        path: statusRes.url,
+                        message: statusRes.ok ? ('Received ' + statusPayload.services.length + ' service records') : 'Could not load status feed'
+                    },
+                    {
+                        name: 'API Health Endpoint',
+                        level: healthRes.ok ? (function () {
+                            var mapped = normStatus(healthRes.data.status);
+                            return mapped === 'info' ? 'warn' : mapped;
+                        })() : 'bad',
+                        latency: healthRes.latency,
+                        path: healthRes.url,
+                        message: healthRes.ok
+                            ? ('Health state: ' + (healthRes.data.status || 'unknown') + (healthRes.data.checks && healthRes.data.checks.bot ? (' • Bot: ' + healthRes.data.checks.bot) : ''))
+                            : 'Health endpoint failed'
+                    },
+                    {
+                        name: 'Metrics Stream',
+                        level: statsRes.ok ? 'good' : 'warn',
+                        latency: statsRes.latency,
+                        path: statsRes.url,
+                        message: statsRes.ok ? 'Live server and user counts available' : 'Metrics endpoint unavailable'
+                    },
+                    {
+                        name: 'Maintenance API',
+                        level: maintenanceRes.ok ? (maintenanceFromEndpoint ? 'info' : 'good') : 'warn',
+                        latency: maintenanceRes.latency,
+                        path: maintenanceRes.url,
+                        message: maintenanceRes.ok ? (maintenanceFromEndpoint ? 'Maintenance mode is active' : 'No active maintenance') : 'Maintenance endpoint unavailable'
+                    },
+                    {
+                        name: 'Docs Route Reachability',
+                        level: docsRes.ok ? 'good' : 'warn',
+                        latency: docsRes.latency,
+                        path: docsRes.url,
+                        message: docsRes.ok ? 'Public docs route reachable' : 'Docs route check failed'
+                    }
+                ];
+
+                return {
+                    statusData: statusPayload,
+                    healthData: healthRes.ok ? healthRes.data : null,
+                    statsData: statsRes.ok ? statsRes.data : null,
+                    maintenanceActive: statusPayload.maintenance || !!maintenanceFromEndpoint,
+                    maintenanceMessage: statusPayload.maintenanceMessage || null,
+                    checks: checks
+                };
+            });
+        }
+
+        function renderAll(payload) {
+            var services = payload.statusData.services || [];
+            var announcements = payload.statusData.announcements || [];
+
+            renderChecks(payload.checks);
+            renderServices(services);
+            renderAlerts(payload.maintenanceActive, payload.maintenanceMessage, announcements);
+            renderUptime(services, payload.checks);
+            updateTopStatus(payload.maintenanceActive, services, payload.checks);
+            updateMetrics(payload.healthData, services, payload.statsData);
+
+            var now = new Date().toLocaleTimeString();
+            el('last-refresh').textContent = now;
+        }
+
+        function load() {
+            return runChecks()
+                .then(renderAll)
+                .catch(function () {
+                    el('overall-pill').className = 'overall-pill pill-bad';
+                    el('overall-pill').innerHTML = '<span class="dot"></span>Unable to fetch live status data';
+                    el('last-refresh').textContent = new Date().toLocaleTimeString();
+                });
+        }
+
+        // Nav behavior
+        var nav = el('mainNav');
+        window.addEventListener('scroll', function () {
+            nav.classList.toggle('scrolled', window.scrollY > 40);
+        });
+
+        var navToggle = el('navToggle');
+        var navLinks = el('navLinks');
+        if (navToggle && navLinks) {
+            navToggle.addEventListener('click', function () {
+                navLinks.classList.toggle('nav-open');
+            });
+        }
+
+        el('refresh-btn').addEventListener('click', function () {
+            load();
+        });
+
         load();
-        setInterval(load, 30000);
+        setInterval(load, REFRESH_MS);
     })();
     </script>
 </body>

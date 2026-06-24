@@ -7,7 +7,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/platform/static/css/main.css">
+    <link rel="stylesheet" href="/platform/static/css/site-fx.css">
     <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
     <style>
         .legal-container { max-width: 720px; margin: 0 auto; padding: 120px 24px 80px; }
@@ -26,74 +28,96 @@
     </style>
 </head>
 <body>
-    <nav class="nav">
-        <div class="nav-container">
+    <nav class="nav" id="mainNav">
+        <div class="nav-inner">
             <a href="/platform" class="nav-brand">
-                <img src="/platform/static/icons/darklock-logo.png" alt="Darklock" width="26" height="26" style="border-radius:6px;">
-                <span class="brand-text">Darklock</span>
+                <img src="/platform/static/icons/darklock-logo.png" alt="Darklock">
+                <span>Darklock</span>
             </a>
-            <div class="nav-links">
-                <a href="/platform" class="nav-link">Home</a>
-                <a href="/platform/docs" class="nav-link">Documentation</a>
-                <a href="/platform/status" class="nav-link">Status</a>
-                <a href="/platform/auth/login" class="btn btn-primary btn-sm">Sign In</a>
+            <div class="nav-links" id="navLinks">
+                <a href="/platform">Home</a>
+                <a href="/platform/docs">Documentation</a>
+                <a href="/platform/ridgeline">Ridgeline</a>
+                <a href="/platform/status">Status</a>
+                <a href="/platform/auth/login" class="btn-cta">Sign In</a>
             </div>
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle menu"><i class="fas fa-bars"></i></button>
         </div>
     </nav>
 
     <div class="legal-container">
-        <div class="legal-hero">
+        <div class="legal-hero reveal">
             <h1>Terms of Service</h1>
-            <p class="updated">Last updated: January 16, 2026</p>
-            <p>By using Darklock, you agree to the terms below. Please read them before creating an account.</p>
+            <p class="updated">Last updated: May 11, 2026</p>
+            <p>These Terms govern your use of Darklock services, including the web platform, bot tooling, and related applications.</p>
         </div>
 
         <div class="legal-section">
             <h2>Acceptance of Terms</h2>
-            <p>By accessing or using Darklock — including the platform, Discord bot, Guard app, Secure Channel, or Secure Notes — you agree to be bound by these terms. If you do not agree, do not use the service.</p>
+            <p>By accessing or using Darklock, you agree to these Terms and our Privacy Policy. If you do not agree, you must not use the service.</p>
         </div>
 
         <div class="legal-section">
-            <h2>Your Account</h2>
-            <p>You are responsible for keeping your account credentials secure. Do not share your password or let anyone else access your account. If you believe your account has been compromised, change your password immediately and contact us.</p>
+            <h2>Eligibility and Account Responsibility</h2>
+            <p>You must be legally allowed to use Discord and our services in your jurisdiction. You are responsible for your account security, all activity under your account, and maintaining accurate account information.</p>
         </div>
 
         <div class="legal-section">
             <h2>Acceptable Use</h2>
-            <p>You may use Darklock for its intended purpose: protecting and managing your Discord communities, and using our companion applications. You agree not to:</p>
+            <p>You may use Darklock only for lawful and authorized purposes. You agree not to:</p>
             <ul>
-                <li>Attempt to access accounts, systems, or data that are not yours</li>
-                <li>Exploit, reverse-engineer, or interfere with any part of the service</li>
-                <li>Use Darklock to harass, threaten, or target other users</li>
-                <li>Distribute malware or harmful content through the platform</li>
-                <li>Misrepresent your identity or impersonate others</li>
-                <li>Use automated tools to scrape data or abuse API endpoints</li>
+                <li>Access systems, accounts, or data without authorization</li>
+                <li>Interfere with platform security, availability, or integrity</li>
+                <li>Upload or distribute malware, malicious code, or exploit payloads</li>
+                <li>Abuse rate limits or automate requests in a way that degrades service</li>
+                <li>Impersonate individuals, organizations, or Darklock staff</li>
+                <li>Use Darklock to violate Discord rules or applicable law</li>
             </ul>
         </div>
 
         <div class="legal-section">
-            <h2>Service Availability</h2>
-            <p>We do our best to keep Darklock available and reliable, but we cannot guarantee 100% uptime. The service may be temporarily unavailable during maintenance, updates, or due to circumstances outside our control. We are not liable for any loss caused by downtime.</p>
+            <h2>Service Changes and Availability</h2>
+            <p>We may modify, suspend, or discontinue features at any time. We strive for high availability, but uninterrupted uptime is not guaranteed. Planned and emergency maintenance may affect access.</p>
         </div>
 
         <div class="legal-section">
-            <h2>Your Content</h2>
-            <p>Any configuration, settings, or data you provide through Darklock remains yours. We do not claim ownership of your content. However, by using the service, you grant us the limited right to store and process that content as needed to provide the service.</p>
+            <h2>User Data and License</h2>
+            <p>You retain ownership of your content and configuration data. You grant Darklock a limited license to host, process, and transmit that data only as necessary to operate, secure, and improve the service.</p>
         </div>
 
         <div class="legal-section">
-            <h2>Termination</h2>
-            <p>We reserve the right to suspend or terminate your account if you violate these terms. You may also delete your account at any time by contacting us. On termination, your data will be removed from our systems.</p>
+            <h2>Third-Party Services</h2>
+            <p>Darklock integrates with third-party services such as Discord. We are not responsible for third-party outages, policy changes, or actions. Your use of those services is governed by their own terms.</p>
+        </div>
+
+        <div class="legal-section">
+            <h2>Termination and Suspension</h2>
+            <p>We may suspend or terminate access if these Terms are violated, if abuse is detected, or where legally required. You may stop using the service at any time.</p>
+        </div>
+
+        <div class="legal-section">
+            <h2>Disclaimers</h2>
+            <p>Darklock is provided on an "as is" and "as available" basis. To the maximum extent permitted by law, we disclaim all warranties, express or implied, including merchantability, fitness for a particular purpose, and non-infringement.</p>
         </div>
 
         <div class="legal-section">
             <h2>Limitation of Liability</h2>
-            <p>Darklock is provided "as is" without warranties of any kind, express or implied. We are not responsible for any damages arising from the use or inability to use the service, including data loss, security incidents involving third-party services, or interruptions to your Discord server.</p>
+            <p>To the fullest extent permitted by law, Darklock and its operators are not liable for indirect, incidental, special, consequential, or punitive damages, or for loss of data, profits, or business interruption arising from use of the service.</p>
+        </div>
+
+        <div class="legal-section">
+            <h2>Indemnification</h2>
+            <p>You agree to defend and indemnify Darklock from claims, liabilities, and expenses arising from your use of the service, your content, or your violation of these Terms or applicable law.</p>
         </div>
 
         <div class="legal-section">
             <h2>Changes to These Terms</h2>
-            <p>We may update these terms from time to time. The "last updated" date at the top will reflect any changes. Continued use of the service after a change means you accept the new terms.</p>
+            <p>We may revise these Terms from time to time. The date above indicates the latest version. Continued use after changes become effective constitutes acceptance of the revised Terms.</p>
+        </div>
+
+        <div class="legal-section">
+            <h2>Governing Law</h2>
+            <p>These Terms are governed by applicable law in the jurisdiction where Darklock operates, unless mandatory local law requires otherwise.</p>
         </div>
 
         <div class="legal-section">
@@ -103,5 +127,7 @@
     </div>
 
     <footer class="legal-footer">&copy; 2026 Darklock. All rights reserved.</footer>
+    <script>document.querySelectorAll('.legal-section').forEach(function(s){s.classList.add('reveal');});</script>
+    <script src="/platform/static/js/site-fx.js"></script>
 </body>
 </html>

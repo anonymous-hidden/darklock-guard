@@ -1,45 +1,33 @@
 /**
- * Darklock Admin - Hardcoded Default Admin Setup
- * 
- * This file creates default admin credentials on first run.
- * The password is pre-hashed for security (not stored in plain text).
- * 
- * DEFAULT CREDENTIALS:
- * Email: owner@darklock.net
- * Username: owner
- * Password: Untrained6-Comply2-Hammock0-Cytoplast3-Handgun8-Tinfoil1-Anything1-Litigator2-Bluish8-Blurt7
- * Role: owner
- * 
- * SECURITY NOTES:
- * - Change these credentials immediately after first login
- * - The password hash below was generated with bcrypt (12 rounds)
- * - Never commit actual production passwords
+ * Darklock Admin - First-Run Admin Bootstrap
+ *
+ * Creates the initial admin account on first run.
+ *
+ * Credential sources (in order of precedence):
+ *   1. RENDER_ADMIN_EMAIL / RENDER_ADMIN_PASSWORD (or ADMIN_USERNAME / ADMIN_PASSWORD)
+ *      - ADMIN_PASSWORD may be plain text (hashed automatically) or a bcrypt hash
+ *   2. A cryptographically random password generated at first run and printed
+ *      ONCE to the console. Save it immediately and change it after login.
+ *
+ * No credentials are committed to source control.
  */
 
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const db = require('./utils/database');
 
-// ============================================================================
-// HARDCODED DEFAULT ADMIN
-// ============================================================================
-
 const DEFAULT_ADMIN = {
     email: 'owner@darklock.net',
     username: 'owner',
-    // Password: Untrained6-Comply2-Hammock0-Cytoplast3-Handgun8-Tinfoil1-Anything1-Litigator2-Bluish8-Blurt7
-    // Pre-hashed with bcrypt (12 rounds) - DO NOT CHANGE THIS HASH
-    passwordHash: '$2b$12$fK8yNzbMgEgrkVi4uyjxw.FEttzgTJInX8npMgjhXccDU.A46WLZS',
     role: 'owner'
 };
 
-// Backup admin in case primary is compromised
-const BACKUP_ADMIN = {
-    email: 'security@darklock.net',
-    // Password: Security#Backup@2025
-    passwordHash: '$2b$12$KqvVuXDXQ9V9Nfn52k4I7.OaAvSdlQLfBkNJ1FvZJ16/FEGMQC0jm',
-    role: 'owner'
-};
+/**
+ * Generate a strong random password (URL-safe, ~128 bits of entropy).
+ */
+function generateRandomPassword() {
+    return crypto.randomBytes(24).toString('base64url');
+}
 
 /**
  * Generate a new bcrypt hash (for creating new credentials)
@@ -74,11 +62,11 @@ async function initializeDefaultAdmins() {
         // Check for environment-provided admin credentials
         const envEmail = process.env.RENDER_ADMIN_EMAIL || process.env.ADMIN_USERNAME;
         const envPassword = process.env.RENDER_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
-        
+
         let primaryEmail = DEFAULT_ADMIN.email;
-        let primaryHash = DEFAULT_ADMIN.passwordHash;
-        
-        // If environment credentials provided, use them
+        let primaryHash;
+        let generatedPassword = null;
+
         if (envEmail && envPassword) {
             primaryEmail = envEmail;
             // Check if it's already a hash (starts with $2b$ or $2a$)
@@ -90,6 +78,10 @@ async function initializeDefaultAdmins() {
                 primaryHash = await bcrypt.hash(envPassword, 12);
                 console.log('[Default Admin] Hashing environment-provided password');
             }
+        } else {
+            // No env credentials: generate a one-time random password.
+            generatedPassword = generateRandomPassword();
+            primaryHash = await bcrypt.hash(generatedPassword, 12);
         }
 
         // Create primary admin
@@ -109,31 +101,18 @@ async function initializeDefaultAdmins() {
         createdAdmins.push(primaryEmail);
         console.log(`[Default Admin] ✅ Created primary admin: ${primaryEmail} (username: ${DEFAULT_ADMIN.username || 'none'})`);
 
-        // Only create backup admin if using defaults (not environment vars)
-        if (!envEmail) {
-            const backupId = crypto.randomUUID();
-            await db.run(`
-                INSERT INTO admins (id, email, password_hash, role, created_at, updated_at, active)
-                VALUES (?, ?, ?, ?, ?, ?, 1)
-            `, [
-                backupId,
-                BACKUP_ADMIN.email,
-                BACKUP_ADMIN.passwordHash,
-                BACKUP_ADMIN.role,
-                now,
-                now
-            ]);
-            createdAdmins.push(BACKUP_ADMIN.email);
-            console.log(`[Default Admin] ✅ Created backup admin: ${BACKUP_ADMIN.email}`);
+        if (generatedPassword) {
+            console.log('[Default Admin] ============================================================');
+            console.log('[Default Admin] ⚠️  ONE-TIME GENERATED ADMIN PASSWORD (will not be shown again):');
+            console.log(`[Default Admin]     Email:    ${primaryEmail}`);
+            console.log(`[Default Admin]     Password: ${generatedPassword}`);
+            console.log('[Default Admin] Save it now and change it after first login.');
+            console.log('[Default Admin] ============================================================');
+        } else if (envPassword && !envPassword.startsWith('$2')) {
+            console.log('[Default Admin] ⚠️  Environment password was provided in plain text and has been hashed.');
+            console.log('[Default Admin] ⚠️  Consider using a pre-hashed password in environment variables.');
         }
 
-        if (envPassword && !envPassword.startsWith('$2')) {
-            console.log('[Default Admin] ⚠️  IMPORTANT: Environment password was provided in plain text and has been hashed.');
-            console.log('[Default Admin] ⚠️  Consider using a pre-hashed password in environment variables for security.');
-        } else {
-            console.log('[Default Admin] ⚠️  IMPORTANT: Change default passwords immediately!');
-        }
-        
         return { created: true, admins: createdAdmins };
     } catch (err) {
         // If tables don't exist yet, that's OK - they'll be created later
@@ -147,24 +126,26 @@ async function initializeDefaultAdmins() {
 }
 
 /**
- * Reset admin password to default (emergency recovery)
+ * Reset an admin's password to a fresh random one (emergency recovery).
+ * Prints the new password ONCE to the console.
  */
 async function resetToDefault(email) {
-    const defaultData = email === BACKUP_ADMIN.email ? BACKUP_ADMIN : DEFAULT_ADMIN;
-    
+    const newPassword = generateRandomPassword();
+    const newHash = await bcrypt.hash(newPassword, 12);
+
     await db.run(`
         UPDATE admins 
         SET password_hash = ?, updated_at = ?
         WHERE email = ?
-    `, [defaultData.passwordHash, new Date().toISOString(), email]);
-    
+    `, [newHash, new Date().toISOString(), email]);
+
     console.log(`[Default Admin] ⚠️  Reset password for: ${email}`);
-    console.log('[Default Admin] ⚠️  CHANGE THIS PASSWORD IMMEDIATELY!');
+    console.log(`[Default Admin] ⚠️  New one-time password: ${newPassword}`);
+    console.log('[Default Admin] ⚠️  CHANGE THIS PASSWORD IMMEDIATELY AFTER LOGIN!');
 }
 
 module.exports = {
     DEFAULT_ADMIN,
-    BACKUP_ADMIN,
     generateHash,
     initializeDefaultAdmins,
     resetToDefault
@@ -193,14 +174,9 @@ if (require.main === module) {
             console.log('Darklock Default Admin Utility');
             console.log('==============================');
             console.log('Commands:');
-            console.log('  create       - Create default admin accounts');
-            console.log('  hash <pwd>   - Generate bcrypt hash for a password');
-            console.log('  reset [email] - Reset admin password to default');
-            console.log('');
-            console.log('Default Credentials:');
-            console.log(`  Email: ${DEFAULT_ADMIN.email}`);
-            console.log(`  Username: ${DEFAULT_ADMIN.username}`);
-            console.log('  Password: Untrained6-Comply2-Hammock0-Cytoplast3-Handgun8-Tinfoil1-Anything1-Litigator2-Bluish8-Blurt7');
+            console.log('  create        - Create the first-run admin account');
+            console.log('  hash <pwd>    - Generate bcrypt hash for a password');
+            console.log('  reset [email] - Reset an admin password to a fresh random one');
         }
         
         process.exit(0);

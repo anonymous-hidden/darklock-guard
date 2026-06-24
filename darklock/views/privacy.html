@@ -7,7 +7,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/platform/static/css/main.css">
+    <link rel="stylesheet" href="/platform/static/css/site-fx.css">
     <link rel="icon" type="image/png" href="/platform/static/icons/darklock-guard.png" sizes="256x256">
     <style>
         .legal-container { max-width: 720px; margin: 0 auto; padding: 120px 24px 80px; }
@@ -26,78 +28,95 @@
     </style>
 </head>
 <body>
-    <nav class="nav">
-        <div class="nav-container">
+    <nav class="nav" id="mainNav">
+        <div class="nav-inner">
             <a href="/platform" class="nav-brand">
-                <img src="/platform/static/icons/darklock-logo.png" alt="Darklock" width="26" height="26" style="border-radius:6px;">
-                <span class="brand-text">Darklock</span>
+                <img src="/platform/static/icons/darklock-logo.png" alt="Darklock">
+                <span>Darklock</span>
             </a>
-            <div class="nav-links">
-                <a href="/platform" class="nav-link">Home</a>
-                <a href="/platform/docs" class="nav-link">Documentation</a>
-                <a href="/platform/status" class="nav-link">Status</a>
-                <a href="/platform/auth/login" class="btn btn-primary btn-sm">Sign In</a>
+            <div class="nav-links" id="navLinks">
+                <a href="/platform">Home</a>
+                <a href="/platform/docs">Documentation</a>
+                <a href="/platform/ridgeline">Ridgeline</a>
+                <a href="/platform/status">Status</a>
+                <a href="/platform/auth/login" class="btn-cta">Sign In</a>
             </div>
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle menu"><i class="fas fa-bars"></i></button>
         </div>
     </nav>
 
     <div class="legal-container">
-        <div class="legal-hero">
+        <div class="legal-hero reveal">
             <h1>Privacy Policy</h1>
-            <p class="updated">Last updated: January 16, 2026</p>
-            <p>Darklock is built around the idea that your data belongs to you. This policy explains what we collect, why, and how we protect it.</p>
+            <p class="updated">Last updated: May 11, 2026</p>
+            <p>This Privacy Policy explains what data Darklock collects, how it is used, and the controls available to you.</p>
         </div>
 
         <div class="legal-section">
-            <h2>What We Collect</h2>
-            <p>We collect only what is needed to provide the service:</p>
+            <h2>Information We Collect</h2>
+            <p>We collect only the data needed to operate and secure the service, including:</p>
             <ul>
-                <li>Username and email address (used for your account)</li>
-                <li>Hashed password (we never store your plaintext password)</li>
-                <li>Account creation date and last login timestamp</li>
-                <li>Discord user ID, if you link your Discord account</li>
-                <li>Server configuration settings you choose for your Discord servers</li>
+                <li>Account data such as username, email, and hashed password</li>
+                <li>Authentication metadata such as account creation and login timestamps</li>
+                <li>Discord identifiers and integration settings when you link Discord</li>
+                <li>Server and moderation configuration settings you create in Darklock</li>
+                <li>Operational logs needed for security, abuse prevention, and diagnostics</li>
             </ul>
         </div>
 
         <div class="legal-section">
-            <h2>What We Do Not Collect</h2>
+            <h2>Information We Do Not Intentionally Collect</h2>
             <ul>
-                <li>Message content from Discord servers</li>
-                <li>Browsing history or tracking cookies</li>
-                <li>Payment information (Darklock is free)</li>
-                <li>Location data</li>
+                <li>Private message content outside required bot operation scope</li>
+                <li>Advertising profiles or third-party ad-tracker identifiers</li>
+                <li>Payment card data is handled byStripe payment processor</li>
+                <li>Precise geolocation data</li>
             </ul>
         </div>
 
         <div class="legal-section">
-            <h2>How We Protect Your Data</h2>
-            <p>Passwords are hashed with bcrypt before storage. Sessions are managed through secure, HTTP-only cookies with strict SameSite settings. All traffic is encrypted in transit using HTTPS. Rate limiting is applied to authentication endpoints to prevent abuse.</p>
+            <h2>How We Use Information</h2>
+            <p>We use data to provide core functionality, maintain account security, detect abuse, improve reliability, and respond to support requests. We do not sell personal data.</p>
         </div>
 
         <div class="legal-section">
-            <h2>Data Storage</h2>
-            <p>Your data is stored in an SQLite database on our infrastructure. We keep automated backups to ensure your information is not lost in case of an issue. We do not sell, share, or transfer your data to third parties.</p>
+            <h2>Legal Bases and Consent</h2>
+            <p>Where applicable law requires it, we process data based on performance of contract, legitimate interests in security and operations, consent where requested, and legal obligations.</p>
         </div>
 
         <div class="legal-section">
-            <h2>Your Rights</h2>
-            <p>You can request to view, update, or delete your account data at any time. To do so, contact us and we will process your request promptly.</p>
+            <h2>Data Retention</h2>
+            <p>We retain data only as long as needed for service delivery, security, legal compliance, and dispute resolution. Retention periods vary by data type and operational necessity.</p>
         </div>
 
         <div class="legal-section">
-            <h2>Cookies</h2>
-            <p>We use session cookies to keep you logged in. We do not use advertising cookies, analytics trackers, or any third-party tracking scripts.</p>
+            <h2>Security Safeguards</h2>
+            <p>We apply technical and organizational controls including encrypted transport, hashed passwords, access controls, rate limiting, and monitoring. No system is perfectly secure, but we continuously improve protections.</p>
         </div>
 
         <div class="legal-section">
-            <h2>Children</h2>
-            <p>Darklock is not intended for use by anyone under the age of 13, in line with Discord's own age requirements.</p>
+            <h2>Cookies and Session Data</h2>
+            <p>Darklock uses essential cookies and session tokens for authentication and security. We do not use third-party advertising cookies on the platform pages.</p>
         </div>
 
         <div class="legal-section">
-            <h2>Changes to This Policy</h2>
-            <p>If we update this policy, the "last updated" date at the top of this page will change. For significant changes, we may notify users through the platform or Discord.</p>
+            <h2>International Data Transfers</h2>
+            <p>Your data may be processed in regions where our infrastructure or service providers operate. We apply reasonable safeguards for cross-border transfers where required.</p>
+        </div>
+
+        <div class="legal-section">
+            <h2>Your Rights and Choices</h2>
+            <p>Depending on your jurisdiction, you may have rights to access, correct, delete, restrict, object to processing, or request portability of your personal data. You may also request account deletion.</p>
+        </div>
+
+        <div class="legal-section">
+            <h2>Children's Privacy</h2>
+            <p>Darklock is not directed to children under 13 and is intended for users who meet Discord's minimum age requirements.</p>
+        </div>
+
+        <div class="legal-section">
+            <h2>Policy Updates</h2>
+            <p>We may update this policy periodically. Material updates will be reflected by the date above and may be communicated through platform notices or official community channels.</p>
         </div>
 
         <div class="legal-section">
@@ -107,5 +126,7 @@
     </div>
 
     <footer class="legal-footer">&copy; 2026 Darklock. All rights reserved.</footer>
+    <script>document.querySelectorAll('.legal-section').forEach(function(s){s.classList.add('reveal');});</script>
+    <script src="/platform/static/js/site-fx.js"></script>
 </body>
 </html>

@@ -643,22 +643,26 @@ class AntiNuke {
         const snapshot = new Map();
         
         for (const [channelId, channel] of guild.channels.cache) {
-            snapshot.set(channelId, {
-                id: channelId,
-                name: channel.name,
-                type: channel.type,
-                position: channel.position,
-                rawPosition: channel.rawPosition,
-                parentId: channel.parentId,
-                topic: channel.topic || null,
-                nsfw: channel.nsfw || false,
-                rateLimitPerUser: channel.rateLimitPerUser || 0,
-                bitrate: channel.bitrate,
-                userLimit: channel.userLimit,
-                rtcRegion: channel.rtcRegion,
-                permissionOverwrites: this.serializePermissionOverwrites(channel),
-                snapshotTime: Date.now()
-            });
+            try {
+                snapshot.set(channelId, {
+                    id: channelId,
+                    name: channel.name,
+                    type: channel.type,
+                    position: channel.position,
+                    rawPosition: channel.rawPosition,
+                    parentId: channel.parentId,
+                    topic: channel.topic || null,
+                    nsfw: channel.nsfw || false,
+                    rateLimitPerUser: channel.rateLimitPerUser || 0,
+                    bitrate: channel.bitrate,
+                    userLimit: channel.userLimit,
+                    rtcRegion: channel.rtcRegion,
+                    permissionOverwrites: this.serializePermissionOverwrites(channel),
+                    snapshotTime: Date.now()
+                });
+            } catch (err) {
+                this.bot.logger?.debug?.(`[AntiNuke] Skipped channel snapshot for ${channelId}: ${err.message}`);
+            }
         }
         
         this.channelSnapshots.set(guildId, snapshot);
@@ -729,22 +733,26 @@ class AntiNuke {
             this.channelSnapshots.set(guildId, new Map());
         }
         
-        this.channelSnapshots.get(guildId).set(channel.id, {
-            id: channel.id,
-            name: channel.name,
-            type: channel.type,
-            position: channel.position,
-            rawPosition: channel.rawPosition,
-            parentId: channel.parentId,
-            topic: channel.topic || null,
-            nsfw: channel.nsfw || false,
-            rateLimitPerUser: channel.rateLimitPerUser || 0,
-            bitrate: channel.bitrate,
-            userLimit: channel.userLimit,
-            rtcRegion: channel.rtcRegion,
-            permissionOverwrites: this.serializePermissionOverwrites(channel),
-            snapshotTime: Date.now()
-        });
+        try {
+            this.channelSnapshots.get(guildId).set(channel.id, {
+                id: channel.id,
+                name: channel.name,
+                type: channel.type,
+                position: channel.position,
+                rawPosition: channel.rawPosition,
+                parentId: channel.parentId,
+                topic: channel.topic || null,
+                nsfw: channel.nsfw || false,
+                rateLimitPerUser: channel.rateLimitPerUser || 0,
+                bitrate: channel.bitrate,
+                userLimit: channel.userLimit,
+                rtcRegion: channel.rtcRegion,
+                permissionOverwrites: this.serializePermissionOverwrites(channel),
+                snapshotTime: Date.now()
+            });
+        } catch (err) {
+            this.bot.logger?.debug?.(`[AntiNuke] Skipped channel snapshot update for ${channel.id}: ${err.message}`);
+        }
     }
 
     /**
@@ -775,7 +783,12 @@ class AntiNuke {
      */
     serializePermissionOverwrites(channel) {
         const overwrites = [];
-        for (const [, overwrite] of channel.permissionOverwrites.cache) {
+        const cache = channel?.permissionOverwrites?.cache;
+        if (!cache || typeof cache[Symbol.iterator] !== 'function') {
+            return overwrites;
+        }
+        for (const [, overwrite] of cache) {
+            if (!overwrite?.allow || !overwrite?.deny) continue;
             overwrites.push({
                 id: overwrite.id,
                 type: overwrite.type,
@@ -791,8 +804,12 @@ class AntiNuke {
      */
     async refreshAllSnapshots() {
         for (const guild of this.bot.client.guilds.cache.values()) {
-            await this.snapshotChannels(guild);
-            await this.snapshotRoles(guild);
+            try {
+                await this.snapshotChannels(guild);
+                await this.snapshotRoles(guild);
+            } catch (err) {
+                this.bot.logger?.warn?.(`[AntiNuke] Snapshot refresh failed for ${guild.name}: ${err.message}`);
+            }
         }
     }
 

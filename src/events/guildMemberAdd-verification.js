@@ -13,6 +13,27 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFl
 
 const AUTO_KICK_DELAY_MS = 5 * 60 * 1000; // 5 minutes; set to 0 to disable
 
+function getPublicOrigin() {
+    const candidates = [
+        process.env.BASE_URL,
+        process.env.DASHBOARD_ORIGIN,
+        process.env.DOMAIN
+    ];
+
+    for (const raw of candidates) {
+        const value = String(raw || '').trim();
+        if (!value) continue;
+        try {
+            const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+            const url = new URL(withProtocol);
+            if (url.hostname === 'admin.darklock.net') continue;
+            return url.origin;
+        } catch (_) {}
+    }
+
+    return process.env.NODE_ENV === 'production' ? 'https://darklock.net' : 'http://localhost:3001';
+}
+
 module.exports = {
     name: 'guildMemberAdd',
     once: false,
@@ -171,8 +192,7 @@ async function sendVerificationDM(member, cfg, bot) {
             || 'button';
         
         // Build the web verification URL
-        const dashboardUrl = process.env.DASHBOARD_URL || process.env.DASHBOARD_ORIGIN || 'http://localhost:3001';
-        const verifyUrl = `${dashboardUrl}/verify/${member.guild.id}/${member.id}`;
+        const verifyUrl = `${getPublicOrigin()}/verify/${member.guild.id}/${member.id}?v=${Date.now().toString(36)}`;
         
         const dmEmbed = new EmbedBuilder()
             .setTitle(`🔐 Welcome to ${member.guild.name}!`)
