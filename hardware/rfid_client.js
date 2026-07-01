@@ -17,8 +17,8 @@ const TIMEOUT = 20000; // 20 seconds for card scan
 function sendCommand(action) {
     return new Promise((resolve, reject) => {
         const client = USE_TCP 
-            ? net.createConnection(TCP_PORT, TCP_HOST)
-            : net.createConnection(SOCKET_PATH);
+            ? net.createConnection({ port: TCP_PORT, host: TCP_HOST })
+            : net.createConnection({ path: SOCKET_PATH });
         
         let timeout;
 
@@ -119,8 +119,8 @@ async function scanShutdown() {
 async function getStatus() {
     return new Promise((resolve, reject) => {
         const client = USE_TCP 
-            ? net.createConnection(TCP_PORT, TCP_HOST)
-            : net.createConnection(SOCKET_PATH);
+            ? net.createConnection({ port: TCP_PORT, host: TCP_HOST })
+            : net.createConnection({ path: SOCKET_PATH });
         
         const timeout = setTimeout(() => {
             client.destroy();
