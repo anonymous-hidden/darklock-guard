@@ -82,9 +82,6 @@ jobs:
           - os: ubuntu-latest
             target: linux
             arch: x64
-          - os: macos-13
-            target: mac
-            arch: universal
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
