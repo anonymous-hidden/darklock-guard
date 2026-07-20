@@ -1,0 +1,78 @@
+.profile-popup {
+  position: absolute;
+  z-index: 100;
+  bottom: calc(100% + 8px);
+  left: var(--dl-space-md);
+  display: flex;
+  width: min(276px, calc(100vw - 24px));
+  max-height: min(540px, calc(100vh - 104px));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: var(--dl-bg-secondary);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.36);
+  animation: profilePopupIn 0.15s ease-out;
+}
+
+@keyframes profilePopupIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.profile-popup__banner {
+  height: 84px;
+  flex: 0 0 84px;
+  background-position: center;
+  background-size: cover;
+}
+
+.profile-popup__avatar-ring {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 60px;
+  height: 60px;
+  flex: 0 0 60px;
+  align-items: center;
+  justify-content: center;
+  margin: -29px 0 0 12px;
+  padding: 4px;
+  border-radius: 50%;
+  background: var(--dl-bg-secondary);
+  box-shadow: 0 0 0 2px var(--profile-popup-accent, var(--dl-accent));
+}
+
+.profile-popup__avatar-img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; }
+.profile-popup__presence-dot { position: absolute; right: 0; bottom: 0; width: 13px; height: 13px; border: 3px solid var(--dl-bg-secondary); border-radius: 50%; }
+
+.profile-popup__status-bubble { position: absolute; z-index: 2; top: 82px; left: 78px; right: 12px; }
+.profile-popup__status-bubble .custom-status-bubble { width: fit-content; max-width: min(136px, 100%); height: 30px; min-height: 30px; padding-right: 8px; font-size: .68rem; }
+
+.profile-popup__card { min-height: 0; padding: 7px 12px 12px; overflow-y: auto; overscroll-behavior: contain; }
+.profile-popup__card::-webkit-scrollbar { width: 5px; }.profile-popup__card::-webkit-scrollbar-thumb { border-radius: 99px; background: rgba(255,255,255,.16); }
+
+.profile-popup__identity { min-width: 0; padding-top: 4px; }
+.profile-popup__name-row { display: flex; min-width: 0; align-items: baseline; gap: 7px; }
+.profile-popup__name { overflow: hidden; color: var(--profile-popup-accent, var(--dl-text-primary)); font-size: 1.18rem; font-weight: 750; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.profile-popup__name-row .dl-badge { flex: 0 1 auto; overflow: hidden; max-width: 110px; text-overflow: ellipsis; white-space: nowrap; }
+.profile-popup__username { display: block; overflow: hidden; margin-top: 3px; color: var(--dl-text-muted); font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+.profile-popup__tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }.profile-popup__tag { padding: 2px 7px; border-radius: 999px; font-size: .64rem; font-weight: 700; line-height: 1.35; }
+
+.profile-popup__actions { display: flex; margin-top: 10px; }
+.profile-popup__edit-profile.dl-btn { width: 100%; min-height: 31px; border: 1px solid color-mix(in srgb, var(--profile-popup-accent, var(--dl-accent)) 48%, transparent); background: color-mix(in srgb, var(--profile-popup-accent, var(--dl-accent)) 78%, #101216); color: #fff; box-shadow: 0 5px 14px color-mix(in srgb, var(--profile-popup-accent, var(--dl-accent)) 22%, transparent); }
+.profile-popup__edit-profile.dl-btn:hover:not(:disabled) { background: var(--profile-popup-accent, var(--dl-accent)); box-shadow: 0 7px 18px color-mix(in srgb, var(--profile-popup-accent, var(--dl-accent)) 34%, transparent); }
+
+.profile-popup .spotify-activity--popover { margin-top: 14px; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.profile-popup .spotify-activity--popover .spotify-activity__heading { font-size: .71rem; }.profile-popup .spotify-activity--popover .spotify-activity__content { gap: 9px; margin-top: 7px; }.profile-popup .spotify-activity--popover .spotify-activity__art { width: 48px; height: 48px; flex-basis: 48px; border-radius: 6px; }.profile-popup .spotify-activity--popover .spotify-activity__title { font-size: .79rem; }.profile-popup .spotify-activity--popover .spotify-activity__artists { font-size: .7rem; }.profile-popup .spotify-activity--popover .spotify-activity__album { display: none; }.profile-popup .spotify-activity--popover .spotify-activity__progress { margin-top: 9px; }.profile-popup .spotify-activity--popover .spotify-activity__progress-track { height: 3px; }.profile-popup .spotify-activity__times { display: flex; justify-content: space-between; margin-top: 4px; color: var(--dl-text-muted); font-size: .62rem; font-variant-numeric: tabular-nums; }.profile-popup .spotify-activity--popover .spotify-activity__open { min-height: 21px; margin-top: 5px; padding: 0; border: 0; background: transparent; color: #8adba3; font-size: .67rem; }.profile-popup .spotify-activity--popover .spotify-activity__open:hover { background: transparent; color: #b1edc2; text-decoration: underline; }
+
+.profile-popup__section { margin-top: 16px; }.profile-popup__section-heading { margin: 0 0 8px; color: var(--dl-text-secondary); font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }.profile-popup__bio { margin: 0; color: var(--dl-text-secondary); font-size: .8rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }.profile-popup__bio--clamped { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }.profile-popup__show-more { margin-top: 7px; padding: 0; border: 0; background: transparent; color: var(--dl-accent); font: inherit; font-size: .74rem; font-weight: 700; cursor: pointer; }.profile-popup__show-more:hover { text-decoration: underline; }
+
+.profile-popup__links { display: grid; gap: 5px; }.profile-popup__link { display: flex; min-width: 0; align-items: center; gap: 7px; min-height: 29px; padding: 0 8px; border-radius: 7px; background: rgba(255,255,255,.035); color: var(--dl-text-secondary); font-size: .75rem; }.profile-popup__link > svg { flex: 0 0 auto; color: var(--dl-accent); }.profile-popup__link-label { overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; }.profile-popup__link-external { color: var(--dl-text-muted); font-size: .62rem; }
+.profile-popup__add-connection { margin-top: 16px; padding: 0; border: 0; background: transparent; color: var(--dl-accent); font: inherit; font-size: .74rem; font-weight: 700; cursor: pointer; }
+
+.profile-popup__footer { display: flex; align-items: center; gap: 10px; margin-top: 19px; padding-top: 13px; border-top: 1px solid rgba(255,255,255,.07); }.profile-popup__footer-label { flex: 0 0 auto; color: var(--dl-text-muted); font-size: .7rem; font-weight: 700; }.profile-popup__status-section { position: relative; min-width: 0; flex: 1; }.profile-popup__status-trigger { display: flex; width: 100%; min-height: 31px; align-items: center; gap: 7px; padding: 0 8px; border: 1px solid rgba(255,255,255,.08); border-radius: 7px; background: rgba(255,255,255,.04); color: var(--dl-text-secondary); font: inherit; font-size: .75rem; cursor: pointer; }.profile-popup__status-trigger:hover { background: rgba(255,255,255,.075); color: var(--dl-text-primary); }.profile-popup__status-dot { width: 9px; height: 9px; flex: 0 0 9px; border-radius: 50%; }.profile-popup__status-label { overflow: hidden; flex: 1; text-align: left; text-overflow: ellipsis; white-space: nowrap; }.profile-popup__chevron { transition: transform .15s ease; }.profile-popup__chevron--open { transform: rotate(180deg); }.profile-popup__status-dropdown { position: absolute; z-index: 3; right: 0; bottom: calc(100% + 5px); left: 0; overflow: hidden; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: var(--dl-bg-elevated); box-shadow: 0 8px 18px rgba(0,0,0,.32); }.profile-popup__status-option { display: flex; width: 100%; align-items: center; gap: 8px; padding: 8px 9px; border: 0; background: transparent; color: var(--dl-text-secondary); font: inherit; font-size: .75rem; text-align: left; cursor: pointer; }.profile-popup__status-option:hover,.profile-popup__status-option--active { background: rgba(255,255,255,.06); color: var(--dl-text-primary); }
+
+.profile-popup button:focus-visible { outline: 2px solid var(--profile-popup-accent, var(--dl-accent)); outline-offset: 2px; }
+
+@media (max-width: 720px) { .profile-popup { position: fixed; right: 12px; bottom: 12px; left: 12px; width: auto; max-height: calc(100vh - 24px); }.profile-popup__banner { height: 84px; flex-basis: 84px; }.profile-popup__status-bubble { top: 82px; }.profile-popup__status-bubble .custom-status-bubble { max-width: min(136px, calc(100vw - 100px)); } }

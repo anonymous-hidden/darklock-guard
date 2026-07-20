@@ -1,0 +1,458 @@
+/* ── Onboarding Screen Styles ────────────────────────────── */
+
+.onboarding-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  background: var(--dl-bg-primary);
+  padding: 32px;
+}
+
+.onboarding-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(760px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 28px 36px 36px;
+  background: #101218;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.28);
+}
+
+.onboarding-progress {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+  margin-bottom: 30px;
+}
+
+.onboarding-progress__dot {
+  flex: 1;
+  min-width: 0;
+  height: 3px;
+  background: #2b3038;
+  position: relative;
+  transition: background var(--dl-transition-base);
+}
+
+.onboarding-progress__dot span {
+  position: absolute;
+  top: 9px;
+  left: 0;
+  color: var(--dl-text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.onboarding-progress__dot--active {
+  background: var(--dl-accent);
+  background: var(--dl-accent);
+}
+
+.onboarding-progress__dot--done {
+  background: var(--dl-success);
+}
+
+.onboarding-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  text-align: center;
+}
+
+.onboarding-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--dl-radius-lg);
+  background: var(--dl-accent-muted);
+  color: var(--dl-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboarding-title {
+  font-size: var(--dl-text-xl);
+  font-weight: 700;
+  color: var(--dl-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.onboarding-desc {
+  font-size: var(--dl-text-sm);
+  color: var(--dl-text-secondary);
+  line-height: 1.6;
+  max-width: 540px;
+}
+
+.onboarding-brand-mark { width: 78px; height: 78px; object-fit: contain; }
+.onboarding-eyebrow { margin: 0; color: var(--dl-text-muted); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+.onboarding-copy { margin: -4px 0 2px; max-width: 520px; color: var(--dl-text-secondary); font-size: var(--dl-text-sm); line-height: 1.55; }
+.onboarding-preferences, .onboarding-security-list { width: min(100%, 520px); text-align: left; border: 1px solid var(--dl-border); background: #151820; border-radius: 10px; overflow: hidden; }
+.onboarding-preference, .onboarding-toggle { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; color: var(--dl-text-primary); font-size: var(--dl-text-sm); }
+.onboarding-toggle { border-top: 1px solid var(--dl-border); justify-content: flex-start; cursor: pointer; }
+.onboarding-toggle input { accent-color: var(--dl-accent); }
+.onboarding-theme-options { display: flex; gap: 6px; }
+.onboarding-theme-options button { min-height: 32px; border: 1px solid var(--dl-border); border-radius: 6px; background: #1c2029; color: var(--dl-text-secondary); font: inherit; font-size: 12px; padding: 0 10px; cursor: pointer; }
+.onboarding-theme-options button.is-selected { border-color: var(--dl-accent); background: var(--dl-accent-muted); color: var(--dl-text-primary); }
+.onboarding-preferences .onboarding-hint { display: block; margin: 0; padding: 0 16px 16px; }
+.onboarding-security-list span { display: flex; justify-content: space-between; gap: 20px; padding: 13px 16px; color: var(--dl-text-secondary); font-size: var(--dl-text-sm); }
+.onboarding-security-list span + span { border-top: 1px solid var(--dl-border); }
+.onboarding-security-list b { color: var(--dl-text-primary); font-weight: 600; text-align: right; }
+
+.onboarding-features {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dl-space-md);
+  width: 100%;
+  padding: var(--dl-space-lg);
+  background: var(--dl-bg-secondary);
+  border-radius: var(--dl-radius-md);
+  border: 1px solid var(--dl-border);
+}
+
+.onboarding-feature {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-md);
+  font-size: var(--dl-text-sm);
+  color: var(--dl-text-secondary);
+}
+
+.onboarding-feature__icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.onboarding-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dl-space-lg);
+  width: 100%;
+  text-align: left;
+}
+
+.onboarding-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dl-space-md);
+  width: 100%;
+}
+
+/* ── Recovery Grid ──────────────────────────────────────── */
+
+.recovery-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--dl-space-sm);
+  width: 100%;
+  padding: var(--dl-space-lg);
+  background: var(--dl-bg-secondary);
+  border-radius: var(--dl-radius-md);
+  border: 1px solid var(--dl-border);
+}
+
+.recovery-word {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--dl-bg-surface);
+  border-radius: var(--dl-radius-sm);
+  font-size: var(--dl-text-xs);
+}
+
+.recovery-word__num {
+  color: var(--dl-text-muted);
+  font-size: var(--dl-text-label);
+  min-width: 16px;
+  font-weight: 600;
+  font-family: var(--dl-font-mono);
+}
+
+.recovery-word__text {
+  color: var(--dl-text-primary);
+  font-family: var(--dl-font-mono);
+  font-weight: 500;
+}
+
+.onboarding-error {
+  font-size: var(--dl-text-xs);
+  color: var(--dl-danger);
+  margin: 0;
+}
+
+.onboarding-hint {
+  font-size: var(--dl-text-label);
+  color: var(--dl-text-muted);
+  margin-top: -8px;
+}
+
+.onboarding-back-link {
+  background: none;
+  border: none;
+  color: var(--dl-accent);
+  font-size: var(--dl-text-xs);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  transition: color var(--dl-transition-base);
+  margin-top: var(--dl-space-sm);
+}
+
+.onboarding-back-link:hover {
+  color: var(--dl-accent-hover);
+  text-decoration: underline;
+}
+
+/* Create-account screen: intentionally scoped so the rest of setup keeps its layout. */
+.onboarding-step--account {
+  width: min(100%, 500px);
+  gap: 16px;
+}
+
+.onboarding-step--account .onboarding-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+}
+
+.onboarding-account-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+}
+
+.onboarding-step--account .onboarding-title {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: 0;
+}
+
+.onboarding-step--account .onboarding-desc {
+  max-width: 410px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.onboarding-account-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 16px;
+  padding: 28px;
+  text-align: left;
+  background: #151820;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
+}
+
+.onboarding-step--account .dl-input-wrap {
+  gap: 7px;
+}
+
+.onboarding-step--account .dl-input-label {
+  color: var(--dl-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.onboarding-step--account .dl-input {
+  min-height: 48px;
+  padding: 12px 14px;
+  background: #1b1f28;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  font-size: 14px;
+  transition: border-color var(--dl-transition-fast), box-shadow var(--dl-transition-fast), background var(--dl-transition-fast);
+}
+
+.onboarding-step--account .dl-input:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.onboarding-step--account .dl-input:focus {
+  background: #1e232d;
+  border-color: var(--dl-accent);
+  box-shadow: 0 0 0 3px var(--dl-accent-muted);
+}
+
+.onboarding-step--account .dl-input-wrap--error .dl-input {
+  border-color: var(--dl-danger);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.14);
+}
+
+.onboarding-step--account .dl-input-error,
+.onboarding-account-inline-error {
+  margin: -8px 0 0;
+  color: var(--dl-danger);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.onboarding-step--account .dl-input--with-icon {
+  padding-left: 40px;
+}
+
+.onboarding-step--account .dl-input-icon--left {
+  left: 14px;
+}
+
+.onboarding-pw-toggle {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  place-items: center;
+  color: var(--dl-text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.onboarding-pw-toggle:hover {
+  color: var(--dl-text-primary);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.onboarding-pw-toggle:focus-visible {
+  outline: 2px solid var(--dl-accent);
+  outline-offset: 1px;
+}
+
+.onboarding-account-requirement {
+  margin: 7px 0 0;
+  color: var(--dl-text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.onboarding-account-requirement.is-satisfied {
+  color: var(--dl-success);
+}
+
+.onboarding-account-terms {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 2px;
+  color: var(--dl-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.onboarding-account-terms input {
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  flex: 0 0 auto;
+  accent-color: var(--dl-accent);
+  cursor: pointer;
+}
+
+.onboarding-account-terms a,
+.onboarding-step--account .onboarding-back-link span {
+  color: var(--dl-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.onboarding-account-terms a:hover,
+.onboarding-account-terms a:focus-visible {
+  text-decoration: underline;
+}
+
+.onboarding-account-terms--error {
+  color: var(--dl-danger);
+}
+
+.onboarding-step--account .onboarding-error {
+  padding: 10px 12px;
+  color: #fecaca;
+  font-size: 12px;
+  line-height: 1.4;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+}
+
+.onboarding-step--account .dl-btn--lg {
+  min-height: 48px;
+  border-radius: 10px;
+  font-weight: 650;
+}
+
+.onboarding-step--account .onboarding-back-link {
+  align-self: center;
+  margin-top: 0;
+  color: var(--dl-text-secondary);
+  font-size: 13px;
+}
+
+/* ── Mobile ─────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .onboarding-screen {
+    padding: var(--dl-space-md);
+    padding-top: env(safe-area-inset-top);
+    align-items: flex-start;
+  }
+
+  .onboarding-card {
+    width: 100%;
+    max-width: 680px;
+    padding: var(--dl-space-lg);
+  }
+
+  .recovery-grid {
+    grid-template-columns: repeat(3, 1fr);
+    padding: var(--dl-space-md);
+  }
+
+  .onboarding-step--account {
+    width: 100%;
+  }
+
+  .onboarding-account-panel {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .onboarding-screen {
+    padding: 12px;
+  }
+
+  .onboarding-card {
+    padding: 22px 16px 24px;
+    border-radius: 14px;
+  }
+
+  .onboarding-account-panel {
+    padding: 20px 16px;
+    border-radius: 14px;
+  }
+
+  .onboarding-step--account .onboarding-title {
+    font-size: 23px;
+  }
+
+  .onboarding-account-terms {
+    gap: 9px;
+  }
+}

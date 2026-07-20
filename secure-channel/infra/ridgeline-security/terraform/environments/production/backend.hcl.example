@@ -1,0 +1,6 @@
+bucket       = "ridgeline-production-444455556666-tfstate"
+key          = "security-foundation/terraform.tfstate"
+region       = "us-east-2"
+encrypt      = true
+kms_key_id   = "arn:aws:kms:us-east-2:444455556666:key/00000000-0000-0000-0000-000000000000"
+use_lockfile = true

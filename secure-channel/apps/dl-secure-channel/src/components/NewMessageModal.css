@@ -1,0 +1,174 @@
+/* ── NewMessageModal Styles ─────────────────────────────── */
+
+.new-msg-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dl-space-md);
+  min-height: 300px;
+}
+
+.new-msg-modal__search {
+  position: relative;
+}
+
+.new-msg-modal__search-btn {
+  background: none;
+  border: none;
+  color: var(--dl-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  transition: color var(--dl-transition-fast);
+}
+
+.new-msg-modal__search-btn:hover {
+  color: var(--dl-accent);
+}
+
+.new-msg-modal__results {
+  flex: 1;
+  min-height: 200px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* ── Searching animation ──────────────────────────────────── */
+
+.new-msg-modal__searching {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--dl-space-2xl);
+  color: var(--dl-text-muted);
+  font-size: var(--dl-text-sm);
+}
+
+.new-msg-modal__searching-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dl-accent);
+  animation: searchPulse 1.2s ease-in-out infinite;
+}
+
+.new-msg-modal__searching-dot:nth-child(2) { animation-delay: 0.2s; }
+.new-msg-modal__searching-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes searchPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* ── Empty state ──────────────────────────────────────────── */
+
+.new-msg-modal__empty,
+.new-msg-modal__hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dl-space-sm);
+  padding: var(--dl-space-2xl);
+  text-align: center;
+  color: var(--dl-text-muted);
+}
+
+.new-msg-modal__empty p,
+.new-msg-modal__hint p {
+  font-size: var(--dl-text-sm);
+  color: var(--dl-text-secondary);
+  margin: 0;
+}
+
+.new-msg-modal__empty span,
+.new-msg-modal__hint span {
+  font-size: var(--dl-text-xs);
+  color: var(--dl-text-muted);
+}
+
+/* ── User list ────────────────────────────────────────────── */
+
+.new-msg-modal__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.new-msg-modal__user {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-md);
+  padding: var(--dl-space-sm) var(--dl-space-md);
+  background: none;
+  border: none;
+  border-radius: var(--dl-radius-md);
+  cursor: pointer;
+  transition: background var(--dl-transition-fast);
+  width: 100%;
+  text-align: left;
+}
+
+.new-msg-modal__user:hover {
+  background: var(--dl-bg-hover);
+}
+
+.new-msg-modal__user--selected {
+  background: var(--dl-bg-active);
+  border: 1px solid var(--dl-accent);
+}
+
+.new-msg-modal__user-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.new-msg-modal__user-name {
+  font-size: var(--dl-text-sm);
+  font-weight: 600;
+  color: var(--dl-text-primary);
+}
+
+.new-msg-modal__user-id {
+  font-size: var(--dl-text-xs);
+  color: var(--dl-text-muted);
+  font-family: var(--dl-font-mono);
+}
+
+.new-msg-modal__user-badges {
+  display: flex;
+  gap: var(--dl-space-xs);
+}
+
+/* ── Footer ───────────────────────────────────────────────── */
+
+.new-msg-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--dl-space-md);
+  border-top: 1px solid var(--dl-border);
+}
+
+.new-msg-modal__selected {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-sm);
+  font-size: var(--dl-text-sm);
+  font-weight: 600;
+  color: var(--dl-text-primary);
+}
+
+.new-msg-modal__friend-btn {
+  background: #000 !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.new-msg-modal__friend-btn:hover:not(:disabled) {
+  background: #151515 !important;
+}

@@ -1,0 +1,201 @@
+/* ── App Layout ──────────────────────────────────────────── */
+
+/* Global polish */
+::selection {
+  background: var(--dl-accent, #6366f1);
+  color: #fff;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--dl-accent, #6366f1);
+  outline-offset: 2px;
+}
+
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: var(--dl-app-body-bg, var(--surface-main, var(--dl-bg-primary)));
+  transition: background var(--dl-transition-slow);
+}
+
+/* Screen Suspense fallback — shown while a lazy-loaded screen chunk downloads. */
+.app-screen-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100vw;
+  background: var(--dl-bg-primary);
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  background: var(--dl-app-body-bg, var(--surface-main, var(--dl-bg-primary)));
+  transition: background var(--dl-transition-slow);
+}
+
+.app-mobile-bottom-nav {
+  display: none;
+}
+
+.app-mobile-bottom-nav__item {
+  border: none;
+  background: none;
+}
+
+/* Responsive: hide sidebar on small screens */
+@media (max-width: 768px) {
+  .app-body {
+    position: relative;
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    padding-bottom: calc(66px + env(safe-area-inset-bottom));
+  }
+
+  .app-body.mobile-chat-open {
+    padding-bottom: 0;
+  }
+
+  .app-body > .mobile-pane {
+    height: 100%;
+    animation: appPaneIn 0.18s ease;
+  }
+
+  /* Reset all side panes to hidden; mode classes decide which one to show. */
+  .app-body > .sidebar-wrapper,
+  .app-body > .sidebar,
+  .app-body > .group-channel-sidebar {
+    display: none;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .app-body.app-body--dm > .sidebar-wrapper,
+  .app-body.app-body--dm > .sidebar {
+    display: flex;
+    animation: appPaneIn 0.18s ease;
+  }
+
+  .app-body.app-body--group > .group-channel-sidebar {
+    display: flex;
+    animation: appPaneIn 0.18s ease;
+  }
+
+  .app-body > .sidebar-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .app-body > .sidebar-wrapper > .sidebar,
+  .app-body > .sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .app-body .sidebar-resize-handle {
+    display: none;
+  }
+
+  .app-body > .guild-sidebar {
+    display: none;
+  }
+
+  .app-body > .chat-view,
+  .app-body > .chat-empty {
+    display: none;
+  }
+
+  /* When a conversation is open: hide sidebar + guild bar, show chat */
+  .app-body.mobile-chat-open > .sidebar-wrapper,
+  .app-body.mobile-chat-open > .sidebar,
+  .app-body.mobile-chat-open > .group-channel-sidebar {
+    display: none;
+  }
+
+  .app-body.mobile-chat-open > .chat-view,
+  .app-body.mobile-chat-open > .chat-empty {
+    display: flex;
+    animation: appPaneIn 0.18s ease;
+  }
+
+  @keyframes appPaneIn {
+    from {
+      opacity: 0;
+      transform: translateX(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .app-mobile-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 4px;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--dl-bg-secondary) 92%, transparent);
+    border-top: 1px solid var(--dl-border);
+    backdrop-filter: blur(10px);
+    z-index: 40;
+  }
+
+  .app-mobile-bottom-nav__item {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    border-radius: 10px;
+    color: var(--dl-text-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-height: 46px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color var(--dl-transition-fast), background var(--dl-transition-fast);
+  }
+
+  .app-mobile-bottom-nav__item span {
+    line-height: 1;
+  }
+
+  .app-mobile-bottom-nav__item--active {
+    color: var(--dl-text-primary);
+    background: var(--dl-bg-hover);
+  }
+
+  .app-mobile-bottom-nav__badge {
+    position: absolute;
+    top: 4px;
+    right: max(16px, 18%);
+    min-width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    padding: 0 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: #fff;
+    background: var(--dl-danger, #ef4444);
+  }
+}

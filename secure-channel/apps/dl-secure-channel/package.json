@@ -1,0 +1,157 @@
+{
+  "name": "@darklock/secure-channel",
+  "version": "2.0.13",
+  "private": true,
+  "type": "module",
+  "description": "Ridgeline — secure direct messaging and communities",
+  "author": {
+    "name": "Darklock",
+    "email": "admin@darklock.io"
+  },
+  "homepage": "https://darklock.io",
+  "main": "electron-dist/main.js",
+  "scripts": {
+    "dev": "concurrently -k -n vite,electron -c cyan,green \"vite\" \"npm run electron:dev\"",
+    "dev:vite": "vite",
+    "electron:dev": "tsc -p electron/tsconfig.json && node electron/wait-for-vite.cjs && electron . --dev",
+    "build": "vite build && tsc -p electron/tsconfig.json",
+    "typecheck": "tsc -p tsconfig.release.json && tsc -p electron/tsconfig.json --noEmit",
+    "test": "vitest run",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "stage:electron-runtime": "node scripts/stage-electron-runtime.mjs",
+    "package": "npm run stage:electron-runtime && npm run build && electron-builder",
+    "package:linux": "npm run stage:electron-runtime && npm run build && electron-builder --linux",
+    "package:win": "npm run stage:electron-runtime && npm run build && electron-builder --win",
+    "package:mac": "npm run stage:electron-runtime && npm run build && electron-builder --mac",
+    "package:all": "npm run stage:electron-runtime && npm run build && electron-builder --win --linux --mac",
+    "update:publish": "node ../../../scripts/publish-secure-channel-update.js --channel stable",
+    "update:publish:beta": "node ../../../scripts/publish-secure-channel-update.js --channel beta"
+  },
+  "dependencies": {
+    "@darklock/channel-crypto": "*",
+    "@darklock/ridgeline-security-capabilities": "*",
+    "better-sqlite3": "^12.11.1",
+    "electron-updater": "^6.8.9",
+    "jose": "^6.2.3",
+    "libsodium-wrappers-sumo": "^0.7.13",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "semver": "^7.8.5",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/libsodium-wrappers-sumo": "^0.7.8",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/semver": "^7.7.1",
+    "@vitejs/plugin-react": "^5.1.1",
+    "autoprefixer": "^10.5.0",
+    "concurrently": "^10.0.3",
+    "dotenv": "^17.4.1",
+    "electron": "43.1.1",
+    "electron-builder": "^26.15.3",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^5.5.4",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.10"
+  },
+  "build": {
+    "appId": "com.darklock.ridgeline",
+    "productName": "Ridgeline",
+    "directories": {
+      "output": "release",
+      "buildResources": "public"
+    },
+    "asar": true,
+    "electronUpdaterCompatibility": ">=2.16",
+    "files": [
+      "dist/**/*",
+      "electron-dist/**/*",
+      "public/**/*",
+      {
+        "from": ".electron-runtime",
+        "to": "node_modules",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Network",
+      "icon": "public/icon.png",
+      "executableName": "ridgeline",
+      "desktop": {
+        "entry": {
+          "Name": "Ridgeline",
+          "Comment": "Secure direct messaging and communities"
+        }
+      }
+    },
+    "win": {
+      "verifyUpdateCodeSignature": true,
+      "signtoolOptions": {
+        "publisherName": [
+          "Darklock"
+        ]
+      },
+      "target": [
+        "nsis"
+      ],
+      "icon": "public/icon.png"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "public/icon.png",
+      "category": "public.app-category.social-networking",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Ridgeline",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "unicode": true,
+      "installerIcon": "installer/installerIcon.ico",
+      "uninstallerIcon": "installer/uninstallerIcon.ico",
+      "installerHeader": "installer/installerHeader.bmp",
+      "installerSidebar": "installer/installerSidebar.bmp",
+      "uninstallerSidebar": "installer/uninstallerSidebar.bmp",
+      "include": "installer/installer.nsh"
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://cayden.tail333b18.ts.net/ridgeline"
+      }
+    ],
+    "artifactName": "Ridgeline-${version}-${os}-${arch}.${ext}"
+  }
+}

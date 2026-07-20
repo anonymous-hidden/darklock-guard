@@ -1,0 +1,74 @@
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 8px 14px;
+  color: var(--dl-text-secondary, #cbd5e1);
+  background: rgba(29, 49, 70, 0.82);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  z-index: 1000;
+  flex-shrink: 0;
+}
+
+.update-banner--major,
+.update-banner--major-installed { background: linear-gradient(90deg, rgba(24, 55, 82, 0.94), rgba(19, 29, 40, 0.94)); }
+.update-banner--mandatory { background: rgba(75, 35, 37, 0.96); }
+.update-banner > svg { flex: 0 0 auto; color: #8fc1e9; }
+.update-banner--mandatory > svg { color: #ffb4aa; }
+.update-banner__copy { display: flex; flex: 1 1 auto; min-width: 0; flex-direction: column; gap: 2px; }
+.update-banner__copy strong { color: #f2f6fa; font-size: 13px; }
+.update-banner__copy span { overflow: hidden; color: #aebdca; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.update-banner__blocked { color: #ffd0c8 !important; }
+.update-banner__actions { display: flex; flex: 0 0 auto; align-items: center; gap: 7px; }
+.update-banner__button,
+.update-banner__link,
+.update-toast button { border: 0; color: #d7e8f6; background: transparent; cursor: pointer; font: inherit; }
+.update-banner__button { min-height: 30px; padding: 0 10px; border-radius: 7px; font-size: 12px; font-weight: 600; }
+.update-banner__button--quiet:hover { background: rgba(255, 255, 255, 0.07); }
+.update-banner__button--primary { color: #08131d; background: #91c8ef; }
+.update-banner__button--primary:hover { background: #add9f7; }
+.update-banner__link { padding: 2px; color: #9ecdf0; text-decoration: underline; text-underline-offset: 3px; }
+.update-icon-button { display: inline-grid; width: 30px; height: 30px; padding: 0; place-items: center; border: 0; border-radius: 7px; color: #93a2af; background: transparent; cursor: pointer; }
+.update-icon-button:hover { color: #f1f5f9; background: rgba(255, 255, 255, 0.07); }
+
+.update-toast {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 36px));
+  min-height: 40px;
+  padding: 8px 10px;
+  z-index: 1200;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  color: #d7e0e8;
+  background: rgba(19, 24, 30, 0.96);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.38);
+  font-size: 12px;
+}
+.update-toast span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.update-toast button { flex: 0 0 auto; color: #8fc8ef; font-weight: 600; }
+
+.update-notes-backdrop { position: fixed; inset: 0; display: grid; padding: 24px; place-items: center; z-index: 5000; background: rgba(3, 6, 9, 0.72); backdrop-filter: blur(8px); }
+.update-notes { width: min(560px, 100%); max-height: min(720px, calc(100vh - 48px)); overflow-y: auto; border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 10px; color: #d8e0e7; background: #11161c; box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55); }
+.update-notes__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 22px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.update-notes__header h2 { margin: 4px 0; color: #f4f7fa; font-size: 22px; letter-spacing: 0; }
+.update-notes__header time,
+.update-notes__version { color: #8494a2; font-size: 11px; text-transform: uppercase; }
+.update-notes__summary { margin: 0; padding: 18px 22px 4px; color: #b9c5cf; line-height: 1.55; }
+.update-notes__section { padding: 10px 22px; }
+.update-notes__section:last-child { padding-bottom: 22px; }
+.update-notes__section h3 { margin: 0 0 8px; color: #eef3f7; font-size: 13px; letter-spacing: 0; }
+.update-notes__section ul { margin: 0; padding-left: 18px; color: #aab8c3; line-height: 1.55; }
+
+@media (max-width: 700px) {
+  .update-banner--major,
+  .update-banner--mandatory { align-items: flex-start; flex-wrap: wrap; }
+  .update-banner__copy { width: calc(100% - 30px); }
+  .update-banner__actions { width: 100%; justify-content: flex-end; }
+  .update-banner__button { padding-inline: 8px; }
+}

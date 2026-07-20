@@ -1,0 +1,99 @@
+/* ── Friend Requests Panel ────────────────────────────── */
+
+.friend-requests-panel {
+  border-bottom: 1px solid var(--border);
+  padding: 8px;
+}
+
+.friend-requests-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.friend-requests-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.friend-requests-panel__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--surface-hover);
+}
+
+.friend-requests-panel__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.friend-requests-panel__name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.friend-requests-panel__sub {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+}
+
+.friend-requests-panel__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.friend-requests-panel__btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.friend-requests-panel__btn:active {
+  transform: scale(0.92);
+}
+
+.friend-requests-panel__btn--accept {
+  background: var(--success);
+  color: #fff;
+}
+
+.friend-requests-panel__btn--accept:hover {
+  background: var(--success-hover, #2ea44f);
+}
+
+.friend-requests-panel__btn--reject {
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+
+.friend-requests-panel__btn--reject:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+.friend-requests-panel__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

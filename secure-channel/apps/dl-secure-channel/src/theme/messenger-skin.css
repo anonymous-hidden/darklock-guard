@@ -1,0 +1,623 @@
+/* ──────────────────────────────────────────────────────────
+ *  Darklock Secure Channel — Messenger Skin
+ *
+ *  Re-skins the existing app to the modern "rounded-card"
+ *  messenger layout (navy + purple gradient palette, pill
+ *  tabs, gradient bubbles & circular send button) WITHOUT
+ *  touching any JSX, stores, or features.
+ *
+ *  Loaded after `theme/index.css` and `App.css` so it wins
+ *  over their defaults, but EVERY rule respects the existing
+ *  --dl-* variable system so user themes (midnight / amoled
+ *  / custom) still override us via [data-theme="..."] blocks.
+ *
+ *  Strategy: re-define the base palette tokens, then add a
+ *  small set of layout rules on top of existing class names.
+ *  Nothing here changes structure — only shape & color.
+ * ────────────────────────────────────────────────────────── */
+
+/* ═══════════════════════════════════════════════════════════
+   1. PALETTE  — black & grey, single accent
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* Backgrounds — pure black → dark grey */
+  --dl-bg-primary:   #000000;   /* page / outer shell */
+  --dl-bg-secondary: #0d0d0d;   /* sidebar */
+  --dl-bg-tertiary:  #1a1a1a;   /* inputs, received bubbles, button wells */
+  --dl-bg-surface:   #111111;   /* chat panel */
+  --dl-bg-elevated:  rgba(255, 255, 255, 0.06);
+  --dl-bg-hover:     rgba(255, 255, 255, 0.07);
+  --dl-bg-active:    rgba(255, 255, 255, 0.12);
+  --dl-bg-input:     #1a1a1a;
+
+  /* Text */
+  --dl-text-primary:   #f0f0f0;
+  --dl-text-secondary: #a0a0a0;
+  --dl-text-tertiary:  #707070;
+  --dl-text-muted:     #454545;
+
+  /* Accent — cool grey-white, used sparingly */
+  --dl-accent:        #d4d4d4;
+  --dl-accent-hover:  #ffffff;
+  --dl-accent-active: #aaaaaa;
+  --dl-accent-muted:  rgba(212, 212, 212, 0.10);
+  --dl-accent-glow:   rgba(212, 212, 212, 0.14);
+
+  /* Border */
+  --dl-border:        rgba(255, 255, 255, 0.06);
+  --dl-border-hover:  rgba(255, 255, 255, 0.12);
+  --dl-border-focus:  rgba(255, 255, 255, 0.28);
+
+  /* Status */
+  --dl-success: #22c55e;
+  --dl-warning: #eab308;
+  --dl-danger:  #ef4444;
+
+  /* Sent bubble gradient — dark grey → slightly lighter grey */
+  --dl-gradient-accent: linear-gradient(135deg, #2a2a2a 0%, #1e1e1e 100%);
+
+  /* Shell framing: structure stays deliberately quieter than content. */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-soft: rgba(255, 255, 255, 0.05);
+  --surface-app: #0b0d10;
+  --surface-sidebar: #101114;
+  --surface-main: #171817;
+  --radius-window: 14px;
+  --radius-panel: 12px;
+  --radius-card: 10px;
+  --dl-radius-card: var(--radius-card);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   2. APP FRAME  — rounded card on desktop, full-bleed on mobile
+   ═══════════════════════════════════════════════════════════ */
+
+@media (min-width: 769px) {
+  body {
+    background: var(--surface-app);
+  }
+
+  .app-layout {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-window);
+    overflow: hidden;
+    box-shadow: none;
+    background: var(--surface-app);
+  }
+
+  html.dl-fullscreen body {
+    background: var(--dl-bg-primary);
+  }
+
+  html.dl-fullscreen .app-layout {
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+  }
+
+  /* Drag region keeps working on Electron but visually merges in */
+  .app-titlebar {
+    background: transparent;
+    height: 12px;
+    border-bottom: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   3. GUILD SIDEBAR (far-left icon rail)
+   ═══════════════════════════════════════════════════════════ */
+
+.guild-sidebar {
+  background: #0e1020;
+  border-right: 1px solid var(--dl-border);
+}
+
+.guild-sidebar__icon--active,
+.guild-sidebar__icon:hover {
+  background: var(--dl-accent-muted);
+}
+
+.guild-sidebar__active-pill {
+  background: var(--dl-gradient-accent);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   4. CONVERSATION SIDEBAR
+   ═══════════════════════════════════════════════════════════ */
+
+.sidebar-wrapper {
+  background: var(--dl-dm-sidebar-bg, var(--surface-sidebar));
+  border-right: none;
+}
+
+.sidebar {
+  background: var(--dl-dm-sidebar-bg, var(--surface-sidebar));
+  border-right: 1px solid var(--border-soft);
+}
+
+/* Section header look (search wrap doubles as our "Messages" header) */
+.sidebar-search {
+  padding: 16px 12px 10px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+/* Pill-shaped search input */
+.sidebar-search .dl-input,
+.sidebar-search input {
+  background: var(--dl-bg-tertiary);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--dl-text-primary);
+  height: 36px;
+}
+.sidebar-search input::placeholder { color: var(--dl-text-muted); }
+.sidebar-search input:focus {
+  border-color: var(--dl-border-focus);
+  box-shadow: 0 0 0 3px var(--dl-accent-glow);
+  outline: none;
+}
+
+/* Tabs — pill style */
+.sidebar-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 4px;
+}
+.sidebar-tab {
+  flex: 1;
+  padding: 7px 0;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dl-text-tertiary);
+  background: transparent;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease;
+}
+.sidebar-tab:hover { color: var(--dl-text-primary); }
+.sidebar-tab--active {
+  color: var(--dl-accent);
+  background: var(--dl-accent-muted);
+}
+.sidebar-tab__badge {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dl-accent);
+}
+
+/* "New Message" CTA */
+.sidebar-new-section { padding: 6px 12px 4px; }
+.sidebar-new-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--dl-gradient-accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.30);
+  transition: transform 120ms ease, box-shadow 180ms ease;
+}
+.sidebar-new-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(124, 58, 237, 0.40); }
+.sidebar-new-btn:active { transform: translateY(0); }
+
+/* Conversation list */
+.sidebar-list { padding: 6px 8px; }
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px;
+  border-radius: 14px;
+  border: none;
+  background: transparent;
+  color: var(--dl-text-primary);
+  cursor: pointer;
+  transition: background 180ms ease;
+  position: relative;
+}
+.sidebar-item:hover { background: var(--dl-bg-elevated); }
+.sidebar-item--active { background: var(--dl-accent-muted); }
+.sidebar-item--active::before {
+  content: "";
+  position: absolute;
+  left: -2px; top: 10px; bottom: 10px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--dl-gradient-accent);
+}
+
+.sidebar-item__avatar { flex-shrink: 0; }
+
+.sidebar-item__body { flex: 1; min-width: 0; }
+
+.sidebar-item__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.sidebar-item__name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--dl-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar-item__time {
+  font-size: 11px;
+  color: var(--dl-text-muted);
+  flex-shrink: 0;
+}
+.sidebar-item__bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+.sidebar-item__preview {
+  font-size: 12px;
+  color: var(--dl-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Unread badge → solid purple */
+.sidebar-item__bottom .badge,
+.sidebar-item__bottom [class*="badge"] {
+  background: var(--dl-accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 999px;
+  min-width: 18px;
+  text-align: center;
+  padding: 1px 6px;
+}
+
+/* Footer bar (security strip + profile) */
+.sidebar-footer {
+  border-top: 1px solid var(--border-soft);
+  padding: 8px 14px;
+  font-size: 10.5px;
+  color: var(--dl-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sidebar-footer__security { display: flex; align-items: center; gap: 6px; }
+
+.sidebar-shop-btn {
+  border: none;
+  border-radius: var(--radius-card);
+  background: transparent;
+}
+
+.sidebar-shop-btn:hover {
+  border-color: transparent;
+  background: var(--dl-bg-hover);
+}
+
+.sidebar-profile {
+  border-radius: var(--radius-panel);
+  margin: 0 6px 6px;
+}
+
+.sidebar-profile {
+  background: transparent;
+  padding: 10px 12px 14px;
+  gap: 10px;
+}
+.sidebar-profile:hover { background: var(--dl-bg-elevated); }
+.sidebar-profile__name { font-size: 13px; font-weight: 600; }
+.sidebar-profile__status { font-size: 11px; color: var(--dl-text-tertiary); }
+
+/* Round icon buttons in profile bar (settings, admin, …) */
+.sidebar-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--dl-bg-tertiary);
+  color: var(--dl-accent);
+  border: none;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, transform 120ms ease;
+}
+.sidebar-icon-btn:hover { background: var(--dl-accent); color: #fff; }
+.sidebar-icon-btn:active { transform: scale(0.95); }
+
+/* ═══════════════════════════════════════════════════════════
+   5. CHAT PANEL
+   ═══════════════════════════════════════════════════════════ */
+
+.chat-view, .chat-empty {
+  background: var(--conv-msgs-bg, var(--surface-main));
+}
+
+.chat-header {
+  border-bottom: 1px solid var(--border-soft);
+  padding: 14px 20px;
+  background: color-mix(in srgb, var(--surface-main) 94%, #000);
+}
+.chat-header__name { font-size: 15px; font-weight: 700; }
+.chat-header__meta { font-size: 12px; color: var(--dl-success); }
+
+/* Round header action buttons */
+.chat-header__actions button,
+.chat-header__back {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--dl-bg-tertiary);
+  color: var(--dl-accent);
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+.chat-header__actions button:hover,
+.chat-header__back:hover { background: var(--dl-accent); color: #fff; }
+
+/* Date separator */
+.chat-date-sep span {
+  background: transparent;
+  color: var(--dl-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+}
+.chat-date-sep::before,
+.chat-date-sep::after {
+  background: var(--dl-border);
+}
+
+/* Message bubbles ───────────────────────────────────────── */
+.chat-msg__content {
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.chat-msg__content--other {
+  background: var(--conv-other-bg, var(--dl-bg-tertiary));
+  color: var(--conv-other-text, var(--dl-text-primary));
+  border-bottom-left-radius: 6px;
+  border: var(--conv-bubble-border, none);
+  backdrop-filter: var(--conv-bubble-backdrop, none);
+  box-shadow: var(--conv-bubble-shadow, none);
+}
+.chat-msg__content--own {
+  background: var(--conv-own-bg, var(--dl-gradient-accent));
+  color: var(--conv-own-text, #fff);
+  border-bottom-right-radius: 6px;
+  box-shadow: var(--conv-bubble-shadow, none);
+  border: var(--conv-bubble-border, none);
+  backdrop-filter: var(--conv-bubble-backdrop, none);
+}
+
+/* Reaction chips */
+.chat-msg__reaction {
+  background: var(--dl-bg-secondary);
+  border: 1px solid var(--dl-border);
+  border-radius: 999px;
+  font-size: 12px;
+}
+.chat-msg__reaction--own {
+  background: var(--dl-accent-muted);
+  border-color: var(--dl-border-focus);
+  color: var(--dl-accent);
+}
+
+/* Message status ticks */
+.msg-status--read,
+.chat-msg__content--own .chat-msg__status-inline svg { color: var(--dl-accent-hover); }
+
+/* ═══════════════════════════════════════════════════════════
+   6. INPUT / COMPOSER
+   ═══════════════════════════════════════════════════════════ */
+
+.chat-input-wrapper {
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--border-soft);
+  background: transparent;
+}
+
+.chat-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* Pill input field */
+.chat-input__field-wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  background: var(--conv-input-bg, var(--dl-bg-tertiary));
+  border: var(--conv-input-border, 1px solid transparent);
+  border-radius: 24px;
+  padding: 10px 16px;
+  color: var(--dl-text-primary);
+  font-size: var(--conv-font-size, 13.5px);
+  font-family: var(--conv-font-family, inherit);
+  resize: none;
+  min-height: 42px;
+  max-height: 140px;
+  box-shadow: var(--conv-input-shadow, none);
+  backdrop-filter: var(--conv-input-backdrop, none);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+.chat-input__field {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  color: var(--dl-text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+}
+.chat-input__field::placeholder { color: var(--dl-text-muted); }
+.chat-input__field:focus {
+  outline: none;
+  border: none;
+  box-shadow: none;
+}
+
+/* The composer stays quiet while typing; no extra frame is drawn on focus. */
+.chat-input:focus-within {
+  outline: none;
+}
+
+/* Round attach / emoji / mic buttons */
+.chat-input__btn {
+  width: 40px; height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--dl-bg-tertiary);
+  color: var(--dl-accent);
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, transform 120ms ease;
+}
+.chat-input__btn:hover { background: var(--dl-accent); color: #fff; }
+.chat-input__btn:active { transform: scale(0.95); }
+.chat-input__btn--recording {
+  background: var(--dl-danger);
+  color: #fff;
+  animation: dl-pulse 1.4s ease-in-out infinite;
+}
+
+/* Gradient circular send button */
+.chat-input__send {
+  width: 44px; height: 44px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--dl-gradient-accent);
+  color: #fff;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.35);
+  transition: transform 150ms ease, box-shadow 180ms ease;
+}
+.chat-input__send:hover { transform: scale(1.08); box-shadow: 0 10px 24px rgba(124, 58, 237, 0.45); }
+.chat-input__send:active { transform: scale(0.96); }
+.chat-input__send:disabled {
+  background: var(--dl-bg-tertiary);
+  color: var(--dl-text-muted);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Staging tray (attachments before send) */
+.chat-input-staging {
+  background: var(--dl-bg-tertiary);
+  border: 1px solid var(--dl-border);
+  border-radius: 14px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+/* Reply-context strip above input */
+.chat-input-context {
+  background: var(--dl-bg-tertiary);
+  border: 1px solid var(--dl-border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   7. MISC POLISH
+   ═══════════════════════════════════════════════════════════ */
+
+/* Banners remain part of their parent surfaces rather than floating cards. */
+.key-change-banner,
+.risk-banner,
+.update-banner { border-radius: 0; }
+
+/* Keep the native titlebar inside the same visual frame as the app shell. */
+.titlebar {
+  background: var(--surface-app);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.titlebar__controls {
+  padding-right: 6px;
+  gap: 2px;
+}
+
+.titlebar__btn {
+  border-radius: 6px;
+  color: var(--dl-text-muted);
+}
+
+.titlebar__btn:hover {
+  background: var(--dl-bg-hover);
+  color: var(--dl-text-primary);
+}
+
+/* Generic dl-input (used by Shared Input, modals, settings) */
+.dl-input {
+  background: var(--dl-bg-tertiary);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--dl-text-primary);
+}
+.dl-input:focus {
+  border-color: var(--dl-border-focus);
+  box-shadow: 0 0 0 3px var(--dl-accent-glow);
+  outline: none;
+}
+
+/* Scrollbar tint */
+::-webkit-scrollbar-thumb { background: var(--dl-bg-tertiary); }
+::-webkit-scrollbar-thumb:hover { background: var(--dl-accent-muted); }
+
+/* Re-apply user theme variants AFTER our palette overrides
+ * (selectors with [data-theme="..."] beat plain :root, so the
+ * user's theme picker — midnight / amoled / custom — keeps
+ * full control). No extra rules needed here; this comment is
+ * a reminder. */

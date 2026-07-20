@@ -1,0 +1,212 @@
+name: Release Ridgeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      classification:
+        description: Signed release classification
+        required: true
+        type: choice
+        options: [patch, minor, major, security, hotfix]
+      urgency:
+        description: Signed presentation policy
+        required: true
+        default: recommended
+        type: choice
+        options: [recommended, required, emergency]
+      channel:
+        description: Release channel
+        required: true
+        default: stable
+        type: choice
+        options: [stable, beta]
+      rollout:
+        description: Deterministic rollout percentage
+        required: true
+        default: "5"
+        type: choice
+        options: ["1", "5", "25", "50", "100"]
+      minimum_supported_version:
+        description: Signed minimum supported version
+        required: true
+        default: "2.0.0"
+      metadata_sequence:
+        description: Monotonically increasing revision for this version
+        required: true
+        default: "1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ridgeline-production-release
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: secure-channel/package-lock.json
+      - name: Install locked dependencies
+        working-directory: secure-channel
+        run: npm ci --ignore-scripts
+      - name: Tests
+        working-directory: secure-channel
+        run: npm test --workspace=apps/dl-secure-channel
+      - name: Lint
+        working-directory: secure-channel
+        run: npm run lint --if-present --workspace=apps/dl-secure-channel
+      - name: Type check
+        working-directory: secure-channel
+        run: npm run typecheck --workspace=apps/dl-secure-channel
+      - name: Dependency security gate
+        working-directory: secure-channel
+        run: npm audit --workspace=apps/dl-secure-channel --omit=dev --audit-level=high
+
+  build:
+    needs: verify
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            target: win
+            arch: x64
+          - os: ubuntu-latest
+            target: linux
+            arch: x64
+          - os: macos-13
+            target: mac
+            arch: universal
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    environment: ridgeline-production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: secure-channel/package-lock.json
+      - name: Install locked dependencies
+        working-directory: secure-channel
+        run: npm ci
+      - name: Build and code sign
+        working-directory: secure-channel
+        run: npm run package:${{ matrix.target }} --workspace=apps/dl-secure-channel -- --${{ matrix.arch }} --publish never
+        env:
+          NODE_ENV: production
+          CI: "true"
+          CSC_LINK: ${{ matrix.target == 'win' && secrets.WINDOWS_CODE_SIGNING_CERT_B64 || (matrix.target == 'mac' && secrets.MACOS_CODE_SIGNING_CERT_B64 || '') }}
+          CSC_KEY_PASSWORD: ${{ matrix.target == 'win' && secrets.WINDOWS_CODE_SIGNING_CERT_PASSWORD || (matrix.target == 'mac' && secrets.MACOS_CODE_SIGNING_CERT_PASSWORD || '') }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - name: Install cosign
+        if: matrix.target == 'linux'
+        uses: sigstore/cosign-installer@v3.8.2
+      - name: Sign Linux packages
+        if: matrix.target == 'linux'
+        shell: bash
+        run: |
+          for artifact in secure-channel/apps/dl-secure-channel/release/*.AppImage secure-channel/apps/dl-secure-channel/release/*.deb; do
+            [ -f "$artifact" ] || continue
+            cosign sign-blob --yes --bundle "${artifact}.sigstore.json" "$artifact"
+          done
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: secure-channel/apps/dl-secure-channel/release/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ridgeline-${{ matrix.target }}-${{ matrix.arch }}
+          path: secure-channel/apps/dl-secure-channel/release/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment: ridgeline-production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ridgeline-*
+          path: release
+          merge-multiple: true
+      - name: Generate SBOM
+        working-directory: secure-channel
+        run: npm sbom --sbom-format cyclonedx > ../release/ridgeline-sbom.cdx.json
+      - name: Build artifact input
+        run: node scripts/release/prepare-ridgeline-artifacts.mjs release release-artifacts.json https://releases.darklock.net/ridgeline
+      - name: Sign product release policy
+        run: >-
+          node scripts/release/sign-ridgeline-policy.mjs
+          --artifacts-json release-artifacts.json
+          --notes-json scripts/release/ridgeline-release-notes.json
+          --output release-policy.json
+          --classification ${{ inputs.classification }}
+          --urgency ${{ inputs.urgency }}
+          --channel ${{ inputs.channel }}
+          --rollout ${{ inputs.rollout }}
+          --minimum-supported-version ${{ inputs.minimum_supported_version }}
+          --metadata-sequence ${{ inputs.metadata_sequence }}
+          --release-id ridgeline-${{ inputs.channel }}-${{ github.sha }}
+        env:
+          RIDGELINE_UPDATE_SIGNING_KEY_B64: ${{ secrets.RIDGELINE_UPDATE_SIGNING_KEY_B64 }}
+          RIDGELINE_UPDATE_KEY_ID: ridgeline-release-2026-01
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.RIDGELINE_RELEASE_AWS_ROLE }}
+          aws-region: ${{ secrets.RIDGELINE_RELEASE_AWS_REGION }}
+      - name: Upload immutable artifacts first
+        run: >-
+          aws s3 sync release s3://${{ secrets.RIDGELINE_RELEASE_BUCKET }}/ridgeline
+          --exclude "*.yml" --exclude "*.yaml"
+          --cache-control "public,max-age=31536000,immutable"
+      - name: Publish framework updater manifests
+        run: >-
+          aws s3 sync release s3://${{ secrets.RIDGELINE_RELEASE_BUCKET }}/ridgeline
+          --exclude "*" --include "*.yml" --include "*.yaml"
+          --cache-control "no-cache"
+      - name: Request short-lived Ridgeline publication identity
+        id: publication-oidc
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken('ridgeline-release-publisher');
+            core.setSecret(token);
+            core.setOutput('token', token);
+      - name: Publish signed policy last and create audit record
+        run: |
+          jq -n --arg commit "${GITHUB_SHA}" --slurpfile envelope release-policy.json '{sourceCommit: $commit, envelope: $envelope[0]}' > publication.json
+          curl --fail-with-body --retry 2 --max-time 30 \
+            -H "Authorization: Bearer ${RIDGELINE_RELEASE_OIDC_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data-binary @publication.json \
+            https://admin.darklock.net/api/v4/admin/app/publish-signed
+        env:
+          RIDGELINE_RELEASE_OIDC_TOKEN: ${{ steps.publication-oidc.outputs.token }}

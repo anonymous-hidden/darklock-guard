@@ -1,0 +1,27 @@
+{
+  "name": "@darklock/ridgeline-secure-storage",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js"
+    },
+    "./setup-server-key": "./src/setup-server-key.js"
+  },
+  "bin": {
+    "ridgeline-setup-server-key": "src/setup-server-key.js"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "libsodium-wrappers-sumo": "0.7.16"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

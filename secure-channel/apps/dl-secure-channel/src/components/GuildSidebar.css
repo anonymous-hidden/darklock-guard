@@ -1,0 +1,285 @@
+/* ── Guild Sidebar ─────────────────────────────────────── */
+
+.guild-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 64px;
+  min-width: 64px;
+  height: 100%;
+  margin: 0;
+  padding: 10px 0 12px;
+  gap: 4px;
+  background: var(--dl-bg-secondary, #141618);
+  border-radius: 0;
+  overflow-y: auto;
+  overflow-x: visible;
+  scrollbar-width: none;
+}
+
+.guild-sidebar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Tooltip wrap ─────────────────────────── */
+.guild-sidebar__tooltip-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Tooltip shown on hover via data-tooltip */
+.guild-sidebar__tooltip-wrap[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 14px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  background: #1a1d21;
+  color: #f2f3f5;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.07);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 9999;
+}
+
+.guild-sidebar__tooltip-wrap[data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* Arrow pointing left from tooltip */
+.guild-sidebar__tooltip-wrap[data-tooltip]::before {
+  content: '';
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+  border-right-color: #1a1d21;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  z-index: 9999;
+}
+
+.guild-sidebar__tooltip-wrap[data-tooltip]:hover::before {
+  opacity: 1;
+}
+
+/* ── Icon button (shared) ─────────────────── */
+.guild-sidebar__icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: border-radius 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.15s ease;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  outline: none;
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.guild-sidebar__icon:hover {
+  border-radius: 35%;
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  color: #fff;
+}
+
+.guild-sidebar__icon:active {
+  transform: scale(0.96);
+}
+
+.guild-sidebar__icon--active {
+  border-radius: 35%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  color: #fff;
+}
+
+/* ── Home icon ────────────────────────────── */
+.guild-sidebar__home {
+  background: transparent;
+  padding: 0;
+  overflow: hidden;
+  width: 48px;
+  height: 48px;
+}
+
+.guild-sidebar__home-mark {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  transition: border-radius 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.guild-sidebar__home:hover .guild-sidebar__home-mark,
+.guild-sidebar__home.guild-sidebar__icon--active .guild-sidebar__home-mark {
+  border-radius: 35%;
+}
+
+.guild-sidebar__home-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+  display: block;
+  image-rendering: -webkit-optimize-contrast;
+  transform: translateZ(0);
+}
+
+.guild-sidebar__home:hover,
+.guild-sidebar__home.guild-sidebar__icon--active {
+  background: transparent;
+  box-shadow: none;
+  transform: scale(1.05);
+}
+
+/* ── Separator (clean thin line) ──────────── */
+.guild-sidebar__divider {
+  width: 32px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 6px 0 4px;
+  flex-shrink: 0;
+}
+
+/* ── Groups scroll area ───────────────────── */
+.guild-sidebar__groups {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding-bottom: 8px;
+}
+
+/* ── Avatar image ─────────────────────────── */
+.guild-sidebar__avatar-img {
+  width: 44px;
+  height: 44px;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+/* ── Group icon (gradient bg) ─────────────── */
+.guild-sidebar__group {
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.guild-sidebar__group:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.guild-sidebar__group.guild-sidebar__icon--active {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* ── Initial letter ─────────────────────── */
+.guild-sidebar__initial {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  user-select: none;
+  letter-spacing: -0.02em;
+}
+
+/* ── Add / create group button ────────────── */
+.guild-sidebar__add {
+  background: rgba(34, 197, 94, 0.1);
+  color: rgba(34, 197, 94, 0.8);
+}
+
+.guild-sidebar__add:hover {
+  background: rgba(34, 197, 94, 0.22);
+  color: #22c55e;
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.2);
+}
+
+/* ── Badge (unread count) ─────────────────── */
+.guild-sidebar__badge {
+  position: absolute;
+  bottom: -3px;
+  right: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--dl-danger, #ef4444);
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(14, 16, 20, 0.95);
+  line-height: 1;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+}
+
+/* ── Unread pip ────────────────────────────── */
+.guild-sidebar__pip {
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 8px;
+  border-radius: 0 4px 4px 0;
+  background: rgba(255, 255, 255, 0.6);
+  transition: height 0.15s ease;
+}
+
+.guild-sidebar__icon:hover .guild-sidebar__pip {
+  height: 20px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* ── Active pill (left edge) ──────────────── */
+.guild-sidebar__active-pill {
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 36px;
+  border-radius: 0 4px 4px 0;
+  background: #fff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+/* ── Mobile ───────────────────────────────── */
+@media (max-width: 768px) {
+  .guild-sidebar {
+    display: none;
+  }
+}
