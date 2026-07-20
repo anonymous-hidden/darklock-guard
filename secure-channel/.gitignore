@@ -1,0 +1,36 @@
+# Secrets and env
+.env
+.env.*
+!/.env.example
+
+# Signing material
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+*.crt
+
+# Databases
+*.sqlite
+*.sqlite3
+*.db
+**/data/*.db
+**/data/*.sqlite
+**/data/*.sqlite3
+
+# Build artifacts
+dist/
+dist-pwa/
+release/
+electron-dist/
+.electron-runtime/
+release-icon-verification/
+release-icon-final/
+out/
+coverage/
+*.tsbuildinfo
+
+# Dependencies and OS
+node_modules/
+.DS_Store

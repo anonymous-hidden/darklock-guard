@@ -1,0 +1,29 @@
+{
+  "name": "dl-ids",
+  "version": "0.1.0",
+  "description": "Darklock Secure Channel — Identity Service (IDS)",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test",
+    "secure-storage:migrate": "node src/security/migrate-private-beta.js",
+    "secure-storage:backup": "node src/security/backup-cli.js"
+  },
+  "dependencies": {
+    "@darklock/ridgeline-security-capabilities": "*",
+    "@darklock/ridgeline-secure-storage": "*",
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.11.1",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^17.3.1",
+    "express": "^4.22.2",
+    "express-rate-limit": "^7.3.1",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^11.1.1",
+    "ws": "^8.21.1"
+  }
+}

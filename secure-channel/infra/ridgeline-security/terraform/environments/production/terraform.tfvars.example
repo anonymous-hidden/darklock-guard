@@ -1,0 +1,30 @@
+deployment_enabled        = false
+production_change_approval = ""
+aws_account_id            = "444455556666"
+aws_region                = "us-east-2"
+
+trust_anchor_arn      = "arn:aws:rolesanywhere:us-east-2:444455556666:trust-anchor/00000000-0000-0000-0000-000000000000"
+certificate_issuer_cn = "Ridgeline Production Workload CA"
+
+workload_subject_cns = {
+  ids          = "ridgeline-production-ids"
+  integrations = "ridgeline-production-integrations"
+  media        = "ridgeline-production-media"
+  backup       = "ridgeline-production-backup"
+  rly          = "ridgeline-production-rly"
+}
+
+operator_role_arns = [
+  "arn:aws:iam::444455556666:role/RidgelineProductionSecurityOperator",
+]
+kms_admin_role_arns = [
+  "arn:aws:iam::444455556666:role/RidgelineProductionKmsAdministrator",
+]
+kms_break_glass_role_arns = [
+  "arn:aws:iam::444455556666:role/RidgelineProductionKmsBreakGlass",
+]
+
+permissions_boundary_arn = "arn:aws:iam::444455556666:policy/RidgelineWorkloadBoundary"
+backup_bucket_name       = "ridgeline-production-444455556666-backup"
+audit_bucket_name        = "ridgeline-production-444455556666-audit"
+migration_enabled        = false

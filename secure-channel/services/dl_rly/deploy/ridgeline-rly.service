@@ -1,0 +1,29 @@
+[Unit]
+Description=Ridgeline Relay Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ridgeline-rly
+Group=ridgeline-rly
+WorkingDirectory=/opt/ridgeline/secure-channel
+EnvironmentFile=/etc/ridgeline/rly.env
+ExecStart=/usr/bin/node services/dl_rly/src/server.js
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/var/lib/ridgeline-rly
+
+[Install]
+WantedBy=multi-user.target

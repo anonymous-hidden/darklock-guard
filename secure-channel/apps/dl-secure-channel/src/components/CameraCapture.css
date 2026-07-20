@@ -1,0 +1,151 @@
+/* ── Camera Capture Modal ──────────────────────────────── */
+
+.camera-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: cameraFadeIn 0.2s ease;
+}
+
+@keyframes cameraFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.camera-modal {
+  width: 480px;
+  max-width: 92vw;
+  background: var(--dl-bg-secondary);
+  border-radius: var(--dl-radius-lg);
+  border: 1px solid var(--dl-border);
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  animation: cameraScaleIn 0.2s ease;
+}
+
+@keyframes cameraScaleIn {
+  from { transform: scale(0.93); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.camera-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--dl-border);
+  font-size: var(--dl-text-sm);
+  font-weight: 700;
+  color: var(--dl-text-primary);
+}
+
+.camera-modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: var(--dl-text-muted);
+  cursor: pointer;
+  border-radius: var(--dl-radius-md);
+  transition: all 0.15s;
+}
+
+.camera-modal__close:hover {
+  background: var(--dl-bg-hover);
+  color: var(--dl-text-primary);
+}
+
+.camera-modal__viewfinder {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-modal__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-modal__error {
+  color: var(--dl-text-muted);
+  font-size: var(--dl-text-sm);
+  text-align: center;
+  padding: 24px;
+}
+
+.camera-modal__flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  animation: cameraFlash 0.2s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes cameraFlash {
+  from { opacity: 0.8; }
+  to   { opacity: 0; }
+}
+
+.camera-modal__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 16px;
+  border-top: 1px solid var(--dl-border);
+}
+
+.camera-modal__shutter {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--dl-accent, #8b5cf6);
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.camera-modal__shutter:hover:not(:disabled) {
+  transform: scale(1.06);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.5);
+}
+
+.camera-modal__shutter:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.camera-modal__flip {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--dl-bg-hover);
+  border: 1px solid var(--dl-border);
+  color: var(--dl-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.camera-modal__flip:hover {
+  background: var(--dl-bg-surface);
+  color: var(--dl-text-primary);
+}

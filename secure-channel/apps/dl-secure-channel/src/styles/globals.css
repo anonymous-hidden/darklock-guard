@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ── Design-token CSS variables ──────────────────────────────────── */
+  :root {
+    --dl-accent-rgb: 99 102 241;       /* default indigo-500 */
+    --dl-accent: #6366f1;
+    --dl-bg: #0a0b0f;
+    --dl-surface: #111218;
+    --dl-elevated: #1a1b24;
+  }
+
+  /* ── Theme variants ──────────────────────────────────────────────── */
+  [data-theme="dark"] {
+    --dl-bg: #141720;
+    --dl-surface: #1c1f2e;
+    --dl-elevated: #252840;
+  }
+  [data-theme="darker"] {
+    --dl-bg: #0a0b0f;
+    --dl-surface: #111218;
+    --dl-elevated: #1a1b24;
+  }
+  [data-theme="midnight"] {
+    --dl-bg: #0d1117;
+    --dl-surface: #161b22;
+    --dl-elevated: #21262d;
+  }
+  [data-theme="amoled"] {
+    --dl-bg: #000000;
+    --dl-surface: #0a0a0a;
+    --dl-elevated: #141414;
+  }
+  [data-theme="nord"] {
+    --dl-bg: #2e3440;
+    --dl-surface: #3b4252;
+    --dl-elevated: #434c5e;
+  }
+  [data-theme="mocha"] {
+    --dl-bg: #1e1e2e;
+    --dl-surface: #26263a;
+    --dl-elevated: #313244;
+  }
+  [data-theme="system"] {
+    --dl-bg: #0a0b0f;
+    --dl-surface: #111218;
+    --dl-elevated: #1a1b24;
+  }
+  @media (prefers-color-scheme: light) {
+    [data-theme="system"] {
+      --dl-bg: #f5f7fa;
+      --dl-surface: #ffffff;
+      --dl-elevated: #edf0f7;
+    }
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-dl-bg text-dl-text font-sans min-h-screen overflow-hidden select-none;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.3);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.5);
+  }
+
+  /* ── Dark-themed native select ───────────────────────────────────── */
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    background-size: 1rem;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding-right: 2rem !important;
+    cursor: pointer;
+    color-scheme: dark;
+  }
+  select option {
+    background-color: #1a1b24;
+    color: #e2e8f0;
+  }
+}
+
+@layer components {
+  .dl-card {
+    @apply bg-dl-surface border border-dl-border rounded-xl p-4;
+  }
+
+  .dl-input {
+    @apply w-full bg-dl-elevated border border-dl-border rounded-lg px-3 py-2
+           text-dl-text placeholder-dl-muted focus:outline-none focus:ring-2
+           focus:ring-dl-accent/50 focus:border-dl-accent transition-all
+           duration-150;
+  }
+
+  /* Dark-themed select matching dl-input style */
+  .dl-select {
+    @apply w-full bg-dl-elevated border border-dl-border rounded-lg px-3 py-2
+           text-dl-text focus:outline-none focus:ring-2 focus:ring-dl-accent/50
+           focus:border-dl-accent transition-all duration-150;
+    color-scheme: dark;
+  }
+
+  .dl-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2
+           font-medium text-sm transition-all duration-150 cursor-pointer
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .dl-btn-primary {
+    @apply dl-btn bg-dl-accent text-white hover:bg-dl-accent-dim active:scale-95;
+  }
+
+  .dl-btn-ghost {
+    @apply dl-btn bg-transparent text-dl-text-dim hover:bg-dl-elevated hover:text-dl-text;
+  }
+
+  .dl-btn-danger {
+    @apply dl-btn bg-dl-danger/10 text-dl-danger hover:bg-dl-danger/20;
+  }
+
+  .dl-badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+}

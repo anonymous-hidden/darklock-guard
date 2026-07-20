@@ -1,0 +1,22 @@
+{
+  "name": "dl-rly",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Darklock Secure Channel — Relay Service (dumb envelope forwarder)",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "@darklock/ridgeline-security-capabilities": "*",
+    "better-sqlite3": "^12.11.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.3.1",
+    "express": "^4.22.2",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^11.1.1",
+    "ws": "^8.21.1"
+  }
+}

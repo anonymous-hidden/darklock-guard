@@ -1,0 +1,12 @@
+{
+  "name": "@darklock/ridgeline-release-hub",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local signed-release service for Ridgeline",
+  "scripts": {
+    "start": "node src/server.js",
+    "publish": "node src/publish-release.js",
+    "test": "node --test"
+  }
+}

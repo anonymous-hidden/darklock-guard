@@ -1,0 +1,79 @@
+.custom-status-bubble {
+  min-width: 0;
+  height: 38px;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px 0 10px;
+  border: 1px solid #343741;
+  border-radius: 999px;
+  background: #24262d;
+  color: #e5e7eb;
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.24);
+}
+
+button.custom-status-bubble {
+  max-width: 100%;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+button.custom-status-bubble:hover {
+  background: #2b2e36;
+  border-color: #4a4e5a;
+}
+
+button.custom-status-bubble:focus-visible {
+  outline: none;
+  border-color: var(--profile-accent, var(--dl-accent));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--profile-accent, var(--dl-accent)) 22%, transparent);
+}
+
+.custom-status-bubble__plus {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #d1d5db;
+}
+
+.custom-status-bubble__text,
+.custom-status-bubble__placeholder {
+  display: block;
+  min-width: 0;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-status-bubble__text {
+  color: #e5e7eb;
+}
+
+.custom-status-bubble__placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.custom-status-bubble--compact {
+  height: 30px;
+  max-width: 100%;
+  padding: 0 9px 0 5px;
+  gap: 6px;
+  font-size: 0.72rem;
+}
+
+.custom-status-bubble--compact .custom-status-bubble__plus {
+  width: 18px;
+  height: 18px;
+}

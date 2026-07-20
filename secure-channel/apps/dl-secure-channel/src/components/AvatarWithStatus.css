@@ -1,0 +1,212 @@
+/* ── AvatarWithStatus ────────────────────────────────────── */
+
+.avatar-status {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatar-status__avatar {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Status emoji badge — bottom-right of avatar, Discord-style */
+.avatar-status__badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: calc(var(--avatar-size, 40px) * 0.42);
+  height: calc(var(--avatar-size, 40px) * 0.42);
+  min-width: 18px;
+  min-height: 18px;
+  border-radius: var(--dl-radius-full);
+  background: var(--dl-bg-secondary);
+  border: 2px solid var(--dl-bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--avatar-size, 40px) * 0.26);
+  line-height: 1;
+  z-index: 2;
+  padding: 0;
+  color: inherit;
+}
+
+.avatar-status__badge--add {
+  opacity: 0;
+  transition: opacity var(--dl-transition-fast);
+  font-size: var(--dl-text-label);
+  font-weight: 700;
+  color: var(--dl-text-muted);
+}
+
+.avatar-status:hover .avatar-status__badge--add {
+  opacity: 0.7;
+}
+
+/* Status text next to avatar */
+.avatar-status__text {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--dl-text-xs);
+  color: var(--dl-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+  transition: color var(--dl-transition-fast);
+}
+
+.avatar-status__text:hover {
+  color: var(--dl-text-secondary);
+}
+
+.avatar-status__emoji {
+  font-size: var(--dl-text-body);
+  flex-shrink: 0;
+}
+
+.avatar-status__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Status Edit Popover ──────────────────────────────────── */
+
+.status-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 300px;
+  background: var(--dl-bg-elevated);
+  border: 1px solid var(--dl-border);
+  border-radius: var(--dl-radius-lg);
+  padding: var(--dl-space-md);
+  box-shadow: var(--dl-shadow-lg);
+  z-index: 100;
+  animation: dl-slideUp 150ms ease;
+}
+
+.status-popover__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--dl-space-md);
+}
+
+.status-popover__title {
+  font-size: var(--dl-text-sm);
+  font-weight: 700;
+  color: var(--dl-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-popover__close {
+  background: none;
+  border: none;
+  padding: 4px;
+  border-radius: var(--dl-radius-sm);
+  color: var(--dl-text-muted);
+  cursor: pointer;
+  transition: all var(--dl-transition-fast);
+}
+
+.status-popover__close:hover {
+  background: var(--dl-bg-hover);
+  color: var(--dl-text-primary);
+}
+
+.status-popover__emoji-row {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-sm);
+  margin-bottom: var(--dl-space-md);
+}
+
+.status-popover__current-emoji {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--dl-bg-surface);
+  border: 1px solid var(--dl-border);
+  border-radius: var(--dl-radius-md);
+  font-size: var(--dl-text-h2);
+  cursor: default;
+}
+
+.status-popover__quick-emojis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: var(--dl-space-md);
+}
+
+.status-popover__emoji-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--dl-bg-surface);
+  border: 1px solid transparent;
+  border-radius: var(--dl-radius-sm);
+  font-size: var(--dl-text-h3);
+  cursor: pointer;
+  transition: all var(--dl-transition-fast);
+}
+
+.status-popover__emoji-btn:hover {
+  background: var(--dl-bg-hover);
+  border-color: var(--dl-border-hover);
+}
+
+.status-popover__emoji-btn--active {
+  background: var(--dl-accent-muted);
+  border-color: var(--dl-accent);
+}
+
+.status-popover__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--dl-space-sm);
+}
+
+.status-popover__clear {
+  background: none;
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--dl-radius-md);
+  font-size: var(--dl-text-xs);
+  color: var(--dl-text-muted);
+  cursor: pointer;
+  transition: all var(--dl-transition-fast);
+}
+
+.status-popover__clear:hover {
+  background: var(--dl-bg-hover);
+  color: var(--dl-danger);
+}
+
+.status-popover__save {
+  background: var(--dl-accent);
+  color: #fff;
+  border: none;
+  padding: 6px 16px;
+  border-radius: var(--dl-radius-md);
+  font-size: var(--dl-text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--dl-transition-fast);
+}
+
+.status-popover__save:hover {
+  background: var(--dl-accent-hover);
+}

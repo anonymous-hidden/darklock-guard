@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Darklock" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="theme-color" content="#0a0a0f" />
+    <meta name="description" content="End-to-end encrypted messaging — zero-knowledge, zero compromise." />
+    <link rel="manifest" href="/app/secure-channel/manifest.json" />
+    <link rel="apple-touch-icon" href="/app/secure-channel/icons/icon-180.png" />
+    <title>Darklock Secure Channel</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #root {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- PWA adapter injects window.electronAPI shim using Web APIs -->
+    <script type="module" src="./src/pwaAdapter.ts"></script>
+    <script type="module" src="../dl-secure-channel/src/main.tsx"></script>
+  </body>
+</html>

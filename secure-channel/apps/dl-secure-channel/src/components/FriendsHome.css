@@ -1,0 +1,458 @@
+/* ── Friends Home — Discord-style friend list ─────────── */
+
+.friends-home {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+  background: var(--dl-friends-home-bg, var(--dl-bg-tertiary));
+  transition: background var(--dl-transition-slow);
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.friends-home__header {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-lg);
+  padding: var(--dl-space-md) var(--dl-space-lg);
+  background: var(--dl-bg-tertiary);
+  flex-shrink: 0;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+  z-index: 1;
+}
+
+.friends-home__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: var(--dl-text-base);
+  color: var(--dl-text-primary);
+  padding-right: var(--dl-space-lg);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.friends-home__tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.friends-home__tab {
+  padding: 2px 8px;
+  border: none;
+  background: transparent;
+  color: var(--dl-text-tertiary);
+  font-size: var(--dl-text-sm);
+  font-weight: 500;
+  border-radius: var(--dl-radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.friends-home__tab:hover {
+  background: var(--dl-bg-hover);
+  color: var(--dl-text-primary);
+}
+
+.friends-home__tab--active {
+  background: var(--dl-bg-active);
+  color: var(--dl-text-primary);
+}
+
+.friends-home__tab--add {
+  background: transparent;
+  color: var(--dl-success);
+}
+
+.friends-home__tab--add.friends-home__tab--active {
+  background: var(--dl-success);
+  color: #fff;
+}
+
+.friends-home__tab-badge {
+  background: var(--dl-danger);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+/* ── Content ────────────────────────────────────────────── */
+.friends-home__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--dl-space-lg) var(--dl-space-xl);
+  background: var(--dl-bg-tertiary);
+}
+
+.friends-home__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--dl-bg-tertiary);
+  border-radius: var(--dl-radius-sm);
+  border: none;
+  margin-bottom: var(--dl-space-lg);
+  color: var(--dl-text-muted);
+}
+
+.friends-home__search input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--dl-text-primary);
+  font-size: var(--dl-text-sm);
+  font-family: inherit;
+}
+
+.friends-home__search input::placeholder {
+  color: var(--dl-text-muted);
+}
+
+.friends-home__section-label {
+  font-size: var(--dl-text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--dl-text-tertiary);
+  padding: var(--dl-space-sm) 0;
+  margin-top: 4px;
+}
+
+/* ── List / Items ───────────────────────────────────────── */
+.friends-home__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.friends-home__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--dl-radius-md);
+  cursor: default;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  transition: background 0.12s;
+}
+
+.friends-home__item:first-child {
+  border-top: none;
+}
+
+.friends-home__item:hover {
+  background: var(--dl-bg-hover);
+}
+
+.friends-home__item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.friends-home__item-name {
+  font-size: var(--dl-text-base);
+  font-weight: 600;
+  color: var(--dl-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.friends-home__item-status {
+  font-size: var(--dl-text-xs);
+  color: var(--dl-text-tertiary);
+}
+
+.friends-home__item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.friends-home__icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--dl-bg-tertiary);
+  color: var(--dl-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.friends-home__icon-btn:hover {
+  background: var(--dl-bg-elevated);
+  color: var(--dl-text-primary);
+}
+
+.friends-home__icon-btn--accept {
+  background: var(--dl-success-muted);
+  color: var(--dl-success);
+}
+
+.friends-home__icon-btn--accept:hover {
+  background: var(--dl-success);
+  color: #fff;
+}
+
+.friends-home__icon-btn--reject {
+  background: var(--dl-danger-muted);
+  color: var(--dl-danger);
+}
+
+.friends-home__icon-btn--reject:hover {
+  background: var(--dl-danger);
+  color: #fff;
+}
+
+.friends-home__icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.friends-home__pending-label {
+  font-size: var(--dl-text-xs);
+  color: var(--dl-text-muted);
+  font-weight: 500;
+  padding: 4px 10px;
+  background: var(--dl-bg-elevated);
+  border-radius: var(--dl-radius-full, 999px);
+}
+
+.friends-home__friend-btn {
+  background: #000 !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.friends-home__friend-btn:hover:not(:disabled) {
+  background: #151515 !important;
+}
+
+/* ── Empty State ────────────────────────────────────────── */
+.friends-home__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--dl-space-md);
+  padding: var(--dl-space-2xl);
+  color: var(--dl-text-muted);
+  text-align: center;
+}
+
+.friends-home__empty p {
+  font-size: var(--dl-text-sm);
+  color: var(--dl-text-secondary);
+}
+
+/* ── Add Friend ─────────────────────────────────────────── */
+.friends-home__add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dl-space-md);
+}
+
+.friends-home__add-header h3 {
+  font-size: var(--dl-text-lg);
+  font-weight: 700;
+  color: var(--dl-text-primary);
+  margin: 0 0 4px;
+}
+
+.friends-home__add-header p {
+  font-size: var(--dl-text-sm);
+  color: var(--dl-text-secondary);
+  margin: 0;
+}
+
+.friends-home__add-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--dl-bg-tertiary);
+  border-radius: var(--dl-radius-md);
+  border: none;
+  color: var(--dl-text-muted);
+}
+
+.friends-home__add-input input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--dl-text-primary);
+  font-size: var(--dl-text-base);
+  font-family: inherit;
+}
+
+.friends-home__add-input input::placeholder {
+  color: var(--dl-text-muted);
+}
+
+.friends-home__add-error {
+  margin: 8px 0 4px;
+  padding: 8px 12px;
+  border-radius: var(--dl-radius-md);
+  background: var(--dl-danger-muted);
+  border: none;
+  color: var(--dl-danger);
+  font-size: var(--dl-text-sm);
+}
+
+.friends-home__add-results {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Mobile: Friends Home only ─────────────────────────── */
+@media (max-width: 860px) {
+  .friends-home__header {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+  }
+
+  .friends-home__title {
+    padding-right: 0;
+    border-right: none;
+    font-size: var(--dl-text-sm);
+  }
+
+  .friends-home__tabs {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .friends-home__tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .friends-home__tab {
+    white-space: nowrap;
+    min-height: 34px;
+    padding: 0 11px;
+    font-size: 0.78rem;
+    border: 1px solid var(--dl-border);
+    background: var(--dl-bg-elevated);
+  }
+
+  .friends-home__tab--active {
+    border-color: var(--dl-accent);
+  }
+
+  .friends-home__tab--add {
+    border-color: rgba(34, 197, 94, 0.32);
+    color: #86efac;
+  }
+
+  .friends-home__content {
+    padding: 12px 12px calc(18px + env(safe-area-inset-bottom));
+  }
+
+  .friends-home__search {
+    margin-bottom: 12px;
+  }
+
+  .friends-home__item {
+    gap: 10px;
+    padding: 10px 8px;
+  }
+
+  .friends-home__item-name {
+    font-size: 0.92rem;
+  }
+
+  .friends-home__item-status {
+    font-size: 0.72rem;
+  }
+
+  .friends-home__icon-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .friends-home__pending-label {
+    font-size: 0.68rem;
+    padding: 4px 8px;
+  }
+
+  .friends-home__empty {
+    padding: 2rem 1rem;
+  }
+
+  .friends-home__add {
+    gap: 12px;
+  }
+
+  .friends-home__add-header h3 {
+    font-size: 1rem;
+  }
+
+  .friends-home__add-header p {
+    font-size: 0.8rem;
+  }
+
+  .friends-home__add-input {
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 10px;
+  }
+
+  .friends-home__add-input .dl-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .friends-home__item-actions .dl-btn {
+    height: 32px;
+    min-height: 32px;
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .friends-home__item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .friends-home__item-info {
+    min-width: calc(100% - 58px);
+  }
+
+  .friends-home__item-actions {
+    margin-left: auto;
+  }
+
+  .friends-home__tab {
+    font-size: 0.74rem;
+    padding: 0 10px;
+  }
+}

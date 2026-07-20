@@ -1,0 +1,12 @@
+{
+  "title": "Ridgeline 2.0.13",
+  "summary": "A focused desktop reliability update.",
+  "highlights": [],
+  "fixes": [
+    "Fixed people lookup when using the live Ridgeline service.",
+    "Improved desktop development connection handling."
+  ],
+  "security": [
+    "Security and stability improvements."
+  ]
+}

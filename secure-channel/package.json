@@ -1,0 +1,49 @@
+{
+  "name": "darklock-secure-channel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ridgeline secure direct messaging and contained community features",
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:ids\" \"npm run dev:rly\" \"npm run dev:app\"",
+    "dev:ids": "npm run dev --workspace=services/dl_ids",
+    "dev:rly": "npm run dev --workspace=services/dl_rly",
+    "dev:app": "npm run dev --workspace=apps/dl-secure-channel",
+    "build": "npm run build:crypto && npm run build:app",
+    "build:crypto": "npm run build --workspace=packages/dl-crypto",
+    "build:app": "npm run build --workspace=apps/dl-secure-channel",
+    "check:no-secrets": "node scripts/check-no-secrets.js",
+    "postbuild": "npm rebuild better-sqlite3",
+    "start": "node services/dl_ids/src/server.js >> /tmp/dl-ids.log 2>&1 & node services/dl_rly/src/server.js >> /tmp/dl-rly.log 2>&1 &",
+    "build:mobile": "npm run build:pwa --workspace=apps/dl-secure-channel-mobile",
+    "cap:sync": "npm run cap:sync --workspace=apps/dl-secure-channel-mobile",
+    "cap:ios": "npm run cap:ios --workspace=apps/dl-secure-channel-mobile",
+    "cap:android": "npm run cap:android --workspace=apps/dl-secure-channel-mobile",
+    "start:ids": "npm run start --workspace=services/dl_ids",
+    "start:rly": "npm run start --workspace=services/dl_rly",
+    "test": "npm run test --workspaces --if-present",
+    "test:crypto": "npm run test --workspace=packages/dl-crypto",
+    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "license": "PROPRIETARY",
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.0",
+    "vite": "^7.3.6"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1"
+  },
+  "overrides": {
+    "js-yaml": "4.3.0",
+    "tar": "7.5.20",
+    "shell-quote": "1.10.0",
+    "@xmldom/xmldom": "0.8.13"
+  }
+}

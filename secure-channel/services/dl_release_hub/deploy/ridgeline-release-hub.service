@@ -1,0 +1,24 @@
+[Unit]
+Description=Ridgeline signed release hub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ridgeline-release
+Group=ridgeline-release
+EnvironmentFile=/etc/ridgeline/release-hub.env
+WorkingDirectory=/opt/ridgeline/secure-channel/services/dl_release_hub
+ExecStart=/usr/bin/node src/server.js
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/ridgeline-release-hub
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

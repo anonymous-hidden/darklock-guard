@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [],
+  "files": [
+    "src/main.tsx",
+    "src/vite-env.d.ts",
+    "vite.config.ts"
+  ]
+}

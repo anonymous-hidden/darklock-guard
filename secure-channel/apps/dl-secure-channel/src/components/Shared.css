@@ -1,0 +1,410 @@
+/* ── Shared component styles ─────────────────────────────── */
+
+/* ── Button ─────────────────────────────────────────────── */
+
+.dl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dl-space-sm);
+  border: none;
+  border-radius: var(--dl-radius-md);
+  font-family: var(--dl-font-sans);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--dl-transition-fast);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.dl-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.dl-btn--sm { padding: 6px 12px; font-size: var(--dl-text-xs); }
+.dl-btn--md { padding: 8px 18px; font-size: var(--dl-text-sm); }
+.dl-btn--lg { padding: 12px 24px; font-size: var(--dl-text-base); }
+
+.dl-btn--primary {
+  background: var(--dl-accent);
+  color: #fff;
+}
+.dl-btn--primary:hover:not(:disabled) {
+  background: var(--dl-accent-hover);
+  box-shadow: var(--dl-shadow-glow);
+}
+
+.dl-btn--secondary {
+  background: var(--dl-bg-surface);
+  color: var(--dl-text-primary);
+  border: none;
+}
+.dl-btn--secondary:hover:not(:disabled) {
+  background: var(--dl-bg-hover);
+}
+
+.dl-btn--ghost {
+  background: transparent;
+  color: var(--dl-text-secondary);
+}
+.dl-btn--ghost:hover:not(:disabled) {
+  background: var(--dl-bg-hover);
+  color: var(--dl-text-primary);
+}
+
+.dl-btn--danger {
+  background: var(--dl-danger);
+  color: #fff;
+}
+.dl-btn--danger:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.dl-btn--outline {
+  background: transparent;
+  color: var(--dl-accent);
+  border: 1px solid var(--dl-accent);
+}
+.dl-btn--outline:hover:not(:disabled) {
+  background: var(--dl-accent-muted);
+}
+
+/* Active press feedback for all button variants */
+.dl-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.dl-btn--loading { pointer-events: none; }
+
+.dl-btn__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: dl-spin 0.6s linear infinite;
+}
+
+.dl-btn__icon {
+  display: flex;
+  align-items: center;
+}
+
+/* ── Input ──────────────────────────────────────────────── */
+
+.dl-input-wrap { display: flex; flex-direction: column; gap: 6px; }
+.dl-input-wrap--error .dl-input { border-color: var(--dl-danger); }
+
+.dl-input-label {
+  font-size: var(--dl-text-xs);
+  font-weight: 500;
+  color: var(--dl-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dl-input-container { position: relative; display: flex; align-items: center; }
+
+.dl-input-icon {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.5);
+  pointer-events: none;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.dl-input-icon--left { left: 12px; }
+.dl-input-icon--right { right: 12px; pointer-events: auto; }
+
+.dl-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--dl-bg-input);
+  border: none;
+  border-radius: var(--dl-radius-md);
+  color: var(--dl-text-primary);
+  font-family: var(--dl-font-sans);
+  font-size: var(--dl-text-sm);
+  transition: box-shadow var(--dl-transition-fast);
+  outline: none;
+}
+
+.dl-input:focus { box-shadow: 0 0 0 2px var(--dl-accent); }
+.dl-input::placeholder { color: var(--dl-text-muted); }
+.dl-input--with-icon { padding-left: 38px; }
+.dl-input--with-right-icon { padding-right: 38px; }
+
+.dl-input-error {
+  font-size: var(--dl-text-xs);
+  color: var(--dl-danger);
+}
+
+/* ── TextArea ───────────────────────────────────────────── */
+
+.dl-textarea {
+  width: 100%;
+  min-height: 40px;
+  max-height: 160px;
+  padding: 10px 14px;
+  background: var(--dl-bg-input);
+  border: none;
+  border-radius: var(--dl-radius-md);
+  color: var(--dl-text-primary);
+  font-family: var(--dl-font-sans);
+  font-size: var(--dl-text-sm);
+  resize: none;
+  outline: none;
+  line-height: 1.5;
+  transition: box-shadow var(--dl-transition-fast);
+}
+
+.dl-textarea:focus { box-shadow: 0 0 0 2px var(--dl-accent); }
+.dl-textarea::placeholder { color: var(--dl-text-muted); }
+
+/* ── Avatar ─────────────────────────────────────────────── */
+
+.dl-avatar {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.dl-avatar__inner {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--dl-radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  font-family: var(--dl-font-sans);
+  user-select: none;
+  overflow: hidden;
+}
+
+.dl-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--dl-radius-full);
+  display: block;
+}
+
+.dl-avatar__status {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--dl-bg-primary);
+}
+
+.dl-avatar__status--online { background: var(--dl-success); }
+.dl-avatar__status--offline { background: var(--dl-text-muted); }
+
+/* ── Badge ──────────────────────────────────────────────── */
+
+.dl-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--dl-radius-full);
+  font-size: var(--dl-text-xs);
+  font-weight: 500;
+}
+
+.dl-badge__icon { display: flex; align-items: center; }
+
+.dl-badge--default { background: var(--dl-bg-surface); color: var(--dl-text-secondary); }
+.dl-badge--primary { background: var(--dl-accent-muted); color: var(--dl-accent); }
+.dl-badge--success { background: var(--dl-success-muted); color: var(--dl-success); }
+.dl-badge--warning { background: var(--dl-warning-muted); color: var(--dl-warning); }
+.dl-badge--danger { background: var(--dl-danger-muted); color: var(--dl-danger); }
+.dl-badge--encrypted { background: var(--dl-success-muted); color: var(--dl-encrypted); }
+
+/* ── Spinner ────────────────────────────────────────────── */
+
+.dl-spinner {
+  animation: dl-spin 0.8s linear infinite;
+  color: var(--dl-accent);
+}
+
+.dl-spinner circle {
+  opacity: 0.25;
+}
+
+.dl-spinner circle:first-child {
+  opacity: 1;
+}
+
+/* ── Modal ──────────────────────────────────────────────── */
+
+.dl-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.dl-modal {
+  background: var(--dl-bg-secondary);
+  border: none;
+  border-radius: var(--dl-radius-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  width: 90%;
+  overflow: hidden;
+}
+
+.dl-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--dl-space-lg) var(--dl-space-xl);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.dl-modal__title {
+  font-size: var(--dl-text-lg);
+  font-weight: 600;
+  color: var(--dl-text-primary);
+}
+
+.dl-modal__close {
+  background: none;
+  border: none;
+  color: var(--dl-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--dl-radius-sm);
+  display: flex;
+  transition: all var(--dl-transition-fast);
+}
+
+.dl-modal__close:hover {
+  color: var(--dl-text-primary);
+  background: var(--dl-bg-hover);
+}
+
+.dl-modal__body {
+  padding: var(--dl-space-xl);
+}
+
+.dl-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dl-space-sm);
+  padding: var(--dl-space-lg) var(--dl-space-xl);
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+
+/* ── Confirm dialog body ───────────────────────────────── */
+
+.dl-confirm-message {
+  margin: 0;
+  color: var(--dl-text-secondary);
+  font-size: var(--dl-text-body);
+  line-height: var(--dl-leading-relaxed);
+}
+
+/* ── Tooltip ────────────────────────────────────────────── */
+
+.dl-tooltip-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.dl-tooltip {
+  position: absolute;
+  padding: 4px 10px;
+  background: var(--dl-bg-elevated);
+  border: none;
+  border-radius: var(--dl-radius-sm);
+  font-size: var(--dl-text-xs);
+  color: var(--dl-text-primary);
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+  animation: dl-fadeIn 100ms ease;
+}
+
+.dl-tooltip--top { bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); }
+.dl-tooltip--bottom { top: calc(100% + 6px); left: 50%; transform: translateX(-50%); }
+.dl-tooltip--left { right: calc(100% + 6px); top: 50%; transform: translateY(-50%); }
+.dl-tooltip--right { left: calc(100% + 6px); top: 50%; transform: translateY(-50%); }
+
+/* ── Password Strength ──────────────────────────────────── */
+
+.dl-pw-strength {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-sm);
+  margin-top: 4px;
+}
+
+.dl-pw-strength__bars {
+  display: flex;
+  gap: 3px;
+  flex: 1;
+}
+
+.dl-pw-strength__bar {
+  height: 3px;
+  flex: 1;
+  border-radius: var(--dl-radius-full);
+  transition: background-color var(--dl-transition-base);
+}
+
+.dl-pw-strength__label {
+  font-size: var(--dl-text-xs);
+  font-weight: 500;
+  min-width: 60px;
+  text-align: right;
+}
+
+/* ── Typing Indicator ───────────────────────────────────── */
+
+.dl-typing {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-sm);
+  padding: var(--dl-space-xs) var(--dl-space-lg);
+  color: var(--dl-text-muted);
+  font-size: var(--dl-text-xs);
+}
+
+.dl-typing__dots {
+  display: flex;
+  gap: 3px;
+}
+
+.dl-typing__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--dl-text-muted);
+  animation: dl-typing 1.4s ease-in-out infinite;
+}
+
+.dl-typing__dot:nth-child(2) { animation-delay: 0.2s; }
+.dl-typing__dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* ── Encryption Indicator ───────────────────────────────── */
+
+.dl-encryption-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--dl-text-xs);
+  color: var(--dl-text-muted);
+  font-weight: 500;
+}
+
+.dl-encryption-indicator--verified {
+  color: var(--dl-encrypted);
+}

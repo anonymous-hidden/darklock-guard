@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
+    <title>RIDGELINE</title>
+    <style>
+      body {
+        margin: 0;
+        background: #0a0a0f;
+        overflow: hidden;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        /* iOS safe area insets */
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Mobile adapter must load BEFORE the main app to inject window.electronAPI shim -->
+    <script type="module" src="./src/mobileAdapter.ts"></script>
+    <script type="module" src="../dl-secure-channel/src/main.tsx"></script>
+  </body>
+</html>

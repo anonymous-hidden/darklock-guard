@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">RIDGELINE</string>
+    <string name="title_activity_main">RIDGELINE</string>
+    <string name="package_name">com.darklock.securechannel</string>
+    <string name="custom_url_scheme">com.darklock.securechannel</string>
+</resources>

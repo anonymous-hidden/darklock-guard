@@ -1,0 +1,21 @@
+{
+  "name": "@ridgeline/security-infrastructure-validation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test scripts/*.test.mjs",
+    "validate:kms:staging": "node scripts/kms-validation.mjs",
+    "validate:backup:staging": "node scripts/backup-restore-validation.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudwatch": "3.1088.0",
+    "@aws-sdk/client-kms": "3.1088.0",
+    "@aws-sdk/client-s3": "3.1088.0",
+    "@aws-sdk/client-sts": "3.1088.0",
+    "@aws-sdk/credential-providers": "3.1088.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
