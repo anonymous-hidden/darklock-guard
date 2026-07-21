@@ -161,7 +161,7 @@ jobs:
           merge-multiple: true
       - name: Generate SBOM
         working-directory: secure-channel
-        run: npm sbom --sbom-format cyclonedx > ../release/ridgeline-sbom.cdx.json
+        run: npm sbom --workspace=apps/dl-secure-channel --omit=dev --sbom-format cyclonedx > ../release/ridgeline-sbom.cdx.json
       - name: Build artifact input
         run: node scripts/release/prepare-ridgeline-artifacts.mjs release release-artifacts.json https://releases.darklock.net/ridgeline
       - name: Sign product release policy
