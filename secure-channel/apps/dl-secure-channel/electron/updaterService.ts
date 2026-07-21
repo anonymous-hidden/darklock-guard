@@ -24,8 +24,8 @@ import type {
   UpdateSnapshot,
 } from './updateTypes.js';
 
-const POLICY_ENDPOINT = 'https://cayden.tail333b18.ts.net/ridgeline/policy/latest?app=ridgeline&format=signed-v1';
-const TELEMETRY_ENDPOINT = 'https://cayden.tail333b18.ts.net/ridgeline/telemetry';
+const POLICY_ENDPOINT = 'https://releases.darklock.net/ridgeline/policy/latest?app=ridgeline&format=signed-v1';
+const TELEMETRY_ENDPOINT = 'https://releases.darklock.net/ridgeline/telemetry';
 const CHECK_INTERVAL_MS = 8 * 60 * 60 * 1000;
 const CHECK_TIMEOUT_MS = 12_000;
 const MAX_POLICY_BYTES = 256 * 1024;

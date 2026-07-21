@@ -149,7 +149,7 @@
     "publish": [
       {
         "provider": "generic",
-        "url": "https://cayden.tail333b18.ts.net/ridgeline"
+        "url": "https://releases.darklock.net/ridgeline"
       }
     ],
     "artifactName": "Ridgeline-${version}-${os}-${arch}.${ext}"

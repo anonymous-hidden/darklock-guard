@@ -21,7 +21,6 @@ export const RIDGELINE_RECOVERY_KEY_IDS = Object.freeze([
 export const RIDGELINE_REVOKED_KEY_IDS = Object.freeze<string[]>([]);
 
 export const APPROVED_UPDATE_HOSTS = Object.freeze([
-  'cayden.tail333b18.ts.net',
   'releases.darklock.net',
   'github.com',
   'objects.githubusercontent.com',
