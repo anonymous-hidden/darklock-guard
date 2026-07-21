@@ -75,6 +75,29 @@ try {
     throw 'The Windows installer or latest.yml manifest was not produced.'
   }
 
+  $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
+    Sort-Object FullName -Descending |
+    Select-Object -First 1
+  if (-not $signtool) {
+    throw 'Windows SDK signtool.exe is required to sign the release installer.'
+  }
+
+  Invoke-Checked $signtool.FullName @(
+    'sign', '/sha1', $certificate.Thumbprint, '/fd', 'SHA256',
+    '/tr', 'http://timestamp.digicert.com', '/td', 'SHA256', $installer.FullName
+  )
+  Invoke-Checked $signtool.FullName @('verify', '/pa', $installer.FullName)
+
+  $sha512 = [Convert]::ToBase64String(
+    [System.Security.Cryptography.SHA512]::Create().ComputeHash([System.IO.File]::ReadAllBytes($installer.FullName))
+  )
+  $manifestText = Get-Content $manifest -Raw
+  $manifestText = [regex]::Replace($manifestText, '(?m)^    sha512: .+$', "    sha512: $sha512")
+  $manifestText = [regex]::Replace($manifestText, '(?m)^    size: .+$', "    size: $($installer.Length)")
+  $manifestText = [regex]::Replace($manifestText, '(?m)^sha512: .+$', "sha512: $sha512")
+  Set-Content -LiteralPath $manifest -Value $manifestText -NoNewline
+
   $signature = Get-AuthenticodeSignature $installer.FullName
   if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'CN=Darklock') {
     throw "Installer signing verification failed: $($signature.Status)"
