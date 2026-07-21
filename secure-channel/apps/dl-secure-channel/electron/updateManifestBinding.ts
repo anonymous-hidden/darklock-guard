@@ -1,6 +1,6 @@
 import type { SignedUpdateArtifact, SignedUpdatePolicy } from './updateTypes.js';
 
-export const FRAMEWORK_FEED_URL = 'https://cayden.tail333b18.ts.net/ridgeline/';
+export const FRAMEWORK_FEED_URL = 'https://releases.darklock.net/ridgeline/';
 
 export interface FrameworkUpdateFile {
   url: string;
